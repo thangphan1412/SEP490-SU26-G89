@@ -18,6 +18,8 @@
 - FE 
 + Ae tải react trước
 + Rồi chạy fe dùng lênhj:npm run dev
+- Docker:
++ build Be: mvn clean package
 5.Usage:
 
 6.Contributing:
