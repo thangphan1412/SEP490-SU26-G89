@@ -9,6 +9,15 @@
 - React-dom: 19.2.6
 
 # 4.Installation:
+//// tôi push hết lên docker rồi
+- Ae tải docker đăng nhập vào
+- Mở terminal gõ lệnh:"cd deploy" để chuyển sang file deploy
+- Gõ lệnh : "docker-compose up --build" nó ra 3 file backend, frontend, deploy started là ok
+- Không cần setup môi trường gì đâu
+- lên trình duyệt gõ host của be, fe la dc
+- Host be: 8080
+- Host fe :3000
+//// cho ae nào chạy local
 - Ae naò gặp vấn đề kết nối check theo thứ tự:
   (BE)
 + Check xem đã tạo database trong mysql workbench chưa 
