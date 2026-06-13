@@ -1,3 +1,4 @@
+// khai bao module java
 module org.be.desktopjavafx {
     requires javafx.controls;
     requires javafx.fxml;
