@@ -32,6 +32,8 @@ If you are developing a production application, we recommend using TypeScript wi
 - la may thang goi api be sang
 6.config
 - noi cau hinh, cau hinh gi thi bao ae 1 tieng cho dong bo
+7. hook
+- noi dung de code login fe cung nhu la tai su dung ae de y giup t cai nay
 - 
 luu y : tat ca may thang tren deu chi la file chung, kieu manage thi ben trong no co nhieu man cu hop ly thi tao them folder cho no
 - 
