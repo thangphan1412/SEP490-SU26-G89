@@ -3,7 +3,7 @@ import {Button, Form, FormControl, FormGroup, FormLabel} from "react-bootstrap";
 
 function LoginForm(){
     return(
-        <div >
+        <div className="container-fluid">
             <Form>
                 <FormGroup className="mb-3">
                     <FormLabel >Email Address</FormLabel>

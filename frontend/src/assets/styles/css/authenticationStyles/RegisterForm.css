@@ -1,4 +1,4 @@
-.login-container{
+.register-container{
     position: relative;
     width: 100vw;
     height: 100vh;
@@ -10,7 +10,7 @@
     object-fit: cover;
 }
 
-.login-form-wrapper{
+.register-form-wrapper{
     position: absolute;
     top: 50%;
     left: 50%;
