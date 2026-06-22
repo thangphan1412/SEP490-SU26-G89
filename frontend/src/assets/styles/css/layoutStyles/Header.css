@@ -52,12 +52,23 @@
     font-size: 10px;
     color: #9ca3af;
 }
-
-
 .nav-list {
-    display: flex ;
+     display: flex;
+    flex: 1;
+    justify-content: space-between;
+}
+
+.nav-item {
+     display: flex !important;
+    flex-direction: column !important;
     align-items: center;
-    gap: 2px;
+    justify-content: center;
+    gap: 4px;
+}
+
+/* .nav-list {
+    display: flex;
+    justify-content: space-evenly;
     flex: 1;
 }
 
@@ -74,7 +85,7 @@
     position: relative;
     transition: background 0.15s;
     line-height: 1.2 ;
-}
+} */
 
 .nav-item i {
     font-size: 18px;
