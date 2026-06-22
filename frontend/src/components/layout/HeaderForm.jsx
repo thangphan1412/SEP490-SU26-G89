@@ -46,7 +46,7 @@ function HeaderForm(){
                    
                      <NavDropdown title= {
                         
-                        <span className="user-info">
+                       <span className="user-info">
                             
                           <IconUserCircle stroke={2} />
                             <span className="user-text">

@@ -84,6 +84,15 @@
     align-items: center;
 }
 
+.user-dropdown-title,
+.user-info .dropdown-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
 .user-text {
     display: flex;
     flex-direction: column;
@@ -91,7 +100,8 @@
 }
 
 .user-name {
-    font-weight: 600;
+    font-weight: 700;
+    font-size: 14px;
 }
 
 .user-role {
