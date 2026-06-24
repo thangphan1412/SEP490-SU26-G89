@@ -2,14 +2,15 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import "../../assets/styles/css/layoutStyles/LoginFormStyle.css";
 import {IconMail,
-     IconLock 
+     IconLock ,
+     IconEyeX,
+     IconEye
     } from '@tabler/icons-react';
 
 function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [remember, setRemember] = useState(true);
-  const see = <IconEyeX stroke={2} />;
-  const notSee =<IconEyeX stroke={2} />;
+
   return (
     <div className="login-form-container">
       <h1>Sign in to your account</h1>
@@ -29,7 +30,7 @@ function LoginForm() {
           <IconLock stroke={2} />
           <input type={showPassword ? "text" : "password"} placeholder="••••••••••" />
           <button className="eye-btn" onClick={() => setShowPassword(!showPassword)} type="button">
-            {showPassword ? "see" : "notSee"}
+            {showPassword ? <IconEyeX stroke={2} />: <IconEye stroke={2} /> }
           </button>
         </div>
       </div>
