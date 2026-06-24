@@ -1,28 +1,28 @@
-import backGoundLogin from "../../assets/images/authenticationIMG/backGroundLogin.jpg";
-import "../../assets/styles/css/authenticationStyles/LoginFromStyle.css"
-import {Link} from "react-router-dom";
-import RegisterForm from "../../components/common/RegisterFrom.jsx";
-import LoginPage from "./LoginPage.jsx";
+// import backGoundLogin from "../../assets/images/authenticationIMG/backGroundLogin.jpg";
 
-function RegisterPage(){
-    return(
-        <div className="register-container">
+// import {Link} from "react-router-dom";
+// import RegisterForm from "../../components/common/RegisterFrom.jsx";
 
-            <img
-                className="login-backgound"
-                src={backGoundLogin}
-                alt="Background Login"
-            />
-            <div className="Register-form-wrapper">
-                <RegisterForm/>
-                <div className="other-methods-login">
-                    <h4 style={{justifyContent:"center"}}>Đã có tài khoản</h4>
-                    {/*<Link className="m-md-2" to={<LoginPage/>} >Đăng nhập ngay</Link>*/}
 
-                </div>
-            </div>
+// function RegisterPage(){
+//     return(
+//         <div className="register-container">
 
-        </div>
-    )
-}
-export default RegisterPage
+//             <img
+//                 className="login-backgound"
+//                 src={backGoundLogin}
+//                 alt="Background Login"
+//             />
+//             <div className="Register-form-wrapper">
+//                 <RegisterForm/>
+//                 <div className="other-methods-login">
+//                     <h4 style={{justifyContent:"center"}}>Đã có tài khoản</h4>
+//                     {/*<Link className="m-md-2" to={<LoginPage/>} >Đăng nhập ngay</Link>*/}
+
+//                 </div>
+//             </div>
+
+//         </div>
+//     )
+// }
+// export default RegisterPage
