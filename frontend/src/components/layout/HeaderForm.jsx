@@ -40,6 +40,7 @@ function HeaderForm(){
                         <Nav.Link href="#" className="nav-item"><IconUserPlus stroke={2} />Employee Management</Nav.Link>
                         <Nav.Link href="#" className="nav-item"><IconReportAnalytics stroke={2} />Reports</Nav.Link>
                         <Nav.Link href="#" className="nav-item"><IconSettings stroke={2} />Settings</Nav.Link>
+
                     </Nav>
                 </Navbar.Collapse>
                 <div className="user-info">
