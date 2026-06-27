@@ -15,6 +15,8 @@ import ListProject from "./pages/ProjectManagement/ListProject.jsx";
 import CreateProject from "./pages/ProjectManagement/CreateProject.jsx";
 import ViewProject from "./pages/ProjectManagement/ViewProject.jsx";
 import UpdateProject from "./pages/ProjectManagement/UpdateProject.jsx";
+import PermissionCreatePage from "./pages/Permission Management/CreatePermissionPage.jsx";
+import ListPermissionPage from "./pages/Permission Management/ListPermissionPage.jsx";
 
 function AppRouter(){
     return(
@@ -83,6 +85,8 @@ function AppRouter(){
                 path="/project-management/update"
                 element = {<UpdateProject />}
             />
+            <Route path="/permission/create" element={<PermissionCreatePage />}></Route>
+            <Route path="/permission/list" element={<ListPermissionPage />}></Route>
         </Routes>
     )
 
