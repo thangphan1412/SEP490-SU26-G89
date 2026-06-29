@@ -1,9 +1,6 @@
 package com.fpt.backend.entity;
 
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.MappedSuperclass;
+import jakarta.persistence.*;
 import lombok.*;
 
 import java.util.UUID;
@@ -13,9 +10,10 @@ import java.util.UUID;
 @MappedSuperclass
 @AllArgsConstructor
 @NoArgsConstructor
-@Builder
+
 public class BaseEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private UUID id;
+    @Column(name = "id")
+    private int id;
 }

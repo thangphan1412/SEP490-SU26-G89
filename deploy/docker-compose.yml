@@ -1,23 +1,28 @@
 services:
-  mysql:
-    image: mysql:8.0
-    container_name: mysql_db
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: sqlserver_db
     environment:
-      MYSQL_ROOT_PASSWORD: Zalo12345@
-      MYSQL_DATABASE: SEP490
+      ACCEPT_EULA: "Y"
+      MSSQL_PID: "Developer"
+      MSSQL_SA_PASSWORD: "Sep490@123"
+      MSSQL_TCP_PORT: "1433"
     ports:
-      - "3307:3306"
+      - "1433:1433"
     volumes:
-      - mysql_data:/var/lib/mysql
+      - sqlserver_data:/var/opt/mssql
     networks:
       - app-network
     # fix thoi gian chay cho thang nay
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-pZalo12345@"]
+      test:
+        [
+          "CMD-SHELL",
+          "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P 'Sep490@123' -C -Q 'SELECT 1' || exit 1"
+        ]
       interval: 10s
       timeout: 5s
-      retries: 5
-      start_period: 30s
+      retries: 10
 
   backend:
     build:
@@ -27,12 +32,12 @@ services:
     ports:
       - "8080:8080"
     environment:
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/SEP490?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
-      SPRING_DATASOURCE_USERNAME: root
-      SPRING_DATASOURCE_PASSWORD: Zalo12345@
+      SPRING_DATASOURCE_URL: jdbc:sqlserver://sqlserver:1433;databaseName=SEP490;encrypt=false;trustServerCertificate=true
+      SPRING_DATASOURCE_USERNAME: sa
+      SPRING_DATASOURCE_PASSWORD: Sep490@123
       APP_HOST: http://localhost:8080
     depends_on:
-      mysql:
+      sqlserver:
         condition: service_healthy
     networks:
       - app-network
@@ -50,7 +55,7 @@ services:
       - app-network
 
 volumes:
-  mysql_data:
+  sqlserver_data:
 
 networks:
   app-network:

@@ -1,4 +1,4 @@
-import { Route, Routes} from "react-router-dom";
+import { Route, Routes } from "react-router-dom";
 import LoginPage from "./pages/Authentication/LoginPage.jsx";
 // import RegisterPage from "./pages/Authentication/RegisterPage.jsx";
 // import FogotPassword from "./pages/Authentication/FogotPassword.jsx";
@@ -15,6 +15,10 @@ import ListProject from "./pages/ProjectManagement/ListProject.jsx";
 import CreateProject from "./pages/ProjectManagement/CreateProject.jsx";
 import ViewProject from "./pages/ProjectManagement/ViewProject.jsx";
 import UpdateProject from "./pages/ProjectManagement/UpdateProject.jsx";
+import PermissionCreatePage from "./pages/Permission Management/CreatePermissionPage.jsx";
+import ListPermissionPage from "./pages/Permission Management/ListPermissionPage.jsx";
+import ContractTypes from "./pages/contractType/ContractTypes.jsx";
+import CreateContractType from "./pages/contractType/CreateContractType.jsx";
 
 function AppRouter(){
     return(
@@ -30,11 +34,11 @@ function AppRouter(){
             {/* <Route
                 path="/forgot_password"
                 element={<FogotPassword />}
-            />*/
+            />*/}
             <Route
                 path="/home_page"
                 element={<Homepage/>}
-            /> }
+            /> 
             <Route
                 path="/company-profile/view"
                 element = {<ViewProfile />}
@@ -82,6 +86,17 @@ function AppRouter(){
             <Route
                 path="/project-management/update"
                 element = {<UpdateProject />}
+            />
+            <Route path="/permission/create" element={<PermissionCreatePage />}></Route>
+            <Route path="/permission/list" element={<ListPermissionPage />}></Route>
+            
+            <Route
+                path="/contract-types"
+                element={<ContractTypes />}
+            />
+            <Route
+                path="/contract-types/new"
+                element={<CreateContractType />}
             />
         </Routes>
     )
