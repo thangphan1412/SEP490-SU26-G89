@@ -13,6 +13,7 @@ const defaultCompanyProfile = {
     registrationDate: "May 12, 2020",
 };
 
+
 const formFields = [
     {
         label: "Company Name",
