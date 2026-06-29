@@ -1,0 +1,77 @@
+.contract-types-page {
+  padding: 32px;
+  min-height: calc(100vh - 60px);
+  background: #f8fafc;
+}
+
+.contract-types-topbar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.contract-types-topbar h1 {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 700;
+}
+
+.contract-types-subtitle {
+  margin: 8px 0 0;
+  color: #6b7280;
+}
+
+.contract-types-button {
+  min-width: 180px;
+}
+
+.contract-types-card {
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 24px;
+}
+
+.contract-types-card-header {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 16px;
+}
+
+.contract-types-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  max-width: 420px;
+}
+
+.contract-types-search input {
+  flex: 1;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid #d1d5db;
+  outline: none;
+}
+
+.contract-types-table th {
+  color: #6b7280;
+  font-weight: 600;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.contract-types-table td,
+.contract-types-table th {
+  vertical-align: middle;
+}
+
+.contract-types-table tbody tr:hover {
+  background: #f8fafc;
+}
+
+.create-contract-type-page .card {
+  max-width: 640px;
+  margin: 0 auto;
+}
