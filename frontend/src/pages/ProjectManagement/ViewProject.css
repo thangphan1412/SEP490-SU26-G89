@@ -1,0 +1,29 @@
+.view-project-overview-grid { display: grid; grid-template-columns: 1fr 1fr 1.15fr; gap: 28px; }
+.view-project-detail-column { padding-right: 28px; border-right: 1px solid #e3e9f2; }
+.view-project-detail-row { min-height: 38px; display: grid; grid-template-columns: 28px 130px 1fr; align-items: center; gap: 10px; color: #243452; font-size: 13px; }
+.view-project-detail-label { color: #52617f; font-weight: 700; }
+.view-project-detail-value { color: #243452; font-weight: 600; }
+.view-project-progress-column { padding-left: 4px; }
+.view-project-progress-title { margin: 0 0 12px; color: #52617f; font-weight: 700; }
+.view-project-progress-row { margin-bottom: 24px; display: grid; grid-template-columns: 1fr 42px; align-items: center; gap: 14px; }
+.view-project-progress-bar { height: 8px; overflow: hidden; border-radius: 8px; background: #e9eef8; }
+.view-project-progress-fill { width: 68%; height: 100%; display: block; border-radius: 8px; background: #2450f5; }
+.view-project-description-title { margin: 0 0 6px; color: #52617f; font-weight: 700; }
+.view-project-description-text { margin: 0; color: #52617f; font-size: 13px; line-height: 1.55; }
+.view-project-metric-grid { margin-top: 28px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; }
+.view-project-metric-item { padding: 18px; display: flex; align-items: center; gap: 16px; border: 1px solid #d9e2ef; border-radius: 8px; }
+.view-project-metric-label { margin: 0; color: #52617f; font-size: 12px; }
+.view-project-metric-value { margin: 4px 0; font-size: 24px; font-weight: 800; }
+.view-project-metric-description { margin: 0; color: #52617f; font-size: 12px; }
+.view-project-documents-title { margin-bottom: 4px; }
+.view-project-sub-text { margin: 0 0 18px; color: #52617f; font-size: 14px; }
+.view-project-table-wrap { overflow-x: auto; border: 1px solid #dfe6f1; border-radius: 8px; }
+.view-project-table { width: 100%; min-width: 780px; border-collapse: collapse; }
+.view-project-th { height: 46px; padding: 0 18px; border-bottom: 1px solid #e4eaf3; background: #fbfcff; color: #243452; font-size: 13px; text-align: left; }
+.view-project-row { height: 47px; border-bottom: 1px solid #e8edf4; }
+.view-project-name-cell { padding: 0 18px; display: flex; align-items: center; gap: 12px; font-size: 13px; font-weight: 700; }
+.view-project-td { padding: 0 18px; color: #334260; font-size: 13px; }
+.view-project-action-button { width: 32px; height: 30px; border: 1px solid #d7dfeb; border-radius: 6px; background: #fff; color: #111827; cursor: pointer; }
+
+@media (max-width: 900px) { .view-project-overview-grid { grid-template-columns: 1fr 1fr; } .view-project-progress-column { grid-column: 1 / -1; } .view-project-metric-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 620px) { .view-project-overview-grid, .view-project-metric-grid { grid-template-columns: 1fr; } .view-project-detail-column { padding-right: 0; border-right: 0; } .view-project-progress-column { grid-column: auto; } }

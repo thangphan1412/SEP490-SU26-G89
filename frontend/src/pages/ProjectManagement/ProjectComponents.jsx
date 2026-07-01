@@ -1,13 +1,4 @@
-/* eslint-disable react-refresh/only-export-components */
-export const projects = [
-    ["document", "Digital Contract Rollout", "IT", "Alex Morgan", "Active", "May 01, 2025", "Jul 31, 2025", "$120,000"],
-    ["users", "Vendor Summit 2025", "Procurement", "Jamie Lee", "Planning", "Jun 15, 2025", "Aug 15, 2025", "$85,000"],
-    ["document", "HR Policy Renewal", "HR", "Taylor Smith", "Active", "Apr 20, 2025", "Jun 30, 2025", "$45,000"],
-    ["building", "Office Expansion", "Operations", "Casey Brown", "On Hold", "Mar 01, 2025", "Sep 30, 2025", "$750,000"],
-    ["users", "Supplier Onboarding", "Procurement", "Jordan Kim", "Active", "May 10, 2025", "Aug 10, 2025", "$60,000"],
-    ["shield", "Compliance Audit 2025", "Legal", "Morgan Lee", "Completed", "Jan 15, 2025", "Mar 31, 2025", "$30,000"],
-    ["chart", "Contract Analytics Initiative", "IT", "Riley Johnson", "Planning", "Aug 01, 2025", "Nov 30, 2025", "$95,000"],
-];
+import "./ProjectComponents.css";
 
 export function Icon({ name, size = 22, color = "#1f4fff" }) {
     const props = {
@@ -51,32 +42,38 @@ export function Icon({ name, size = 22, color = "#1f4fff" }) {
 }
 
 export function StatusBadge({ status }) {
-    const styleByStatus = {
-        Active: styles.activeBadge,
-        Planning: styles.planningBadge,
-        "On Hold": styles.holdBadge,
-        Completed: styles.completedBadge,
-        Signed: styles.activeBadge,
-        "In Review": styles.holdBadge,
-        Approved: styles.activeBadge,
-        Draft: styles.draftBadge,
+    const normalizedStatus = String(status || "Unknown").trim().toLowerCase().replaceAll("_", " ");
+    const classByStatus = {
+        active: "project-status-badge--active",
+        approved: "project-status-badge--active",
+        signed: "project-status-badge--active",
+        planning: "project-status-badge--planning",
+        "in progress": "project-status-badge--planning",
+        "in review": "project-status-badge--hold",
+        "on hold": "project-status-badge--hold",
+        completed: "project-status-badge--completed",
+        done: "project-status-badge--completed",
+        draft: "project-status-badge--draft",
+        inactive: "project-status-badge--draft",
+        cancelled: "project-status-badge--danger",
+        canceled: "project-status-badge--danger",
     };
 
     return (
-        <span style={{ ...styles.badge, ...styleByStatus[status] }}>
-            {status}
+        <span className={`project-status-badge ${classByStatus[normalizedStatus] || "project-status-badge--draft"}`}>
+            {status || "Unknown"}
         </span>
     );
 }
 
 export function PagePanel({ title, description, action, children }) {
     return (
-        <main style={styles.page}>
-            <section style={styles.panel}>
-                <div style={styles.header}>
+        <main className="project-page">
+            <section className="project-panel">
+                <div className="project-page-header">
                     <div>
-                        <h1 style={styles.pageTitle}>{title}</h1>
-                        <p style={styles.pageDescription}>{description}</p>
+                        <h1 className="project-page-title">{title}</h1>
+                        <p className="project-page-description">{description}</p>
                     </div>
                     {action}
                 </div>
@@ -87,153 +84,13 @@ export function PagePanel({ title, description, action, children }) {
 }
 
 export function PrimaryButton({ children, onClick, type = "button" }) {
-    return (
-        <button type={type} style={styles.primaryButton} onClick={onClick}>
-            {children}
-        </button>
-    );
+    return <button type={type} className="project-primary-button" onClick={onClick}>{children}</button>;
 }
 
 export function CancelButton({ children = "Cancel", onClick }) {
-    return (
-        <button type="button" style={styles.cancelButton} onClick={onClick}>
-            {children}
-        </button>
-    );
+    return <button type="button" className="project-cancel-button" onClick={onClick}>{children}</button>;
 }
 
 export function InfoAlert({ children }) {
-    return (
-        <div style={styles.infoAlert}>
-            <Icon name="info" size={20} />
-            {children}
-        </div>
-    );
+    return <div className="project-info-alert"><Icon name="info" size={20} />{children}</div>;
 }
-
-export const styles = {
-    page: {
-        minHeight: "100vh",
-        background: "#f6f8fc",
-        padding: "22px 32px",
-        color: "#111827",
-        fontFamily: "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-    },
-    panel: {
-        maxWidth: 1160,
-        margin: "0 auto",
-        background: "#ffffff",
-        border: "1px solid #dce4f0",
-        borderRadius: 16,
-        boxShadow: "0 8px 24px rgba(31, 41, 55, 0.06)",
-        overflow: "hidden",
-    },
-    header: {
-        minHeight: 104,
-        borderBottom: "1px solid #e6ebf3",
-        padding: "26px 34px",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        gap: 24,
-    },
-    pageTitle: { margin: 0, fontSize: 29, fontWeight: 800, letterSpacing: 0 },
-    pageDescription: { margin: "6px 0 0", color: "#51607f", fontSize: 16 },
-    primaryButton: {
-        height: 47,
-        minWidth: 142,
-        border: 0,
-        borderRadius: 7,
-        background: "#2450f5",
-        color: "#ffffff",
-        display: "inline-flex",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 10,
-        fontSize: 16,
-        fontWeight: 700,
-        cursor: "pointer",
-    },
-    cancelButton: {
-        height: 43,
-        minWidth: 84,
-        borderRadius: 7,
-        border: "1px solid #d7dfeb",
-        background: "#ffffff",
-        color: "#111827",
-        fontSize: 15,
-        cursor: "pointer",
-    },
-    actions: { display: "flex", gap: 12 },
-    card: {
-        margin: "20px 28px",
-        border: "1px solid #d9e2ef",
-        borderRadius: 9,
-        padding: "20px",
-        background: "#ffffff",
-    },
-    cardTitle: { margin: "0 0 18px", fontSize: 18, fontWeight: 800 },
-    label: { display: "block", marginBottom: 7, color: "#243452", fontSize: 13, fontWeight: 700 },
-    input: {
-        width: "100%",
-        height: 38,
-        border: "1px solid #d5deeb",
-        borderRadius: 6,
-        padding: "0 13px",
-        color: "#243452",
-        fontSize: 14,
-        outline: "none",
-        appearance: "none",
-        background: "#ffffff",
-    },
-    textarea: {
-        width: "100%",
-        minHeight: 78,
-        border: "1px solid #d5deeb",
-        borderRadius: 6,
-        padding: "12px 13px",
-        color: "#243452",
-        fontSize: 14,
-        outline: "none",
-        resize: "vertical",
-    },
-    badge: {
-        minHeight: 31,
-        minWidth: 62,
-        borderRadius: 6,
-        display: "inline-flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: "0 10px",
-        fontSize: 13,
-        fontWeight: 800,
-    },
-    activeBadge: { background: "#ecfff2", border: "1px solid #a8e0bb", color: "#108139" },
-    planningBadge: { background: "#eef5ff", border: "1px solid #b6cffc", color: "#1f4fff" },
-    holdBadge: { background: "#fff7ed", border: "1px solid #fdba74", color: "#ea580c" },
-    completedBadge: { background: "#f5edff", border: "1px solid #cba6ff", color: "#7c3aed" },
-    draftBadge: { background: "#f8fafc", border: "1px solid #cfd8e5", color: "#42516d" },
-    iconCircle: {
-        width: 42,
-        height: 42,
-        borderRadius: "50%",
-        background: "#eef3ff",
-        display: "inline-flex",
-        alignItems: "center",
-        justifyContent: "center",
-        flexShrink: 0,
-    },
-    infoAlert: {
-        margin: "0 28px 22px",
-        minHeight: 43,
-        borderRadius: 7,
-        border: "1px solid #b9ceff",
-        background: "#edf4ff",
-        color: "#2450f5",
-        display: "flex",
-        alignItems: "center",
-        gap: 12,
-        padding: "0 16px",
-        fontSize: 14,
-    },
-};

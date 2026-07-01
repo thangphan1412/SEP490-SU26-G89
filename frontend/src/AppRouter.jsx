@@ -87,8 +87,8 @@ function AppRouter(){
                 path="/project-management/update"
                 element = {<UpdateProject />}
             />
-            <Route path="/permission/create" element={<PermissionCreatePage />}></Route>
-            <Route path="/permission/list" element={<ListPermissionPage />}></Route>
+            <Route path="/permission-management/create" element={<PermissionCreatePage />}></Route>
+            <Route path="/permission-management/list" element={<ListPermissionPage />}></Route>
             
             <Route
                 path="/contract-types"

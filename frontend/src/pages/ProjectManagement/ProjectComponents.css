@@ -1,0 +1,175 @@
+.project-page,
+.project-page * {
+    box-sizing: border-box;
+}
+
+.project-page {
+    min-height: 100vh;
+    padding: 22px 32px;
+    background: #f6f8fc;
+    color: #111827;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.project-panel {
+    max-width: 1160px;
+    margin: 0 auto;
+    overflow: hidden;
+    border: 1px solid #dce4f0;
+    border-radius: 16px;
+    background: #fff;
+    box-shadow: 0 8px 24px rgba(31, 41, 55, 0.06);
+}
+
+.project-page-header {
+    min-height: 104px;
+    padding: 26px 34px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    border-bottom: 1px solid #e6ebf3;
+}
+
+.project-page-title {
+    margin: 0;
+    font-size: 29px;
+    font-weight: 800;
+}
+
+.project-page-description {
+    margin: 6px 0 0;
+    color: #51607f;
+    font-size: 16px;
+}
+
+.project-primary-button,
+.project-cancel-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 7px;
+    cursor: pointer;
+}
+
+.project-primary-button {
+    min-width: 142px;
+    height: 47px;
+    gap: 10px;
+    border: 0;
+    background: #2450f5;
+    color: #fff;
+    font-size: 16px;
+    font-weight: 700;
+}
+
+.project-cancel-button {
+    min-width: 84px;
+    height: 43px;
+    border: 1px solid #d7dfeb;
+    background: #fff;
+    color: #111827;
+    font-size: 15px;
+}
+
+.project-actions {
+    display: flex;
+    gap: 12px;
+}
+
+.project-card {
+    margin: 20px 28px;
+    padding: 20px;
+    border: 1px solid #d9e2ef;
+    border-radius: 9px;
+    background: #fff;
+}
+
+.project-card-title {
+    margin: 0 0 18px;
+    font-size: 18px;
+    font-weight: 800;
+}
+
+.project-field-label {
+    display: block;
+    margin-bottom: 7px;
+    color: #243452;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.project-input,
+.project-textarea {
+    width: 100%;
+    border: 1px solid #d5deeb;
+    border-radius: 6px;
+    background: #fff;
+    color: #243452;
+    font-size: 14px;
+    outline: none;
+}
+
+.project-input {
+    height: 38px;
+    padding: 0 13px;
+    appearance: none;
+}
+
+.project-textarea {
+    min-height: 78px;
+    padding: 12px 13px;
+    resize: vertical;
+}
+
+.project-status-badge {
+    min-width: 62px;
+    min-height: 31px;
+    padding: 0 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 800;
+}
+
+.project-status-badge--active { border: 1px solid #a8e0bb; background: #ecfff2; color: #108139; }
+.project-status-badge--planning { border: 1px solid #b6cffc; background: #eef5ff; color: #1f4fff; }
+.project-status-badge--hold { border: 1px solid #fdba74; background: #fff7ed; color: #ea580c; }
+.project-status-badge--completed { border: 1px solid #cba6ff; background: #f5edff; color: #7c3aed; }
+.project-status-badge--draft { border: 1px solid #cfd8e5; background: #f8fafc; color: #42516d; }
+.project-status-badge--danger { border: 1px solid #ffb9c6; background: #fff1f3; color: #e11d48; }
+
+.project-icon-circle {
+    width: 42px;
+    height: 42px;
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: #eef3ff;
+}
+
+.project-info-alert {
+    min-height: 43px;
+    margin: 0 28px 22px;
+    padding: 0 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border: 1px solid #b9ceff;
+    border-radius: 7px;
+    background: #edf4ff;
+    color: #2450f5;
+    font-size: 14px;
+}
+
+@media (max-width: 700px) {
+    .project-page { padding: 14px; }
+    .project-page-header { padding: 22px; align-items: flex-start; flex-direction: column; }
+    .project-actions { width: 100%; flex-wrap: wrap; }
+    .project-card { margin: 16px; }
+    .project-info-alert { margin: 0 16px 16px; }
+}
