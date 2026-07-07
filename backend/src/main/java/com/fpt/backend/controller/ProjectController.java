@@ -17,26 +17,24 @@ import org.springframework.web.bind.annotation.RestController;
 @CrossOrigin(originPatterns = "*")
 @RequiredArgsConstructor
 public class ProjectController {
-    private final ProjectService projectService;
+        private final ProjectService projectService;
 
-    @GetMapping
-    public ResponseEntity<BaseResponse<ProjectListResponse>> getProjects(
-            @RequestParam(defaultValue = "") String search,
-            @RequestParam(defaultValue = "") String status,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "id") String sortBy,
-            @RequestParam(defaultValue = "desc") String sortDirection
-    ) {
-        ProjectListResponse projects = projectService.getProjects(
-                search,
-                status,
-                page,
-                sortBy,
-                sortDirection
-        );
+        @GetMapping("/list")
+        public ResponseEntity<BaseResponse<ProjectListResponse>> getProjects(
+                        @RequestParam(defaultValue = "") String search,
+                        @RequestParam(defaultValue = "") String status,
+                        @RequestParam(defaultValue = "0") int page,
+                        @RequestParam(defaultValue = "id") String sortBy,
+                        @RequestParam(defaultValue = "desc") String sortDirection) {
+                ProjectListResponse projects = projectService.getProjects(
+                                search,
+                                status,
+                                page,
+                                sortBy,
+                                sortDirection);
 
-        return ResponseEntity.ok()
-                .cacheControl(CacheControl.noStore())
-                .body(new BaseResponse<>(projects));
-    }
+                return ResponseEntity.ok()
+                                .cacheControl(CacheControl.noStore())
+                                .body(new BaseResponse<>(projects));
+        }
 }
