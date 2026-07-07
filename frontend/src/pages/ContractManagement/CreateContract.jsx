@@ -9,7 +9,6 @@ import {
     contractParties,
     contractStatuses,
     contractTypes,
-    styles,
 } from "./ContractComponents.jsx";
 
 const initialContract = {

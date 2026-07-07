@@ -6,7 +6,6 @@ import {
     PagePanel,
     PrimaryButton,
     StatusBadge,
-    styles,
 } from "../ProjectManagement/ProjectComponents.jsx";
 
 export {
@@ -15,7 +14,6 @@ export {
     InfoAlert,
     PagePanel,
     PrimaryButton,
-    styles,
 };
 
 export const contractStatuses = ["Active", "Pending", "Expired", "Draft"];
@@ -159,14 +157,13 @@ export const contracts = [
 
 export function ContractStatusBadge({ status }) {
     const styleByStatus = {
-        Pending: styles.holdBadge,
         Expired: { background: "#fff1f2", border: "1px solid #fecdd3", color: "#e11d48" },
     };
 
     return status === "Active" || status === "Draft" ? (
         <StatusBadge status={status} />
     ) : (
-        <span style={{ ...styles.badge, ...styleByStatus[status] }}>{status}</span>
+        <span style={{ ...styleByStatus[status] }}>{status}</span>
     );
 }
 

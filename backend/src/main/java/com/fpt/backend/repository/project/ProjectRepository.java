@@ -1,4 +1,4 @@
-package com.fpt.backend.repository;
+package com.fpt.backend.repository.project;
 
 import com.fpt.backend.entity.Projects;
 import org.springframework.data.domain.Page;
@@ -12,22 +12,23 @@ import java.util.List;
 
 @Repository
 public interface ProjectRepository extends JpaRepository<Projects, Integer> {
+    Page<Projects> findByProjectStatusIgnoreCase(String projectStatus, Pageable pageable);
+
     @Query("""
             SELECT project
             FROM Projects project
             WHERE (
-                :search = ''
-                OR LOWER(COALESCE(project.projectCode, '')) LIKE LOWER(CONCAT('%', CONCAT(:search, '%')))
-                OR LOWER(COALESCE(project.projectName, '')) LIKE LOWER(CONCAT('%', CONCAT(:search, '%')))
-                OR LOWER(COALESCE(project.projectDescription, '')) LIKE LOWER(CONCAT('%', CONCAT(:search, '%')))
-                OR LOWER(COALESCE(project.projectCreatedBy, '')) LIKE LOWER(CONCAT('%', CONCAT(:search, '%')))
+                LOWER(COALESCE(project.projectCode, '')) LIKE CONCAT('%', CONCAT(:search, '%'))
+                OR LOWER(COALESCE(project.projectName, '')) LIKE CONCAT('%', CONCAT(:search, '%'))
+                OR LOWER(COALESCE(project.projectDescription, '')) LIKE CONCAT('%', CONCAT(:search, '%'))
+                OR LOWER(COALESCE(project.projectCreatedBy, '')) LIKE CONCAT('%', CONCAT(:search, '%'))
             )
             AND (
                 :status = ''
-                OR LOWER(COALESCE(project.projectStatus, '')) = LOWER(:status)
+                OR LOWER(COALESCE(project.projectStatus, '')) = :status
             )
             """)
-    Page<Projects> findProjectList(
+    Page<Projects> searchProjects(
             @Param("search") String search,
             @Param("status") String status,
             Pageable pageable
@@ -40,5 +41,5 @@ public interface ProjectRepository extends JpaRepository<Projects, Integer> {
                 AND TRIM(project.projectStatus) <> ''
             ORDER BY project.projectStatus
             """)
-    List<String> findDistinctStatuses();
+    List<String> findDistinctProjectStatuses();
 }
