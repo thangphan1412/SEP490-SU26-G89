@@ -19,8 +19,10 @@ public class Users extends BaseEntity {
     private String email;
     @Column(name = "user_password")
     private String password;
-    @Column(name = "user_fullname")
-    private String fullName;
+    @Column(name = "user_firstName")
+    private String firstName;
+    @Column(name = "user_lastName")
+    private String lastName;
     @Column(name = "user_number_phone")
     private String numberPhone;
     @Column(name = "user_status")
@@ -51,4 +53,7 @@ public class Users extends BaseEntity {
     //Proposal
     @OneToMany(mappedBy = "user")
     private List<Proposals> proposals;
+    // userrole
+    @OneToMany(mappedBy = "user")
+    private List<UserRole> userRoles;
 }
