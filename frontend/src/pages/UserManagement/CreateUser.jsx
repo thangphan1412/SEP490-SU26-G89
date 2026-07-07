@@ -1,341 +1,171 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import NavDropdown from "react-bootstrap/NavDropdown";
-
-// Import các icon cần thiết
-import {
-    IconWorld,
-    IconChevronDown,
-    IconEye,
-    IconCalendar,
-    IconUserPlus,
-    IconShieldCheck,
-    IconBuilding,
-    IconMail,
-    IconUserCheck,
-    IconInfoCircle,
-    IconLoader2
-} from "@tabler/icons-react";
-
-import "../../assets/styles/css/userManagementStyles/CreateUserPage.css";
-
-const initialUser = {
-    fullName: "",
-    email: "",
-    initialPassword: "",
-    confirmPassword: "",
-    department: "",
-    role: "",
-    position: "",
-    phoneNumber: "",
-    employeeId: "",
-    startDate: "",
-    status: "Active",
-    sendWelcomeEmail: true,
-};
+import { Container, Card, Row, Col, Form, Button, Alert, NavDropdown, Spinner, Stack } from "react-bootstrap";
+import { IconWorld, IconUserPlus, IconShieldCheck, IconBuilding, IconMail, IconUserCheck, IconInfoCircle } from "@tabler/icons-react";
 
 function CreateUser() {
     const navigate = useNavigate();
-    const [user, setUser] = useState(initialUser);
+    const [user, setUser] = useState({
+        fullName: "", email: "", initialPassword: "", confirmPassword: "",
+        department: "", role: "", position: "", phoneNumber: "",
+        employeeId: "", startDate: "", status: "Active", sendWelcomeEmail: true
+    });
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const handleChange = (event) => {
-        const { name, value, checked, type } = event.target;
-        setUser((currentUser) => ({
-            ...currentUser,
-            [name]: type === "checkbox" ? checked : value,
-        }));
+    const handleChange = (e) => {
+        const { name, value, checked, type } = e.target;
+        setUser(prev => ({ ...prev, [name]: type === "checkbox" ? checked : value }));
     };
 
-    const handleSubmit = async (event) => {
-        event.preventDefault();
-
+    const handleSubmit = async (e) => {
+        e.preventDefault();
         if (user.initialPassword !== user.confirmPassword) {
             alert("Mật khẩu xác nhận không khớp!");
             return;
         }
-
         setIsSubmitting(true);
-
-        try {
-            // Giả lập API call 1.5s
-            await new Promise((resolve) => setTimeout(resolve, 1500));
-
-            alert("Tạo tài khoản thành công!");
-            navigate("/user-management/list");
-
-        } catch (error) {
-            console.error("Lỗi:", error);
-            alert("Có lỗi xảy ra, vui lòng thử lại!");
-        } finally {
-            setIsSubmitting(false);
-        }
+        await new Promise(resolve => setTimeout(resolve, 1500)); // Giả lập gửi API
+        setIsSubmitting(false);
+        alert("Tạo tài khoản thành công!");
+        navigate("/user-management/list");
     };
 
     return (
-        <div className="create-user-page">
-            <header className="page-header">
-                <div className="logo">
-                    <div className="logo-icon">🛡️</div>
-                    <div className="logo-text">
-                        <strong>E-CONTRACT</strong>
-                        <span className="logo-sub-text">Management System</span>
+        <div className="bg-light min-vh-screen">
+            {/* Header */}
+            <header className="d-flex justify-content-between align-items-center px-4 py-3 bg-white border-bottom mb-4">
+                <div className="d-flex align-items-center gap-2">
+                    <span className="fs-4">🛡️</span>
+                    <div className="d-flex flex-column lh-sm">
+                        <strong className="text-dark">E-CONTRACT</strong>
+                        <small className="text-muted" style={{ fontSize: "12px" }}>Management System</small>
                     </div>
                 </div>
-
-                <NavDropdown
-                    title={
-                        <span className="lang-btn">
-                            <IconWorld stroke={2} size={20} />
-                            <span className="language-text">English</span>
-                        </span>
-                    }
-                    id="basic-nav-dropdown"
-                    className="nav-dropdown"
-                >
-                    <NavDropdown.Item href="#action/3.1">English</NavDropdown.Item>
-                    <NavDropdown.Item href="#action/3.2">Vietnamese</NavDropdown.Item>
+                <NavDropdown title={<span className="text-dark fw-semibold"><IconWorld size={20} className="me-1"/>English</span>} id="lang-dropdown">
+                    <NavDropdown.Item>English</NavDropdown.Item>
+                    <NavDropdown.Item>Vietnamese</NavDropdown.Item>
                 </NavDropdown>
             </header>
 
-            <main>
-                <form className="form-panel" onSubmit={handleSubmit}>
-                    <div className="panel-header">
+            <Container fluid="lg" className="mb-5">
+                <Form onSubmit={handleSubmit} className="border shadow-sm rounded-4 overflow-hidden bg-white">
+                    <div className="d-flex justify-content-between align-items-center border-bottom p-4 bg-white">
                         <div>
-                            <h1 className="page-title">Create User</h1>
-                            <p className="page-description">
-                                Add a new employee account and assign access permissions.
-                            </p>
+                            <h1 className="h3 fw-bold mb-1">Create User</h1>
+                            <p className="text-muted mb-0">Add a new employee account and assign access permissions.</p>
                         </div>
-                        <div className="form-actions">
-                            <button
-                                type="button"
-                                className="btn-cancel"
-                                onClick={() => navigate("/user-management/list")}
-                                disabled={isSubmitting}
-                            >
-                                Cancel
-                            </button>
-
-                            <button
-                                type="submit"
-                                className="btn-primary"
-                                disabled={isSubmitting}
-                                style={{ opacity: isSubmitting ? 0.7 : 1, cursor: isSubmitting ? "not-allowed" : "pointer" }}
-                            >
-                                {isSubmitting ? (
-                                    <>
-                                        <IconLoader2 size={21} color="#ffffff" className="animate-spin" />
-                                        Creating...
-                                    </>
-                                ) : (
-                                    <>
-                                        <IconUserPlus size={21} color="#ffffff" />
-                                        Create User
-                                    </>
-                                )}
-                            </button>
+                        <div className="d-flex gap-2">
+                            <Button variant="outline-secondary" className="fw-bold px-3" onClick={() => navigate("/user-management/list")} disabled={isSubmitting}>Cancel</Button>
+                            <Button type="submit" variant="primary" className="fw-bold px-4 d-flex align-items-center gap-2" disabled={isSubmitting}>
+                                {isSubmitting ? <Spinner animation="border" size="sm" /> : <IconUserPlus size={19} />}
+                                {isSubmitting ? "Creating..." : "Create User"}
+                            </Button>
                         </div>
                     </div>
 
-                    <section className="form-card">
-                        <h2 className="card-title">User Information</h2>
-
-                        <div className="form-grid">
-
-                            {/* Full Name */}
-                            <div className="form-group">
-                                <label htmlFor="fullName" className="form-label">
-                                    Full Name <span className="text-required"> *</span>
-                                </label>
-                                <div className="input-wrap">
-                                    <input id="fullName" name="fullName" type="text" value={user.fullName} onChange={handleChange} placeholder="Enter full name" required disabled={isSubmitting} className="form-input" />
-                                </div>
-                            </div>
-
-                            {/* Email */}
-                            <div className="form-group">
-                                <label htmlFor="email" className="form-label">
-                                    Email Address <span className="text-required"> *</span>
-                                </label>
-                                <div className="input-wrap">
-                                    <input id="email" name="email" type="email" value={user.email} onChange={handleChange} placeholder="Enter email address" required disabled={isSubmitting} className="form-input" />
-                                </div>
-                            </div>
-
-                            {/* Password */}
-                            <div className="form-group">
-                                <label htmlFor="initialPassword" className="form-label">
-                                    Initial Password <span className="text-required"> *</span>
-                                </label>
-                                <div className="input-wrap">
-                                    <input id="initialPassword" name="initialPassword" type="password" value={user.initialPassword} onChange={handleChange} placeholder="Enter initial password" required disabled={isSubmitting} className="form-input" />
-                                    <span className="right-icon"><IconEye size={18} color="#53617e" /></span>
-                                </div>
-                            </div>
-
-                            {/* Confirm Password */}
-                            <div className="form-group">
-                                <label htmlFor="confirmPassword" className="form-label">
-                                    Confirm Password <span className="text-required"> *</span>
-                                </label>
-                                <div className="input-wrap">
-                                    <input id="confirmPassword" name="confirmPassword" type="password" value={user.confirmPassword} onChange={handleChange} placeholder="Confirm initial password" required disabled={isSubmitting} className="form-input" />
-                                    <span className="right-icon"><IconEye size={18} color="#53617e" /></span>
-                                </div>
-                            </div>
-
-                            {/* Department */}
-                            <div className="form-group">
-                                <label htmlFor="department" className="form-label">
-                                    Department <span className="text-required"> *</span>
-                                </label>
-                                <div className="input-wrap">
-                                    <select id="department" name="department" value={user.department} onChange={handleChange} required disabled={isSubmitting} className="form-input">
+                    {/* Section 1: User Info */}
+                    <Card className="m-4 border rounded-3 p-4">
+                        <h2 className="h5 fw-bold mb-4 text-dark">User Information</h2>
+                        <Row className="g-4">
+                            <Col md={6}>
+                                <Form.Group>
+                                    <Form.Label className="small fw-bold">Full Name <span className="text-danger">*</span></Form.Label>
+                                    <Form.Control type="text" name="fullName" value={user.fullName} onChange={handleChange} required placeholder="Enter full name" disabled={isSubmitting} />
+                                </Form.Group>
+                            </Col>
+                            <Col md={6}>
+                                <Form.Group>
+                                    <Form.Label className="small fw-bold">Email Address <span className="text-danger">*</span></Form.Label>
+                                    <Form.Control type="email" name="email" value={user.email} onChange={handleChange} required placeholder="Enter email address" disabled={isSubmitting} />
+                                </Form.Group>
+                            </Col>
+                            <Col md={6}>
+                                <Form.Group>
+                                    <Form.Label className="small fw-bold">Initial Password <span className="text-danger">*</span></Form.Label>
+                                    <Form.Control type="password" name="initialPassword" value={user.initialPassword} onChange={handleChange} required placeholder="Enter initial password" disabled={isSubmitting} />
+                                </Form.Group>
+                            </Col>
+                            <Col md={6}>
+                                <Form.Group>
+                                    <Form.Label className="small fw-bold">Confirm Password <span className="text-danger">*</span></Form.Label>
+                                    <Form.Control type="password" name="confirmPassword" value={user.confirmPassword} onChange={handleChange} required placeholder="Confirm initial password" disabled={isSubmitting} />
+                                </Form.Group>
+                            </Col>
+                            <Col md={6}>
+                                <Form.Group>
+                                    <Form.Label className="small fw-bold">Department <span className="text-danger">*</span></Form.Label>
+                                    <Form.Select name="department" value={user.department} onChange={handleChange} required disabled={isSubmitting}>
                                         <option value="">Select department</option>
-                                        <option value="Legal">Legal</option>
-                                        <option value="HR">HR</option>
-                                        <option value="Finance">Finance</option>
-                                        <option value="Sales">Sales</option>
-                                    </select>
-                                    <span className="right-icon"><IconChevronDown size={18} color="#243452" /></span>
-                                </div>
-                            </div>
-
-                            {/* Role */}
-                            <div className="form-group">
-                                <label htmlFor="role" className="form-label">
-                                    Role <span className="text-required"> *</span>
-                                </label>
-                                <div className="input-wrap">
-                                    <select id="role" name="role" value={user.role} onChange={handleChange} required disabled={isSubmitting} className="form-input">
+                                        <option value="Legal">Legal</option><option value="HR">HR</option><option value="Finance">Finance</option><option value="Sales">Sales</option>
+                                    </Form.Select>
+                                </Form.Group>
+                            </Col>
+                            <Col md={6}>
+                                <Form.Group>
+                                    <Form.Label className="small fw-bold">Role <span className="text-danger">*</span></Form.Label>
+                                    <Form.Select name="role" value={user.role} onChange={handleChange} required disabled={isSubmitting}>
                                         <option value="">Select role</option>
-                                        <option value="Contract Manager">Contract Manager</option>
-                                        <option value="HR Admin">HR Admin</option>
-                                        <option value="Approver">Approver</option>
-                                        <option value="Viewer">Viewer</option>
-                                    </select>
-                                    <span className="right-icon"><IconChevronDown size={18} color="#243452" /></span>
+                                        <option value="Contract Manager">Contract Manager</option><option value="HR Admin">HR Admin</option><option value="Approver">Approver</option><option value="Viewer">Viewer</option>
+                                    </Form.Select>
+                                </Form.Group>
+                            </Col>
+                            <Col md={6}>
+                                <Form.Group><Form.Label className="small fw-bold">Position</Form.Label><Form.Control type="text" name="position" value={user.position} onChange={handleChange} placeholder="Enter position" disabled={isSubmitting} /></Form.Group>
+                            </Col>
+                            <Col md={6}>
+                                <Form.Group><Form.Label className="small fw-bold">Phone Number</Form.Label><Form.Control type="text" name="phoneNumber" value={user.phoneNumber} onChange={handleChange} placeholder="Enter phone number" disabled={isSubmitting} /></Form.Group>
+                            </Col>
+                            <Col md={6}>
+                                <Form.Group><Form.Label className="small fw-bold">Employee ID</Form.Label><Form.Control type="text" name="employeeId" value={user.employeeId} onChange={handleChange} placeholder="Enter employee ID" disabled={isSubmitting} /></Form.Group>
+                            </Col>
+                            <Col md={6}>
+                                <Form.Group><Form.Label className="small fw-bold">Start Date <span className="text-danger">*</span></Form.Label><Form.Control type="date" name="startDate" value={user.startDate} onChange={handleChange} required disabled={isSubmitting} /></Form.Group>
+                            </Col>
+                            <Col md={6}>
+                                <Form.Group>
+                                    <Form.Label className="small fw-bold">Status <span className="text-danger">*</span></Form.Label>
+                                    <Form.Select name="status" value={user.status} onChange={handleChange} required disabled={isSubmitting}>
+                                        <option value="Active">Active</option><option value="Inactive">Inactive</option>
+                                    </Form.Select>
+                                </Form.Group>
+                            </Col>
+                        </Row>
+                        <Form.Check type="switch" id="sendWelcomeEmail" name="sendWelcomeEmail" label={<div><strong>Send welcome email</strong><br/><small className="text-muted">Send an email invitation with login details to the new user</small></div>} checked={user.sendWelcomeEmail} onChange={handleChange} className="mt-4" disabled={isSubmitting} />
+                    </Card>
+
+                    {/* Section 2: Onboarding cards */}
+                    <Card className="mx-4 mb-4 border rounded-3 p-4">
+                        <h2 className="h5 fw-bold mb-4 text-dark">Access & Onboarding</h2>
+                        <Row className="g-3">
+                            <Col lg={3} md={6}>
+                                <div className="p-3 border rounded h-100 d-flex align-items-start gap-3 bg-light">
+                                    <div className="p-2 bg-primary bg-opacity-10 text-primary rounded-circle"><IconShieldCheck size={24} /></div>
+                                    <div><h3 className="h6 fw-bold mb-1">Role Permissions</h3><p className="small text-muted mb-0">User permissions assigned based on role.</p></div>
                                 </div>
-                            </div>
-
-                            {/* Position */}
-                            <div className="form-group">
-                                <label htmlFor="position" className="form-label">Position</label>
-                                <div className="input-wrap">
-                                    <input id="position" name="position" type="text" value={user.position} onChange={handleChange} placeholder="Enter position" disabled={isSubmitting} className="form-input" />
+                            </Col>
+                            <Col lg={3} md={6}>
+                                <div className="p-3 border rounded h-100 d-flex align-items-start gap-3 bg-light">
+                                    <div className="p-2 bg-info bg-opacity-10 text-info rounded-circle"><IconBuilding size={24} /></div>
+                                    <div><h3 className="h6 fw-bold mb-1">Department Access</h3><p className="small text-muted mb-0">Access limited to modules within department.</p></div>
                                 </div>
-                            </div>
-
-                            {/* Phone Number */}
-                            <div className="form-group">
-                                <label htmlFor="phoneNumber" className="form-label">Phone Number</label>
-                                <div className="input-wrap">
-                                    <div className="phone-input">
-                                        <span className="phone-country">🇺🇸</span>
-                                        <span className="phone-code">+1</span>
-                                        <input id="phoneNumber" name="phoneNumber" type="text" value={user.phoneNumber} onChange={handleChange} placeholder="Enter phone number" disabled={isSubmitting} className="phone-field" />
-                                    </div>
+                            </Col>
+                            <Col lg={3} md={6}>
+                                <div className="p-3 border rounded h-100 d-flex align-items-start gap-3 bg-light">
+                                    <div className="p-2 bg-success bg-opacity-10 text-success rounded-circle"><IconMail size={24} /></div>
+                                    <div><h3 className="h6 fw-bold mb-1">Email Notification</h3><p className="small text-muted mb-0">Welcome email sent with login guide.</p></div>
                                 </div>
-                            </div>
-
-                            {/* Employee ID */}
-                            <div className="form-group">
-                                <label htmlFor="employeeId" className="form-label">Employee ID</label>
-                                <div className="input-wrap">
-                                    <input id="employeeId" name="employeeId" type="text" value={user.employeeId} onChange={handleChange} placeholder="Enter employee ID" disabled={isSubmitting} className="form-input" />
+                            </Col>
+                            <Col lg={3} md={6}>
+                                <div className="p-3 border rounded h-100 d-flex align-items-start gap-3 bg-light">
+                                    <div className="p-2 bg-warning bg-opacity-10 text-warning rounded-circle"><IconUserCheck size={24} /></div>
+                                    <div><h3 className="h6 fw-bold mb-1">Account Activation</h3><p className="small text-muted mb-0">Account activated based on status.</p></div>
                                 </div>
-                            </div>
-
-                            {/* Start Date */}
-                            <div className="form-group">
-                                <label htmlFor="startDate" className="form-label">
-                                    Start Date <span className="text-required"> *</span>
-                                </label>
-                                <div className="input-wrap">
-                                    <input id="startDate" name="startDate" type="date" value={user.startDate} onChange={handleChange} required disabled={isSubmitting} className="form-input" />
-                                </div>
-                            </div>
-
-                            {/* Status */}
-                            <div className="form-group">
-                                <label htmlFor="status" className="form-label">
-                                    Status <span className="text-required"> *</span>
-                                </label>
-                                <div className="input-wrap">
-                                    <select id="status" name="status" value={user.status} onChange={handleChange} required disabled={isSubmitting} className="form-input">
-                                        <option value="Active">Active</option>
-                                        <option value="Inactive">Inactive</option>
-                                    </select>
-                                    <span className="right-icon"><IconChevronDown size={18} color="#243452" /></span>
-                                </div>
-                            </div>
-
-                        </div>
-
-                        {/* Toggle Email */}
-                        <label className="toggle-row">
-                            <input type="checkbox" name="sendWelcomeEmail" checked={user.sendWelcomeEmail} onChange={handleChange} disabled={isSubmitting} className="toggle-checkbox" />
-                            <span className="toggle-track"><span className="toggle-thumb" /></span>
-                            <span>
-                                <strong>Send welcome email</strong>
-                                <small className="toggle-help">Send an email invitation with login details to the new user</small>
-                            </span>
-                        </label>
-                    </section>
-
-                    <section className="form-card">
-                        <h2 className="card-title">Access & Onboarding</h2>
-
-                        <div className="preview-grid">
-                            <div className="preview-tile">
-                                <span className="preview-icon" style={{ background: "#eef3ff" }}>
-                                    <IconShieldCheck size={27} color="#1f4fff" />
-                                </span>
-                                <div>
-                                    <h3 className="preview-title">Role Permissions</h3>
-                                    <p className="preview-text">User permissions will be assigned based on the selected role.</p>
-                                </div>
-                            </div>
-
-                            <div className="preview-tile">
-                                <span className="preview-icon" style={{ background: "#f0edff" }}>
-                                    <IconBuilding size={27} color="#1f4fff" />
-                                </span>
-                                <div>
-                                    <h3 className="preview-title">Department Access</h3>
-                                    <p className="preview-text">Access will be limited to data and modules within the selected department.</p>
-                                </div>
-                            </div>
-
-                            <div className="preview-tile">
-                                <span className="preview-icon" style={{ background: "#eafaf0" }}>
-                                    <IconMail size={27} color="#16a34a" />
-                                </span>
-                                <div>
-                                    <h3 className="preview-title">Email Notification</h3>
-                                    <p className="preview-text">A welcome email will be sent with login details and getting started guide.</p>
-                                </div>
-                            </div>
-
-                            <div className="preview-tile">
-                                <span className="preview-icon" style={{ background: "#fff3e6" }}>
-                                    <IconUserCheck size={27} color="#f97316" />
-                                </span>
-                                <div>
-                                    <h3 className="preview-title">Account Activation</h3>
-                                    <p className="preview-text">User account will be activated based on the selected status.</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="info-alert">
-                            <IconInfoCircle size={20} />
-                            Please review the information above before creating the account. You can edit details after the account is created.
-                        </div>
-                    </section>
-                </form>
-            </main>
+                            </Col>
+                        </Row>
+                        <Alert variant="info" className="mt-4 mb-0 d-flex align-items-center gap-2"><IconInfoCircle size={20}/>Please review information carefully before creating the account.</Alert>
+                    </Card>
+                </Form>
+            </Container>
         </div>
     );
 }

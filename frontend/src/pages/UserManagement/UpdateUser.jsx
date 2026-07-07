@@ -1,30 +1,23 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import NavDropdown from "react-bootstrap/NavDropdown";
-
-// Import tất cả icon chuẩn từ Tabler Icons
+import { Container, Card, Row, Col, Form, Button, NavDropdown, Spinner, Stack, Alert } from "react-bootstrap";
 import {
     IconWorld,
-    IconDeviceFloppy, // Icon Save
+    IconDeviceFloppy,
     IconUser,
     IconPhone,
     IconMail,
-    IconId, // Icon cho Employee ID
+    IconId,
     IconBuilding,
     IconCalendar,
     IconShieldCheck,
     IconBriefcase,
     IconLock,
-    IconChevronDown,
     IconUserShield,
-    IconClipboardList, // Icon cho Audit
-    IconGitMerge, // Icon cho Workflow
-    IconInfoCircle,
-    IconLoader2 // Icon xoay khi loading
+    IconClipboardList,
+    IconGitMerge,
+    IconInfoCircle
 } from "@tabler/icons-react";
-
-// Import CSS
-import "../../assets/styles/css/userManagementStyles/UpdateUserPage.css";
 
 // Dữ liệu User mẫu ban đầu (khi chưa có API)
 const initialUser = {
@@ -62,10 +55,8 @@ function UpdateUser({ onUpdateUser }) {
             // Giả lập thời gian gửi API lên Backend mất 1.5 giây
             await new Promise((resolve) => setTimeout(resolve, 1500));
 
-            // Nếu có function truyền từ Parent thì gọi
             onUpdateUser?.(user);
 
-            // Thông báo thành công và điều hướng
             alert("Cập nhật thông tin người dùng thành công!");
             navigate("/user-management/list");
 
@@ -78,22 +69,22 @@ function UpdateUser({ onUpdateUser }) {
     };
 
     return (
-        <div className="update-user-page">
+        <div className="bg-light min-vh-screen">
             {/* --- HEADER --- */}
-            <header className="page-header">
-                <div className="logo">
-                    <div className="logo-icon">🛡️</div>
-                    <div className="logo-text">
-                        <strong>E-CONTRACT</strong>
-                        <span className="logo-sub-text">Management System</span>
+            <header className="d-flex justify-content-between align-items-center px-4 py-3 bg-white border-bottom mb-4">
+                <div className="d-flex align-items-center gap-2">
+                    <span className="fs-4">🛡️</span>
+                    <div className="d-flex flex-column lh-sm">
+                        <strong className="text-dark">E-CONTRACT</strong>
+                        <small className="text-muted" style={{ fontSize: "12px" }}>Management System</small>
                     </div>
                 </div>
 
                 <NavDropdown
                     title={
-                        <span className="lang-btn">
-                            <IconWorld stroke={2} size={20} />
-                            <span className="language-text">English</span>
+                        <span className="text-dark fw-semibold">
+                            <IconWorld size={20} className="me-1" />
+                            English
                         </span>
                     }
                     id="basic-nav-dropdown"
@@ -104,242 +95,267 @@ function UpdateUser({ onUpdateUser }) {
             </header>
 
             {/* --- MAIN CONTENT --- */}
-            <main>
-                <form className="form-panel" onSubmit={handleSubmit}>
-                    <div className="panel-header">
+            <Container fluid="lg" className="mb-5">
+                <Form onSubmit={handleSubmit} className="border shadow-sm rounded-4 overflow-hidden bg-white">
+
+                    {/* Header Panel */}
+                    <div className="d-flex justify-content-between align-items-center border-bottom p-4 bg-white">
                         <div>
-                            <h1 className="page-title">Update User</h1>
-                            <p className="page-description">
+                            <h1 className="h3 fw-bold mb-1">Update User</h1>
+                            <p className="text-muted mb-0">
                                 Edit employee information, change role, department, or deactivate access.
                             </p>
                         </div>
-                        <div className="form-actions">
-                            <button
-                                type="button"
-                                className="btn-cancel"
+                        <div className="d-flex gap-2">
+                            <Button
+                                variant="outline-secondary"
+                                className="fw-bold px-3"
                                 onClick={() => navigate("/user-management/list")}
                                 disabled={isSubmitting}
                             >
                                 Cancel
-                            </button>
-                            <button
+                            </Button>
+                            <Button
                                 type="submit"
-                                className="btn-primary"
+                                variant="primary"
+                                className="fw-bold px-4 d-flex align-items-center gap-2"
                                 disabled={isSubmitting}
-                                style={{ opacity: isSubmitting ? 0.7 : 1, cursor: isSubmitting ? "not-allowed" : "pointer" }}
                             >
                                 {isSubmitting ? (
                                     <>
-                                        <IconLoader2 size={19} color="#fff" className="animate-spin" />
-                                        Saving...
+                                        <Spinner animation="border" size="sm" />
+                                        <span>Saving...</span>
                                     </>
                                 ) : (
                                     <>
                                         <IconDeviceFloppy size={19} color="#fff" />
-                                        Save Changes
+                                        <span>Save Changes</span>
                                     </>
                                 )}
-                            </button>
+                            </Button>
                         </div>
                     </div>
 
                     {/* --- FORM SECTION --- */}
-                    <section className="form-card">
-                        <h2 className="card-title">User Information</h2>
+                    <Card className="m-4 border rounded-3 p-4">
+                        <h2 className="h5 fw-bold mb-4 text-dark">User Information</h2>
 
-                        {/* Thay vì dùng Map khó đọc, ta viết rõ từng trường nhập liệu */}
-                        <div className="form-grid">
-
+                        <Row className="g-4">
                             {/* Full Name */}
-                            <div className="form-group">
-                                <label htmlFor="fullName" className="form-label">Full Name</label>
-                                <div className="input-wrap">
-                                    <span className="left-icon"><IconUser size={18} color="#64708f" /></span>
-                                    <input id="fullName" name="fullName" type="text" value={user.fullName} onChange={handleChange} disabled={isSubmitting} className="form-input has-left-icon" />
-                                </div>
-                            </div>
+                            <Col md={6}>
+                                <Form.Group>
+                                    <Form.Label className="small fw-bold text-secondary">Full Name</Form.Label>
+                                    <div className="position-relative">
+                                        <IconUser className="position-absolute start-0 top-50 translate-middle-y ms-3 text-muted" size={18} />
+                                        <Form.Control id="fullName" name="fullName" type="text" value={user.fullName} onChange={handleChange} disabled={isSubmitting} className="ps-5 py-2" />
+                                    </div>
+                                </Form.Group>
+                            </Col>
 
                             {/* Phone Number */}
-                            <div className="form-group">
-                                <label htmlFor="phoneNumber" className="form-label">Phone Number</label>
-                                <div className="input-wrap">
-                                    <span className="left-icon"><IconPhone size={18} color="#64708f" /></span>
-                                    <input id="phoneNumber" name="phoneNumber" type="text" value={user.phoneNumber} onChange={handleChange} disabled={isSubmitting} className="form-input has-left-icon" />
-                                </div>
-                            </div>
+                            <Col md={6}>
+                                <Form.Group>
+                                    <Form.Label className="small fw-bold text-secondary">Phone Number</Form.Label>
+                                    <div className="position-relative">
+                                        <IconPhone className="position-absolute start-0 top-50 translate-middle-y ms-3 text-muted" size={18} />
+                                        <Form.Control id="phoneNumber" name="phoneNumber" type="text" value={user.phoneNumber} onChange={handleChange} disabled={isSubmitting} className="ps-5 py-2" />
+                                    </div>
+                                </Form.Group>
+                            </Col>
 
                             {/* Email Address */}
-                            <div className="form-group">
-                                <label htmlFor="email" className="form-label">Email Address</label>
-                                <div className="input-wrap">
-                                    <span className="left-icon"><IconMail size={18} color="#64708f" /></span>
-                                    <input id="email" name="email" type="email" value={user.email} onChange={handleChange} disabled={isSubmitting} className="form-input has-left-icon" />
-                                </div>
-                            </div>
+                            <Col md={6}>
+                                <Form.Group>
+                                    <Form.Label className="small fw-bold text-secondary">Email Address</Form.Label>
+                                    <div className="position-relative">
+                                        <IconMail className="position-absolute start-0 top-50 translate-middle-y ms-3 text-muted" size={18} />
+                                        <Form.Control id="email" name="email" type="email" value={user.email} onChange={handleChange} disabled={isSubmitting} className="ps-5 py-2" />
+                                    </div>
+                                </Form.Group>
+                            </Col>
 
                             {/* Employee ID */}
-                            <div className="form-group">
-                                <label htmlFor="employeeId" className="form-label">Employee ID</label>
-                                <div className="input-wrap">
-                                    <span className="left-icon"><IconId size={18} color="#64708f" /></span>
-                                    <input id="employeeId" name="employeeId" type="text" value={user.employeeId} onChange={handleChange} disabled={isSubmitting} className="form-input has-left-icon" />
-                                </div>
-                            </div>
+                            <Col md={6}>
+                                <Form.Group>
+                                    <Form.Label className="small fw-bold text-secondary">Employee ID</Form.Label>
+                                    <div className="position-relative">
+                                        <IconId className="position-absolute start-0 top-50 translate-middle-y ms-3 text-muted" size={18} />
+                                        <Form.Control id="employeeId" name="employeeId" type="text" value={user.employeeId} onChange={handleChange} disabled={isSubmitting} className="ps-5 py-2" />
+                                    </div>
+                                </Form.Group>
+                            </Col>
 
                             {/* Department */}
-                            <div className="form-group">
-                                <label htmlFor="department" className="form-label">Department</label>
-                                <div className="input-wrap">
-                                    <span className="left-icon"><IconBuilding size={18} color="#64708f" /></span>
-                                    <select id="department" name="department" value={user.department} onChange={handleChange} disabled={isSubmitting} className="form-input has-left-icon">
-                                        <option value="Legal">Legal</option>
-                                        <option value="HR">HR</option>
-                                        <option value="Finance">Finance</option>
-                                        <option value="Sales">Sales</option>
-                                    </select>
-                                    <span className="right-icon"><IconChevronDown size={18} color="#243452" /></span>
-                                </div>
-                            </div>
+                            <Col md={6}>
+                                <Form.Group>
+                                    <Form.Label className="small fw-bold text-secondary">Department</Form.Label>
+                                    <div className="position-relative">
+                                        <IconBuilding className="position-absolute start-0 top-50 translate-middle-y ms-3 text-muted" size={18} style={{ zIndex: 5 }} />
+                                        <Form.Select id="department" name="department" value={user.department} onChange={handleChange} disabled={isSubmitting} className="ps-5 py-2">
+                                            <option value="Legal">Legal</option>
+                                            <option value="HR">HR</option>
+                                            <option value="Finance">Finance</option>
+                                            <option value="Sales">Sales</option>
+                                        </Form.Select>
+                                    </div>
+                                </Form.Group>
+                            </Col>
 
                             {/* Start Date */}
-                            <div className="form-group">
-                                <label htmlFor="startDate" className="form-label">Start Date</label>
-                                <div className="input-wrap">
-                                    <span className="left-icon"><IconCalendar size={18} color="#64708f" /></span>
-                                    <input id="startDate" name="startDate" type="text" value={user.startDate} onChange={handleChange} disabled={isSubmitting} className="form-input has-left-icon" />
-                                </div>
-                            </div>
+                            <Col md={6}>
+                                <Form.Group>
+                                    <Form.Label className="small fw-bold text-secondary">Start Date</Form.Label>
+                                    <div className="position-relative">
+                                        <IconCalendar className="position-absolute start-0 top-50 translate-middle-y ms-3 text-muted" size={18} />
+                                        <Form.Control id="startDate" name="startDate" type="text" value={user.startDate} onChange={handleChange} disabled={isSubmitting} className="ps-5 py-2" />
+                                    </div>
+                                </Form.Group>
+                            </Col>
 
                             {/* Role */}
-                            <div className="form-group">
-                                <label htmlFor="role" className="form-label">Role</label>
-                                <div className="input-wrap">
-                                    <span className="left-icon"><IconShieldCheck size={18} color="#64708f" /></span>
-                                    <select id="role" name="role" value={user.role} onChange={handleChange} disabled={isSubmitting} className="form-input has-left-icon">
-                                        <option value="Legal Reviewer">Legal Reviewer</option>
-                                        <option value="Contract Manager">Contract Manager</option>
-                                        <option value="Approver">Approver</option>
-                                        <option value="Viewer">Viewer</option>
-                                    </select>
-                                    <span className="right-icon"><IconChevronDown size={18} color="#243452" /></span>
-                                </div>
-                            </div>
+                            <Col md={6}>
+                                <Form.Group>
+                                    <Form.Label className="small fw-bold text-secondary">Role</Form.Label>
+                                    <div className="position-relative">
+                                        <IconShieldCheck className="position-absolute start-0 top-50 translate-middle-y ms-3 text-muted" size={18} style={{ zIndex: 5 }} />
+                                        <Form.Select id="role" name="role" value={user.role} onChange={handleChange} disabled={isSubmitting} className="ps-5 py-2">
+                                            <option value="Legal Reviewer">Legal Reviewer</option>
+                                            <option value="Contract Manager">Contract Manager</option>
+                                            <option value="Approver">Approver</option>
+                                            <option value="Viewer">Viewer</option>
+                                        </Form.Select>
+                                    </div>
+                                </Form.Group>
+                            </Col>
 
                             {/* Status */}
-                            <div className="form-group">
-                                <label htmlFor="status" className="form-label">Status</label>
-                                <div className="input-wrap">
-                                    <select id="status" name="status" value={user.status} onChange={handleChange} disabled={isSubmitting} className="form-input">
+                            <Col md={6}>
+                                <Form.Group>
+                                    <Form.Label className="small fw-bold text-secondary">Status</Form.Label>
+                                    <Form.Select id="status" name="status" value={user.status} onChange={handleChange} disabled={isSubmitting} className="py-2">
                                         <option value="Active">Active</option>
                                         <option value="Inactive">Inactive</option>
                                         <option value="Deactivated">Deactivated</option>
-                                    </select>
-                                    <span className="right-icon"><IconChevronDown size={18} color="#243452" /></span>
-                                </div>
-                            </div>
+                                    </Form.Select>
+                                </Form.Group>
+                            </Col>
 
                             {/* Position */}
-                            <div className="form-group">
-                                <label htmlFor="position" className="form-label">Position</label>
-                                <div className="input-wrap">
-                                    <span className="left-icon"><IconBriefcase size={18} color="#64708f" /></span>
-                                    <input id="position" name="position" type="text" value={user.position} onChange={handleChange} disabled={isSubmitting} className="form-input has-left-icon" />
-                                </div>
-                            </div>
+                            <Col md={6}>
+                                <Form.Group>
+                                    <Form.Label className="small fw-bold text-secondary">Position</Form.Label>
+                                    <div className="position-relative">
+                                        <IconBriefcase className="position-absolute start-0 top-50 translate-middle-y ms-3 text-muted" size={18} />
+                                        <Form.Control id="position" name="position" type="text" value={user.position} onChange={handleChange} disabled={isSubmitting} className="ps-5 py-2" />
+                                    </div>
+                                </Form.Group>
+                            </Col>
 
                             {/* Access Scope */}
-                            <div className="form-group">
-                                <label htmlFor="accessScope" className="form-label">Access Scope</label>
-                                <div className="input-wrap">
-                                    <span className="left-icon"><IconLock size={18} color="#64708f" /></span>
-                                    <select id="accessScope" name="accessScope" value={user.accessScope} onChange={handleChange} disabled={isSubmitting} className="form-input has-left-icon">
-                                        <option value="Department Level Access">Department Level Access</option>
-                                        <option value="Full Access">Full Access</option>
-                                        <option value="Limited Access">Limited Access</option>
-                                    </select>
-                                    <span className="right-icon"><IconChevronDown size={18} color="#243452" /></span>
-                                </div>
-                            </div>
-
-                        </div>
+                            <Col md={6}>
+                                <Form.Group>
+                                    <Form.Label className="small fw-bold text-secondary">Access Scope</Form.Label>
+                                    <div className="position-relative">
+                                        <IconLock className="position-absolute start-0 top-50 translate-middle-y ms-3 text-muted" size={18} style={{ zIndex: 5 }} />
+                                        <Form.Select id="accessScope" name="accessScope" value={user.accessScope} onChange={handleChange} disabled={isSubmitting} className="ps-5 py-2">
+                                            <option value="Department Level Access">Department Level Access</option>
+                                            <option value="Full Access">Full Access</option>
+                                            <option value="Limited Access">Limited Access</option>
+                                        </Form.Select>
+                                    </div>
+                                </Form.Group>
+                            </Col>
+                        </Row>
 
                         {/* --- DEACTIVATE ACCOUNT TOGGLE --- */}
-                        <div className="deactivate-row">
-                            <label className="switch-label">
-                                <input
-                                    type="checkbox"
-                                    name="deactivateAccount"
-                                    checked={user.deactivateAccount}
-                                    onChange={handleChange}
-                                    disabled={isSubmitting}
-                                    className="toggle-checkbox"
-                                />
-                                <span className={`toggle-track ${user.deactivateAccount ? 'active' : ''}`}>
-                                    <span className="toggle-thumb" />
-                                </span>
-                            </label>
+                        <Stack direction="horizontal" gap={3} className="mt-4 pt-4 border-top align-items-center">
+                            <Form.Check
+                                type="switch"
+                                id="deactivateAccount"
+                                name="deactivateAccount"
+                                checked={user.deactivateAccount}
+                                onChange={handleChange}
+                                disabled={isSubmitting}
+                                style={{ transform: "scale(1.3)" }}
+                            />
                             <div>
-                                <h3 className="deactivate-title">Deactivate Account</h3>
-                                <p className="deactivate-text">
+                                <h3 className="h6 fw-bold mb-1 text-dark">Deactivate Account</h3>
+                                <p className="small text-muted mb-0">
                                     Revoke this user's access to the system. This action can be reversed later if needed.
                                 </p>
                             </div>
-                        </div>
-                    </section>
+                        </Stack>
+                    </Card>
 
                     {/* --- ACCESS PREVIEW SECTION --- */}
-                    <section className="form-card">
-                        <h2 className="card-title">Access Preview</h2>
+                    <Card className="mx-4 mb-4 border rounded-3 p-4">
+                        <h2 className="h5 fw-bold mb-4 text-dark">Access Preview</h2>
 
-                        <div className="preview-grid">
+                        <Row className="g-3">
                             {/* Current Role */}
-                            <div className="preview-tile">
-                                <span className="preview-icon"><IconUserShield size={28} color="#1f4fff" /></span>
-                                <div>
-                                    <h3 className="preview-title">Current Role</h3>
-                                    <p className="preview-text">Legal Reviewer</p>
-                                    <span className="preview-chip">Approval Level: L2</span>
+                            <Col lg={3} md={6}>
+                                <div className="p-3 border rounded h-100 d-flex align-items-start gap-3 bg-light">
+                                    <div className="p-2 bg-primary bg-opacity-10 text-primary rounded-circle d-flex">
+                                        <IconUserShield size={24} />
+                                    </div>
+                                    <div>
+                                        <h3 className="h6 fw-bold mb-1 text-dark">Current Role</h3>
+                                        <p className="small text-muted mb-2">Legal Reviewer</p>
+                                        <span className="badge bg-white text-secondary border px-2 py-1 small">Approval Level: L2</span>
+                                    </div>
                                 </div>
-                            </div>
+                            </Col>
 
                             {/* Department Access */}
-                            <div className="preview-tile">
-                                <span className="preview-icon"><IconBuilding size={28} color="#1f4fff" /></span>
-                                <div>
-                                    <h3 className="preview-title">Department Access</h3>
-                                    <p className="preview-text">Legal Department</p>
-                                    <span className="preview-chip">12 Modules</span>
+                            <Col lg={3} md={6}>
+                                <div className="p-3 border rounded h-100 d-flex align-items-start gap-3 bg-light">
+                                    <div className="p-2 bg-primary bg-opacity-10 text-primary rounded-circle d-flex">
+                                        <IconBuilding size={24} />
+                                    </div>
+                                    <div>
+                                        <h3 className="h6 fw-bold mb-1 text-dark">Department Access</h3>
+                                        <p className="small text-muted mb-2">Legal Department</p>
+                                        <span className="badge bg-white text-secondary border px-2 py-1 small">12 Modules</span>
+                                    </div>
                                 </div>
-                            </div>
+                            </Col>
 
                             {/* Approval Workflow */}
-                            <div className="preview-tile">
-                                <span className="preview-icon"><IconGitMerge size={28} color="#1f4fff" /></span>
-                                <div>
-                                    <h3 className="preview-title">Approval Workflow</h3>
-                                    <p className="preview-text">Can review & approve</p>
-                                    <span className="preview-chip">Level 2 Access</span>
+                            <Col lg={3} md={6}>
+                                <div className="p-3 border rounded h-100 d-flex align-items-start gap-3 bg-light">
+                                    <div className="p-2 bg-primary bg-opacity-10 text-primary rounded-circle d-flex">
+                                        <IconGitMerge size={24} />
+                                    </div>
+                                    <div>
+                                        <h3 className="h6 fw-bold mb-1 text-dark">Approval Workflow</h3>
+                                        <p className="small text-muted mb-2">Can review & approve</p>
+                                        <span className="badge bg-white text-secondary border px-2 py-1 small">Level 2 Access</span>
+                                    </div>
                                 </div>
-                            </div>
+                            </Col>
 
                             {/* Audit Trail */}
-                            <div className="preview-tile">
-                                <span className="preview-icon"><IconClipboardList size={28} color="#1f4fff" /></span>
-                                <div>
-                                    <h3 className="preview-title">Audit Trail</h3>
-                                    <p className="preview-text">All actions are logged</p>
-                                    <span className="preview-chip">Full Visibility</span>
+                            <Col lg={3} md={6}>
+                                <div className="p-3 border rounded h-100 d-flex align-items-start gap-3 bg-light">
+                                    <div className="p-2 bg-primary bg-opacity-10 text-primary rounded-circle d-flex">
+                                        <IconClipboardList size={24} />
+                                    </div>
+                                    <div>
+                                        <h3 className="h6 fw-bold mb-1 text-dark">Audit Trail</h3>
+                                        <p className="small text-muted mb-2">All actions are logged</p>
+                                        <span className="badge bg-white text-secondary border px-2 py-1 small">Full Visibility</span>
+                                    </div>
                                 </div>
-                            </div>
-                        </div>
+                            </Col>
+                        </Row>
 
-                        <div className="info-alert">
+                        <Alert variant="info" className="mt-4 mb-0 d-flex align-items-center gap-2">
                             <IconInfoCircle size={20} />
-                            Please review all changes carefully before saving. Updates will take effect immediately after confirmation.
-                        </div>
-                    </section>
-                </form>
-            </main>
+                            <span>Please review all changes carefully before saving. Updates will take effect immediately after confirmation.</span>
+                        </Alert>
+                    </Card>
+                </Form>
+            </Container>
         </div>
     );
 }

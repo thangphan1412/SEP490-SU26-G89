@@ -1,24 +1,18 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import NavDropdown from "react-bootstrap/NavDropdown";
-
-// Import Icon chuẩn từ Tabler Icons
+import { Container, Card, Row, Col, Form, Button, NavDropdown, Spinner, Stack, Alert } from "react-bootstrap";
 import {
     IconWorld,
-    IconDeviceFloppy, // Icon Save
+    IconDeviceFloppy,
     IconBuilding,
     IconCheck,
     IconCalendar,
-    IconFileDescription, // Icon Document
+    IconFileDescription,
     IconEdit,
     IconShieldCheck,
     IconSignature,
-    IconInfoCircle,
-    IconLoader2
+    IconInfoCircle
 } from "@tabler/icons-react";
-
-// Import CSS
-import "../../assets/styles/css/companyProfileStyles/UpdateCompanyProfilePage.css";
 
 // Dữ liệu mẫu (sẽ thay bằng API lấy dữ liệu thực tế)
 const defaultCompanyProfile = {
@@ -50,7 +44,7 @@ function UpdateProfile({ initialProfile = defaultCompanyProfile, onSaveProfile, 
             onCancel();
             return;
         }
-        navigate("/company-profile/view"); // Đổi đường dẫn về trang view nếu cần
+        navigate("/company-profile/view");
     };
 
     const handleSubmit = async (event) => {
@@ -61,7 +55,6 @@ function UpdateProfile({ initialProfile = defaultCompanyProfile, onSaveProfile, 
             // Giả lập API call mất 1.5s
             await new Promise((resolve) => setTimeout(resolve, 1500));
 
-            // Nếu có hàm onSaveProfile từ cha truyền xuống
             onSaveProfile?.(profile);
 
             alert("Cập nhật hồ sơ công ty thành công!");
@@ -102,227 +95,230 @@ function UpdateProfile({ initialProfile = defaultCompanyProfile, onSaveProfile, 
             </header>
 
             {/* --- MAIN CONTENT --- */}
-            <main>
-                <form className="form-panel" onSubmit={handleSubmit}>
+            <Container fluid="lg" className="mb-5">
+                <Form onSubmit={handleSubmit} className="border shadow-sm rounded-4 overflow-hidden bg-white">
 
                     {/* Panel Header */}
-                    <section className="panel-header">
+                    <div className="d-flex justify-content-between align-items-center border-bottom p-4 bg-white">
                         <div>
-                            <h1 className="page-title">Update Company Profile</h1>
-                            <p className="page-description">
+                            <h1 className="h3 mb-2 fw-bold text-dark">Update Company Profile</h1>
+                            <p className="text-muted mb-0">
                                 Edit your company's legal identity information to keep contracts and documents accurate.
                             </p>
                         </div>
-                        <div className="form-actions">
-                            <button
-                                type="button"
+                        <div className="form-actions d-flex gap-2">
+                            <Button
+                                variant="outline-secondary"
+                                className="fw-bold px-3"
                                 onClick={handleCancel}
-                                className="btn-cancel"
                                 disabled={isSubmitting}
                             >
                                 Cancel
-                            </button>
-                            <button
+                            </Button>
+                            <Button
                                 type="submit"
-                                className="btn-primary"
+                                variant="primary"
+                                className="fw-bold px-4 d-flex align-items-center gap-2"
                                 disabled={isSubmitting}
-                                style={{ opacity: isSubmitting ? 0.7 : 1, cursor: isSubmitting ? "not-allowed" : "pointer" }}
                             >
                                 {isSubmitting ? (
                                     <>
-                                        <IconLoader2 size={20} color="#ffffff" className="animate-spin" />
+                                        <Spinner animation="border" size="sm" />
                                         <span>Saving...</span>
                                     </>
                                 ) : (
                                     <>
-                                        <IconDeviceFloppy size={20} color="#ffffff" />
+                                        <IconDeviceFloppy size={19} color="#ffffff" />
                                         <span>Save Changes</span>
                                     </>
                                 )}
-                            </button>
+                            </Button>
                         </div>
-                    </section>
+                    </div>
 
                     {/* --- COMPANY LEGAL INFORMATION FORM --- */}
-                    <section className="form-card">
-                        <div className="card-header">
-                            <div className="card-title-group">
-                                <IconBuilding size={32} color="#0f48ff" />
-                                <h2 className="card-title">Company Legal Information</h2>
+                    <Card className="m-4 border rounded-3 p-4">
+                        <div className="d-flex justify-content-between align-items-center border-bottom pb-3 mb-4">
+                            <div className="d-flex align-items-center gap-3">
+                                <IconBuilding size={32} className="text-primary" />
+                                <h2 className="h5 fw-bold mb-0 text-dark">Company Legal Information</h2>
                             </div>
-                            <div className="verified-badge">
-                                <IconCheck size={18} color="#13a538" strokeWidth={2} />
+                            <div className="d-inline-flex align-items-center gap-1 bg-success bg-opacity-10 text-success px-3 py-2 rounded fw-bold small border border-success border-opacity-25">
+                                <IconCheck size={18} strokeWidth={2} />
                                 <span>Verified Data</span>
                             </div>
                         </div>
 
-                        <div className="form-grid">
-
+                        <Row className="g-4">
                             {/* Company Name */}
-                            <div className="form-group">
-                                <label htmlFor="companyName" className="form-label">
-                                    Company Name <span className="text-required">*</span>
-                                </label>
-                                <div className="input-wrapper">
-                                    <input id="companyName" name="companyName" type="text" value={profile.companyName} onChange={handleChange} required disabled={isSubmitting} className="form-input" />
-                                </div>
-                                <p className="helper-text">The official registered name of your company.</p>
-                            </div>
+                            <Col md={6}>
+                                <Form.Group>
+                                    <Form.Label className="small fw-bold text-secondary">
+                                        Company Name <span className="text-danger">*</span>
+                                    </Form.Label>
+                                    <Form.Control id="companyName" name="companyName" type="text" value={profile.companyName} onChange={handleChange} required disabled={isSubmitting} className="py-2 fw-semibold" />
+                                    <Form.Text className="text-muted">The official registered name of your company.</Form.Text>
+                                </Form.Group>
+                            </Col>
 
                             {/* Email */}
-                            <div className="form-group">
-                                <label htmlFor="email" className="form-label">
-                                    Email <span className="text-required">*</span>
-                                </label>
-                                <div className="input-wrapper">
-                                    <input id="email" name="email" type="email" value={profile.email} onChange={handleChange} required disabled={isSubmitting} className="form-input" />
-                                </div>
-                            </div>
+                            <Col md={6}>
+                                <Form.Group>
+                                    <Form.Label className="small fw-bold text-secondary">
+                                        Email <span className="text-danger">*</span>
+                                    </Form.Label>
+                                    <Form.Control id="email" name="email" type="email" value={profile.email} onChange={handleChange} required disabled={isSubmitting} className="py-2 fw-semibold" />
+                                </Form.Group>
+                            </Col>
 
                             {/* Tax Code */}
-                            <div className="form-group">
-                                <label htmlFor="taxCode" className="form-label">
-                                    Tax Code (MST) <span className="text-required">*</span>
-                                </label>
-                                <div className="input-wrapper">
-                                    <input id="taxCode" name="taxCode" type="text" value={profile.taxCode} onChange={handleChange} required disabled={isSubmitting} className="form-input" />
-                                </div>
-                                <p className="helper-text">Enter your 10-digit Tax Code as issued by the tax authority.</p>
-                            </div>
+                            <Col md={6}>
+                                <Form.Group>
+                                    <Form.Label className="small fw-bold text-secondary">
+                                        Tax Code (MST) <span className="text-danger">*</span>
+                                    </Form.Label>
+                                    <Form.Control id="taxCode" name="taxCode" type="text" value={profile.taxCode} onChange={handleChange} required disabled={isSubmitting} className="py-2 fw-semibold" />
+                                    <Form.Text className="text-muted">Enter your 10-digit Tax Code as issued by the tax authority.</Form.Text>
+                                </Form.Group>
+                            </Col>
 
                             {/* Phone */}
-                            <div className="form-group">
-                                <label htmlFor="phone" className="form-label">
-                                    Phone <span className="text-required">*</span>
-                                </label>
-                                <div className="input-wrapper">
-                                    <input id="phone" name="phone" type="tel" value={profile.phone} onChange={handleChange} required disabled={isSubmitting} className="form-input" />
-                                </div>
-                            </div>
+                            <Col md={6}>
+                                <Form.Group>
+                                    <Form.Label className="small fw-bold text-secondary">
+                                        Phone <span className="text-danger">*</span>
+                                    </Form.Label>
+                                    <Form.Control id="phone" name="phone" type="tel" value={profile.phone} onChange={handleChange} required disabled={isSubmitting} className="py-2 fw-semibold" />
+                                </Form.Group>
+                            </Col>
 
                             {/* Registered Address */}
-                            <div className="form-group">
-                                <label htmlFor="registeredAddress" className="form-label">
-                                    Registered Address <span className="text-required">*</span>
-                                </label>
-                                <div className="input-wrapper">
-                                    <textarea id="registeredAddress" name="registeredAddress" value={profile.registeredAddress} onChange={handleChange} rows={2} required disabled={isSubmitting} className="form-input form-textarea" />
-                                </div>
-                                <p className="helper-text">Enter the full registered address as shown on your business license.</p>
-                            </div>
+                            <Col md={6}>
+                                <Form.Group>
+                                    <Form.Label className="small fw-bold text-secondary">
+                                        Registered Address <span className="text-danger">*</span>
+                                    </Form.Label>
+                                    <Form.Control id="registeredAddress" name="registeredAddress" as="textarea" value={profile.registeredAddress} onChange={handleChange} rows={2} required disabled={isSubmitting} className="fw-semibold" style={{ resize: "vertical" }} />
+                                    <Form.Text className="text-muted">Enter the full registered address as shown on your business license.</Form.Text>
+                                </Form.Group>
+                            </Col>
 
                             {/* Business Registration No */}
-                            <div className="form-group">
-                                <label htmlFor="businessRegistrationNumber" className="form-label">
-                                    Business Registration No. <span className="text-required">*</span>
-                                </label>
-                                <div className="input-wrapper">
-                                    <input id="businessRegistrationNumber" name="businessRegistrationNumber" type="text" value={profile.businessRegistrationNumber} onChange={handleChange} required disabled={isSubmitting} className="form-input" />
-                                </div>
-                                <p className="helper-text">Your company's business registration number.</p>
-                            </div>
+                            <Col md={6}>
+                                <Form.Group>
+                                    <Form.Label className="small fw-bold text-secondary">
+                                        Business Registration No. <span className="text-danger">*</span>
+                                    </Form.Label>
+                                    <Form.Control id="businessRegistrationNumber" name="businessRegistrationNumber" type="text" value={profile.businessRegistrationNumber} onChange={handleChange} required disabled={isSubmitting} className="py-2 fw-semibold" />
+                                    <Form.Text className="text-muted">Your company's business registration number.</Form.Text>
+                                </Form.Group>
+                            </Col>
 
                             {/* Legal Representative */}
-                            <div className="form-group">
-                                <label htmlFor="legalRepresentative" className="form-label">
-                                    Legal Representative <span className="text-required">*</span>
-                                </label>
-                                <div className="input-wrapper">
-                                    <input id="legalRepresentative" name="legalRepresentative" type="text" value={profile.legalRepresentative} onChange={handleChange} required disabled={isSubmitting} className="form-input" />
-                                </div>
-                                <p className="helper-text">Full name of the legal representative.</p>
-                            </div>
+                            <Col md={6}>
+                                <Form.Group>
+                                    <Form.Label className="small fw-bold text-secondary">
+                                        Legal Representative <span className="text-danger">*</span>
+                                    </Form.Label>
+                                    <Form.Control id="legalRepresentative" name="legalRepresentative" type="text" value={profile.legalRepresentative} onChange={handleChange} required disabled={isSubmitting} className="py-2 fw-semibold" />
+                                    <Form.Text className="text-muted">Full name of the legal representative.</Form.Text>
+                                </Form.Group>
+                            </Col>
 
                             {/* Registration Date */}
-                            <div className="form-group">
-                                <label htmlFor="registrationDate" className="form-label">
-                                    Registration Date <span className="text-required">*</span>
-                                </label>
-                                <div className="input-wrapper">
-                                    {/* Dùng type="text" kết hợp icon lịch để giao diện giống hệt phiên bản cũ */}
-                                    <input id="registrationDate" name="registrationDate" type="text" value={profile.registrationDate} onChange={handleChange} required disabled={isSubmitting} className="form-input has-right-icon" />
-                                    <span className="input-icon">
-                                        <IconCalendar size={18} />
-                                    </span>
-                                </div>
-                                <p className="helper-text">Date of business registration.</p>
-                            </div>
-
-                        </div>
-                    </section>
+                            <Col md={6}>
+                                <Form.Group>
+                                    <Form.Label className="small fw-bold text-secondary">
+                                        Registration Date <span className="text-danger">*</span>
+                                    </Form.Label>
+                                    <div className="position-relative">
+                                        <Form.Control id="registrationDate" name="registrationDate" type="text" value={profile.registrationDate} onChange={handleChange} required disabled={isSubmitting} className="pe-5 py-2 fw-semibold" />
+                                        <IconCalendar className="position-absolute end-0 top-50 translate-middle-y me-3 text-muted" size={18} />
+                                    </div>
+                                    <Form.Text className="text-muted">Date of business registration.</Form.Text>
+                                </Form.Group>
+                            </Col>
+                        </Row>
+                    </Card>
 
                     {/* --- AUTOMATION PREVIEW --- */}
-                    <section className="automation-card">
-                        <div className="automation-header">
-                            <IconFileDescription size={32} color="#0f48ff" />
+                    <Card className="mx-4 mb-4 border rounded-3 p-4">
+                        <Stack direction="horizontal" gap={3} className="align-items-start mb-4">
+                            <IconFileDescription size={32} className="text-primary" />
                             <div>
-                                <h2 className="card-title">Document Automation Preview</h2>
-                                <p className="automation-description">
+                                <h2 className="h5 fw-bold mb-1 text-dark">Document Automation Preview</h2>
+                                <p className="small text-muted mb-0">
                                     Updated company details will be reflected in contract templates and generated legal documents after saving.
                                 </p>
                             </div>
-                        </div>
+                        </Stack>
 
-                        <div className="preview-grid">
-
+                        <Row className="g-3">
                             {/* Contract Templates */}
-                            <div className="preview-tile">
-                                <div className="preview-icon-wrap">
-                                    <IconFileDescription size={24} />
+                            <Col lg={3} md={6}>
+                                <div className="p-3 border rounded h-100 d-flex align-items-center gap-3 bg-light">
+                                    <div className="p-2 bg-primary bg-opacity-10 text-primary rounded-circle d-flex">
+                                        <IconFileDescription size={24} />
+                                    </div>
+                                    <div>
+                                        <h3 className="h6 fw-bold mb-1 text-dark">Contract Templates</h3>
+                                        <p className="small text-muted mb-0">Auto-fill company details</p>
+                                    </div>
                                 </div>
-                                <div>
-                                    <h3 className="preview-title">Contract Templates</h3>
-                                    <p className="preview-description">Auto-fill company details</p>
-                                </div>
-                            </div>
+                            </Col>
 
                             {/* Generated Documents */}
-                            <div className="preview-tile">
-                                <div className="preview-icon-wrap">
-                                    <IconEdit size={24} />
+                            <Col lg={3} md={6}>
+                                <div className="p-3 border rounded h-100 d-flex align-items-center gap-3 bg-light">
+                                    <div className="p-2 bg-primary bg-opacity-10 text-primary rounded-circle d-flex">
+                                        <IconEdit size={24} />
+                                    </div>
+                                    <div>
+                                        <h3 className="h6 fw-bold mb-1 text-dark">Generated Documents</h3>
+                                        <p className="small text-muted mb-0">Quotes, agreements, reports</p>
+                                    </div>
                                 </div>
-                                <div>
-                                    <h3 className="preview-title">Generated Documents</h3>
-                                    <p className="preview-description">Quotes, agreements, reports</p>
-                                </div>
-                            </div>
+                            </Col>
 
                             {/* Compliance */}
-                            <div className="preview-tile">
-                                <div className="preview-icon-wrap">
-                                    <IconShieldCheck size={24} />
+                            <Col lg={3} md={6}>
+                                <div className="p-3 border rounded h-100 d-flex align-items-center gap-3 bg-light">
+                                    <div className="p-2 bg-primary bg-opacity-10 text-primary rounded-circle d-flex">
+                                        <IconShieldCheck size={24} />
+                                    </div>
+                                    <div>
+                                        <h3 className="h6 fw-bold mb-1 text-dark">Compliance</h3>
+                                        <p className="small text-muted mb-0">Accurate legal information</p>
+                                    </div>
                                 </div>
-                                <div>
-                                    <h3 className="preview-title">Compliance</h3>
-                                    <p className="preview-description">Accurate legal information</p>
-                                </div>
-                            </div>
+                            </Col>
 
                             {/* Digital Signatures */}
-                            <div className="preview-tile">
-                                <div className="preview-icon-wrap">
-                                    <IconSignature size={24} />
+                            <Col lg={3} md={6}>
+                                <div className="p-3 border rounded h-100 d-flex align-items-center gap-3 bg-light">
+                                    <div className="p-2 bg-primary bg-opacity-10 text-primary rounded-circle d-flex">
+                                        <IconSignature size={24} />
+                                    </div>
+                                    <div>
+                                        <h3 className="h6 fw-bold mb-1 text-dark">Digital Signatures</h3>
+                                        <p className="small text-muted mb-0">Verified company identity</p>
+                                    </div>
                                 </div>
-                                <div>
-                                    <h3 className="preview-title">Digital Signatures</h3>
-                                    <p className="preview-description">Verified company identity</p>
-                                </div>
-                            </div>
-
-                        </div>
-                    </section>
+                            </Col>
+                        </Row>
+                    </Card>
 
                     {/* --- INFO ALERT --- */}
-                    <section className="info-alert">
-                        <IconInfoCircle size={20} color="#2455d9" />
+                    <Alert variant="info" className="mx-4 mb-4 d-flex align-items-start gap-3 py-3">
+                        <IconInfoCircle size={20} className="mt-1" />
                         <div>
-                            <p className="info-title">Review all information carefully before saving changes.</p>
-                            <p className="info-description">Unsaved changes will be lost if you leave this page.</p>
+                            <p className="fw-bold mb-1">Review all information carefully before saving changes.</p>
+                            <p className="small mb-0">Unsaved changes will be lost if you leave this page.</p>
                         </div>
-                    </section>
+                    </Alert>
 
-                </form>
-            </main>
+                </Form>
+            </Container>
         </div>
     );
 }
