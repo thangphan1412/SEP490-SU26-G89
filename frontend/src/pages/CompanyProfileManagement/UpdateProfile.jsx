@@ -6,7 +6,6 @@ import {
     IconDeviceFloppy,
     IconBuilding,
     IconCheck,
-    IconCalendar,
     IconFileDescription,
     IconEdit,
     IconShieldCheck,
@@ -14,7 +13,7 @@ import {
     IconInfoCircle
 } from "@tabler/icons-react";
 
-// Dữ liệu mẫu (sẽ thay bằng API lấy dữ liệu thực tế)
+// ĐÃ SỬA: Chuyển "May 12, 2020" thành "2020-05-12" để ô input type="date" có thể đọc được
 const defaultCompanyProfile = {
     companyName: "ABC Holdings Co., Ltd.",
     email: "legal@abcholdings.vn",
@@ -23,7 +22,7 @@ const defaultCompanyProfile = {
     registeredAddress: "125 Nguyen Hue Boulevard, Ben Nghe Ward, District 1, Ho Chi Minh City, Vietnam",
     businessRegistrationNumber: "BRN-2025-00981",
     legalRepresentative: "Nguyen Minh An",
-    registrationDate: "May 12, 2020",
+    registrationDate: "2020-05-12",
 };
 
 function UpdateProfile({ initialProfile = defaultCompanyProfile, onSaveProfile, onCancel }) {
@@ -70,27 +69,18 @@ function UpdateProfile({ initialProfile = defaultCompanyProfile, onSaveProfile, 
 
     return (
         <div className="update-profile-page">
-            {/* --- HEADER --- */}
-            <header className="page-header">
-                <div className="logo">
-                    <div className="logo-icon">🛡️</div>
-                    <div className="logo-text">
-                        <strong>E-CONTRACT</strong>
-                        <span className="logo-sub-text">Management System</span>
+            {/* --- HEADER ĐỒNG BỘ --- */}
+            <header className="d-flex justify-content-between align-items-center px-4 py-3 bg-white border-bottom mb-4">
+                <div className="d-flex align-items-center gap-2">
+                    <span className="fs-4">🛡️</span>
+                    <div className="d-flex flex-column lh-sm">
+                        <strong className="text-dark">E-CONTRACT</strong>
+                        <small className="text-muted" style={{ fontSize: "12px" }}>Management System</small>
                     </div>
                 </div>
-
-                <NavDropdown
-                    title={
-                        <span className="lang-btn">
-                            <IconWorld stroke={2} size={20} />
-                            <span className="language-text">English</span>
-                        </span>
-                    }
-                    id="basic-nav-dropdown"
-                >
-                    <NavDropdown.Item href="#action/3.1">English</NavDropdown.Item>
-                    <NavDropdown.Item href="#action/3.2">Vietnamese</NavDropdown.Item>
+                <NavDropdown title={<span className="text-dark fw-semibold"><IconWorld size={20} className="me-1"/>English</span>} id="lang-dropdown">
+                    <NavDropdown.Item>English</NavDropdown.Item>
+                    <NavDropdown.Item>Vietnamese</NavDropdown.Item>
                 </NavDropdown>
             </header>
 
@@ -231,10 +221,16 @@ function UpdateProfile({ initialProfile = defaultCompanyProfile, onSaveProfile, 
                                     <Form.Label className="small fw-bold text-secondary">
                                         Registration Date <span className="text-danger">*</span>
                                     </Form.Label>
-                                    <div className="position-relative">
-                                        <Form.Control id="registrationDate" name="registrationDate" type="text" value={profile.registrationDate} onChange={handleChange} required disabled={isSubmitting} className="pe-5 py-2 fw-semibold" />
-                                        <IconCalendar className="position-absolute end-0 top-50 translate-middle-y me-3 text-muted" size={18} />
-                                    </div>
+                                    {/* ĐÃ SỬA: Đổi `user.startDate` sang `profile.registrationDate`, đổi name thành `registrationDate` và thêm class css cho đồng bộ layout */}
+                                    <Form.Control
+                                        type="date"
+                                        name="registrationDate"
+                                        value={profile.registrationDate}
+                                        onChange={handleChange}
+                                        required
+                                        disabled={isSubmitting}
+                                        className="py-2 fw-semibold"
+                                    />
                                     <Form.Text className="text-muted">Date of business registration.</Form.Text>
                                 </Form.Group>
                             </Col>

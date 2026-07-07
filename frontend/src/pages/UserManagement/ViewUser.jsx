@@ -13,7 +13,6 @@ import {
     IconShieldCheck,
     IconCalendar,
     IconClock,
-    IconCheck,
     IconClipboardList,
     IconInfoCircle
 } from "@tabler/icons-react";
@@ -97,7 +96,7 @@ function ViewUser() {
                     {/* Kiểm tra trạng thái loading */}
                     {loading ? (
                         <div className="text-center py-5 my-5 text-secondary">
-                            <Spinner animation="border" className="mb-3" style={{ width: "3rem", height: "3xl" }} />
+                            <Spinner animation="border" className="mb-3" style={{ width: "3rem", height: "3rem" }} />
                             <p>Loading user details...</p>
                         </div>
                     ) : user ? (
@@ -123,64 +122,104 @@ function ViewUser() {
                                         </span>
                                     </Col>
 
-                                    {/* Cột 2: Thông tin chi tiết bên trái */}
-                                    <Col md={4} className="border-end px-4">
+                                    {/* Cột 2: Thông tin chi tiết bên trái (Đã fix căn thẳng dấu hai chấm) */}
+                                    <Col md={4} className="border-end px-3">
                                         <Stack gap={3} className="small">
-                                            <div className="d-flex align-items-center py-2 border-bottom">
-                                                <IconUser size={18} className="text-secondary me-3" />
-                                                <span className="text-muted w-50">Full Name:</span>
-                                                <strong className="text-dark">{user.fullName}</strong>
+                                            {/* Full Name */}
+                                            <div className="border-bottom border-light pb-2">
+                                                <Row className="align-items-center g-0">
+                                                    <Col xs={1} className="d-flex text-secondary"><IconUser size={18} /></Col>
+                                                    <Col xs={4} className="text-muted fw-medium ps-2">Full Name</Col>
+                                                    <Col xs={1} className="text-muted text-center">:</Col>
+                                                    <Col xs={6} className="text-dark fw-semibold">{user.fullName}</Col>
+                                                </Row>
                                             </div>
-                                            <div className="d-flex align-items-center py-2 border-bottom">
-                                                <IconMail size={18} className="text-secondary me-3" />
-                                                <span className="text-muted w-50">Email:</span>
-                                                <strong className="text-dark text-break">{user.email}</strong>
+                                            {/* Email */}
+                                            <div className="border-bottom border-light pb-2">
+                                                <Row className="align-items-start g-0">
+                                                    <Col xs={1} className="d-flex text-secondary pt-1"><IconMail size={18} /></Col>
+                                                    <Col xs={4} className="text-muted fw-medium ps-2 pt-1">Email</Col>
+                                                    <Col xs={1} className="text-muted text-center pt-1">:</Col>
+                                                    <Col xs={6} className="text-dark fw-semibold text-break pt-1">{user.email}</Col>
+                                                </Row>
                                             </div>
-                                            <div className="d-flex align-items-center py-2 border-bottom">
-                                                <IconPhone size={18} className="text-secondary me-3" />
-                                                <span className="text-muted w-50">Phone Number:</span>
-                                                <strong className="text-dark">{user.phoneNumber}</strong>
+                                            {/* Phone Number */}
+                                            <div className="border-bottom border-light pb-2">
+                                                <Row className="align-items-center g-0">
+                                                    <Col xs={1} className="d-flex text-secondary"><IconPhone size={18} /></Col>
+                                                    <Col xs={4} className="text-muted fw-medium ps-2">Phone Number</Col>
+                                                    <Col xs={1} className="text-muted text-center">:</Col>
+                                                    <Col xs={6} className="text-dark fw-semibold">{user.phoneNumber}</Col>
+                                                </Row>
                                             </div>
-                                            <div className="d-flex align-items-center py-2 border-bottom">
-                                                <IconId size={18} className="text-secondary me-3" />
-                                                <span className="text-muted w-50">Employee ID:</span>
-                                                <strong className="text-dark">{user.employeeId}</strong>
+                                            {/* Employee ID */}
+                                            <div className="border-bottom border-light pb-2">
+                                                <Row className="align-items-center g-0">
+                                                    <Col xs={1} className="d-flex text-secondary"><IconId size={18} /></Col>
+                                                    <Col xs={4} className="text-muted fw-medium ps-2">Employee ID</Col>
+                                                    <Col xs={1} className="text-muted text-center">:</Col>
+                                                    <Col xs={6} className="text-dark fw-semibold">{user.employeeId}</Col>
+                                                </Row>
                                             </div>
-                                            <div className="d-flex align-items-center py-2 border-bottom-0">
-                                                <IconBuilding size={18} className="text-secondary me-3" />
-                                                <span className="text-muted w-50">Department:</span>
-                                                <strong className="text-dark">{user.department}</strong>
+                                            {/* Department */}
+                                            <div className="pb-2">
+                                                <Row className="align-items-center g-0">
+                                                    <Col xs={1} className="d-flex text-secondary"><IconBuilding size={18} /></Col>
+                                                    <Col xs={4} className="text-muted fw-medium ps-2">Department</Col>
+                                                    <Col xs={1} className="text-muted text-center">:</Col>
+                                                    <Col xs={6} className="text-dark fw-semibold">{user.department}</Col>
+                                                </Row>
                                             </div>
                                         </Stack>
                                     </Col>
 
-                                    {/* Cột 3: Thông tin chi tiết bên phải */}
-                                    <Col md={5} className="px-4">
+                                    {/* Cột 3: Thông tin chi tiết bên phải (Đã fix căn thẳng dấu hai chấm) */}
+                                    <Col md={5} className="px-3">
                                         <Stack gap={3} className="small">
-                                            <div className="d-flex align-items-center py-2 border-bottom">
-                                                <IconBriefcase size={18} className="text-secondary me-3" />
-                                                <span className="text-muted w-50">Position:</span>
-                                                <strong className="text-dark">{user.position}</strong>
+                                            {/* Position */}
+                                            <div className="border-bottom border-light pb-2">
+                                                <Row className="align-items-center g-0">
+                                                    <Col xs={1} className="d-flex text-secondary"><IconBriefcase size={18} /></Col>
+                                                    <Col xs={4} className="text-muted fw-medium ps-2">Position</Col>
+                                                    <Col xs={1} className="text-muted text-center">:</Col>
+                                                    <Col xs={6} className="text-dark fw-semibold">{user.position}</Col>
+                                                </Row>
                                             </div>
-                                            <div className="d-flex align-items-center py-2 border-bottom">
-                                                <IconShieldCheck size={18} className="text-secondary me-3" />
-                                                <span className="text-muted w-50">Role:</span>
-                                                <strong className="text-dark">{user.role}</strong>
+                                            {/* Role */}
+                                            <div className="border-bottom border-light pb-2">
+                                                <Row className="align-items-center g-0">
+                                                    <Col xs={1} className="d-flex text-secondary"><IconShieldCheck size={18} /></Col>
+                                                    <Col xs={4} className="text-muted fw-medium ps-2">Role</Col>
+                                                    <Col xs={1} className="text-muted text-center">:</Col>
+                                                    <Col xs={6} className="text-dark fw-semibold">{user.role}</Col>
+                                                </Row>
                                             </div>
-                                            <div className="d-flex align-items-center py-2 border-bottom">
-                                                <IconWorld size={18} className="text-secondary me-3" />
-                                                <span className="text-muted w-50">Access Scope:</span>
-                                                <strong className="text-dark">{user.accessScope}</strong>
+                                            {/* Access Scope */}
+                                            <div className="border-bottom border-light pb-2">
+                                                <Row className="align-items-center g-0">
+                                                    <Col xs={1} className="d-flex text-secondary"><IconWorld size={18} /></Col>
+                                                    <Col xs={4} className="text-muted fw-medium ps-2">Access Scope</Col>
+                                                    <Col xs={1} className="text-muted text-center">:</Col>
+                                                    <Col xs={6} className="text-dark fw-semibold">{user.accessScope}</Col>
+                                                </Row>
                                             </div>
-                                            <div className="d-flex align-items-center py-2 border-bottom">
-                                                <IconCalendar size={18} className="text-secondary me-3" />
-                                                <span className="text-muted w-50">Date Joined:</span>
-                                                <strong className="text-dark">{user.dateJoined}</strong>
+                                            {/* Date Joined */}
+                                            <div className="border-bottom border-light pb-2">
+                                                <Row className="align-items-center g-0">
+                                                    <Col xs={1} className="d-flex text-secondary"><IconCalendar size={18} /></Col>
+                                                    <Col xs={4} className="text-muted fw-medium ps-2">Date Joined</Col>
+                                                    <Col xs={1} className="text-muted text-center">:</Col>
+                                                    <Col xs={6} className="text-dark fw-semibold">{user.dateJoined}</Col>
+                                                </Row>
                                             </div>
-                                            <div className="d-flex align-items-center py-2 border-bottom-0">
-                                                <IconClock size={18} className="text-secondary me-3" />
-                                                <span className="text-muted w-50">Last Login:</span>
-                                                <strong className="text-dark">{user.lastLogin}</strong>
+                                            {/* Last Login */}
+                                            <div className="pb-2">
+                                                <Row className="align-items-center g-0">
+                                                    <Col xs={1} className="d-flex text-secondary"><IconClock size={18} /></Col>
+                                                    <Col xs={4} className="text-muted fw-medium ps-2">Last Login</Col>
+                                                    <Col xs={1} className="text-muted text-center">:</Col>
+                                                    <Col xs={6} className="text-dark fw-semibold">{user.lastLogin}</Col>
+                                                </Row>
                                             </div>
                                         </Stack>
                                     </Col>
@@ -247,7 +286,7 @@ function ViewUser() {
                                 <IconInfoCircle size={20} />
                                 <span>
                                     To make changes to this user, click <strong className="text-primary" style={{ cursor: "pointer" }} onClick={() => navigate("/user-management/update")}>Edit User</strong>.
-                                </span >
+                                </span>
                             </Alert>
                         </>
                     ) : (

@@ -70,7 +70,7 @@ function UpdateUser({ onUpdateUser }) {
 
     return (
         <div className="bg-light min-vh-screen">
-            {/* --- HEADER --- */}
+            {/* --- HEADER ĐỒNG BỘ --- */}
             <header className="d-flex justify-content-between align-items-center px-4 py-3 bg-white border-bottom mb-4">
                 <div className="d-flex align-items-center gap-2">
                     <span className="fs-4">🛡️</span>
@@ -79,18 +79,9 @@ function UpdateUser({ onUpdateUser }) {
                         <small className="text-muted" style={{ fontSize: "12px" }}>Management System</small>
                     </div>
                 </div>
-
-                <NavDropdown
-                    title={
-                        <span className="text-dark fw-semibold">
-                            <IconWorld size={20} className="me-1" />
-                            English
-                        </span>
-                    }
-                    id="basic-nav-dropdown"
-                >
-                    <NavDropdown.Item href="#action/3.1">English</NavDropdown.Item>
-                    <NavDropdown.Item href="#action/3.2">Vietnamese</NavDropdown.Item>
+                <NavDropdown title={<span className="text-dark fw-semibold"><IconWorld size={20} className="me-1"/>English</span>} id="lang-dropdown">
+                    <NavDropdown.Item>English</NavDropdown.Item>
+                    <NavDropdown.Item>Vietnamese</NavDropdown.Item>
                 </NavDropdown>
             </header>
 
@@ -206,8 +197,22 @@ function UpdateUser({ onUpdateUser }) {
                                 <Form.Group>
                                     <Form.Label className="small fw-bold text-secondary">Start Date</Form.Label>
                                     <div className="position-relative">
-                                        <IconCalendar className="position-absolute start-0 top-50 translate-middle-y ms-3 text-muted" size={18} />
-                                        <Form.Control id="startDate" name="startDate" type="text" value={user.startDate} onChange={handleChange} disabled={isSubmitting} className="ps-5 py-2" />
+                                        {/* Thêm z-index để icon luôn nổi lên trên */}
+                                        <IconCalendar
+                                            className="position-absolute start-0 top-50 translate-middle-y ms-3 text-muted"
+                                            size={18}
+                                            style={{ zIndex: 5 }}
+                                        />
+                                        {/* ps-5 (padding-start) giúp đẩy chữ mm/dd/yyyy sang phải không bị đè */}
+                                        <Form.Control
+                                            type="date"
+                                            name="startDate"
+                                            value={user.startDate}
+                                            onChange={handleChange}
+                                            required
+                                            disabled={isSubmitting}
+                                            className="ps-5 py-2"
+                                        />
                                     </div>
                                 </Form.Group>
                             </Col>
