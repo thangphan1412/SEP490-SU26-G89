@@ -6,6 +6,7 @@ import {
     PagePanel,
     PrimaryButton,
     getContractById,
+    styles,
 } from "./ContractComponents.jsx";
 
 function ViewContract() {
@@ -89,9 +90,9 @@ function MetricItem({ icon, label, value, description }) {
 }
 
 const localStyles = {
-    overviewGrid: { display: "grid", gridTemplateColumns: "1fr 1fr 1.1fr", gap: 28 },
+    overviewGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 28 },
     detailColumn: { borderRight: "1px solid #e3e9f2", paddingRight: 28 },
-    detailRow: { minHeight: 42, display: "grid", gridTemplateColumns: "28px 124px 1fr", alignItems: "center", gap: 10, color: "#243452", fontSize: 13 },
+    detailRow: { minHeight: 42, display: "grid", gridTemplateColumns: "28px minmax(92px, 124px) 1fr", alignItems: "center", gap: 10, color: "#243452", fontSize: 13 },
     detailLabel: { color: "#52617f", fontWeight: 700 },
     detailValue: { color: "#243452", fontWeight: 700 },
     summaryColumn: { paddingLeft: 4 },
@@ -100,7 +101,7 @@ const localStyles = {
     summaryText: { margin: "0 0 18px", color: "#243452", fontWeight: 700 },
     description: { margin: 0, color: "#52617f", lineHeight: 1.55, fontSize: 13 },
     subText: { margin: "0 0 18px", color: "#52617f", fontSize: 14 },
-    metricGrid: { display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 18 },
+    metricGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: 18 },
     metricItem: { border: "1px solid #d9e2ef", borderRadius: 8, padding: "18px", display: "flex", alignItems: "center", gap: 16 },
     metricLabel: { margin: 0, color: "#52617f", fontSize: 12 },
     metricValue: { margin: "4px 0", fontSize: 24, fontWeight: 800 },
