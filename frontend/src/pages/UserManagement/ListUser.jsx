@@ -1,43 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import NavDropdown from "react-bootstrap/NavDropdown";
-import {
-    IconWorld,
-    IconPlus,
-    IconSearch,
-    IconChevronDown,
-    IconFilter,
-    IconRefresh,
-    IconArrowsSort,
-    IconDots,
-    IconChevronLeft,
-    IconChevronRight
-} from "@tabler/icons-react";
-
-// Import CSS
-import "../../assets/styles/css/userManagementStyles/UserListPage.css";
-
-// Tạm thời comment API import để sau này bạn dùng
-// import { getUsersList } from '../Services/apiUserManagement';
-
-function StatusBadge({ status }) {
-    const styleClassByStatus = {
-        Active: "badge-active",
-        Inactive: "badge-inactive",
-        Deactivated: "badge-deactivated",
-    };
-
-    return (
-        <span className={`status-badge ${styleClassByStatus[status] || ""}`}>
-            {status}
-        </span>
-    );
-}
+import { Container, Card, Row, Col, Form, Button, Table, Pagination, NavDropdown, Stack } from "react-bootstrap";
+import { IconWorld, IconPlus, IconSearch, IconFilter, IconRefresh, IconArrowsSort, IconDots } from "@tabler/icons-react";
 
 function ListUser() {
     const navigate = useNavigate();
 
-    // 1. KHỞI TẠO CÁC STATE CẦN THIẾT
+    // 1. STATE & PAGINATION chuẩn thực tế
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
@@ -47,52 +16,22 @@ function ListUser() {
         totalElements: 0
     });
 
-    // 2. HÀM FETCH DATA (Chờ kết nối API Spring Boot)
+    // 2. FETCH DATA FROM API
     const fetchData = (currPage, currKeyword) => {
         setLoading(true);
-
-        // TODO: THAY THẾ BẰNG API THỰC TẾ CỦA BẠN
-        /*
-        getUsersList({ page: currPage, size: pagination.size, keyword: currKeyword })
-            .then(response => {
-                const data = response.data;
-                setUsers(data.content || []);
-                setPagination(prev => ({
-                    ...prev,
-                    page: data.number || 0,
-                    size: data.size || 10,
-                    totalElements: data.totalElements || 0,
-                }));
-            })
-            .catch(err => console.error("Lỗi khi tải danh sách User:", err))
-            .finally(() => setLoading(false));
-        */
-
-        // MOCK API (Giả lập gọi API mất 500ms, hiện tại trả về mảng rỗng)
         setTimeout(() => {
-            setUsers([]); // Đang chưa có dữ liệu thật
-            setPagination(prev => ({
-                ...prev,
-                page: currPage,
-                totalElements: 0 // Giả lập tổng số bản ghi = 0
-            }));
+            setUsers([]); // Để mảng rỗng chờ API Spring Boot của bạn
+            setPagination(prev => ({ ...prev, page: currPage, totalElements: 0 }));
             setLoading(false);
         }, 500);
     };
 
-    // 3. EFFECT CHÍNH: Gọi API khi load trang hoặc khi page thay đổi
     useEffect(() => {
         fetchData(pagination.page, searchTerm);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [pagination.page]);
 
-    // 4. XỬ LÝ CÁC SỰ KIỆN
-    const handleSearchInputChange = (e) => {
-        setSearchTerm(e.target.value);
-    };
-
     const handleSearch = () => {
-        setPagination(prev => ({ ...prev, page: 0 })); // Reset về trang đầu
+        setPagination(prev => ({ ...prev, page: 0 }));
         fetchData(0, searchTerm);
     };
 
@@ -102,250 +41,117 @@ function ListUser() {
         fetchData(0, "");
     };
 
-    const handlePageChange = (newPage) => {
-        if (newPage >= 0 && newPage < Math.ceil(pagination.totalElements / pagination.size)) {
-            setPagination(prev => ({ ...prev, page: newPage }));
-        }
-    };
-
     return (
-        <div className="list-user-page">
+        <div className="bg-light min-vh-screen">
             {/* --- HEADER --- */}
-            <header className="page-header">
-                <div className="logo">
-                    <div className="logo-icon">🛡️</div>
-                    <div className="logo-text">
-                        <strong>E-CONTRACT</strong>
-                        <span className="logo-sub-text">Management System</span>
+            <header className="d-flex justify-content-between align-items-center px-4 py-3 bg-white border-bottom mb-4">
+                <div className="d-flex align-items-center gap-2">
+                    <span className="fs-4">🛡️</span>
+                    <div className="d-flex flex-column lh-sm">
+                        <strong className="text-dark">E-CONTRACT</strong>
+                        <small className="text-muted" style={{ fontSize: "12px" }}>Management System</small>
                     </div>
                 </div>
-
-                <NavDropdown
-                    title={
-                        <span className="lang-btn">
-                            <IconWorld stroke={2} size={20} />
-                            <span className="language-text">English</span>
-                        </span>
-                    }
-                    id="basic-nav-dropdown"
-                    className="nav-dropdown"
-                >
-                    <NavDropdown.Item href="#action/3.1">English</NavDropdown.Item>
-                    <NavDropdown.Item href="#action/3.2">Vietnamese</NavDropdown.Item>
+                <NavDropdown title={<span className="text-dark fw-semibold"><IconWorld size={20} className="me-1"/>English</span>} id="lang-dropdown">
+                    <NavDropdown.Item>English</NavDropdown.Item>
+                    <NavDropdown.Item>Vietnamese</NavDropdown.Item>
                 </NavDropdown>
             </header>
 
-            {/* --- MAIN LIST PANEL --- */}
-            <main>
-                <section className="list-panel">
-                    <div className="panel-header">
-                        <div>
-                            <h1 className="page-title">Users</h1>
-                            <p className="page-description">
-                                Manage employee accounts, roles, departments, and access status.
-                            </p>
-                        </div>
-                        <button
-                            type="button"
-                            className="btn-primary"
-                            onClick={() => navigate("/user-management/create")}
-                        >
-                            <IconPlus size={20} color="#ffffff" />
-                            New User
-                        </button>
-                    </div>
+            {/* --- MAIN PANEL --- */}
+            <Container fluid="lg" className="mb-5">
+                <Card className="border shadow-sm rounded-4 overflow-hidden bg-white">
+                    <Card.Body className="p-4">
 
-                    {/* --- TOOLBAR & SEARCH --- */}
-                    <div className="toolbar">
-                        <label className="search-box">
-                            <IconSearch size={23} color="#3f4d6f" />
-                            <input
-                                type="text"
-                                aria-label="Search users"
-                                placeholder="Search users..."
-                                className="search-input"
-                                value={searchTerm}
-                                onChange={handleSearchInputChange}
-                                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                            />
-                        </label>
+                        {/* Title & Button */}
+                        <Stack direction="horizontal" className="justify-content-between align-items-center mb-4">
+                            <div>
+                                <h1 className="h3 fw-bold mb-1">Users</h1>
+                                <p className="text-muted mb-0">Manage employee accounts, roles, departments, and access status.</p>
+                            </div>
+                            <Button variant="primary" className="fw-bold px-3 py-2 d-flex align-items-center gap-2" onClick={() => navigate("/user-management/create")}>
+                                <IconPlus size={20} /> New User
+                            </Button>
+                        </Stack>
 
-                        {/* Thay thế .map() bằng các thẻ viết rõ ràng */}
-                        <label className="select-box">
-                            <span className="select-label">Department</span>
-                            <select className="select-input">
-                                <option>All</option>
-                            </select>
-                            <span className="select-icon">
-                                <IconChevronDown size={18} color="#243452" />
-                            </span>
-                        </label>
+                        {/* Toolbar / Search Filters */}
+                        <Row className="g-3 align-items-end mb-4">
+                            <Col lg={4} md={6}>
+                                <Form.Group className="position-relative">
+                                    <IconSearch className="position-absolute start-0 top-50 translate-middle-y ms-3 text-muted" size={20} />
+                                    <Form.Control type="text" placeholder="Search users..." className="ps-5 py-2" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSearch()} />
+                                </Form.Group>
+                            </Col>
+                            <Col lg={2} md={6}>
+                                <Form.Label className="small fw-bold text-muted mb-1">Department</Form.Label>
+                                <Form.Select className="py-2"><option>All</option></Form.Select>
+                            </Col>
+                            <Col lg={2} md={6}>
+                                <Form.Label className="small fw-bold text-muted mb-1">Role</Form.Label>
+                                <Form.Select className="py-2"><option>All</option></Form.Select>
+                            </Col>
+                            <Col lg={2} md={6}>
+                                <Form.Label className="small fw-bold text-muted mb-1">Status</Form.Label>
+                                <Form.Select className="py-2"><option>All</option></Form.Select>
+                            </Col>
+                            <Col lg={2} md={12} className="d-flex gap-2">
+                                <Button variant="outline-secondary" className="w-100 py-2 d-flex align-items-center justify-content-center gap-1" onClick={handleSearch}>
+                                    <IconFilter size={18} /> Filters
+                                </Button>
+                                <Button variant="outline-secondary" className="py-2" onClick={handleRefresh} disabled={loading}>
+                                    <IconRefresh size={18} className={loading ? "spin" : ""} />
+                                </Button>
+                            </Col>
+                        </Row>
 
-                        <label className="select-box">
-                            <span className="select-label">Role</span>
-                            <select className="select-input">
-                                <option>All</option>
-                            </select>
-                            <span className="select-icon">
-                                <IconChevronDown size={18} color="#243452" />
-                            </span>
-                        </label>
-
-                        <label className="select-box">
-                            <span className="select-label">Status</span>
-                            <select className="select-input">
-                                <option>All</option>
-                            </select>
-                            <span className="select-icon">
-                                <IconChevronDown size={18} color="#243452" />
-                            </span>
-                        </label>
-
-                        <button type="button" className="btn-filter" onClick={handleSearch}>
-                            <IconFilter size={20} color="#243452" />
-                            Filters
-                        </button>
-                        <button type="button" className="btn-icon" onClick={handleRefresh} disabled={loading}>
-                            <IconRefresh size={22} color="#243452" className={loading ? "animate-spin" : ""} />
-                        </button>
-                    </div>
-
-                    {/* --- TABLE DATA --- */}
-                    <div className="table-wrap">
-                        <table className="user-table">
-                            <thead>
-                            <tr>
-                                {/* Thay thế .map() bằng các cột (th) rõ ràng */}
-                                <th className="th-cell">
-                                        <span className="th-content">
-                                            User Name
-                                            <IconArrowsSort size={15} color="#243452" />
-                                        </span>
-                                </th>
-                                <th className="th-cell">
-                                        <span className="th-content">
-                                            Email
-                                            <IconArrowsSort size={15} color="#243452" />
-                                        </span>
-                                </th>
-                                <th className="th-cell">
-                                        <span className="th-content">
-                                            Department
-                                            <IconArrowsSort size={15} color="#243452" />
-                                        </span>
-                                </th>
-                                <th className="th-cell">
-                                        <span className="th-content">
-                                            Role
-                                            <IconArrowsSort size={15} color="#243452" />
-                                        </span>
-                                </th>
-                                <th className="th-cell">
-                                        <span className="th-content">
-                                            Status
-                                            <IconArrowsSort size={15} color="#243452" />
-                                        </span>
-                                </th>
-                                <th className="th-cell">
-                                        <span className="th-content">
-                                            Last Active
-                                            <IconArrowsSort size={15} color="#243452" />
-                                        </span>
-                                </th>
-                                <th className="th-cell">
-                                        <span className="th-content">
-                                            Actions
-                                        </span>
-                                </th>
-                            </tr>
-                            </thead>
-                            <tbody>
-                            {loading ? (
+                        {/* Table Data */}
+                        <div className="table-responsive border rounded-3 mb-4">
+                            <Table hover className="align-middle mb-0">
+                                <thead className="table-light">
                                 <tr>
-                                    <td colSpan="7" style={{ textAlign: 'center', padding: '40px', color: '#52617f' }}>
-                                        Đang tải danh sách người dùng...
-                                    </td>
+                                    {["User Name", "Email", "Department", "Role", "Status", "Last Active", "Actions"].map((h) => (
+                                        <th key={h} className="text-secondary py-3 px-3 fs-6 fw-bold">
+                                                <span className="d-inline-flex align-items-center gap-1">
+                                                    {h} {h !== "Actions" && <IconArrowsSort size={14} />}
+                                                </span>
+                                        </th>
+                                    ))}
                                 </tr>
-                            ) : users.length === 0 ? (
-                                <tr>
-                                    <td colSpan="7" style={{ textAlign: 'center', padding: '40px', color: '#52617f', fontStyle: 'italic' }}>
-                                        {searchTerm ? 'Không tìm thấy người dùng nào phù hợp.' : 'Chưa có dữ liệu người dùng.'}
-                                    </td>
-                                </tr>
-                            ) : (
-                                users.map((user) => (
-                                    <tr key={user.id || user.email} className="tr-row">
-                                        <td className="name-cell">
-                                            <span className="avatar">
-                                                {user.name ? user.name.split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase() : 'U'}
-                                            </span>
-                                            <span className="user-name">{user.name}</span>
-                                        </td>
-                                        <td className="td-cell">{user.email}</td>
-                                        <td className="td-cell">{user.department}</td>
-                                        <td className="td-cell">{user.role}</td>
-                                        <td className="td-cell">
-                                            <StatusBadge status={user.status} />
-                                        </td>
-                                        <td className="td-cell">{user.lastActive}</td>
-                                        <td className="action-cell">
-                                            <button
-                                                type="button"
-                                                className="btn-action"
-                                                onClick={() => navigate(`/user-management/view/${user.id}`)}
-                                            >
-                                                <IconDots size={20} color="#111827" />
-                                            </button>
-                                        </td>
-                                    </tr>
-                                ))
-                            )}
-                            </tbody>
-                        </table>
-                    </div>
-
-                    {/* --- PAGINATION --- */}
-                    <div className="table-footer">
-                        <span>
-                            Showing {users.length === 0 ? 0 : (pagination.page * pagination.size) + 1} to {Math.min((pagination.page + 1) * pagination.size, pagination.totalElements)} of {pagination.totalElements} results
-                        </span>
-                        <div className="pagination">
-                            <button
-                                type="button"
-                                className="btn-page"
-                                onClick={() => handlePageChange(pagination.page - 1)}
-                                disabled={pagination.page === 0 || loading}
-                            >
-                                <IconChevronLeft size={18} color="#243452" />
-                            </button>
-
-                            <span className="current-page">{pagination.page + 1}</span>
-
-                            <button
-                                type="button"
-                                className="btn-page"
-                                onClick={() => handlePageChange(pagination.page + 1)}
-                                disabled={loading || (pagination.page + 1) >= Math.ceil(pagination.totalElements / pagination.size)}
-                            >
-                                <IconChevronRight size={18} color="#243452" />
-                            </button>
-
-                            <select
-                                className="per-page-select"
-                                value={pagination.size}
-                                onChange={(e) => {
-                                    setPagination(prev => ({ ...prev, size: Number(e.target.value), page: 0 }));
-                                    fetchData(0, searchTerm);
-                                }}
-                            >
-                                <option value={10}>10 / page</option>
-                                <option value={20}>20 / page</option>
-                                <option value={50}>50 / page</option>
-                            </select>
+                                </thead>
+                                <tbody>
+                                {loading ? (
+                                    <tr><td colSpan="7" className="text-center py-5 text-muted">Đang tải danh sách người dùng...</td></tr>
+                                ) : users.length === 0 ? (
+                                    <tr><td colSpan="7" className="text-center py-5 text-muted fst-italic">Chưa có dữ liệu người dùng.</td></tr>
+                                ) : (
+                                    users.map((u) => (
+                                        <tr key={u.id}>
+                                            {/* Map dữ liệu thật của bạn tại đây */}
+                                        </tr>
+                                    ))
+                                )}
+                                </tbody>
+                            </Table>
                         </div>
-                    </div>
-                </section>
-            </main>
+
+                        {/* Footer & Pagination */}
+                        <Stack direction="horizontal" className="justify-content-between align-items-center text-muted small">
+                            <span>Showing 0 to 0 of 0 results</span>
+                            <div className="d-flex align-items-center gap-2">
+                                <Pagination className="mb-0">
+                                    <Pagination.Prev disabled />
+                                    <Pagination.Item active>1</Pagination.Item>
+                                    <Pagination.Next disabled />
+                                </Pagination>
+                                <Form.Select size="sm" style={{ width: "110px" }}>
+                                    <option>10 / page</option>
+                                </Form.Select>
+                            </div>
+                        </Stack>
+
+                    </Card.Body>
+                </Card>
+            </Container>
         </div>
     );
 }

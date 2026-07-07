@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import NavDropdown from "react-bootstrap/NavDropdown";
+import { Container, Card, Row, Col, Button, NavDropdown, Spinner, Alert, Stack, Badge } from "react-bootstrap";
 
-// Import Icon chuẩn từ Tabler Icons
+// Import các Icon từ Tabler Icons
 import {
     IconWorld,
     IconEdit,
@@ -10,12 +10,8 @@ import {
     IconShieldCheck,
     IconClock,
     IconSignature,
-    IconInfoCircle,
-    IconLoader2
+    IconInfoCircle
 } from "@tabler/icons-react";
-
-// Import CSS
-import "../../assets/styles/css/userProfileStyles/ViewUserProfilePage.css";
 
 function ViewProfile() {
     const navigate = useNavigate();
@@ -24,12 +20,11 @@ function ViewProfile() {
     const [userProfile, setUserProfile] = useState(null);
     const [loading, setLoading] = useState(true);
 
-    // Hiệu ứng giả lập gọi API
+    // Hiệu ứng giả lập gọi API giống file gốc của bạn
     useEffect(() => {
         const fetchUserProfile = async () => {
             setLoading(true);
             try {
-                // TODO: Gọi API thật từ Backend (Ví dụ: const res = await getMyProfile())
                 // Mô phỏng chờ API 1 giây
                 await new Promise((resolve) => setTimeout(resolve, 1000));
 
@@ -59,22 +54,22 @@ function ViewProfile() {
     }, []);
 
     return (
-        <div className="view-user-profile-page">
-            {/* --- HEADER --- */}
-            <header className="page-header">
-                <div className="logo">
-                    <div className="logo-icon">🛡️</div>
-                    <div className="logo-text">
-                        <strong>E-CONTRACT</strong>
-                        <span className="logo-sub-text">Management System</span>
+        <div className="bg-light min-vh-screen">
+            {/* --- HEADER ĐỒNG BỘ --- */}
+            <header className="d-flex justify-content-between align-items-center px-4 py-3 bg-white border-bottom mb-4">
+                <div className="d-flex align-items-center gap-2">
+                    <span className="fs-4">🛡️</span>
+                    <div className="d-flex flex-column lh-sm">
+                        <strong className="text-dark">E-CONTRACT</strong>
+                        <small className="text-muted" style={{ fontSize: "12px" }}>Management System</small>
                     </div>
                 </div>
 
                 <NavDropdown
                     title={
-                        <span className="lang-btn">
-                            <IconWorld stroke={2} size={20} />
-                            <span className="language-text">English</span>
+                        <span className="text-dark fw-semibold">
+                            <IconWorld stroke={2} size={20} className="me-1" />
+                            English
                         </span>
                     }
                     id="basic-nav-dropdown"
@@ -85,225 +80,218 @@ function ViewProfile() {
             </header>
 
             {/* --- MAIN CONTENT --- */}
-            <main>
-                <div className="view-panel">
+            <Container fluid="lg" className="mb-5">
+                <section className="border shadow-sm rounded-4 overflow-hidden bg-white">
 
                     {/* Panel Header */}
-                    <section className="panel-header">
+                    <div className="d-flex justify-content-between align-items-center border-bottom p-4 bg-white">
                         <div>
-                            <h1 className="page-title">My Profile</h1>
-                            <p className="page-description">
+                            <h1 className="h3 mb-2 fw-bold text-dark">My Profile</h1>
+                            <p className="text-muted mb-0">
                                 View your personal information and account details.
                             </p>
                         </div>
-                        <button
-                            type="button"
-                            className="btn-primary"
+                        <Button
+                            variant="primary"
+                            className="fw-bold px-4 d-flex align-items-center gap-2"
                             onClick={() => navigate("/user-profile/update")}
                             disabled={loading}
                         >
                             <IconEdit size={19} color="#ffffff" />
                             Edit Profile
-                        </button>
-                    </section>
+                        </Button>
+                    </div>
 
                     {/* Check Loading State */}
                     {loading ? (
-                        <div style={{ textAlign: 'center', padding: '100px 0', color: '#64708f' }}>
-                            <IconLoader2 size={42} className="animate-spin" style={{ margin: '0 auto 16px' }} />
+                        <div className="text-center py-5 my-5 text-secondary">
+                            <Spinner animation="border" className="mb-3" style={{ width: "3rem", height: "3rem" }} />
                             <p>Loading your profile details...</p>
                         </div>
                     ) : userProfile ? (
                         <>
                             {/* --- PERSONAL INFORMATION CARD --- */}
-                            <section className="info-card">
-                                <div className="card-header">
-                                    <div className="card-title-group">
-                                        <span className="round-icon">
-                                            <IconUser size={22} />
-                                        </span>
-                                        <h2 className="card-title">Personal Information</h2>
+                            <Card className="m-4 border rounded-3 p-4">
+                                <div className="d-flex justify-content-between align-items-center border-bottom pb-3 mb-4">
+                                    <div className="d-flex align-items-center gap-2">
+                                        <div className="p-2 bg-primary bg-opacity-10 text-primary rounded-circle d-flex">
+                                            <IconUser size={20} />
+                                        </div>
+                                        <h2 className="h5 fw-bold mb-0 text-dark">Personal Information</h2>
                                     </div>
-                                    <span className="status-badge">Active</span>
+                                    <span className="badge bg-success bg-opacity-10 text-success px-3 py-2 rounded-pill fw-bold">
+                                        {userProfile.accountStatus}
+                                    </span>
                                 </div>
 
-                                <div className="profile-body">
+                                <Row className="g-4">
                                     {/* Avatar Block */}
-                                    <div className="avatar-block">
-                                        <div className="avatar-wrap">
-                                            {/* Lấy 2 chữ cái đầu của tên làm Avatar */}
-                                            <div className="avatar">
+                                    <Col md={3} className="text-center border-end d-flex flex-column align-items-center justify-content-center pb-4 pb-md-0">
+                                        <div className="position-relative mb-3">
+                                            <div
+                                                className="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center fw-bold shadow-sm"
+                                                style={{ width: "100px", height: "100px", fontSize: "36px", boxShadow: "0 0 0 4px #edf2ff" }}
+                                            >
                                                 {userProfile.fullName ? userProfile.fullName.split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase() : 'U'}
                                             </div>
-                                            <div className="avatar-badge">
-                                                <IconEdit size={15} />
-                                            </div>
                                         </div>
-                                        <h3 className="avatar-name">{userProfile.fullName}</h3>
-                                        <p className="avatar-role">{userProfile.position}</p>
-                                    </div>
+                                        <h3 className="h6 fw-bold mb-1 text-dark">{userProfile.fullName}</h3>
+                                        <p className="small text-muted mb-0">{userProfile.position}</p>
+                                    </Col>
 
                                     {/* Detailed Information Grid */}
-                                    <div className="detail-grid">
-
-                                        <div className="detail-row">
-                                            <span className="detail-label">Full Name</span>
-                                            <span className="colon">:</span>
-                                            <span className="detail-value">{userProfile.fullName}</span>
-                                        </div>
-
-                                        <div className="detail-row">
-                                            <span className="detail-label">Email</span>
-                                            <span className="colon">:</span>
-                                            <span className="detail-value">{userProfile.email}</span>
-                                        </div>
-
-                                        <div className="detail-row">
-                                            <span className="detail-label">Phone Number</span>
-                                            <span className="colon">:</span>
-                                            <span className="detail-value">{userProfile.phoneNumber}</span>
-                                        </div>
-
-                                        <div className="detail-row">
-                                            <span className="detail-label">Department</span>
-                                            <span className="colon">:</span>
-                                            <span className="detail-value">{userProfile.department}</span>
-                                        </div>
-
-                                        <div className="detail-row">
-                                            <span className="detail-label">Position</span>
-                                            <span className="colon">:</span>
-                                            <span className="detail-value">{userProfile.position}</span>
-                                        </div>
-
-                                        <div className="detail-row">
-                                            <span className="detail-label">Employee ID</span>
-                                            <span className="colon">:</span>
-                                            <span className="detail-value">{userProfile.employeeId}</span>
-                                        </div>
-
-                                        <div className="detail-row">
-                                            <span className="detail-label">Date Joined</span>
-                                            <span className="colon">:</span>
-                                            <span className="detail-value">{userProfile.dateJoined}</span>
-                                        </div>
-
-                                        <div className="detail-row">
-                                            <span className="detail-label">Time Zone</span>
-                                            <span className="colon">:</span>
-                                            <span className="detail-value">{userProfile.timeZone}</span>
-                                        </div>
-
-                                        <div className="detail-row">
-                                            <span className="detail-label">Language</span>
-                                            <span className="colon">:</span>
-                                            <span className="detail-value">{userProfile.language}</span>
-                                        </div>
-
-                                        <div className="detail-row">
-                                            <span className="detail-label">Account Status</span>
-                                            <span className="colon">:</span>
-                                            {/* Dùng class riêng tạo chữ màu xanh lá cho Active */}
-                                            <span className="detail-value success-text">{userProfile.accountStatus}</span>
-                                        </div>
-
-                                        <div className="detail-row">
-                                            <span className="detail-label">Default Signature</span>
-                                            <span className="colon">:</span>
-                                            <span className="detail-value">{userProfile.defaultSignature}</span>
-                                        </div>
-
-                                        <div className="detail-row">
-                                            <span className="detail-label">Last Updated</span>
-                                            <span className="colon">:</span>
-                                            <span className="detail-value">{userProfile.lastUpdated}</span>
-                                        </div>
-
-                                    </div>
-                                </div>
-                            </section>
+                                    <Col md={9} className="px-4">
+                                        <Row className="g-3 small">
+                                            <Col md={6} className="d-flex py-2 border-bottom border-light">
+                                                <span className="text-muted w-50 fw-medium">Full Name</span>
+                                                <span className="me-2 text-muted">:</span>
+                                                <span className="text-dark fw-semibold">{userProfile.fullName}</span>
+                                            </Col>
+                                            <Col md={6} className="d-flex py-2 border-bottom border-light">
+                                                <span className="text-muted w-50 fw-medium">Email</span>
+                                                <span className="me-2 text-muted">:</span>
+                                                <span className="text-dark fw-semibold text-break">{userProfile.email}</span>
+                                            </Col>
+                                            <Col md={6} className="d-flex py-2 border-bottom border-light">
+                                                <span className="text-muted w-50 fw-medium">Phone Number</span>
+                                                <span className="me-2 text-muted">:</span>
+                                                <span className="text-dark fw-semibold">{userProfile.phoneNumber}</span>
+                                            </Col>
+                                            <Col md={6} className="d-flex py-2 border-bottom border-light">
+                                                <span className="text-muted w-50 fw-medium">Department</span>
+                                                <span className="me-2 text-muted">:</span>
+                                                <span className="text-dark fw-semibold">{userProfile.department}</span>
+                                            </Col>
+                                            <Col md={6} className="d-flex py-2 border-bottom border-light">
+                                                <span className="text-muted w-50 fw-medium">Position</span>
+                                                <span className="me-2 text-muted">:</span>
+                                                <span className="text-dark fw-semibold">{userProfile.position}</span>
+                                            </Col>
+                                            <Col md={6} className="d-flex py-2 border-bottom border-light">
+                                                <span className="text-muted w-50 fw-medium">Employee ID</span>
+                                                <span className="me-2 text-muted">:</span>
+                                                <span className="text-dark fw-semibold">{userProfile.employeeId}</span>
+                                            </Col>
+                                            <Col md={6} className="d-flex py-2 border-bottom border-light">
+                                                <span className="text-muted w-50 fw-medium">Date Joined</span>
+                                                <span className="me-2 text-muted">:</span>
+                                                <span className="text-dark fw-semibold">{userProfile.dateJoined}</span>
+                                            </Col>
+                                            <Col md={6} className="d-flex py-2 border-bottom border-light">
+                                                <span className="text-muted w-50 fw-medium">Time Zone</span>
+                                                <span className="me-2 text-muted">:</span>
+                                                <span className="text-dark fw-semibold">{userProfile.timeZone}</span>
+                                            </Col>
+                                            <Col md={6} className="d-flex py-2 border-bottom border-light">
+                                                <span className="text-muted w-50 fw-medium">Language</span>
+                                                <span className="me-2 text-muted">:</span>
+                                                <span className="text-dark fw-semibold">{userProfile.language}</span>
+                                            </Col>
+                                            <Col md={6} className="d-flex py-2 border-bottom border-light">
+                                                <span className="text-muted w-50 fw-medium">Account Status</span>
+                                                <span className="me-2 text-muted">:</span>
+                                                <span className="text-success fw-bold">{userProfile.accountStatus}</span>
+                                            </Col>
+                                            <Col md={6} className="d-flex py-2 border-bottom border-light">
+                                                <span className="text-muted w-50 fw-medium">Default Signature</span>
+                                                <span className="me-2 text-muted">:</span>
+                                                <span className="text-dark fw-semibold">{userProfile.defaultSignature}</span>
+                                            </Col>
+                                            <Col md={6} className="d-flex py-2 border-bottom border-light">
+                                                <span className="text-muted w-50 fw-medium">Last Updated</span>
+                                                <span className="me-2 text-muted">:</span>
+                                                <span className="text-dark fw-semibold">{userProfile.lastUpdated}</span>
+                                            </Col>
+                                        </Row>
+                                    </Col>
+                                </Row>
+                            </Card>
 
                             {/* --- ACCOUNT & ACCESS SUMMARY CARD --- */}
-                            <section className="info-card">
-                                <div className="card-header">
-                                    <div className="card-title-group">
-                                        <span className="round-icon">
-                                            <IconShieldCheck size={22} />
-                                        </span>
+                            <Card className="mx-4 mb-4 border rounded-3 p-4">
+                                <Stack direction="horizontal" className="justify-content-between align-items-start border-bottom pb-3 mb-4">
+                                    <div className="d-flex align-items-center gap-2">
+                                        <div className="p-2 bg-primary bg-opacity-10 text-primary rounded-circle d-flex">
+                                            <IconShieldCheck size={20} />
+                                        </div>
                                         <div>
-                                            <h2 className="card-title">Account & Access Summary</h2>
-                                            <p className="card-description">
+                                            <h2 className="h5 fw-bold mb-0 text-dark">Account & Access Summary</h2>
+                                            <p className="small text-muted mb-0">
                                                 Your profile is used across contracts, approvals, and internal workflows.
                                             </p>
                                         </div>
                                     </div>
-                                    <span className="status-badge" style={{ borderColor: '#c9d9ff', background: '#f0f5ff', color: '#184cff' }}>Verified</span>
-                                </div>
+                                    <Badge bg="primary" className="bg-opacity-10 text-primary border border-primary border-opacity-25 px-3 py-2 fs-6">
+                                        Verified
+                                    </Badge>
+                                </Stack>
 
-                                <div className="summary-grid">
-
-                                    <div className="summary-item">
-                                        <span className="summary-icon">
-                                            <IconUser size={22} />
-                                        </span>
-                                        <div>
-                                            <p className="summary-label">Role</p>
-                                            <h3 className="summary-value">Contract Manager</h3>
-                                            <p className="summary-description">Assigned role</p>
+                                <Row className="g-3">
+                                    {/* Role */}
+                                    <Col lg={3} md={6}>
+                                        <div className="p-3 border rounded h-100 bg-light">
+                                            <div className="text-primary mb-3">
+                                                <IconUser size={24} />
+                                            </div>
+                                            <span className="small text-muted d-block mb-1">Role</span>
+                                            <h3 className="h6 fw-bold text-dark my-1">Contract Manager</h3>
+                                            <p className="small text-muted mb-0">Assigned role</p>
                                         </div>
-                                    </div>
+                                    </Col>
 
-                                    <div className="summary-item">
-                                        <span className="summary-icon">
-                                            <IconShieldCheck size={22} />
-                                        </span>
-                                        <div>
-                                            <p className="summary-label">Permissions</p>
-                                            <h3 className="summary-value">18 active</h3>
-                                            <p className="summary-description">Access permissions</p>
+                                    {/* Permissions */}
+                                    <Col lg={3} md={6}>
+                                        <div className="p-3 border rounded h-100 bg-light">
+                                            <div className="text-primary mb-3">
+                                                <IconShieldCheck size={24} />
+                                            </div>
+                                            <span className="small text-muted d-block mb-1">Permissions</span>
+                                            <h3 className="h6 fw-bold text-dark my-1">18 active</h3>
+                                            <p className="small text-muted mb-0">Access permissions</p>
                                         </div>
-                                    </div>
+                                    </Col>
 
-                                    <div className="summary-item">
-                                        <span className="summary-icon">
-                                            <IconSignature size={22} />
-                                        </span>
-                                        <div>
-                                            <p className="summary-label">Signature Library</p>
-                                            <h3 className="summary-value">6 signatures</h3>
-                                            <p className="summary-description">Personal e-signatures</p>
+                                    {/* Signature Library */}
+                                    <Col lg={3} md={6}>
+                                        <div className="p-3 border rounded h-100 bg-light">
+                                            <div className="text-primary mb-3">
+                                                <IconSignature size={24} />
+                                            </div>
+                                            <span className="small text-muted d-block mb-1">Signature Library</span>
+                                            <h3 className="h6 fw-bold text-dark my-1">6 signatures</h3>
+                                            <p className="small text-muted mb-0">Personal e-signatures</p>
                                         </div>
-                                    </div>
+                                    </Col>
 
-                                    <div className="summary-item">
-                                        <span className="summary-icon">
-                                            <IconClock size={22} />
-                                        </span>
-                                        <div>
-                                            <p className="summary-label">Last Login</p>
-                                            <h3 className="summary-value">May 22, 2025</h3>
-                                            <p className="summary-description">Recent account activity</p>
+                                    {/* Last Login */}
+                                    <Col lg={3} md={6}>
+                                        <div className="p-3 border rounded h-100 bg-light">
+                                            <div className="text-primary mb-3">
+                                                <IconClock size={24} />
+                                            </div>
+                                            <span className="small text-muted d-block mb-1">Last Login</span>
+                                            <h3 className="h6 fw-bold text-dark my-1">May 22, 2025</h3>
+                                            <p className="small text-muted mb-0">Recent account activity</p>
                                         </div>
-                                    </div>
-
-                                </div>
-                            </section>
+                                    </Col>
+                                </Row>
+                            </Card>
 
                             {/* --- INFO ALERT --- */}
-                            <section className="info-alert">
-                                <IconInfoCircle size={22} color="#2055ff" />
+                            <Alert variant="info" className="mx-4 mb-4 d-flex align-items-center gap-2 py-3">
+                                <IconInfoCircle size={20} />
                                 <span>
                                     To update your personal information, click <strong>Edit Profile</strong>.
                                 </span>
-                            </section>
+                            </Alert>
                         </>
                     ) : (
-                        <div style={{ textAlign: 'center', padding: '100px 0', color: '#e11d48' }}>
-                            <p>Profile not found or an error occurred.</p>
+                        <div className="text-center py-5 my-5 text-danger">
+                            <p className="fw-bold">Profile not found or an error occurred.</p>
                         </div>
                     )}
-                </div>
-            </main>
+                </section>
+            </Container>
         </div>
     );
 }

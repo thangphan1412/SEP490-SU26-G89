@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import NavDropdown from "react-bootstrap/NavDropdown";
+import { Container, Card, Row, Col, Button, NavDropdown, Spinner, Alert, Stack, Badge } from "react-bootstrap";
 
 // Import các Icon từ Tabler Icons
 import {
@@ -11,12 +11,22 @@ import {
     IconFileExport,
     IconShieldCheck,
     IconClock,
-    IconInfoCircle,
-    IconLoader2
+    IconInfoCircle
 } from "@tabler/icons-react";
 
-// Import CSS
-import "../../assets/styles/css/companyProfileStyles/ViewCompanyProfilePage.css";
+// Dữ liệu mẫu ban đầu (sẽ thay bằng API lấy dữ liệu thực tế)
+const defaultCompanyProfile = {
+    companyName: "ABC Holdings Co., Ltd.",
+    email: "legal@abcholdings.vn",
+    taxCode: "0312345678",
+    phone: "+84 28 3822 5678",
+    registeredAddress: "125 Nguyen Hue Boulevard, Ben Nghe Ward, District 1, Ho Chi Minh City, Vietnam",
+    businessRegistrationNumber: "BRN-2025-00981",
+    legalRepresentative: "Nguyen Minh An",
+    registrationDate: "May 12, 2020",
+    lastVerifiedDate: "May 10, 2025",
+    verifiedBy: "Alex Morgan",
+};
 
 function ViewProfile({ onEditProfile }) {
     const navigate = useNavigate();
@@ -30,22 +40,10 @@ function ViewProfile({ onEditProfile }) {
         const fetchProfile = async () => {
             setLoading(true);
             try {
-                // TODO: Gắn API thật (VD: const res = await getCompanyProfile())
                 // Mô phỏng thời gian chờ 1 giây
                 await new Promise(resolve => setTimeout(resolve, 1000));
 
-                setProfile({
-                    companyName: "ABC Holdings Co., Ltd.",
-                    email: "legal@abcholdings.vn",
-                    taxCode: "0312345678",
-                    phone: "+84 28 3822 5678",
-                    registeredAddress: "125 Nguyen Hue Boulevard, Ben Nghe Ward, District 1, Ho Chi Minh City, Vietnam",
-                    businessRegistrationNumber: "BRN-2025-00981",
-                    legalRepresentative: "Nguyen Minh An",
-                    registrationDate: "May 12, 2020",
-                    lastVerifiedDate: "May 10, 2025",
-                    verifiedBy: "Alex Morgan",
-                });
+                setProfile(defaultCompanyProfile);
             } catch (error) {
                 console.error("Lỗi khi tải dữ liệu công ty:", error);
             } finally {
@@ -57,28 +55,27 @@ function ViewProfile({ onEditProfile }) {
     }, []);
 
     const handleEditProfile = () => {
-        // Truyền data cũ sang hàm callback nếu có
         onEditProfile?.(profile);
         navigate("/company-profile/update");
     };
 
     return (
-        <div className="view-profile-page">
-            {/* --- HEADER --- */}
-            <header className="page-header">
-                <div className="logo">
-                    <div className="logo-icon">🛡️</div>
-                    <div className="logo-text">
-                        <strong>E-CONTRACT</strong>
-                        <span className="logo-sub-text">Management System</span>
+        <div className="bg-light min-vh-screen">
+            {/* --- HEADER ĐỒNG BỘ --- */}
+            <header className="d-flex justify-content-between align-items-center px-4 py-3 bg-white border-bottom mb-4">
+                <div className="d-flex align-items-center gap-2">
+                    <span className="fs-4">🛡️</span>
+                    <div className="d-flex flex-column lh-sm">
+                        <strong className="text-dark">E-CONTRACT</strong>
+                        <small className="text-muted" style={{ fontSize: "12px" }}>Management System</small>
                     </div>
                 </div>
 
                 <NavDropdown
                     title={
-                        <span className="lang-btn">
-                            <IconWorld stroke={2} size={20} />
-                            <span className="language-text">English</span>
+                        <span className="text-dark fw-semibold">
+                            <IconWorld stroke={2} size={20} className="me-1" />
+                            English
                         </span>
                     }
                     id="basic-nav-dropdown"
@@ -89,145 +86,156 @@ function ViewProfile({ onEditProfile }) {
             </header>
 
             {/* --- MAIN CONTENT --- */}
-            <main>
-                <div className="view-panel">
+            <Container fluid="lg" className="mb-5">
+                <section className="border shadow-sm rounded-4 overflow-hidden bg-white">
 
-                    <section className="panel-header">
+                    {/* Panel Header */}
+                    <div className="d-flex justify-content-between align-items-center border-bottom p-4 bg-white">
                         <div>
-                            <h1 className="page-title">Company Profile</h1>
-                            <p className="page-description">
+                            <h1 className="h3 mb-2 fw-bold text-dark">Company Profile</h1>
+                            <p className="text-muted mb-0">
                                 Manage your company's legal identity information for automatic use in contracts and documents.
                             </p>
                         </div>
-                        <button
-                            type="button"
-                            className="btn-primary"
+                        <Button
+                            variant="primary"
+                            className="fw-bold px-4 d-flex align-items-center gap-2"
                             onClick={handleEditProfile}
                             disabled={loading}
                         >
-                            <IconEdit size={20} color="#ffffff" />
+                            <IconEdit size={19} color="#ffffff" />
                             <span>Edit Profile</span>
-                        </button>
-                    </section>
+                        </Button>
+                    </div>
 
                     {/* Check Loading State */}
                     {loading ? (
-                        <div style={{ textAlign: 'center', padding: '100px 0', color: '#64708f' }}>
-                            <IconLoader2 size={42} className="animate-spin" style={{ margin: '0 auto 16px' }} />
+                        <div className="text-center py-5 my-5 text-secondary">
+                            <Spinner animation="border" className="mb-3" style={{ width: "3rem", height: "3xl" }} />
                             <p>Loading company profile details...</p>
                         </div>
                     ) : profile ? (
                         <>
                             {/* --- COMPANY LEGAL INFORMATION --- */}
-                            <section className="info-card">
-                                <div className="card-header">
-                                    <h2 className="card-title">Company Legal Information</h2>
-                                </div>
-                                <div className="detail-grid">
-
-                                    {/* Thay vì Map, viết rõ từng ô dữ liệu */}
-                                    <div className="detail-item">
-                                        <span className="detail-label">Company Name</span>
-                                        <span className="detail-value">{profile.companyName}</span>
-                                    </div>
-
-                                    <div className="detail-item">
-                                        <span className="detail-label">Email</span>
-                                        <span className="detail-value">{profile.email}</span>
-                                    </div>
-
-                                    <div className="detail-item">
-                                        <span className="detail-label">Tax Code (MST)</span>
-                                        <span className="detail-value">{profile.taxCode}</span>
-                                    </div>
-
-                                    <div className="detail-item">
-                                        <span className="detail-label">Phone</span>
-                                        <span className="detail-value">{profile.phone}</span>
-                                    </div>
-
-                                    <div className="detail-item">
-                                        <span className="detail-label">Registered Address</span>
-                                        <span className="detail-value">{profile.registeredAddress}</span>
-                                    </div>
-
-                                    <div className="detail-item">
-                                        <span className="detail-label">Business Registration No.</span>
-                                        <span className="detail-value">{profile.businessRegistrationNumber}</span>
-                                    </div>
-
-                                    <div className="detail-item">
-                                        <span className="detail-label">Legal Representative</span>
-                                        <span className="detail-value">{profile.legalRepresentative}</span>
-                                    </div>
-
-                                    <div className="detail-item">
-                                        <span className="detail-label">Registration Date</span>
-                                        <span className="detail-value">{profile.registrationDate}</span>
-                                    </div>
-
-                                </div>
-                            </section>
+                            <Card className="m-4 border rounded-3 p-4">
+                                <Card.Header className="bg-white border-0 p-0 mb-3">
+                                    <h2 className="h5 fw-bold mb-0 text-dark">Company Legal Information</h2>
+                                </Card.Header>
+                                <Card.Body className="p-0">
+                                    <Row className="g-0 small">
+                                        <Col md={6} className="d-flex py-3 border-bottom border-light px-2">
+                                            <span className="text-muted w-50 fw-medium">Company Name</span>
+                                            <strong className="text-dark w-50">{profile.companyName}</strong>
+                                        </Col>
+                                        <Col md={6} className="d-flex py-3 border-bottom border-light px-2">
+                                            <span className="text-muted w-50 fw-medium">Email</span>
+                                            <strong className="text-dark w-50 text-break">{profile.email}</strong>
+                                        </Col>
+                                        <Col md={6} className="d-flex py-3 border-bottom border-light px-2">
+                                            <span className="text-muted w-50 fw-medium">Tax Code (MST)</span>
+                                            <strong className="text-dark w-50">{profile.taxCode}</strong>
+                                        </Col>
+                                        <Col md={6} className="d-flex py-3 border-bottom border-light px-2">
+                                            <span className="text-muted w-50 fw-medium">Phone</span>
+                                            <strong className="text-dark w-50">{profile.phone}</strong>
+                                        </Col>
+                                        <Col md={6} className="d-flex py-3 border-bottom border-light px-2">
+                                            <span className="text-muted w-50 fw-medium">Registered Address</span>
+                                            <strong className="text-dark w-50">{profile.registeredAddress}</strong>
+                                        </Col>
+                                        <Col md={6} className="d-flex py-3 border-bottom border-light px-2">
+                                            <span className="text-muted w-50 fw-medium">Business Registration No.</span>
+                                            <strong className="text-dark w-50">{profile.businessRegistrationNumber}</strong>
+                                        </Col>
+                                        <Col md={6} className="d-flex py-3 px-2 border-bottom-0">
+                                            <span className="text-muted w-50 fw-medium">Legal Representative</span>
+                                            <strong className="text-dark w-50">{profile.legalRepresentative}</strong>
+                                        </Col>
+                                        <Col md={6} className="d-flex py-3 px-2 border-bottom-0">
+                                            <span className="text-muted w-50 fw-medium">Registration Date</span>
+                                            <strong className="text-dark w-50">{profile.registrationDate}</strong>
+                                        </Col>
+                                    </Row>
+                                </Card.Body>
+                            </Card>
 
                             {/* --- AUTO-FILL USAGE --- */}
-                            <section className="info-card">
-                                <div className="card-header">
-                                    <h2 className="card-title">Auto-fill Usage</h2>
-                                    <div className="verified-badge">
+                            <Card className="mx-4 mb-4 border rounded-3 p-4">
+                                <Stack direction="horizontal" className="justify-content-between align-items-start border-bottom pb-3 mb-4">
+                                    <div>
+                                        <h2 className="h5 fw-bold mb-2 text-dark">Auto-fill Usage</h2>
+                                        <p className="small text-muted mb-0">
+                                            These details are automatically inserted into contract templates and generated legal documents.
+                                        </p>
+                                    </div>
+                                    <Badge bg="success" className="px-3 py-2 fs-6 d-inline-flex align-items-center gap-1">
                                         <IconCheck size={16} strokeWidth={3} />
                                         <span>Verified</span>
-                                    </div>
-                                </div>
-                                <div className="usage-body">
-                                    <p className="usage-intro">
-                                        These details are automatically inserted into contract templates and generated legal documents.
-                                    </p>
+                                    </Badge>
+                                </Stack>
 
-                                    <div className="usage-grid">
-
-                                        <div className="usage-card">
-                                            <span className="usage-icon"><IconFileDescription size={24} /></span>
-                                            <h3 className="usage-title">Contract Templates</h3>
-                                            <p className="usage-description">Company information is auto-filled in all contract templates.</p>
+                                <Row className="g-3">
+                                    {/* Contract Templates */}
+                                    <Col lg={3} md={6}>
+                                        <div className="p-3 border rounded h-100 bg-light">
+                                            <div className="text-primary mb-3">
+                                                <IconFileDescription size={24} />
+                                            </div>
+                                            <h3 className="h6 fw-bold text-dark mb-2">Contract Templates</h3>
+                                            <p className="small text-muted mb-0">Company information is auto-filled in all contract templates.</p>
                                         </div>
+                                    </Col>
 
-                                        <div className="usage-card">
-                                            <span className="usage-icon"><IconFileExport size={24} /></span>
-                                            <h3 className="usage-title">Generated Documents</h3>
-                                            <p className="usage-description">Used in quotes, agreements, reports, and legal documents.</p>
+                                    {/* Generated Documents */}
+                                    <Col lg={3} md={6}>
+                                        <div className="p-3 border rounded h-100 bg-light">
+                                            <div className="text-primary mb-3">
+                                                <IconFileExport size={24} />
+                                            </div>
+                                            <h3 className="h6 fw-bold text-dark mb-2">Generated Documents</h3>
+                                            <p className="small text-muted mb-0">Used in quotes, agreements, reports, and legal documents.</p>
                                         </div>
+                                    </Col>
 
-                                        <div className="usage-card">
-                                            <span className="usage-icon"><IconShieldCheck size={24} /></span>
-                                            <h3 className="usage-title">Compliance</h3>
-                                            <p className="usage-description">Ensures consistent and accurate company information.</p>
+                                    {/* Compliance */}
+                                    <Col lg={3} md={6}>
+                                        <div className="p-3 border rounded h-100 bg-light">
+                                            <div className="text-primary mb-3">
+                                                <IconShieldCheck size={24} />
+                                            </div>
+                                            <h3 className="h6 fw-bold text-dark mb-2">Compliance</h3>
+                                            <p className="small text-muted mb-0">Ensures consistent and accurate company information.</p>
                                         </div>
+                                    </Col>
 
-                                        <div className="usage-card">
-                                            <span className="usage-icon"><IconClock size={24} /></span>
-                                            <h3 className="usage-title">Last Verified</h3>
-                                            <p className="usage-description">
+                                    {/* Last Verified */}
+                                    <Col lg={3} md={6}>
+                                        <div className="p-3 border rounded h-100 bg-light">
+                                            <div className="text-primary mb-3">
+                                                <IconClock size={24} />
+                                            </div>
+                                            <h3 className="h6 fw-bold text-dark mb-2">Last Verified</h3>
+                                            <p className="small text-muted mb-0">
                                                 Verified on {profile.lastVerifiedDate} by {profile.verifiedBy}.
                                             </p>
                                         </div>
-
-                                    </div>
-                                </div>
-                            </section>
+                                    </Col>
+                                </Row>
+                            </Card>
 
                             {/* --- INFO ALERT --- */}
-                            <div className="info-alert">
-                                <IconInfoCircle size={22} color="#184cff" />
-                                <span>To update your company information, click <strong>Edit Profile</strong>.</span>
-                            </div>
+                            <Alert variant="info" className="mx-4 mb-4 d-flex align-items-center gap-2 py-3">
+                                <IconInfoCircle size={20} />
+                                <span>To update your company information, click <strong className="text-primary" style={{ cursor: "pointer" }} onClick={handleEditProfile}>Edit Profile</strong>.</span>
+                            </Alert>
                         </>
                     ) : (
-                        <div style={{ textAlign: 'center', padding: '100px 0', color: '#e11d48' }}>
-                            <p>Profile not found or an error occurred.</p>
+                        <div className="text-center py-5 my-5 text-danger">
+                            <p className="fw-bold">Profile not found or an error occurred.</p>
                         </div>
                     )}
-                </div>
-            </main>
+                </section> {/* <-- ĐÃ SỬA TỪ </div> THÀNH </section> Ở ĐÂY */}
+            </Container>
         </div>
     );
 }
