@@ -64,18 +64,9 @@ function ViewProfile() {
                         <small className="text-muted" style={{ fontSize: "12px" }}>Management System</small>
                     </div>
                 </div>
-
-                <NavDropdown
-                    title={
-                        <span className="text-dark fw-semibold">
-                            <IconWorld stroke={2} size={20} className="me-1" />
-                            English
-                        </span>
-                    }
-                    id="basic-nav-dropdown"
-                >
-                    <NavDropdown.Item href="#action/3.1">English</NavDropdown.Item>
-                    <NavDropdown.Item href="#action/3.2">Vietnamese</NavDropdown.Item>
+                <NavDropdown title={<span className="text-dark fw-semibold"><IconWorld size={20} className="me-1"/>English</span>} id="lang-dropdown">
+                    <NavDropdown.Item>English</NavDropdown.Item>
+                    <NavDropdown.Item>Vietnamese</NavDropdown.Item>
                 </NavDropdown>
             </header>
 
@@ -142,69 +133,117 @@ function ViewProfile() {
                                     {/* Detailed Information Grid */}
                                     <Col md={9} className="px-4">
                                         <Row className="g-3 small">
-                                            <Col md={6} className="d-flex py-2 border-bottom border-light">
-                                                <span className="text-muted w-50 fw-medium">Full Name</span>
-                                                <span className="me-2 text-muted">:</span>
-                                                <span className="text-dark fw-semibold">{userProfile.fullName}</span>
+
+                                            {/* Full Name */}
+                                            <Col md={6} className="border-bottom border-light pb-2">
+                                                <Row className="align-items-center g-0">
+                                                    <Col xs={4} className="text-muted fw-medium">Full Name</Col>
+                                                    <Col xs={1} className="text-muted text-center">:</Col>
+                                                    <Col xs={7} className="text-dark fw-semibold">{userProfile.fullName}</Col>
+                                                </Row>
                                             </Col>
-                                            <Col md={6} className="d-flex py-2 border-bottom border-light">
-                                                <span className="text-muted w-50 fw-medium">Email</span>
-                                                <span className="me-2 text-muted">:</span>
-                                                <span className="text-dark fw-semibold text-break">{userProfile.email}</span>
+
+                                            {/* Email */}
+                                            <Col md={6} className="border-bottom border-light pb-2">
+                                                <Row className="align-items-center g-0">
+                                                    <Col xs={4} className="text-muted fw-medium">Email</Col>
+                                                    <Col xs={1} className="text-muted text-center">:</Col>
+                                                    <Col xs={7} className="text-dark fw-semibold text-break">{userProfile.email}</Col>
+                                                </Row>
                                             </Col>
-                                            <Col md={6} className="d-flex py-2 border-bottom border-light">
-                                                <span className="text-muted w-50 fw-medium">Phone Number</span>
-                                                <span className="me-2 text-muted">:</span>
-                                                <span className="text-dark fw-semibold">{userProfile.phoneNumber}</span>
+
+                                            {/* Phone Number */}
+                                            <Col md={6} className="border-bottom border-light pb-2">
+                                                <Row className="align-items-center g-0">
+                                                    <Col xs={4} className="text-muted fw-medium">Phone Number</Col>
+                                                    <Col xs={1} className="text-muted text-center">:</Col>
+                                                    <Col xs={7} className="text-dark fw-semibold">{userProfile.phoneNumber}</Col>
+                                                </Row>
                                             </Col>
-                                            <Col md={6} className="d-flex py-2 border-bottom border-light">
-                                                <span className="text-muted w-50 fw-medium">Department</span>
-                                                <span className="me-2 text-muted">:</span>
-                                                <span className="text-dark fw-semibold">{userProfile.department}</span>
+
+                                            {/* Department */}
+                                            <Col md={6} className="border-bottom border-light pb-2">
+                                                <Row className="align-items-center g-0">
+                                                    <Col xs={4} className="text-muted fw-medium">Department</Col>
+                                                    <Col xs={1} className="text-muted text-center">:</Col>
+                                                    <Col xs={7} className="text-dark fw-semibold">{userProfile.department}</Col>
+                                                </Row>
                                             </Col>
-                                            <Col md={6} className="d-flex py-2 border-bottom border-light">
-                                                <span className="text-muted w-50 fw-medium">Position</span>
-                                                <span className="me-2 text-muted">:</span>
-                                                <span className="text-dark fw-semibold">{userProfile.position}</span>
+
+                                            {/* Position */}
+                                            <Col md={6} className="border-bottom border-light pb-2">
+                                                <Row className="align-items-center g-0">
+                                                    <Col xs={4} className="text-muted fw-medium">Position</Col>
+                                                    <Col xs={1} className="text-muted text-center">:</Col>
+                                                    <Col xs={7} className="text-dark fw-semibold">{userProfile.position}</Col>
+                                                </Row>
                                             </Col>
-                                            <Col md={6} className="d-flex py-2 border-bottom border-light">
-                                                <span className="text-muted w-50 fw-medium">Employee ID</span>
-                                                <span className="me-2 text-muted">:</span>
-                                                <span className="text-dark fw-semibold">{userProfile.employeeId}</span>
+
+                                            {/* Employee ID */}
+                                            <Col md={6} className="border-bottom border-light pb-2">
+                                                <Row className="align-items-center g-0">
+                                                    <Col xs={4} className="text-muted fw-medium">Employee ID</Col>
+                                                    <Col xs={1} className="text-muted text-center">:</Col>
+                                                    <Col xs={7} className="text-dark fw-semibold">{userProfile.employeeId}</Col>
+                                                </Row>
                                             </Col>
-                                            <Col md={6} className="d-flex py-2 border-bottom border-light">
-                                                <span className="text-muted w-50 fw-medium">Date Joined</span>
-                                                <span className="me-2 text-muted">:</span>
-                                                <span className="text-dark fw-semibold">{userProfile.dateJoined}</span>
+
+                                            {/* Date Joined */}
+                                            <Col md={6} className="border-bottom border-light pb-2">
+                                                <Row className="align-items-center g-0">
+                                                    <Col xs={4} className="text-muted fw-medium">Date Joined</Col>
+                                                    <Col xs={1} className="text-muted text-center">:</Col>
+                                                    <Col xs={7} className="text-dark fw-semibold">{userProfile.dateJoined}</Col>
+                                                </Row>
                                             </Col>
-                                            <Col md={6} className="d-flex py-2 border-bottom border-light">
-                                                <span className="text-muted w-50 fw-medium">Time Zone</span>
-                                                <span className="me-2 text-muted">:</span>
-                                                <span className="text-dark fw-semibold">{userProfile.timeZone}</span>
+
+                                            {/* Time Zone */}
+                                            <Col md={6} className="border-bottom border-light pb-2">
+                                                <Row className="align-items-start g-0">
+                                                    <Col xs={4} className="text-muted fw-medium">Time Zone</Col>
+                                                    <Col xs={1} className="text-muted text-center">:</Col>
+                                                    <Col xs={7} className="text-dark fw-semibold">{userProfile.timeZone}</Col>
+                                                </Row>
                                             </Col>
-                                            <Col md={6} className="d-flex py-2 border-bottom border-light">
-                                                <span className="text-muted w-50 fw-medium">Language</span>
-                                                <span className="me-2 text-muted">:</span>
-                                                <span className="text-dark fw-semibold">{userProfile.language}</span>
+
+                                            {/* Language */}
+                                            <Col md={6} className="border-bottom border-light pb-2">
+                                                <Row className="align-items-center g-0">
+                                                    <Col xs={4} className="text-muted fw-medium">Language</Col>
+                                                    <Col xs={1} className="text-muted text-center">:</Col>
+                                                    <Col xs={7} className="text-dark fw-semibold">{userProfile.language}</Col>
+                                                </Row>
                                             </Col>
-                                            <Col md={6} className="d-flex py-2 border-bottom border-light">
-                                                <span className="text-muted w-50 fw-medium">Account Status</span>
-                                                <span className="me-2 text-muted">:</span>
-                                                <span className="text-success fw-bold">{userProfile.accountStatus}</span>
+
+                                            {/* Account Status */}
+                                            <Col md={6} className="border-bottom border-light pb-2">
+                                                <Row className="align-items-center g-0">
+                                                    <Col xs={4} className="text-muted fw-medium">Account Status</Col>
+                                                    <Col xs={1} className="text-muted text-center">:</Col>
+                                                    <Col xs={7} className="text-success fw-bold">{userProfile.accountStatus}</Col>
+                                                </Row>
                                             </Col>
-                                            <Col md={6} className="d-flex py-2 border-bottom border-light">
-                                                <span className="text-muted w-50 fw-medium">Default Signature</span>
-                                                <span className="me-2 text-muted">:</span>
-                                                <span className="text-dark fw-semibold">{userProfile.defaultSignature}</span>
+
+                                            {/* Default Signature */}
+                                            <Col md={6} className="border-bottom border-light pb-2">
+                                                <Row className="align-items-center g-0">
+                                                    <Col xs={4} className="text-muted fw-medium">Default Signature</Col>
+                                                    <Col xs={1} className="text-muted text-center">:</Col>
+                                                    <Col xs={7} className="text-dark fw-semibold">{userProfile.defaultSignature}</Col>
+                                                </Row>
                                             </Col>
-                                            <Col md={6} className="d-flex py-2 border-bottom border-light">
-                                                <span className="text-muted w-50 fw-medium">Last Updated</span>
-                                                <span className="me-2 text-muted">:</span>
-                                                <span className="text-dark fw-semibold">{userProfile.lastUpdated}</span>
+
+                                            {/* Last Updated */}
+                                            <Col md={6} className="border-bottom border-light pb-2">
+                                                <Row className="align-items-center g-0">
+                                                    <Col xs={4} className="text-muted fw-medium">Last Updated</Col>
+                                                    <Col xs={1} className="text-muted text-center">:</Col>
+                                                    <Col xs={7} className="text-dark fw-semibold">{userProfile.lastUpdated}</Col>
+                                                </Row>
                                             </Col>
                                         </Row>
                                     </Col>
-                                </Row>
+                                </Row> {/* <-- Đã vá lại thẻ đóng Row của cấu hình Avatar + Grid */}
                             </Card>
 
                             {/* --- ACCOUNT & ACCESS SUMMARY CARD --- */}
