@@ -1,141 +1,264 @@
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-
-const leftDetails = [
-    ["user", "Full Name", "Emma Nguyen"],
-    ["mail", "Email", "emma.nguyen@econtract.com"],
-    ["phone", "Phone Number", "+1 (555) 123-4567"],
-    ["badge", "Employee ID", "EMP-001248"],
-    ["building", "Department", "Legal Department"],
-];
-
-const rightDetails = [
-    ["briefcase", "Position", "Senior Legal Counsel"],
-    ["shield", "Role", "Contract Manager"],
-    ["globe", "Access Scope", "Department Level"],
-    ["calendar", "Date Joined", "Jan 15, 2024"],
-    ["clock", "Last Login", "May 22, 2025, 09:32 AM"],
-    ["check", "Account Status", "Active", "badge"],
-];
-
-const summaryItems = [
-    ["Assigned Role", "Contract Manager", "Full access to contract lifecycle management and approvals.", "shield"],
-    ["Department Access", "Legal Department", "Can view and manage all users and contracts within the Legal Department.", "building"],
-    ["Approval Rights", "Up to $250,000", "Authorized to approve contracts and changes up to a value of $250,000.", "clipboard"],
-    ["Recent Activity", "32 Activities", "Last activity: Viewed contract CN-2025-0456 on May 22, 2025 09:32 AM.", "clock"],
-];
-
-function Icon({ name, size = 22, color = "#1f4fff" }) {
-    const props = { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: color, strokeWidth: 2, strokeLinecap: "round", strokeLinejoin: "round", "aria-hidden": true };
-    const paths = {
-        edit: <><path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16z" /><path d="m13.5 6.5 4 4" /></>,
-        user: <><circle cx="12" cy="8" r="4" /><path d="M4 21c1.6-4 4.2-6 8-6s6.4 2 8 6" /></>,
-        mail: <><path d="M4 6h16v12H4z" /><path d="m4 7 8 6 8-6" /></>,
-        phone: <><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.3 1.7.6 2.5a2 2 0 0 1-.5 2.1L8 9.5a16 16 0 0 0 6.5 6.5l1.2-1.2a2 2 0 0 1 2.1-.5c.8.3 1.6.5 2.5.6a2 2 0 0 1 1.7 2Z" /></>,
-        badge: <><path d="M8 4h8v4H8z" /><path d="M6 8h12v12H6z" /><path d="M10 13h4" /><path d="M10 16h4" /></>,
-        building: <><path d="M4 21h16" /><path d="M6 21V5h7v16" /><path d="M13 9h5v12" /><path d="M9 9h1" /><path d="M16 13h1" /></>,
-        briefcase: <><path d="M10 6V5a2 2 0 0 1 2-2h0a2 2 0 0 1 2 2v1" /><path d="M4 7h16v12H4z" /><path d="M4 12h16" /></>,
-        shield: <><path d="M12 3 19 6v5c0 5-3.5 8.5-7 10-3.5-1.5-7-5-7-10V6z" /><path d="m9 12 2 2 4-4" /></>,
-        globe: <><circle cx="12" cy="12" r="9" /><path d="M3 12h18" /><path d="M12 3c3 3 3 15 0 18" /><path d="M12 3c-3 3-3 15 0 18" /></>,
-        calendar: <><path d="M5 4h14v16H5z" /><path d="M8 2v4" /><path d="M16 2v4" /><path d="M5 9h14" /></>,
-        clock: <><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 3" /></>,
-        check: <><circle cx="12" cy="12" r="9" /><path d="m8 12 2.5 2.5L16 9" /></>,
-        clipboard: <><path d="M9 4h6l1 2h3v15H5V6h3z" /><path d="m9 13 2 2 4-4" /></>,
-        info: <><circle cx="12" cy="12" r="9" /><path d="M12 11v5" /><path d="M12 8h.01" /></>,
-    };
-    return <svg {...props}>{paths[name]}</svg>;
-}
-
-function DetailRow({ icon, label, value, type }) {
-    return (
-        <div style={styles.detailRow}>
-            <Icon name={icon} size={21} color="#435174" />
-            <span style={styles.detailLabel}>{label}</span>
-            {type === "badge" ? <span style={styles.activeBadge}>{value}</span> : <span style={styles.detailValue}>{value}</span>}
-        </div>
-    );
-}
+import { Container, Card, Row, Col, Button, NavDropdown, Spinner, Alert, Stack } from "react-bootstrap";
+import {
+    IconWorld,
+    IconEdit,
+    IconUser,
+    IconMail,
+    IconPhone,
+    IconId,
+    IconBuilding,
+    IconBriefcase,
+    IconShieldCheck,
+    IconCalendar,
+    IconClock,
+    IconCheck,
+    IconClipboardList,
+    IconInfoCircle
+} from "@tabler/icons-react";
 
 function ViewUser() {
     const navigate = useNavigate();
 
+    // State quản lý dữ liệu và trạng thái loading
+    const [user, setUser] = useState(null);
+    const [loading, setLoading] = useState(true);
+
+    // Mô phỏng gọi API lấy chi tiết User giống file cũ của bạn
+    useEffect(() => {
+        const fetchUserDetails = async () => {
+            setLoading(true);
+            try {
+                // Chờ API 1 giây
+                await new Promise(resolve => setTimeout(resolve, 1000));
+
+                // Trả về dữ liệu giả lập
+                setUser({
+                    fullName: "Emma Nguyen",
+                    email: "emma.nguyen@econtract.com",
+                    phoneNumber: "+1 (555) 123-4567",
+                    employeeId: "EMP-001248",
+                    department: "Legal Department",
+                    position: "Senior Legal Counsel",
+                    role: "Contract Manager",
+                    accessScope: "Department Level",
+                    dateJoined: "Jan 15, 2024",
+                    lastLogin: "May 22, 2025, 09:32 AM",
+                    status: "Active"
+                });
+            } catch (error) {
+                console.error("Lỗi khi lấy dữ liệu người dùng:", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchUserDetails();
+    }, []);
+
     return (
-        <main style={styles.page}>
-            <section style={styles.panel}>
-                <div style={styles.header}>
-                    <div>
-                        <h1 style={styles.pageTitle}>User Details</h1>
-                        <p style={styles.pageDescription}>Review employee information, role permissions, and department assignment.</p>
+        <div className="bg-light min-vh-screen">
+            {/* --- HEADER ĐỒNG BỘ --- */}
+            <header className="d-flex justify-content-between align-items-center px-4 py-3 bg-white border-bottom mb-4">
+                <div className="d-flex align-items-center gap-2">
+                    <span className="fs-4">🛡️</span>
+                    <div className="d-flex flex-column lh-sm">
+                        <strong className="text-dark">E-CONTRACT</strong>
+                        <small className="text-muted" style={{ fontSize: "12px" }}>Management System</small>
                     </div>
-                    <button type="button" style={styles.primaryButton} onClick={() => navigate("/user-management/update")}>
-                        <Icon name="edit" size={20} color="#fff" />
-                        Edit User
-                    </button>
                 </div>
+                <NavDropdown title={<span className="text-dark fw-semibold"><IconWorld size={20} className="me-1"/>English</span>} id="lang-dropdown">
+                    <NavDropdown.Item>English</NavDropdown.Item>
+                    <NavDropdown.Item>Vietnamese</NavDropdown.Item>
+                </NavDropdown>
+            </header>
 
-                <section style={styles.card}>
-                    <h2 style={styles.cardTitle}>Employee Information</h2>
-                    <div style={styles.employeeGrid}>
-                        <div style={styles.photoColumn}>
-                            <div style={styles.photoPlaceholder}>
-                                <div style={styles.photoFace} />
-                            </div>
-                            <h3 style={styles.employeeName}>Emma Nguyen</h3>
-                            <span style={styles.activeBadge}>● Active</span>
+            {/* --- MAIN CONTENT PANEL --- */}
+            <Container fluid="lg" className="mb-5">
+                <section className="border shadow-sm rounded-4 overflow-hidden bg-white">
+
+                    {/* Header Panel */}
+                    <div className="d-flex justify-content-between align-items-center border-bottom p-4 bg-white">
+                        <div>
+                            <h1 className="h3 fw-bold mb-1">User Details</h1>
+                            <p className="text-muted mb-0">Review employee information, role permissions, and department assignment.</p>
                         </div>
-                        <div style={styles.detailsColumn}>{leftDetails.map((item) => <DetailRow key={item[1]} icon={item[0]} label={item[1]} value={item[2]} />)}</div>
-                        <div style={styles.detailsColumn}>{rightDetails.map((item) => <DetailRow key={item[1]} icon={item[0]} label={item[1]} value={item[2]} type={item[3]} />)}</div>
+                        <Button
+                            variant="primary"
+                            className="fw-bold px-4 d-flex align-items-center gap-2"
+                            onClick={() => navigate("/user-management/update")}
+                            disabled={loading}
+                        >
+                            <IconEdit size={19} color="#ffffff" /> Edit User
+                        </Button>
                     </div>
-                </section>
 
-                <section style={styles.card}>
-                    <h2 style={styles.cardTitle}>Role & Access Summary</h2>
-                    <div style={styles.summaryGrid}>
-                        {summaryItems.map(([title, value, description, icon]) => (
-                            <div key={title} style={styles.summaryItem}>
-                                <span style={styles.summaryIcon}><Icon name={icon} size={25} /></span>
-                                <p style={styles.summaryTitle}>{title}</p>
-                                <h3 style={styles.summaryValue}>{value}</h3>
-                                <p style={styles.summaryText}>{description}</p>
-                            </div>
-                        ))}
-                    </div>
-                </section>
+                    {/* Kiểm tra trạng thái loading */}
+                    {loading ? (
+                        <div className="text-center py-5 my-5 text-secondary">
+                            <Spinner animation="border" className="mb-3" style={{ width: "3rem", height: "3xl" }} />
+                            <p>Loading user details...</p>
+                        </div>
+                    ) : user ? (
+                        <>
+                            {/* --- EMPLOYEE INFORMATION CARD --- */}
+                            <Card className="m-4 border rounded-3 p-4">
+                                <h2 className="h5 fw-bold mb-4 text-dark">Employee Information</h2>
 
-                <section style={styles.infoAlert}>
-                    <Icon name="info" size={22} />
-                    <span>To make changes to this user, click <strong style={{ color: "#1f4fff" }}>Edit User</strong>.</span>
+                                <Row className="g-4">
+                                    {/* Cột 1: Khối Avatar */}
+                                    <Col md={3} className="text-center border-end d-flex flex-column align-items-center justify-content-center">
+                                        <div className="position-relative mb-3">
+                                            <div
+                                                className="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center fw-bold shadow-sm"
+                                                style={{ width: "100px", height: "100px", fontSize: "36px", boxShadow: "0 0 0 4px #edf2ff" }}
+                                            >
+                                                {user.fullName ? user.fullName.split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase() : 'U'}
+                                            </div>
+                                        </div>
+                                        <h3 className="h6 fw-bold mb-2 text-dark">{user.fullName}</h3>
+                                        <span className="badge bg-success bg-opacity-10 text-success px-3 py-2 rounded-pill fw-bold">
+                                            ● {user.status}
+                                        </span>
+                                    </Col>
+
+                                    {/* Cột 2: Thông tin chi tiết bên trái */}
+                                    <Col md={4} className="border-end px-4">
+                                        <Stack gap={3} className="small">
+                                            <div className="d-flex align-items-center py-2 border-bottom">
+                                                <IconUser size={18} className="text-secondary me-3" />
+                                                <span className="text-muted w-50">Full Name:</span>
+                                                <strong className="text-dark">{user.fullName}</strong>
+                                            </div>
+                                            <div className="d-flex align-items-center py-2 border-bottom">
+                                                <IconMail size={18} className="text-secondary me-3" />
+                                                <span className="text-muted w-50">Email:</span>
+                                                <strong className="text-dark text-break">{user.email}</strong>
+                                            </div>
+                                            <div className="d-flex align-items-center py-2 border-bottom">
+                                                <IconPhone size={18} className="text-secondary me-3" />
+                                                <span className="text-muted w-50">Phone Number:</span>
+                                                <strong className="text-dark">{user.phoneNumber}</strong>
+                                            </div>
+                                            <div className="d-flex align-items-center py-2 border-bottom">
+                                                <IconId size={18} className="text-secondary me-3" />
+                                                <span className="text-muted w-50">Employee ID:</span>
+                                                <strong className="text-dark">{user.employeeId}</strong>
+                                            </div>
+                                            <div className="d-flex align-items-center py-2 border-bottom-0">
+                                                <IconBuilding size={18} className="text-secondary me-3" />
+                                                <span className="text-muted w-50">Department:</span>
+                                                <strong className="text-dark">{user.department}</strong>
+                                            </div>
+                                        </Stack>
+                                    </Col>
+
+                                    {/* Cột 3: Thông tin chi tiết bên phải */}
+                                    <Col md={5} className="px-4">
+                                        <Stack gap={3} className="small">
+                                            <div className="d-flex align-items-center py-2 border-bottom">
+                                                <IconBriefcase size={18} className="text-secondary me-3" />
+                                                <span className="text-muted w-50">Position:</span>
+                                                <strong className="text-dark">{user.position}</strong>
+                                            </div>
+                                            <div className="d-flex align-items-center py-2 border-bottom">
+                                                <IconShieldCheck size={18} className="text-secondary me-3" />
+                                                <span className="text-muted w-50">Role:</span>
+                                                <strong className="text-dark">{user.role}</strong>
+                                            </div>
+                                            <div className="d-flex align-items-center py-2 border-bottom">
+                                                <IconWorld size={18} className="text-secondary me-3" />
+                                                <span className="text-muted w-50">Access Scope:</span>
+                                                <strong className="text-dark">{user.accessScope}</strong>
+                                            </div>
+                                            <div className="d-flex align-items-center py-2 border-bottom">
+                                                <IconCalendar size={18} className="text-secondary me-3" />
+                                                <span className="text-muted w-50">Date Joined:</span>
+                                                <strong className="text-dark">{user.dateJoined}</strong>
+                                            </div>
+                                            <div className="d-flex align-items-center py-2 border-bottom-0">
+                                                <IconClock size={18} className="text-secondary me-3" />
+                                                <span className="text-muted w-50">Last Login:</span>
+                                                <strong className="text-dark">{user.lastLogin}</strong>
+                                            </div>
+                                        </Stack>
+                                    </Col>
+                                </Row>
+                            </Card>
+
+                            {/* --- ROLE & ACCESS SUMMARY CARD --- */}
+                            <Card className="mx-4 mb-4 border rounded-3 p-4">
+                                <h2 className="h5 fw-bold mb-4 text-dark">Role & Access Summary</h2>
+
+                                <Row className="g-3">
+                                    {/* Assigned Role */}
+                                    <Col lg={3} md={6}>
+                                        <div className="p-3 border rounded h-100 bg-light">
+                                            <div className="text-primary mb-2">
+                                                <IconShieldCheck size={24} />
+                                            </div>
+                                            <span className="small text-muted d-block mb-1">Assigned Role</span>
+                                            <h4 className="h6 fw-bold text-dark my-1">{user.role}</h4>
+                                            <small className="text-muted">Full access to contract lifecycle.</small>
+                                        </div>
+                                    </Col>
+
+                                    {/* Department Access */}
+                                    <Col lg={3} md={6}>
+                                        <div className="p-3 border rounded h-100 bg-light">
+                                            <div className="text-primary mb-2">
+                                                <IconBuilding size={24} />
+                                            </div>
+                                            <span className="small text-muted d-block mb-1">Department Access</span>
+                                            <h4 className="h6 fw-bold text-dark my-1">{user.department}</h4>
+                                            <small className="text-muted">Can view & manage contracts within unit.</small>
+                                        </div>
+                                    </Col>
+
+                                    {/* Approval Rights */}
+                                    <Col lg={3} md={6}>
+                                        <div className="p-3 border rounded h-100 bg-light">
+                                            <div className="text-primary mb-2">
+                                                <IconClipboardList size={24} />
+                                            </div>
+                                            <span className="small text-muted d-block mb-1">Approval Rights</span>
+                                            <h4 className="h6 fw-bold text-dark my-1">Up to $250,000</h4>
+                                            <small className="text-muted">Authorized to approve changes.</small>
+                                        </div>
+                                    </Col>
+
+                                    {/* Recent Activity */}
+                                    <Col lg={3} md={6}>
+                                        <div className="p-3 border rounded h-100 bg-light">
+                                            <div className="text-primary mb-2">
+                                                <IconClock size={24} />
+                                            </div>
+                                            <span className="small text-muted d-block mb-1">Recent Activity</span>
+                                            <h4 className="h6 fw-bold text-dark my-1">32 Activities</h4>
+                                            <small className="text-muted text-break">Last active on {user.lastLogin}.</small>
+                                        </div>
+                                    </Col>
+                                </Row>
+                            </Card>
+
+                            {/* --- ALERT INFO --- */}
+                            <Alert variant="info" className="mx-4 mb-4 d-flex align-items-center gap-2">
+                                <IconInfoCircle size={20} />
+                                <span>
+                                    To make changes to this user, click <strong className="text-primary" style={{ cursor: "pointer" }} onClick={() => navigate("/user-management/update")}>Edit User</strong>.
+                                </span >
+                            </Alert>
+                        </>
+                    ) : (
+                        <div className="text-center py-5 my-5 text-danger">
+                            <p className="fw-bold">User not found or an error occurred.</p>
+                        </div>
+                    )}
                 </section>
-            </section>
-        </main>
+            </Container>
+        </div>
     );
 }
-
-const styles = {
-    page: { minHeight: "100vh", background: "#f6f8fc", padding: "24px 32px", color: "#111827", fontFamily: "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" },
-    panel: { maxWidth: 1150, margin: "0 auto", background: "#fff", border: "1px solid #dce4f0", borderRadius: 16, boxShadow: "0 8px 24px rgba(31,41,55,.06)", overflow: "hidden" },
-    header: { minHeight: 104, borderBottom: "1px solid #e6ebf3", padding: "26px 36px", display: "flex", alignItems: "center", justifyContent: "space-between" },
-    pageTitle: { margin: 0, fontSize: 29, fontWeight: 800 },
-    pageDescription: { margin: "6px 0 0", color: "#51607f", fontSize: 16 },
-    primaryButton: { height: 47, minWidth: 132, border: 0, borderRadius: 7, background: "#2450f5", color: "#fff", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 10, fontSize: 16, fontWeight: 700, cursor: "pointer" },
-    card: { margin: "28px 32px 20px", border: "1px solid #d9e2ef", borderRadius: 9, padding: "22px 24px", background: "#fff" },
-    cardTitle: { margin: "0 0 24px", fontSize: 18, fontWeight: 800 },
-    employeeGrid: { display: "grid", gridTemplateColumns: "230px 1fr 1.15fr", gap: 28 },
-    photoColumn: { borderRight: "1px solid #e3e9f2", minHeight: 295, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" },
-    photoPlaceholder: { width: 150, height: 150, borderRadius: "50%", background: "linear-gradient(#f7fafc,#e9eef6)", border: "1px solid #d7dfeb", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" },
-    photoFace: { width: 82, height: 112, borderRadius: "45% 45% 35% 35%", background: "linear-gradient(160deg,#1f2937 0 35%,#f4c7a1 36% 67%,#ffffff 68%)" },
-    employeeName: { margin: "20px 0 14px", fontSize: 21, fontWeight: 800 },
-    detailsColumn: { borderRight: "1px solid #e3e9f2", paddingRight: 28 },
-    detailRow: { minHeight: 56, borderBottom: "1px solid #e8edf4", display: "grid", gridTemplateColumns: "28px 110px 1fr", alignItems: "center", gap: 10, color: "#243452", fontSize: 14 },
-    detailLabel: { color: "#52617f", fontWeight: 700 },
-    detailValue: { color: "#243452" },
-    activeBadge: { minHeight: 31, minWidth: 58, borderRadius: 6, border: "1px solid #a8e0bb", background: "#ecfff2", color: "#108139", display: "inline-flex", alignItems: "center", justifyContent: "center", padding: "0 10px", fontSize: 13, fontWeight: 800 },
-    summaryGrid: { display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16 },
-    summaryItem: { minHeight: 198, border: "1px solid #d9e2ef", borderRadius: 9, padding: "24px 18px" },
-    summaryIcon: { width: 52, height: 52, borderRadius: "50%", background: "#eef3ff", display: "inline-flex", alignItems: "center", justifyContent: "center", marginBottom: 18 },
-    summaryTitle: { margin: "0 0 18px", color: "#243452", fontSize: 15 },
-    summaryValue: { margin: "0 0 12px", fontSize: 18, fontWeight: 800 },
-    summaryText: { margin: 0, color: "#52617f", fontSize: 14, lineHeight: 1.5 },
-    infoAlert: { margin: "0 32px 26px", minHeight: 55, borderRadius: 7, border: "1px solid #b9ceff", background: "#edf4ff", color: "#52617f", display: "flex", alignItems: "center", gap: 14, padding: "0 22px", fontSize: 15 },
-};
 
 export default ViewUser;

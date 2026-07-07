@@ -15,6 +15,10 @@ import ListProject from "./pages/ProjectManagement/ListProject.jsx";
 import CreateProject from "./pages/ProjectManagement/CreateProject.jsx";
 import ViewProject from "./pages/ProjectManagement/ViewProject.jsx";
 import UpdateProject from "./pages/ProjectManagement/UpdateProject.jsx";
+import ListContract from "./pages/ContractManagement/ListContract.jsx";
+import CreateContract from "./pages/ContractManagement/CreateContract.jsx";
+import ViewContract from "./pages/ContractManagement/ViewContract.jsx";
+import UpdateContract from "./pages/ContractManagement/UpdateContract.jsx";
 import PermissionCreatePage from "./pages/Permission Management/CreatePermissionPage.jsx";
 import ListPermissionPage from "./pages/Permission Management/ListPermissionPage.jsx";
 import ContractTypes from "./pages/contractType/ContractTypes.jsx";
@@ -88,14 +92,24 @@ function AppRouter() {
                 element={<UpdateProject />}
             />
             <Route
-                path="/permission-management/create"
-                element={<PermissionCreatePage />}>
-            </Route>
+                path="/contract-management/list"
+                element={<ListContract />}
+            />
             <Route
-                path="/permission-management/list"
-                element={<ListPermissionPage />}>
-            </Route>
-
+                path="/contract-management/create"
+                element={<CreateContract />}
+            />
+            <Route
+                path="/contract-management/view/:id"
+                element={<ViewContract />}
+            />
+            <Route
+                path="/contract-management/update/:id"
+                element={<UpdateContract />}
+            />
+            <Route path="/permission/create" element={<PermissionCreatePage />}></Route>
+            <Route path="/permission/list" element={<ListPermissionPage />}></Route>
+            
             <Route
                 path="/contract-types"
                 element={<ContractTypes />}

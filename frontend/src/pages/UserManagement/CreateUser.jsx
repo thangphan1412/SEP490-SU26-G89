@@ -1,307 +1,173 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { Container, Card, Row, Col, Form, Button, Alert, NavDropdown, Spinner, Stack } from "react-bootstrap";
+import { IconWorld, IconUserPlus, IconShieldCheck, IconBuilding, IconMail, IconUserCheck, IconInfoCircle } from "@tabler/icons-react";
 
-const initialUser = {
-    fullName: "",
-    email: "",
-    initialPassword: "",
-    confirmPassword: "",
-    department: "",
-    role: "",
-    position: "",
-    phoneNumber: "",
-    employeeId: "",
-    startDate: "",
-    status: "Active",
-    sendWelcomeEmail: true,
-};
-
-const fields = [
-    ["Full Name", "fullName", "input", "Enter full name", true],
-    ["Email Address", "email", "email", "Enter email address", true],
-    ["Initial Password", "initialPassword", "password", "Enter initial password", true],
-    ["Confirm Password", "confirmPassword", "password", "Confirm initial password", true],
-    ["Department", "department", "select", "Select department", true, ["Legal", "HR", "Finance", "Sales"]],
-    ["Role", "role", "select", "Select role", true, ["Contract Manager", "HR Admin", "Approver", "Viewer"]],
-    ["Position", "position", "input", "Enter position", false],
-    ["Phone Number", "phoneNumber", "phone", "Enter phone number", false],
-    ["Employee ID", "employeeId", "input", "Enter employee ID", false],
-    ["Start Date", "startDate", "date", "Select start date", true],
-    ["Status", "status", "select", "Active", true, ["Active", "Inactive"]],
-];
-
-const onboardingItems = [
-    ["Role Permissions", "User permissions will be assigned based on the selected role.", "shield", "#eef3ff"],
-    ["Department Access", "Access will be limited to data and modules within the selected department.", "building", "#f0edff"],
-    ["Email Notification", "A welcome email will be sent with login details and getting started guide.", "mail", "#eafaf0"],
-    ["Account Activation", "User account will be activated based on the selected status.", "userCheck", "#fff3e6"],
-];
-
-function Icon({ name, size = 22, color = "#1f4fff" }) {
-    const props = {
-        width: size,
-        height: size,
-        viewBox: "0 0 24 24",
-        fill: "none",
-        stroke: color,
-        strokeWidth: 2,
-        strokeLinecap: "round",
-        strokeLinejoin: "round",
-        "aria-hidden": true,
-    };
-    const paths = {
-        plusUser: (
-            <>
-                <circle cx="9" cy="8" r="4" />
-                <path d="M2 21c1.4-4 3.7-6 7-6 2 0 3.7.7 5 2" />
-                <path d="M19 8v6" />
-                <path d="M16 11h6" />
-            </>
-        ),
-        eye: (
-            <>
-                <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12z" />
-                <circle cx="12" cy="12" r="3" />
-            </>
-        ),
-        calendar: (
-            <>
-                <path d="M5 4h14v16H5z" />
-                <path d="M8 2v4" />
-                <path d="M16 2v4" />
-                <path d="M5 9h14" />
-            </>
-        ),
-        shield: (
-            <>
-                <path d="M12 3 19 6v5c0 5-3.5 8.5-7 10-3.5-1.5-7-5-7-10V6z" />
-            </>
-        ),
-        building: (
-            <>
-                <path d="M4 21h16" />
-                <path d="M6 21V5h7v16" />
-                <path d="M13 9h5v12" />
-                <path d="M9 9h1" />
-                <path d="M16 13h1" />
-            </>
-        ),
-        mail: (
-            <>
-                <path d="M4 6h16v12H4z" />
-                <path d="m4 7 8 6 8-6" />
-            </>
-        ),
-        userCheck: (
-            <>
-                <circle cx="9" cy="8" r="4" />
-                <path d="M2 21c1.4-4 3.7-6 7-6 1.2 0 2.3.3 3.3.8" />
-                <path d="m16 17 2 2 4-5" />
-            </>
-        ),
-        info: (
-            <>
-                <circle cx="12" cy="12" r="9" />
-                <path d="M12 11v5" />
-                <path d="M12 8h.01" />
-            </>
-        ),
-        chevron: <path d="m8 10 4 4 4-4" />,
-    };
-
-    return <svg {...props}>{paths[name]}</svg>;
-}
-
-function CreateUser({ onCreateUser }) {
+function CreateUser() {
     const navigate = useNavigate();
-    const [user, setUser] = useState(initialUser);
+    const [user, setUser] = useState({
+        fullName: "", email: "", initialPassword: "", confirmPassword: "",
+        department: "", role: "", position: "", phoneNumber: "",
+        employeeId: "", startDate: "", status: "Active", sendWelcomeEmail: true
+    });
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const handleChange = (event) => {
-        const { name, value, checked, type } = event.target;
-        setUser((currentUser) => ({
-            ...currentUser,
-            [name]: type === "checkbox" ? checked : value,
-        }));
+    const handleChange = (e) => {
+        const { name, value, checked, type } = e.target;
+        setUser(prev => ({ ...prev, [name]: type === "checkbox" ? checked : value }));
     };
 
-    const handleSubmit = (event) => {
-        event.preventDefault();
-        onCreateUser?.(user);
-    };
-
-    const renderField = ([label, name, type, placeholder, required, options]) => {
-        return (
-            <div key={name} style={styles.formGroup}>
-                <label htmlFor={name} style={styles.label}>
-                    {label}
-                    {required && <span style={styles.required}> *</span>}
-                </label>
-                <div style={styles.inputWrap}>
-                    {type === "select" ? (
-                        <>
-                            <select
-                                id={name}
-                                name={name}
-                                value={user[name]}
-                                onChange={handleChange}
-                                required={required}
-                                style={styles.input}
-                            >
-                                <option value="">{placeholder}</option>
-                                {options.map((option) => (
-                                    <option key={option} value={option}>
-                                        {option}
-                                    </option>
-                                ))}
-                            </select>
-                            <span style={styles.rightIcon}>
-                                <Icon name="chevron" size={18} color="#243452" />
-                            </span>
-                        </>
-                    ) : type === "phone" ? (
-                        <div style={styles.phoneInput}>
-                            <span style={styles.country}>🇺🇸</span>
-                            <span style={styles.phoneCode}>+1</span>
-                            <input
-                                id={name}
-                                name={name}
-                                value={user[name]}
-                                onChange={handleChange}
-                                placeholder={placeholder}
-                                style={styles.phoneField}
-                            />
-                        </div>
-                    ) : (
-                        <>
-                            <input
-                                id={name}
-                                name={name}
-                                type={type === "date" ? "text" : type}
-                                value={user[name]}
-                                onChange={handleChange}
-                                placeholder={placeholder}
-                                required={required}
-                                style={styles.input}
-                            />
-                            {type === "password" && (
-                                <span style={styles.rightIcon}>
-                                    <Icon name="eye" size={18} color="#53617e" />
-                                </span>
-                            )}
-                            {type === "date" && (
-                                <span style={styles.rightIcon}>
-                                    <Icon name="calendar" size={18} color="#53617e" />
-                                </span>
-                            )}
-                        </>
-                    )}
-                </div>
-            </div>
-        );
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        if (user.initialPassword !== user.confirmPassword) {
+            alert("Mật khẩu xác nhận không khớp!");
+            return;
+        }
+        setIsSubmitting(true);
+        await new Promise(resolve => setTimeout(resolve, 1500)); // Giả lập gửi API
+        setIsSubmitting(false);
+        alert("Tạo tài khoản thành công!");
+        navigate("/user-management/list");
     };
 
     return (
-        <main style={styles.page}>
-            <form style={styles.panel} onSubmit={handleSubmit}>
-                <div style={styles.header}>
-                    <div>
-                        <h1 style={styles.pageTitle}>Create User</h1>
-                        <p style={styles.pageDescription}>
-                            Add a new employee account and assign access permissions.
-                        </p>
-                    </div>
-                    <div style={styles.actions}>
-                        <button type="button" style={styles.cancelButton} onClick={() => navigate("/user-management/list")}>
-                            Cancel
-                        </button>
-                        <button type="submit" style={styles.primaryButton}>
-                            <Icon name="plusUser" size={21} color="#ffffff" />
-                            Create User
-                        </button>
+        <div className="bg-light min-vh-screen">
+            {/* Header */}
+            <header className="d-flex justify-content-between align-items-center px-4 py-3 bg-white border-bottom mb-4">
+                <div className="d-flex align-items-center gap-2">
+                    <span className="fs-4">🛡️</span>
+                    <div className="d-flex flex-column lh-sm">
+                        <strong className="text-dark">E-CONTRACT</strong>
+                        <small className="text-muted" style={{ fontSize: "12px" }}>Management System</small>
                     </div>
                 </div>
+                <NavDropdown title={<span className="text-dark fw-semibold"><IconWorld size={20} className="me-1"/>English</span>} id="lang-dropdown">
+                    <NavDropdown.Item>English</NavDropdown.Item>
+                    <NavDropdown.Item>Vietnamese</NavDropdown.Item>
+                </NavDropdown>
+            </header>
 
-                <section style={styles.card}>
-                    <h2 style={styles.cardTitle}>User Information</h2>
-                    <div style={styles.formGrid}>{fields.map(renderField)}</div>
-                    <label style={styles.toggleRow}>
-                        <input
-                            type="checkbox"
-                            name="sendWelcomeEmail"
-                            checked={user.sendWelcomeEmail}
-                            onChange={handleChange}
-                            style={styles.checkbox}
-                        />
-                        <span style={styles.toggleTrack}>
-                            <span style={styles.toggleThumb} />
-                        </span>
-                        <span>
-                            <strong>Send welcome email</strong>
-                            <small style={styles.toggleHelp}>
-                                Send an email invitation with login details to the new user
-                            </small>
-                        </span>
-                    </label>
-                </section>
+            <Container fluid="lg" className="mb-5">
+                <Form onSubmit={handleSubmit} className="border shadow-sm rounded-4 overflow-hidden bg-white">
+                    <div className="d-flex justify-content-between align-items-center border-bottom p-4 bg-white">
+                        <div>
+                            <h1 className="h3 fw-bold mb-1">Create User</h1>
+                            <p className="text-muted mb-0">Add a new employee account and assign access permissions.</p>
+                        </div>
+                        <div className="d-flex gap-2">
+                            <Button variant="outline-secondary" className="fw-bold px-3" onClick={() => navigate("/user-management/list")} disabled={isSubmitting}>Cancel</Button>
+                            <Button type="submit" variant="primary" className="fw-bold px-4 d-flex align-items-center gap-2" disabled={isSubmitting}>
+                                {isSubmitting ? <Spinner animation="border" size="sm" /> : <IconUserPlus size={19} />}
+                                {isSubmitting ? "Creating..." : "Create User"}
+                            </Button>
+                        </div>
+                    </div>
 
-                <section style={styles.card}>
-                    <h2 style={styles.cardTitle}>Access & Onboarding</h2>
-                    <div style={styles.previewGrid}>
-                        {onboardingItems.map(([title, description, icon, color]) => (
-                            <div key={title} style={styles.previewTile}>
-                                <span style={{ ...styles.previewIcon, background: color }}>
-                                    <Icon name={icon} size={27} color={icon === "mail" ? "#16a34a" : icon === "userCheck" ? "#f97316" : "#1f4fff"} />
-                                </span>
-                                <div>
-                                    <h3 style={styles.previewTitle}>{title}</h3>
-                                    <p style={styles.previewText}>{description}</p>
+                    {/* Section 1: User Info */}
+                    <Card className="m-4 border rounded-3 p-4">
+                        <h2 className="h5 fw-bold mb-4 text-dark">User Information</h2>
+                        <Row className="g-4">
+                            <Col md={6}>
+                                <Form.Group>
+                                    <Form.Label className="small fw-bold">Full Name <span className="text-danger">*</span></Form.Label>
+                                    <Form.Control type="text" name="fullName" value={user.fullName} onChange={handleChange} required placeholder="Enter full name" disabled={isSubmitting} />
+                                </Form.Group>
+                            </Col>
+                            <Col md={6}>
+                                <Form.Group>
+                                    <Form.Label className="small fw-bold">Email Address <span className="text-danger">*</span></Form.Label>
+                                    <Form.Control type="email" name="email" value={user.email} onChange={handleChange} required placeholder="Enter email address" disabled={isSubmitting} />
+                                </Form.Group>
+                            </Col>
+                            <Col md={6}>
+                                <Form.Group>
+                                    <Form.Label className="small fw-bold">Initial Password <span className="text-danger">*</span></Form.Label>
+                                    <Form.Control type="password" name="initialPassword" value={user.initialPassword} onChange={handleChange} required placeholder="Enter initial password" disabled={isSubmitting} />
+                                </Form.Group>
+                            </Col>
+                            <Col md={6}>
+                                <Form.Group>
+                                    <Form.Label className="small fw-bold">Confirm Password <span className="text-danger">*</span></Form.Label>
+                                    <Form.Control type="password" name="confirmPassword" value={user.confirmPassword} onChange={handleChange} required placeholder="Confirm initial password" disabled={isSubmitting} />
+                                </Form.Group>
+                            </Col>
+                            <Col md={6}>
+                                <Form.Group>
+                                    <Form.Label className="small fw-bold">Department <span className="text-danger">*</span></Form.Label>
+                                    <Form.Select name="department" value={user.department} onChange={handleChange} required disabled={isSubmitting}>
+                                        <option value="">Select department</option>
+                                        <option value="Legal">Legal</option><option value="HR">HR</option><option value="Finance">Finance</option><option value="Sales">Sales</option>
+                                    </Form.Select>
+                                </Form.Group>
+                            </Col>
+                            <Col md={6}>
+                                <Form.Group>
+                                    <Form.Label className="small fw-bold">Role <span className="text-danger">*</span></Form.Label>
+                                    <Form.Select name="role" value={user.role} onChange={handleChange} required disabled={isSubmitting}>
+                                        <option value="">Select role</option>
+                                        <option value="Contract Manager">Contract Manager</option><option value="HR Admin">HR Admin</option><option value="Approver">Approver</option><option value="Viewer">Viewer</option>
+                                    </Form.Select>
+                                </Form.Group>
+                            </Col>
+                            <Col md={6}>
+                                <Form.Group><Form.Label className="small fw-bold">Position</Form.Label><Form.Control type="text" name="position" value={user.position} onChange={handleChange} placeholder="Enter position" disabled={isSubmitting} /></Form.Group>
+                            </Col>
+                            <Col md={6}>
+                                <Form.Group><Form.Label className="small fw-bold">Phone Number</Form.Label><Form.Control type="text" name="phoneNumber" value={user.phoneNumber} onChange={handleChange} placeholder="Enter phone number" disabled={isSubmitting} /></Form.Group>
+                            </Col>
+                            <Col md={6}>
+                                <Form.Group><Form.Label className="small fw-bold">Employee ID</Form.Label><Form.Control type="text" name="employeeId" value={user.employeeId} onChange={handleChange} placeholder="Enter employee ID" disabled={isSubmitting} /></Form.Group>
+                            </Col>
+                            <Col md={6}>
+                                <Form.Group><Form.Label className="small fw-bold">Start Date <span className="text-danger">*</span></Form.Label><Form.Control type="date" name="startDate" value={user.startDate} onChange={handleChange} required disabled={isSubmitting} /></Form.Group>
+                            </Col>
+                            <Col md={6}>
+                                <Form.Group>
+                                    <Form.Label className="small fw-bold">Status <span className="text-danger">*</span></Form.Label>
+                                    <Form.Select name="status" value={user.status} onChange={handleChange} required disabled={isSubmitting}>
+                                        <option value="Active">Active</option><option value="Inactive">Inactive</option>
+                                    </Form.Select>
+                                </Form.Group>
+                            </Col>
+                        </Row>
+                        <Form.Check type="switch" id="sendWelcomeEmail" name="sendWelcomeEmail" label={<div><strong>Send welcome email</strong><br/><small className="text-muted">Send an email invitation with login details to the new user</small></div>} checked={user.sendWelcomeEmail} onChange={handleChange} className="mt-4" disabled={isSubmitting} />
+                    </Card>
+
+                    {/* Section 2: Onboarding cards */}
+                    <Card className="mx-4 mb-4 border rounded-3 p-4">
+                        <h2 className="h5 fw-bold mb-4 text-dark">Access & Onboarding</h2>
+                        <Row className="g-3">
+                            <Col lg={3} md={6}>
+                                <div className="p-3 border rounded h-100 d-flex align-items-start gap-3 bg-light">
+                                    <div className="p-2 bg-primary bg-opacity-10 text-primary rounded-circle"><IconShieldCheck size={24} /></div>
+                                    <div><h3 className="h6 fw-bold mb-1">Role Permissions</h3><p className="small text-muted mb-0">User permissions assigned based on role.</p></div>
                                 </div>
-                            </div>
-                        ))}
-                    </div>
-                    <div style={styles.infoAlert}>
-                        <Icon name="info" size={20} />
-                        Please review the information above before creating the account. You can edit details after the account is created.
-                    </div>
-                </section>
-            </form>
-        </main>
+                            </Col>
+                            <Col lg={3} md={6}>
+                                <div className="p-3 border rounded h-100 d-flex align-items-start gap-3 bg-light">
+                                    <div className="p-2 bg-info bg-opacity-10 text-info rounded-circle"><IconBuilding size={24} /></div>
+                                    <div><h3 className="h6 fw-bold mb-1">Department Access</h3><p className="small text-muted mb-0">Access limited to modules within department.</p></div>
+                                </div>
+                            </Col>
+                            <Col lg={3} md={6}>
+                                <div className="p-3 border rounded h-100 d-flex align-items-start gap-3 bg-light">
+                                    <div className="p-2 bg-success bg-opacity-10 text-success rounded-circle"><IconMail size={24} /></div>
+                                    <div><h3 className="h6 fw-bold mb-1">Email Notification</h3><p className="small text-muted mb-0">Welcome email sent with login guide.</p></div>
+                                </div>
+                            </Col>
+                            <Col lg={3} md={6}>
+                                <div className="p-3 border rounded h-100 d-flex align-items-start gap-3 bg-light">
+                                    <div className="p-2 bg-warning bg-opacity-10 text-warning rounded-circle"><IconUserCheck size={24} /></div>
+                                    <div><h3 className="h6 fw-bold mb-1">Account Activation</h3><p className="small text-muted mb-0">Account activated based on status.</p></div>
+                                </div>
+                            </Col>
+                        </Row>
+                        <Alert variant="info" className="mt-4 mb-0 d-flex align-items-center gap-2"><IconInfoCircle size={20}/>Please review information carefully before creating the account.</Alert>
+                    </Card>
+                </Form>
+            </Container>
+        </div>
     );
 }
-
-const styles = {
-    page: { minHeight: "100vh", background: "#f6f8fc", padding: "22px 32px", color: "#111827", fontFamily: "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" },
-    panel: { maxWidth: 1150, margin: "0 auto", background: "#ffffff", border: "1px solid #dce4f0", borderRadius: 16, boxShadow: "0 8px 24px rgba(31,41,55,.06)", overflow: "hidden" },
-    header: { minHeight: 98, borderBottom: "1px solid #e6ebf3", padding: "24px 34px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 24 },
-    pageTitle: { margin: 0, fontSize: 29, fontWeight: 800, letterSpacing: 0 },
-    pageDescription: { margin: "6px 0 0", color: "#51607f", fontSize: 16 },
-    actions: { display: "flex", gap: 12 },
-    cancelButton: { height: 43, minWidth: 84, borderRadius: 7, border: "1px solid #d7dfeb", background: "#fff", color: "#111827", fontSize: 15, cursor: "pointer" },
-    primaryButton: { height: 43, minWidth: 162, border: 0, borderRadius: 7, background: "#2450f5", color: "#fff", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 9, fontSize: 15, fontWeight: 700, cursor: "pointer" },
-    card: { margin: "22px 32px", border: "1px solid #d9e2ef", borderRadius: 9, padding: "20px", background: "#fff" },
-    cardTitle: { margin: "0 0 18px", fontSize: 18, fontWeight: 800 },
-    formGrid: { display: "grid", gridTemplateColumns: "1fr 1fr", columnGap: 42, rowGap: 17 },
-    formGroup: { minWidth: 0 },
-    label: { display: "block", marginBottom: 6, color: "#172342", fontSize: 14, fontWeight: 600 },
-    required: { color: "#dc2626" },
-    inputWrap: { position: "relative" },
-    input: { width: "100%", height: 38, border: "1px solid #d5deeb", borderRadius: 6, padding: "0 13px", color: "#111827", fontSize: 14, outline: "none", appearance: "none", background: "#fff" },
-    rightIcon: { position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", display: "flex" },
-    phoneInput: { height: 38, border: "1px solid #d5deeb", borderRadius: 6, display: "grid", gridTemplateColumns: "48px 50px 1fr", overflow: "hidden" },
-    country: { display: "flex", alignItems: "center", justifyContent: "center", borderRight: "1px solid #e3e9f2" },
-    phoneCode: { display: "flex", alignItems: "center", justifyContent: "center", borderRight: "1px solid #e3e9f2", color: "#243452" },
-    phoneField: { border: 0, outline: "none", padding: "0 12px", fontSize: 14 },
-    toggleRow: { marginTop: 18, display: "flex", alignItems: "center", gap: 12, color: "#111827", fontSize: 14 },
-    checkbox: { display: "none" },
-    toggleTrack: { width: 38, height: 21, background: "#2450f5", borderRadius: 20, padding: 2, display: "inline-flex", justifyContent: "flex-end" },
-    toggleThumb: { width: 17, height: 17, background: "#fff", borderRadius: "50%" },
-    toggleHelp: { display: "block", marginTop: 6, color: "#65728f", fontSize: 13 },
-    previewGrid: { display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 18 },
-    previewTile: { border: "1px solid #d9e2ef", borderRadius: 8, padding: "16px", minHeight: 112, display: "flex", alignItems: "center", gap: 16 },
-    previewIcon: { width: 52, height: 52, borderRadius: "50%", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 },
-    previewTitle: { margin: "0 0 5px", fontSize: 15, fontWeight: 800 },
-    previewText: { margin: 0, color: "#52617f", fontSize: 13, lineHeight: 1.45 },
-    infoAlert: { marginTop: 18, minHeight: 43, borderRadius: 7, border: "1px solid #b9ceff", background: "#edf4ff", color: "#2450f5", display: "flex", alignItems: "center", gap: 12, padding: "0 16px", fontSize: 14 },
-};
 
 export default CreateUser;
