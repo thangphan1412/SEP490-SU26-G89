@@ -10,7 +10,6 @@ import {
     contractStatuses,
     contractTypes,
     getContractById,
-    styles,
 } from "./ContractComponents.jsx";
 
 function UpdateContract() {

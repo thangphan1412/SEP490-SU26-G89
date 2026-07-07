@@ -6,7 +6,6 @@ import {
     PagePanel,
     PrimaryButton,
     getContractById,
-    styles,
 } from "./ContractComponents.jsx";
 
 function ViewContract() {

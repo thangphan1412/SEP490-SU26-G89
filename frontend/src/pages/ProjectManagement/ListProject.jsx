@@ -1,124 +1,366 @@
-import { useNavigate } from "react-router-dom";
-import { Icon, PagePanel, PrimaryButton, StatusBadge, projects, styles } from "./ProjectComponents.jsx";
+import { useEffect, useState } from "react";
+import { listProjects } from "../../config/axiosConfig.js";
+import { Icon, PagePanel, StatusBadge } from "./ProjectComponents.jsx";
+import "./ListProject.css";
+
+
+const sortableColumns = [
+    ["Project", "projectName"],
+    ["Code", "projectCode"],
+    ["Status", "projectStatus"],
+    ["Start Date", "projectStartDate"],
+    ["End Date", "projectEndDate"],
+    ["Created By", "projectCreatedBy"],
+    ["Created At", "projectCreatedAt"],
+];
+
+function createPageNumbers(currentPage, totalPages) {
+    if (totalPages <= 5) {
+        return Array.from({ length: totalPages }, (_, index) => index);
+    }
+
+    const candidates = new Set([
+        0,
+        totalPages - 1,
+        currentPage - 1,
+        currentPage,
+        currentPage + 1,
+    ]);
+
+    const visiblePages = [...candidates]
+        .filter((pageNumber) => pageNumber >= 0 && pageNumber < totalPages)
+        .sort((first, second) => first - second);
+
+    const pages = [];
+
+    visiblePages.forEach((pageNumber, index) => {
+        if (index > 0 && pageNumber - visiblePages[index - 1] > 1) {
+            pages.push(`ellipsis-${pageNumber}`);
+        }
+
+        pages.push(pageNumber);
+    });
+
+    return pages;
+}
 
 function ListProject() {
-    const navigate = useNavigate();
+    const [projects, setProjects] = useState([]);
+    const [searchInput, setSearchInput] = useState("");
+    const [search, setSearch] = useState("");
+    const [status, setStatus] = useState("");
+    const [availableStatuses, setAvailableStatuses] = useState([]);
+    const [page, setPage] = useState(0);
+    const [totalElements, setTotalElements] = useState(0);
+    const [totalPages, setTotalPages] = useState(0);
+    const [sortBy, setSortBy] = useState("id");
+    const [sortDirection, setSortDirection] = useState("desc");
+
+    useEffect(() => {
+        const debounceId = window.setTimeout(() => {
+            setSearch(searchInput.trim());
+            setPage(0);
+        }, 1000);
+
+        return () => window.clearTimeout(debounceId);
+    }, [searchInput]);
+
+    useEffect(() => {
+        const loadProjects = async () => {
+            const requestParams = {
+                search: search,
+                status: status,
+                page: page,
+                sortBy: sortBy,
+                sortDirection: sortDirection,
+            };
+
+            try {
+                const response = await listProjects(requestParams);
+
+                const payload = response.data?.data ?? response.data;
+
+                const projectList = Array.isArray(payload?.items)
+                    ? payload.items
+                    : [];
+
+                const statusList = Array.isArray(payload?.availableStatuses)
+                    ? payload.availableStatuses
+                    : [];
+
+                const totalProjectCount = Number(payload?.totalElements) || 0;
+                const totalPageCount = Number(payload?.totalPages) || 0;
+
+                setProjects(projectList);
+                setAvailableStatuses(statusList);
+                setTotalElements(totalProjectCount);
+                setTotalPages(totalPageCount);
+
+                if (totalPageCount > 0 && page >= totalPageCount) {
+                    setPage(totalPageCount - 1);
+                }
+            } catch (error) {
+                console.error("Unable to load projects:", error);
+
+                setProjects([]);
+                setAvailableStatuses([]);
+                setTotalElements(0);
+                setTotalPages(0);
+            }
+        };
+
+        loadProjects();
+    }, [page, search, status, sortBy, sortDirection]);
+
+    const pageNumbers = createPageNumbers(page, totalPages);
+
+    const handleSort = (field) => {
+        setPage(0);
+
+        if (sortBy === field) {
+            setSortDirection((currentDirection) =>
+                currentDirection === "asc" ? "desc" : "asc"
+            );
+            return;
+        }
+
+        setSortBy(field);
+        setSortDirection("asc");
+    };
+
+    const handleStatusChange = (event) => {
+        setStatus(event.target.value);
+        setPage(0);
+    };
+
+    const clearFilters = () => {
+        setSearchInput("");
+        setSearch("");
+        setStatus("");
+        setPage(0);
+    };
 
     return (
         <PagePanel
             title="Projects"
-            description="Manage projects, events, timelines, ownership, and related contract documents."
-            action={
-                <PrimaryButton onClick={() => navigate("/project-management/create")}>
-                    <Icon name="plus" size={20} color="#ffffff" />
-                    New Project
-                </PrimaryButton>
-            }
+            description="View and find projects, timelines, ownership, and current status."
         >
-            <div style={localStyles.toolbar}>
-                <label style={localStyles.searchBox}>
-                    <Icon name="search" size={23} color="#3f4d6f" />
-                    <input aria-label="Search projects" placeholder="Search projects..." style={localStyles.searchInput} />
+            <div className="list-project-toolbar">
+                // Search box and status filter
+                <label className="list-project-search-box">
+                    <Icon name="search" size={22} color="#3f4d6f" />
+
+                    <input
+                        aria-label="Search projects"
+                        placeholder="Search by code, name, description, or creator..."
+                        className="list-project-search-input"
+                        value={searchInput}
+                        onChange={(event) => setSearchInput(event.target.value)}
+                    />
+
+                    {searchInput && (
+                        <button
+                            type="button"
+                            aria-label="Clear search"
+                            className="list-project-clear-search"
+                            onClick={() => setSearchInput("")}
+                        >
+                            ×
+                        </button>
+                    )}
                 </label>
-                {["Department", "Status"].map((label) => (
-                    <label key={label} style={localStyles.selectBox}>
-                        <span style={localStyles.selectLabel}>{label}</span>
-                        <select style={localStyles.select}>
-                            <option>All</option>
-                        </select>
-                        <span style={localStyles.selectIcon}>
-                            <Icon name="chevron" size={18} color="#243452" />
-                        </span>
-                    </label>
-                ))}
-                <button type="button" style={localStyles.filterButton}>
-                    <Icon name="filter" size={20} color="#243452" />
-                    Filters
-                </button>
-                <button type="button" style={localStyles.iconButton}>
-                    <Icon name="refresh" size={22} color="#243452" />
-                </button>
+
+                // Status filter dropdown
+                <label className="list-project-select-box">
+                    <span className="list-project-select-label">Status</span>
+
+                    <select
+                        className="list-project-select"
+                        value={status}
+                        onChange={handleStatusChange}
+                    >
+                        <option value="">All statuses</option>
+
+                        {availableStatuses.map((availableStatus) => (
+                            <option key={availableStatus} value={availableStatus}>
+                                {availableStatus}
+                            </option>
+                        ))}
+                    </select>
+
+                    <span className="list-project-select-icon">
+                        <Icon name="chevron" size={18} color="#243452" />
+                    </span>
+                </label>
+
+                {(searchInput || status) && (
+                    <button
+                        type="button"
+                        className="list-project-filter-button"
+                        onClick={clearFilters}
+                    >
+                        Clear filters
+                    </button>
+                )}
             </div>
 
-            <div style={localStyles.tableWrap}>
-                <table style={localStyles.table}>
+            //Table of projects
+            <div className="list-project-table-wrap">
+                <table className="list-project-table">
                     <thead>
                         <tr>
-                            {["Project Name", "Department", "Owner", "Status", "Start Date", "End Date", "Budget", "Actions"].map((header) => (
-                                <th key={header} style={localStyles.th}>
-                                    <span style={localStyles.thContent}>
-                                        {header}
-                                        {header !== "Actions" && <Icon name="sort" size={13} color="#243452" />}
-                                    </span>
+                            {sortableColumns.map(([label, field]) => (
+                                <th key={field} className="list-project-th">
+                                    <button
+                                        type="button"
+                                        className={`list-project-sort-button ${sortBy === field
+                                                ? "list-project-sort-button--active"
+                                                : ""
+                                            }`}
+                                        onClick={() => handleSort(field)}
+                                        aria-label={`Sort by ${label}`}
+                                    >
+                                        {label}
+
+                                        <Icon
+                                            name="sort"
+                                            size={13}
+                                            color={sortBy === field ? "#1f4fff" : "#62708c"}
+                                        />
+                                    </button>
                                 </th>
                             ))}
                         </tr>
                     </thead>
+
                     <tbody>
-                        {projects.map(([icon, name, department, owner, status, startDate, endDate, budget]) => (
-                            <tr key={name} style={localStyles.tr}>
-                                <td style={localStyles.projectCell}>
-                                    <span style={localStyles.avatar}>
-                                        <Icon name={icon} size={21} />
+                        {projects.length === 0 ? (
+                            <tr>
+                                <td
+                                    colSpan={sortableColumns.length}
+                                    className="list-project-state-cell"
+                                >
+                                    <span className="list-project-empty-icon">
+                                        <Icon name="document" size={28} color="#5b6b8a" />
                                     </span>
-                                    <span style={localStyles.projectName}>{name}</span>
-                                </td>
-                                <td style={localStyles.td}>{department}</td>
-                                <td style={localStyles.td}>{owner}</td>
-                                <td style={localStyles.td}><StatusBadge status={status} /></td>
-                                <td style={localStyles.td}>{startDate}</td>
-                                <td style={localStyles.td}>{endDate}</td>
-                                <td style={localStyles.td}>{budget}</td>
-                                <td style={localStyles.actionCell}>
-                                    <button type="button" style={localStyles.actionButton} onClick={() => navigate("/project-management/view")}>
-                                        <Icon name="dots" size={20} color="#111827" />
-                                    </button>
+
+                                    <strong className="list-project-state-title">
+                                        No projects found
+                                    </strong>
+
+                                    <span>
+                                        Try changing the search term or status filter.
+                                    </span>
                                 </td>
                             </tr>
-                        ))}
+                        ) : (
+                            projects.map((project) => (
+                                <tr key={project.id} className="list-project-row">
+                                    <td className="list-project-project-cell">
+                                        <span className="project-icon-circle list-project-avatar">
+                                            <Icon name="document" size={20} />
+                                        </span>
+
+                                        <span className="list-project-project-text">
+                                            <strong className="list-project-name">
+                                                {project.projectName || "Untitled project"}
+                                            </strong>
+
+                                            <span
+                                                title={project.projectDescription || ""}
+                                                className="list-project-description"
+                                            >
+                                                {project.projectDescription || "No description"}
+                                            </span>
+                                        </span>
+                                    </td>
+
+                                    <td className="list-project-td">
+                                        <span className="list-project-code-badge">
+                                            {project.projectCode || "—"}
+                                        </span>
+                                    </td>
+
+                                    <td className="list-project-td">
+                                        <StatusBadge status={project.projectStatus} />
+                                    </td>
+
+                                    <td className="list-project-td">
+                                        {project.projectStartDate}
+                                    </td>
+
+                                    <td className="list-project-td">
+                                        {project.projectEndDate}
+                                    </td>
+
+                                    <td className="list-project-td">
+                                        {project.projectCreatedBy || "—"}
+                                    </td>
+
+                                    <td className="list-project-td">
+                                        {project.projectCreatedAt}
+                                    </td>
+                                </tr>
+                            ))
+                        )}
                     </tbody>
                 </table>
             </div>
 
-            <div style={localStyles.footer}>
-                <span>Showing 1 to 7 of 7 results</span>
-                <div style={localStyles.pagination}>
-                    <button type="button" style={localStyles.pageButton}><Icon name="arrowLeft" size={18} color="#243452" /></button>
-                    <button type="button" style={localStyles.currentPage}>1</button>
-                    <button type="button" style={localStyles.pageButton}><Icon name="arrowRight" size={18} color="#243452" /></button>
-                    <select style={localStyles.perPage}><option>10 / page</option></select>
+            <div className="list-project-footer">
+                <span>Total: {totalElements} results</span>
+
+                // Pagination controls
+                <div className="list-project-pagination">
+                    <button
+                        type="button"
+                        aria-label="Previous page"
+                        className="list-project-page-button"
+                        onClick={() =>
+                            setPage((currentPage) => Math.max(0, currentPage - 1))
+                        }
+                        disabled={page === 0}
+                    >
+                        <Icon name="arrowLeft" size={18} color="#243452" />
+                    </button>
+
+                    {pageNumbers.map((pageNumber) =>
+                        typeof pageNumber === "number" ? (
+                            <button
+                                key={pageNumber}
+                                type="button"
+                                className={`list-project-page-button ${pageNumber === page
+                                        ? "list-project-page-button--current"
+                                        : ""
+                                    }`}
+                                onClick={() => setPage(pageNumber)}
+                            >
+                                {pageNumber + 1}
+                            </button>
+                        ) : (
+                            <span key={pageNumber} className="list-project-ellipsis">
+                                …
+                            </span>
+                        )
+                    )}
+
+                    <button
+                        type="button"
+                        aria-label="Next page"
+                        className="list-project-page-button"
+                        onClick={() =>
+                            setPage((currentPage) =>
+                                Math.min(totalPages - 1, currentPage + 1)
+                            )
+                        }
+                        disabled={totalPages === 0 || page >= totalPages - 1}
+                    >
+                        <Icon name="arrowRight" size={18} color="#243452" />
+                    </button>
                 </div>
             </div>
         </PagePanel>
     );
 }
-
-const localStyles = {
-    toolbar: { display: "grid", gridTemplateColumns: "minmax(360px, 1fr) 166px 148px 126px 54px", gap: 18, alignItems: "center", padding: "26px 32px" },
-    searchBox: { height: 55, border: "1px solid #d7dfeb", borderRadius: 7, display: "flex", alignItems: "center", gap: 14, padding: "0 16px" },
-    searchInput: { border: 0, outline: "none", flex: 1, color: "#243452", fontSize: 16 },
-    selectBox: { height: 58, border: "1px solid #d7dfeb", borderRadius: 7, padding: "8px 14px", position: "relative" },
-    selectLabel: { display: "block", color: "#52617f", fontSize: 12, marginBottom: 2 },
-    select: { width: "100%", border: 0, outline: "none", appearance: "none", background: "transparent", color: "#111827", fontSize: 15 },
-    selectIcon: { position: "absolute", right: 12, bottom: 15, pointerEvents: "none" },
-    filterButton: { height: 55, borderRadius: 7, border: "1px solid #d7dfeb", background: "#fff", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 10, color: "#243452", fontSize: 16, cursor: "pointer" },
-    iconButton: { width: 54, height: 55, borderRadius: 7, border: "1px solid #d7dfeb", background: "#fff", cursor: "pointer" },
-    tableWrap: { margin: "0 28px", border: "1px solid #dfe6f1", borderRadius: 8, overflow: "hidden" },
-    table: { width: "100%", borderCollapse: "collapse" },
-    th: { height: 72, background: "#fbfcff", borderBottom: "1px solid #e4eaf3", color: "#243452", fontSize: 14, fontWeight: 700, textAlign: "left", padding: "0 18px" },
-    thContent: { display: "inline-flex", alignItems: "center", gap: 6 },
-    tr: { borderBottom: "1px solid #e8edf4", height: 81 },
-    projectCell: { padding: "0 20px", display: "flex", alignItems: "center", gap: 16, fontWeight: 700, color: "#111827", whiteSpace: "nowrap" },
-    avatar: { ...styles.iconCircle, width: 39, height: 39 },
-    projectName: { whiteSpace: "nowrap" },
-    td: { padding: "0 18px", color: "#334260", fontSize: 14, whiteSpace: "nowrap" },
-    actionCell: { textAlign: "center" },
-    actionButton: { width: 38, height: 42, borderRadius: 7, border: "1px solid #d7dfeb", background: "#fff", cursor: "pointer", color: "#111827" },
-    footer: { height: 86, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 42px", color: "#52617f", fontSize: 14 },
-    pagination: { display: "flex", alignItems: "center", gap: 10 },
-    pageButton: { width: 38, height: 38, borderRadius: 7, border: "1px solid #d7dfeb", background: "#fff", cursor: "pointer" },
-    currentPage: { width: 38, height: 38, borderRadius: 7, border: "1px solid #1f4fff", background: "#fff", color: "#1f4fff", fontWeight: 800 },
-    perPage: { height: 38, borderRadius: 7, border: "1px solid #d7dfeb", background: "#fff", padding: "0 12px", color: "#111827" },
-};
 
 export default ListProject;
