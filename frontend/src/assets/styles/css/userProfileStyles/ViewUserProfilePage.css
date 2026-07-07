@@ -1,0 +1,340 @@
+.view-user-profile-page {
+    min-height: 100vh;
+    background: #f6f8fc;
+    color: #111827;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+/* --- HEADER STYLES --- */
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 32px;
+    background: #ffffff;
+    border-bottom: 1px solid #dce4f0;
+    margin-bottom: 24px;
+}
+
+.logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.logo-icon {
+    font-size: 24px;
+}
+
+.logo-text {
+    display: flex;
+    flex-direction: column;
+    font-size: 16px;
+    line-height: 1.2;
+}
+
+.logo-sub-text {
+    font-size: 12px;
+    color: #51607f;
+}
+
+.lang-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    color: #111827;
+    font-weight: 500;
+}
+
+.language-text {
+    font-size: 14px;
+}
+
+/* --- MAIN PANEL --- */
+.view-panel {
+    max-width: 1150px;
+    margin: 0 auto;
+    background: #ffffff;
+    border: 1px solid #dce4f0;
+    border-radius: 16px;
+    box-shadow: 0 8px 24px rgba(31, 41, 55, 0.06);
+    overflow: hidden;
+    margin-bottom: 40px;
+}
+
+.panel-header {
+    min-height: 98px;
+    border-bottom: 1px solid #e6ebf3;
+    padding: 26px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+}
+
+.page-title {
+    margin: 0;
+    font-size: 29px;
+    font-weight: 800;
+    letter-spacing: 0;
+}
+
+.page-description {
+    margin: 4px 0 0;
+    color: #51607f;
+    font-size: 16px;
+}
+
+.btn-primary {
+    height: 43px;
+    min-width: 166px;
+    border: 0;
+    border-radius: 7px;
+    background: #2450f5;
+    color: #ffffff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+
+.btn-primary:hover {
+    opacity: 0.9;
+}
+
+/* --- CARDS --- */
+.info-card {
+    margin: 22px 32px;
+    border: 1px solid #d9e2ef;
+    border-radius: 9px;
+    overflow: hidden;
+    background: #ffffff;
+}
+
+.card-header {
+    min-height: 96px;
+    border-bottom: 1px solid #e6ebf3;
+    padding: 0 28px 0 38px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+}
+
+.card-title-group {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.round-icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    background: #eef3ff;
+    color: #2055ff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.card-title {
+    margin: 0;
+    font-size: 22px;
+    font-weight: 800;
+}
+
+.card-description {
+    margin: 2px 0 0;
+    color: #52617f;
+    font-size: 15px;
+}
+
+.status-badge {
+    min-width: 86px;
+    min-height: 35px;
+    border-radius: 7px;
+    border: 1px solid #a8e0bb;
+    background: #eefbf3;
+    color: #108139;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 12px;
+    font-size: 14px;
+    font-weight: 800;
+}
+
+/* --- PROFILE BODY (Avatar + Details) --- */
+.profile-body {
+    display: grid;
+    grid-template-columns: 245px 1fr;
+    gap: 38px;
+    padding: 16px 38px 28px;
+}
+
+.avatar-block {
+    border-right: 1px solid #e3e9f2;
+    min-height: 276px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding-right: 38px;
+}
+
+.avatar-wrap {
+    position: relative;
+    margin-bottom: 16px;
+}
+
+.avatar {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    background: #244ff5;
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 36px;
+    font-weight: 500;
+    box-shadow: 0 0 0 4px #edf2ff;
+}
+
+.avatar-badge {
+    position: absolute;
+    right: -6px;
+    bottom: 4px;
+    width: 25px;
+    height: 25px;
+    border-radius: 50%;
+    background: #ffffff;
+    border: 1px solid #cad4e4;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #53617e;
+}
+
+.avatar-name {
+    margin: 0;
+    font-size: 17px;
+    font-weight: 800;
+    text-align: center;
+}
+
+.avatar-role {
+    margin: 7px 0 0;
+    color: #53617e;
+    font-size: 13px;
+    text-align: center;
+}
+
+/* --- DETAILS GRID --- */
+.detail-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    column-gap: 50px;
+    row-gap: 24px;
+    align-content: center;
+    min-width: 0;
+}
+
+.detail-row {
+    display: grid;
+    grid-template-columns: 140px 18px minmax(180px, 1fr);
+    align-items: center;
+    font-size: 15px;
+    min-width: 0;
+}
+
+.detail-label {
+    color: #52617f;
+}
+
+.colon {
+    color: #52617f;
+    text-align: center;
+}
+
+.detail-value {
+    color: #111827;
+    white-space: nowrap;
+    font-weight: 500;
+}
+
+.success-text {
+    color: #13833b;
+    font-weight: 700;
+}
+
+/* --- SUMMARY GRID --- */
+.summary-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 18px;
+    padding: 18px 22px 32px;
+}
+
+.summary-item {
+    border: 1px solid #d9e2ef;
+    border-radius: 8px;
+    min-height: 92px;
+    padding: 16px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.summary-icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    background: #eef3ff;
+    color: #2055ff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.summary-label {
+    margin: 0;
+    color: #52617f;
+    font-size: 13px;
+}
+
+.summary-value {
+    margin: 4px 0;
+    font-size: 21px;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.summary-description {
+    margin: 0;
+    color: #6b7894;
+    font-size: 12px;
+}
+
+/* --- INFO ALERT --- */
+.info-alert {
+    margin: 8px 32px 28px;
+    min-height: 58px;
+    border-radius: 8px;
+    border: 1px solid #b9ceff;
+    background: #edf4ff;
+    color: #53617e;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 0 22px;
+    font-size: 15px;
+}
