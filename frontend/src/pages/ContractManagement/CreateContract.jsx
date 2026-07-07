@@ -9,6 +9,7 @@ import {
     contractParties,
     contractStatuses,
     contractTypes,
+    styles,
 } from "./ContractComponents.jsx";
 
 const initialContract = {
@@ -118,7 +119,7 @@ function SelectField({ label, name, value, onChange, placeholder, options }) {
 }
 
 const localStyles = {
-    formGrid: { display: "grid", gridTemplateColumns: "1fr 1fr", columnGap: 30, rowGap: 18 },
+    formGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", columnGap: 30, rowGap: 18 },
     inputWrap: { position: "relative" },
     leftIcon: { position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", display: "flex", zIndex: 1 },
     rightIcon: { position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", display: "flex", pointerEvents: "none" },
