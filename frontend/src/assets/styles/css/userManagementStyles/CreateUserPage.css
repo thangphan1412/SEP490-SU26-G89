@@ -1,0 +1,310 @@
+.create-user-page {
+    min-height: 100vh;
+    background: #f6f8fc;
+    color: #111827;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+/* Header Styles */
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 32px;
+    background: #ffffff;
+    border-bottom: 1px solid #dce4f0;
+    margin-bottom: 22px;
+}
+
+.page-header .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.page-header .logo-icon {
+    font-size: 24px;
+}
+
+.page-header .logo-text {
+    display: flex;
+    flex-direction: column;
+    font-size: 16px;
+    line-height: 1.2;
+}
+
+.page-header .logo-sub-text {
+    font-size: 12px;
+    color: #51607f;
+}
+
+.lang-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    color: #111827;
+    font-weight: 500;
+}
+
+.language-text {
+    font-size: 14px;
+}
+
+.nav-dropdown {
+    list-style: none;
+}
+
+/* Main Form Panel Styles */
+.form-panel {
+    max-width: 1150px;
+    margin: 0 auto;
+    background: #ffffff;
+    border: 1px solid #dce4f0;
+    border-radius: 16px;
+    box-shadow: 0 8px 24px rgba(31, 41, 55, 0.06);
+    overflow: hidden;
+}
+
+.panel-header {
+    min-height: 98px;
+    border-bottom: 1px solid #e6ebf3;
+    padding: 24px 34px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+}
+
+.page-title {
+    margin: 0;
+    font-size: 29px;
+    font-weight: 800;
+    letter-spacing: 0;
+}
+
+.page-description {
+    margin: 6px 0 0;
+    color: #51607f;
+    font-size: 16px;
+}
+
+.form-actions {
+    display: flex;
+    gap: 12px;
+}
+
+.btn-cancel {
+    height: 43px;
+    min-width: 84px;
+    border-radius: 7px;
+    border: 1px solid #d7dfeb;
+    background: #fff;
+    color: #111827;
+    font-size: 15px;
+    cursor: pointer;
+}
+
+.btn-primary {
+    height: 43px;
+    min-width: 162px;
+    border: 0;
+    border-radius: 7px;
+    background: #2450f5;
+    color: #fff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+/* Card & Grid Styles */
+.form-card {
+    margin: 22px 32px;
+    border: 1px solid #d9e2ef;
+    border-radius: 9px;
+    padding: 20px;
+    background: #fff;
+}
+
+.card-title {
+    margin: 0 0 18px;
+    font-size: 18px;
+    font-weight: 800;
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    column-gap: 42px;
+    row-gap: 17px;
+}
+
+.form-group {
+    min-width: 0;
+}
+
+.form-label {
+    display: block;
+    margin-bottom: 6px;
+    color: #172342;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.text-required {
+    color: #dc2626;
+}
+
+/* Inputs */
+.input-wrap {
+    position: relative;
+}
+
+.form-input {
+    width: 100%;
+    height: 38px;
+    border: 1px solid #d5deeb;
+    border-radius: 6px;
+    padding: 0 13px;
+    color: #111827;
+    font-size: 14px;
+    outline: none;
+    appearance: none;
+    background: #fff;
+}
+
+.right-icon {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+}
+
+/* Phone Input Special Styles */
+.phone-input {
+    height: 38px;
+    border: 1px solid #d5deeb;
+    border-radius: 6px;
+    display: grid;
+    grid-template-columns: 48px 50px 1fr;
+    overflow: hidden;
+}
+
+.phone-country {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-right: 1px solid #e3e9f2;
+}
+
+.phone-code {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-right: 1px solid #e3e9f2;
+    color: #243452;
+}
+
+.phone-field {
+    border: 0;
+    outline: none;
+    padding: 0 12px;
+    font-size: 14px;
+}
+
+/* Toggle (Checkbox) */
+.toggle-row {
+    margin-top: 18px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: #111827;
+    font-size: 14px;
+}
+
+.toggle-checkbox {
+    display: none;
+}
+
+.toggle-track {
+    width: 38px;
+    height: 21px;
+    background: #2450f5;
+    border-radius: 20px;
+    padding: 2px;
+    display: inline-flex;
+    justify-content: flex-end;
+}
+
+.toggle-thumb {
+    width: 17px;
+    height: 17px;
+    background: #fff;
+    border-radius: 50%;
+}
+
+.toggle-help {
+    display: block;
+    margin-top: 6px;
+    color: #65728f;
+    font-size: 13px;
+}
+
+/* Previews & Alerts */
+.preview-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 18px;
+}
+
+.preview-tile {
+    border: 1px solid #d9e2ef;
+    border-radius: 8px;
+    padding: 16px;
+    min-height: 112px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.preview-icon {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.preview-title {
+    margin: 0 0 5px;
+    font-size: 15px;
+    font-weight: 800;
+}
+
+.preview-text {
+    margin: 0;
+    color: #52617f;
+    font-size: 13px;
+    line-height: 1.45;
+}
+
+.info-alert {
+    margin-top: 18px;
+    min-height: 43px;
+    border-radius: 7px;
+    border: 1px solid #b9ceff;
+    background: #edf4ff;
+    color: #2450f5;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 0 16px;
+    font-size: 14px;
+}
