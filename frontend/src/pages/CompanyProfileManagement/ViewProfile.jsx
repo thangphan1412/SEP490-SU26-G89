@@ -70,18 +70,9 @@ function ViewProfile({ onEditProfile }) {
                         <small className="text-muted" style={{ fontSize: "12px" }}>Management System</small>
                     </div>
                 </div>
-
-                <NavDropdown
-                    title={
-                        <span className="text-dark fw-semibold">
-                            <IconWorld stroke={2} size={20} className="me-1" />
-                            English
-                        </span>
-                    }
-                    id="basic-nav-dropdown"
-                >
-                    <NavDropdown.Item href="#action/3.1">English</NavDropdown.Item>
-                    <NavDropdown.Item href="#action/3.2">Vietnamese</NavDropdown.Item>
+                <NavDropdown title={<span className="text-dark fw-semibold"><IconWorld size={20} className="me-1"/>English</span>} id="lang-dropdown">
+                    <NavDropdown.Item>English</NavDropdown.Item>
+                    <NavDropdown.Item>Vietnamese</NavDropdown.Item>
                 </NavDropdown>
             </header>
 
