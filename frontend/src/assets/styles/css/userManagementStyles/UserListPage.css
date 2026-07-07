@@ -1,0 +1,358 @@
+.list-user-page {
+    min-height: 100vh;
+    background: #f6f8fc;
+    color: #111827;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+/* Header Styles (Dùng chung chuẩn với Create User) */
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 32px;
+    background: #ffffff;
+    border-bottom: 1px solid #dce4f0;
+    margin-bottom: 28px;
+}
+
+.page-header .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.page-header .logo-icon {
+    font-size: 24px;
+}
+
+.page-header .logo-text {
+    display: flex;
+    flex-direction: column;
+    font-size: 16px;
+    line-height: 1.2;
+}
+
+.page-header .logo-sub-text {
+    font-size: 12px;
+    color: #51607f;
+}
+
+.lang-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    color: #111827;
+    font-weight: 500;
+}
+
+.language-text {
+    font-size: 14px;
+}
+
+.nav-dropdown {
+    list-style: none;
+}
+
+/* Main Panel Styles */
+.list-panel {
+    max-width: 1160px;
+    margin: 0 auto;
+    background: #ffffff;
+    border: 1px solid #dce4f0;
+    border-radius: 16px;
+    box-shadow: 0 8px 24px rgba(31, 41, 55, 0.06);
+    overflow: hidden;
+    margin-bottom: 40px;
+}
+
+.panel-header {
+    min-height: 126px;
+    border-bottom: 1px solid #e6ebf3;
+    padding: 34px 36px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+}
+
+.page-title {
+    margin: 0;
+    font-size: 29px;
+    font-weight: 800;
+    letter-spacing: 0;
+}
+
+.page-description {
+    margin: 6px 0 0;
+    color: #51607f;
+    font-size: 16px;
+}
+
+.btn-primary {
+    height: 47px;
+    min-width: 138px;
+    border: 0;
+    border-radius: 7px;
+    background: #2450f5;
+    color: #ffffff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+/* Toolbar Styles */
+.toolbar {
+    display: grid;
+    grid-template-columns: minmax(320px, 1fr) 150px 162px 134px 104px 54px;
+    gap: 18px;
+    align-items: center;
+    padding: 28px 32px;
+}
+
+.search-box {
+    height: 61px;
+    border: 1px solid #d7dfeb;
+    border-radius: 7px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 0 14px;
+}
+
+.search-input {
+    border: 0;
+    outline: none;
+    flex: 1;
+    color: #243452;
+    font-size: 15px;
+}
+
+.select-box {
+    height: 62px;
+    border: 1px solid #d7dfeb;
+    border-radius: 7px;
+    padding: 9px 14px;
+    position: relative;
+}
+
+.select-label {
+    display: block;
+    color: #52617f;
+    font-size: 13px;
+    margin-bottom: 2px;
+}
+
+.select-input {
+    width: 100%;
+    border: 0;
+    outline: none;
+    appearance: none;
+    background: transparent;
+    color: #111827;
+    font-size: 16px;
+}
+
+.select-icon {
+    position: absolute;
+    right: 12px;
+    bottom: 15px;
+    pointer-events: none;
+}
+
+.btn-filter {
+    height: 50px;
+    border-radius: 7px;
+    border: 1px solid #d7dfeb;
+    background: #ffffff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    color: #243452;
+    font-size: 15px;
+    cursor: pointer;
+}
+
+.btn-icon {
+    width: 54px;
+    height: 50px;
+    border-radius: 7px;
+    border: 1px solid #d7dfeb;
+    background: #ffffff;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Table Styles */
+.table-wrap {
+    margin: 0 30px;
+    border: 1px solid #dfe6f1;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.user-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.th-cell {
+    height: 62px;
+    background: #fbfcff;
+    border-bottom: 1px solid #e4eaf3;
+    color: #243452;
+    font-size: 14px;
+    font-weight: 700;
+    text-align: left;
+    padding: 0 18px;
+}
+
+.th-content {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.tr-row {
+    border-bottom: 1px solid #e8edf4;
+    height: 76px;
+}
+
+.name-cell {
+    padding: 0 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    color: #111827;
+    font-weight: 700;
+}
+
+.avatar {
+    width: 43px;
+    height: 43px;
+    border-radius: 50%;
+    background: #eef3ff;
+    color: #164dff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+}
+
+.user-name {
+    white-space: nowrap;
+}
+
+.td-cell {
+    padding: 0 18px;
+    color: #334260;
+    font-size: 14px;
+    white-space: nowrap;
+}
+
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 34px;
+    min-width: 56px;
+    border-radius: 6px;
+    padding: 0 10px;
+    font-size: 13px;
+    font-weight: 800;
+}
+
+.badge-active {
+    background: #ecfff2;
+    border: 1px solid #a8e0bb;
+    color: #108139;
+}
+
+.badge-inactive {
+    background: #f8fafc;
+    border: 1px solid #cfd8e5;
+    color: #42516d;
+}
+
+.badge-deactivated {
+    background: #fff1f3;
+    border: 1px solid #ffb9c6;
+    color: #e11d48;
+}
+
+.action-cell {
+    text-align: center;
+}
+
+.btn-action {
+    width: 38px;
+    height: 42px;
+    border-radius: 7px;
+    border: 1px solid #d7dfeb;
+    background: #ffffff;
+    cursor: pointer;
+    color: #111827;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Footer & Pagination Styles */
+.table-footer {
+    height: 86px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 42px;
+    color: #52617f;
+    font-size: 14px;
+}
+
+.pagination {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.btn-page {
+    width: 38px;
+    height: 38px;
+    border-radius: 7px;
+    border: 1px solid #d7dfeb;
+    background: #ffffff;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.current-page {
+    width: 38px;
+    height: 38px;
+    border-radius: 7px;
+    border: 1px solid #1f4fff;
+    background: #ffffff;
+    color: #1f4fff;
+    font-weight: 800;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.per-page-select {
+    height: 38px;
+    border-radius: 7px;
+    border: 1px solid #d7dfeb;
+    background: #ffffff;
+    padding: 0 12px;
+    color: #111827;
+    outline: none;
+}
