@@ -135,19 +135,19 @@ function ViewProject() {
             action={pageAction}
         >
             {loading ? (
-                <Card as="section" className="project-card">
+                <Card as="section" className="project-management-card">
                     <p className="view-project-state-text">Loading project...</p>
                 </Card>
             ) : error ? (
-                <Card as="section" className="project-card">
+                <Card as="section" className="project-management-card">
                     <p className="view-project-state-text view-project-state-text--error">
                         {error}
                     </p>
                 </Card>
             ) : (
                 <>
-                    <Card as="section" className="project-card">
-                        <Card.Title as="h2" className="project-card-title">
+                    <Card as="section" className="project-management-card">
+                        <Card.Title as="h2" className="project-management-card-title">
                             Basic Information
                         </Card.Title>
 
@@ -168,9 +168,9 @@ function ViewProject() {
                         </div>
                     </Card>
 
-                    <Card as="section" className="project-card">
+                    <Card as="section" className="project-management-card">
                         <div className="view-project-section-header">
-                            <Card.Title as="h2" className="project-card-title">
+                            <Card.Title as="h2" className="project-management-card-title">
                                 Project Users
                             </Card.Title>
 
@@ -246,9 +246,9 @@ function ViewProject() {
                         </div>
                     </Card>
 
-                    <Card as="section" className="project-card">
+                    <Card as="section" className="project-management-card">
                         <div className="view-project-section-header">
-                            <Card.Title as="h2" className="project-card-title">
+                            <Card.Title as="h2" className="project-management-card-title">
                                 Project Contracts
                             </Card.Title>
 

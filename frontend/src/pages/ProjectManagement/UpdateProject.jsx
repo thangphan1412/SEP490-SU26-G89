@@ -57,12 +57,12 @@ function UpdateProject({ onUpdateProject }) {
 
     const renderField = ([label, name, type, icon, options]) => (
         <Form.Group as={Col} md={6} key={name} controlId={name}>
-            <Form.Label className="project-field-label">{label}</Form.Label>
+            <Form.Label className="project-management-field-label">{label}</Form.Label>
             <div className="update-project-input-wrap">
                 {icon && <span className="update-project-left-icon"><Icon name={icon} size={18} color="#53617e" /></span>}
                 {type === "select" ? (
                     <>
-                        <Form.Select name={name} value={project[name]} onChange={handleChange} className={`project-input ${icon ? "update-project-input-with-icon" : ""}`}>
+                        <Form.Select name={name} value={project[name]} onChange={handleChange} className={`project-management-input ${icon ? "update-project-input-with-icon" : ""}`}>
                             {options.map((option) => <option key={option}>{option}</option>)}
                         </Form.Select>
                         {name === "status" && <span className="update-project-green-dot" />}
@@ -75,7 +75,7 @@ function UpdateProject({ onUpdateProject }) {
                         <Form.Control name={name} value={project[name]} onChange={handleChange} className="update-project-currency-input" />
                     </InputGroup>
                 ) : (
-                    <Form.Control name={name} value={project[name]} onChange={handleChange} className={`project-input ${icon ? "update-project-input-with-icon" : ""}`} />
+                    <Form.Control name={name} value={project[name]} onChange={handleChange} className={`project-management-input ${icon ? "update-project-input-with-icon" : ""}`} />
                 )}
             </div>
         </Form.Group>
@@ -85,15 +85,15 @@ function UpdateProject({ onUpdateProject }) {
         <PagePanel
             title="Update Project"
             description="Update project details, progress, budget, and closure status."
-            action={<Stack direction="horizontal" className="project-actions"><CancelButton onClick={() => navigate("/project-management/list")} /><PrimaryButton type="submit" form="update-project-form"><Icon name="save" size={19} color="#fff" />Save Changes</PrimaryButton></Stack>}
+            action={<Stack direction="horizontal" className="project-management-actions"><CancelButton onClick={() => navigate("/project-management/list")} /><PrimaryButton type="submit" form="update-project-form"><Icon name="save" size={19} color="#fff" />Save Changes</PrimaryButton></Stack>}
         >
             <Form id="update-project-form" onSubmit={handleSubmit}>
-                <Card as="section" className="project-card">
-                    <Card.Title as="h2" className="project-card-title">Project Information</Card.Title>
+                <Card as="section" className="project-management-card">
+                    <Card.Title as="h2" className="project-management-card-title">Project Information</Card.Title>
                     <Row className="update-project-form-grid">
                         {fields.map(renderField)}
                         <Form.Group as={Col} md={6} className="update-project-progress-group" controlId="progress">
-                            <Form.Label className="project-field-label">Progress Percentage</Form.Label>
+                            <Form.Label className="project-management-field-label">Progress Percentage</Form.Label>
                             <div className="update-project-progress-row">
                                 <span className="update-project-progress-value">{project.progress}%</span>
                                 <Form.Range name="progress" min="0" max="100" value={project.progress} onChange={handleChange} className="update-project-range" />
@@ -101,15 +101,15 @@ function UpdateProject({ onUpdateProject }) {
                             <div className="update-project-range-labels"><span>0%</span><span>100%</span></div>
                         </Form.Group>
                         <Form.Group as={Col} xs={12} className="update-project-full-width" controlId="location">
-                            <Form.Label className="project-field-label">Location</Form.Label>
+                            <Form.Label className="project-management-field-label">Location</Form.Label>
                             <div className="update-project-input-wrap">
                                 <span className="update-project-left-icon"><Icon name="location" size={18} color="#53617e" /></span>
-                                <Form.Control name="location" value={project.location} onChange={handleChange} className="project-input update-project-input-with-icon" />
+                                <Form.Control name="location" value={project.location} onChange={handleChange} className="project-management-input update-project-input-with-icon" />
                             </div>
                         </Form.Group>
                         <Form.Group as={Col} xs={12} className="update-project-full-width" controlId="description">
-                            <Form.Label className="project-field-label">Description</Form.Label>
-                            <Form.Control as="textarea" name="description" value={project.description} onChange={handleChange} className="project-textarea" />
+                            <Form.Label className="project-management-field-label">Description</Form.Label>
+                            <Form.Control as="textarea" name="description" value={project.description} onChange={handleChange} className="project-management-textarea" />
                             <div className="update-project-counter">135 / 500</div>
                         </Form.Group>
                     </Row>
@@ -124,13 +124,13 @@ function UpdateProject({ onUpdateProject }) {
                     />
                 </Card>
 
-                <Card as="section" className="project-card">
-                    <Card.Title as="h2" className="project-card-title">Project Monitoring</Card.Title>
+                <Card as="section" className="project-management-card">
+                    <Card.Title as="h2" className="project-management-card-title">Project Monitoring</Card.Title>
                     <Row className="update-project-monitor-grid">
                         {monitoringItems.map(([title, value, description, foot, icon, theme]) => (
                             <Col xs={12} md={6} lg={3} key={title}>
                                 <Stack direction="horizontal" className="update-project-monitor-item">
-                                    <span className={`project-icon-circle update-project-icon--${theme}`}><Icon name={icon} size={28} color={monitorColors[theme]} /></span>
+                                    <span className={`project-management-icon-circle update-project-icon--${theme}`}><Icon name={icon} size={28} color={monitorColors[theme]} /></span>
                                     <div className="update-project-monitor-text"><p className="update-project-monitor-title">{title}</p><h3 className="update-project-monitor-value">{value}</h3><p className="update-project-monitor-description">{description}</p>{foot.includes("%") ? <ProgressBar now={Number(foot.replace("%", ""))} className="update-project-small-progress" barClassName={`update-project-fill--${theme}`} /> : <p className={`update-project-monitor-link update-project-link--${theme}`}>{foot}</p>}</div>
                                 </Stack>
                             </Col>

@@ -54,11 +54,11 @@ function CreateProject({ onCreateProject }) {
 
     const renderField = ([label, name, type, placeholder, options]) => (
         <Form.Group as={Col} md={6} key={name} controlId={name}>
-            <Form.Label className="project-field-label">{label}</Form.Label>
+            <Form.Label className="project-management-field-label">{label}</Form.Label>
             <div className="create-project-input-wrap">
                 {type === "select" ? (
                     <>
-                        <Form.Select name={name} value={project[name]} onChange={handleChange} className="project-input">
+                        <Form.Select name={name} value={project[name]} onChange={handleChange} className="project-management-input">
                             <option value="">{placeholder}</option>
                             {options.map((option) => <option key={option}>{option}</option>)}
                         </Form.Select>
@@ -71,7 +71,7 @@ function CreateProject({ onCreateProject }) {
                     </InputGroup>
                 ) : (
                     <>
-                        <Form.Control name={name} value={project[name]} onChange={handleChange} placeholder={placeholder} className="project-input" />
+                        <Form.Control name={name} value={project[name]} onChange={handleChange} placeholder={placeholder} className="project-management-input" />
                         {type === "date" && <span className="create-project-right-icon"><Icon name="calendar" size={18} color="#53617e" /></span>}
                     </>
                 )}
@@ -83,26 +83,26 @@ function CreateProject({ onCreateProject }) {
         <PagePanel
             title="Create Project"
             description="Set up a new project, event, or initiative and assign ownership."
-            action={<Stack direction="horizontal" className="project-actions"><CancelButton onClick={() => navigate("/project-management/list")} /><PrimaryButton type="submit" form="create-project-form"><span>Create Project</span></PrimaryButton></Stack>}
+            action={<Stack direction="horizontal" className="project-management-actions"><CancelButton onClick={() => navigate("/project-management/list")} /><PrimaryButton type="submit" form="create-project-form"><span>Create Project</span></PrimaryButton></Stack>}
         >
             <Form id="create-project-form" onSubmit={handleSubmit}>
-                <Card as="section" className="project-card">
-                    <Card.Title as="h2" className="project-card-title">Project Information</Card.Title>
+                <Card as="section" className="project-management-card">
+                    <Card.Title as="h2" className="project-management-card-title">Project Information</Card.Title>
                     <Row className="create-project-form-grid">{formFields.map(renderField)}</Row>
                     <Form.Group className="create-project-full-width" controlId="description">
-                        <Form.Label className="project-field-label">Description</Form.Label>
-                        <Form.Control as="textarea" name="description" value={project.description} onChange={handleChange} placeholder="Enter project description..." className="project-textarea" />
+                        <Form.Label className="project-management-field-label">Description</Form.Label>
+                        <Form.Control as="textarea" name="description" value={project.description} onChange={handleChange} placeholder="Enter project description..." className="project-management-textarea" />
                         <div className="create-project-counter">0 / 1000</div>
                     </Form.Group>
                 </Card>
 
-                <Card as="section" className="project-card">
-                    <Card.Title as="h2" className="project-card-title">Project Scope & Tracking</Card.Title>
+                <Card as="section" className="project-management-card">
+                    <Card.Title as="h2" className="project-management-card-title">Project Scope & Tracking</Card.Title>
                     <Row className="create-project-scope-grid">
                         {scopeItems.map(([title, description, icon]) => (
                             <Col xs={12} md={6} lg={3} key={title}>
                                 <Stack direction="horizontal" className="create-project-scope-item">
-                                    <span className="project-icon-circle"><Icon name={icon} size={27} /></span>
+                                    <span className="project-management-icon-circle"><Icon name={icon} size={27} /></span>
                                     <div><h3 className="create-project-scope-title">{title}</h3><p className="create-project-scope-text">{description}</p></div>
                                 </Stack>
                             </Col>

@@ -285,7 +285,7 @@ function ListProject() {
                                     }
                                 >
                                     <td className="list-project-project-cell">
-                                        <span className="project-icon-circle list-project-avatar">
+                                        <span className="project-management-icon-circle list-project-avatar">
                                             <Icon name="document" size={20} />
                                         </span>
 

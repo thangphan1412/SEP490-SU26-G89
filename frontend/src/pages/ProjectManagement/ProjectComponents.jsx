@@ -45,23 +45,23 @@ export function Icon({ name, size = 22, color = "#1f4fff" }) {
 export function StatusBadge({ status }) {
     const normalizedStatus = String(status || "Unknown").trim().toLowerCase().replaceAll("_", " ");
     const classByStatus = {
-        active: "project-status-badge--active",
-        approved: "project-status-badge--active",
-        signed: "project-status-badge--active",
-        planning: "project-status-badge--planning",
-        "in progress": "project-status-badge--planning",
-        "in review": "project-status-badge--hold",
-        "on hold": "project-status-badge--hold",
-        completed: "project-status-badge--completed",
-        done: "project-status-badge--completed",
-        draft: "project-status-badge--draft",
-        inactive: "project-status-badge--draft",
-        cancelled: "project-status-badge--danger",
-        canceled: "project-status-badge--danger",
+        active: "project-management-status-badge--active",
+        approved: "project-management-status-badge--active",
+        signed: "project-management-status-badge--active",
+        planning: "project-management-status-badge--planning",
+        "in progress": "project-management-status-badge--planning",
+        "in review": "project-management-status-badge--hold",
+        "on hold": "project-management-status-badge--hold",
+        completed: "project-management-status-badge--completed",
+        done: "project-management-status-badge--completed",
+        draft: "project-management-status-badge--draft",
+        inactive: "project-management-status-badge--draft",
+        cancelled: "project-management-status-badge--danger",
+        canceled: "project-management-status-badge--danger",
     };
 
     return (
-        <Badge bg="" as="span" className={`project-status-badge ${classByStatus[normalizedStatus] || "project-status-badge--draft"}`}>
+        <Badge bg="" as="span" className={`project-management-status-badge ${classByStatus[normalizedStatus] || "project-management-status-badge--draft"}`}>
             {status || "Unknown"}
         </Badge>
     );
@@ -69,12 +69,12 @@ export function StatusBadge({ status }) {
 
 export function PagePanel({ title, description, action, children }) {
     return (
-        <Container fluid as="main" className="project-page">
-            <Card as="section" className="project-panel">
-                <Card.Header className="project-page-header">
+        <Container fluid as="main" className="project-management-page">
+            <Card as="section" className="project-management-panel">
+                <Card.Header className="project-management-page-header">
                     <div>
-                        <h1 className="project-page-title">{title}</h1>
-                        <p className="project-page-description">{description}</p>
+                        <h1 className="project-management-page-title">{title}</h1>
+                        <p className="project-management-page-description">{description}</p>
                     </div>
                     {action}
                 </Card.Header>
@@ -85,16 +85,16 @@ export function PagePanel({ title, description, action, children }) {
 }
 
 export function PrimaryButton({ children, onClick, type = "button", ...buttonProps }) {
-    return <Button type={type} className="project-primary-button" onClick={onClick} {...buttonProps}>{children}</Button>;
+    return <Button type={type} className="project-management-primary-button" onClick={onClick} {...buttonProps}>{children}</Button>;
 }
 
 export function CancelButton({ children = "Cancel", onClick, ...buttonProps }) {
-    return <Button type="button" variant="light" className="project-cancel-button" onClick={onClick} {...buttonProps}>{children}</Button>;
+    return <Button type="button" variant="light" className="project-management-cancel-button" onClick={onClick} {...buttonProps}>{children}</Button>;
 }
 
 export function InfoAlert({ children }) {
     return (
-        <Alert variant="primary" className="project-info-alert">
+        <Alert variant="primary" className="project-management-info-alert">
             <Stack direction="horizontal" gap={2}>
                 <Icon name="info" size={20} />
                 <span>{children}</span>
