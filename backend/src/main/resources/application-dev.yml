@@ -1,0 +1,21 @@
+spring:
+  application:
+    name: capstone
+  datasource:
+    driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
+    url: jdbc:sqlserver://localhost:1433;databaseName=SEP490;encrypt=false;trustServerCertificate=true
+    username: sa
+    password: Sep490@123
+  jpa:
+    show-sql: true
+    hibernate:
+      ddl-auto: create-drop
+
+#jwt:
+#  secret: A3F9C7D28E45B671F04A98D3BC56E21F7D8A32B5C4E690FA1B3D7E82564F90CD
+#  expiration: 86400000
+
+logging:
+  level:
+    org.springframework.web: debug
+    org.hibernate.jdbc.bind: trace

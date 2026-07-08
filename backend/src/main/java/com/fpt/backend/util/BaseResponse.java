@@ -1,15 +1,13 @@
 package com.fpt.backend.util;
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 import org.springframework.http.HttpStatus;
 
 @NoArgsConstructor
 @AllArgsConstructor
 @Setter
 @Getter
+@Builder
 public class BaseResponse<T> {
     private int status;
     private String message;
@@ -20,4 +18,5 @@ public class BaseResponse<T> {
         this.message = HttpStatus.OK.getReasonPhrase();
         this.data = data;
     }
+
 }
