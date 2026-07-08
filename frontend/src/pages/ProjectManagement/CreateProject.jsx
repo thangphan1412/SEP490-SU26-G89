@@ -1,7 +1,8 @@
 import { useState } from "react";
+import { Card, Col, Form, InputGroup, Row, Stack } from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
 import { CancelButton, Icon, InfoAlert, PagePanel, PrimaryButton } from "./ProjectComponents.jsx";
-import "./CreateProject.css";
+import "../../assets/styles/css/projectStyles/CreateProject.css";
 
 const initialProject = {
     projectName: "",
@@ -52,62 +53,64 @@ function CreateProject({ onCreateProject }) {
     };
 
     const renderField = ([label, name, type, placeholder, options]) => (
-        <div key={name}>
-            <label htmlFor={name} className="project-field-label">{label}</label>
+        <Form.Group as={Col} md={6} key={name} controlId={name}>
+            <Form.Label className="project-management-field-label">{label}</Form.Label>
             <div className="create-project-input-wrap">
                 {type === "select" ? (
                     <>
-                        <select id={name} name={name} value={project[name]} onChange={handleChange} className="project-input">
+                        <Form.Select name={name} value={project[name]} onChange={handleChange} className="project-management-input">
                             <option value="">{placeholder}</option>
                             {options.map((option) => <option key={option}>{option}</option>)}
-                        </select>
+                        </Form.Select>
                         <span className="create-project-right-icon"><Icon name="chevron" size={18} color="#243452" /></span>
                     </>
                 ) : type === "currency" ? (
-                    <div className="create-project-currency-wrap">
-                        <span className="create-project-currency-symbol">$</span>
-                        <input id={name} name={name} value={project[name]} onChange={handleChange} placeholder={placeholder} className="create-project-currency-input" />
-                    </div>
+                    <InputGroup className="create-project-currency-wrap">
+                        <InputGroup.Text className="create-project-currency-symbol">$</InputGroup.Text>
+                        <Form.Control name={name} value={project[name]} onChange={handleChange} placeholder={placeholder} className="create-project-currency-input" />
+                    </InputGroup>
                 ) : (
                     <>
-                        <input id={name} name={name} value={project[name]} onChange={handleChange} placeholder={placeholder} className="project-input" />
+                        <Form.Control name={name} value={project[name]} onChange={handleChange} placeholder={placeholder} className="project-management-input" />
                         {type === "date" && <span className="create-project-right-icon"><Icon name="calendar" size={18} color="#53617e" /></span>}
                     </>
                 )}
             </div>
-        </div>
+        </Form.Group>
     );
 
     return (
         <PagePanel
             title="Create Project"
             description="Set up a new project, event, or initiative and assign ownership."
-            action={<div className="project-actions"><CancelButton onClick={() => navigate("/project-management/list")} /><PrimaryButton type="submit"><span>Create Project</span></PrimaryButton></div>}
+            action={<Stack direction="horizontal" className="project-management-actions"><CancelButton onClick={() => navigate("/project-management/list")} /><PrimaryButton type="submit" form="create-project-form"><span>Create Project</span></PrimaryButton></Stack>}
         >
-            <form onSubmit={handleSubmit}>
-                <section className="project-card">
-                    <h2 className="project-card-title">Project Information</h2>
-                    <div className="create-project-form-grid">{formFields.map(renderField)}</div>
-                    <div className="create-project-full-width">
-                        <label htmlFor="description" className="project-field-label">Description</label>
-                        <textarea id="description" name="description" value={project.description} onChange={handleChange} placeholder="Enter project description..." className="project-textarea" />
+            <Form id="create-project-form" onSubmit={handleSubmit}>
+                <Card as="section" className="project-management-card">
+                    <Card.Title as="h2" className="project-management-card-title">Project Information</Card.Title>
+                    <Row className="create-project-form-grid">{formFields.map(renderField)}</Row>
+                    <Form.Group className="create-project-full-width" controlId="description">
+                        <Form.Label className="project-management-field-label">Description</Form.Label>
+                        <Form.Control as="textarea" name="description" value={project.description} onChange={handleChange} placeholder="Enter project description..." className="project-management-textarea" />
                         <div className="create-project-counter">0 / 1000</div>
-                    </div>
-                </section>
+                    </Form.Group>
+                </Card>
 
-                <section className="project-card">
-                    <h2 className="project-card-title">Project Scope & Tracking</h2>
-                    <div className="create-project-scope-grid">
+                <Card as="section" className="project-management-card">
+                    <Card.Title as="h2" className="project-management-card-title">Project Scope & Tracking</Card.Title>
+                    <Row className="create-project-scope-grid">
                         {scopeItems.map(([title, description, icon]) => (
-                            <div key={title} className="create-project-scope-item">
-                                <span className="project-icon-circle"><Icon name={icon} size={27} /></span>
-                                <div><h3 className="create-project-scope-title">{title}</h3><p className="create-project-scope-text">{description}</p></div>
-                            </div>
+                            <Col xs={12} md={6} lg={3} key={title}>
+                                <Stack direction="horizontal" className="create-project-scope-item">
+                                    <span className="project-management-icon-circle"><Icon name={icon} size={27} /></span>
+                                    <div><h3 className="create-project-scope-title">{title}</h3><p className="create-project-scope-text">{description}</p></div>
+                                </Stack>
+                            </Col>
                         ))}
-                    </div>
-                </section>
+                    </Row>
+                </Card>
                 <InfoAlert>Please review the project information before creating the record.</InfoAlert>
-            </form>
+            </Form>
         </PagePanel>
     );
 }

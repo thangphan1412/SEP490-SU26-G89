@@ -1,9 +1,16 @@
 package com.fpt.backend.service.impl;
 
 import com.fpt.backend.dto.request.project.ProjectListRequest;
+import com.fpt.backend.dto.response.project.ProjectContractResponse;
+import com.fpt.backend.dto.response.project.ProjectDetailResponse;
 import com.fpt.backend.dto.response.project.ProjectListItemResponse;
 import com.fpt.backend.dto.response.project.ProjectListResponse;
+import com.fpt.backend.dto.response.project.ProjectUserResponse;
+import com.fpt.backend.entity.Contracts;
+import com.fpt.backend.entity.Permissions;
 import com.fpt.backend.entity.Projects;
+import com.fpt.backend.entity.UserPermission;
+import com.fpt.backend.entity.Users;
 import com.fpt.backend.repository.project.ProjectRepository;
 import com.fpt.backend.service.interfaces.ProjectService;
 import lombok.RequiredArgsConstructor;
@@ -11,9 +18,13 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 
@@ -59,6 +70,14 @@ public class ProjectServiceImpl implements ProjectService {
         );
     }
 
+    @Override
+    public ProjectDetailResponse getProjectById(int id) {
+        Projects project = projectRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Project not found"));
+
+        return toDetail(project);
+    }
+
     private Page<Projects> findProjects(String search, String status, Pageable pageable) {
         if (search.isBlank() && status.isBlank()) {
             return projectRepository.findAll(pageable);
@@ -101,5 +120,106 @@ public class ProjectServiceImpl implements ProjectService {
                 project.getProjectCreatedBy(),
                 project.getProjectCreatedAt()
         );
+    }
+
+    private ProjectDetailResponse toDetail(Projects project) {
+        return new ProjectDetailResponse(
+                project.getId(),
+                project.getProjectCode(),
+                project.getProjectName(),
+                project.getProjectDescription(),
+                project.getProjectStatus(),
+                project.getProjectStartDate(),
+                project.getProjectEndDate(),
+                project.getProjectCreatedBy(),
+                project.getProjectCreatedAt(),
+                toProjectUsers(project),
+                toProjectContracts(project)
+        );
+    }
+
+    private List<ProjectUserResponse> toProjectUsers(Projects project) {
+        List<ProjectUserResponse> users = new ArrayList<>();
+
+        if (project.getPermission() == null) {
+            return users;
+        }
+
+        for (Permissions permission : project.getPermission()) {
+            if (permission.getUserPermissions() == null) {
+                continue;
+            }
+
+            for (UserPermission userPermission : permission.getUserPermissions()) {
+                Users user = userPermission.getUser();
+
+                if (user == null) {
+                    continue;
+                }
+
+                users.add(new ProjectUserResponse(
+                        getUserName(user),
+                        getPermissionName(permission)
+                ));
+            }
+        }
+
+        return users;
+    }
+
+    private List<ProjectContractResponse> toProjectContracts(Projects project) {
+        List<ProjectContractResponse> contracts = new ArrayList<>();
+
+        if (project.getContract() == null) {
+            return contracts;
+        }
+
+        for (Contracts contract : project.getContract()) {
+            contracts.add(new ProjectContractResponse(
+                    contract.getContractTitle(),
+                    contract.getContractNumber(),
+                    contract.getContractStatus()
+            ));
+        }
+
+        return contracts;
+    }
+
+    private String getUserName(Users user) {
+        String fullName = (normalize(user.getFirstName()) + " " + normalize(user.getLastName())).trim();
+
+        if (!fullName.isBlank()) {
+            return fullName;
+        }
+
+        String email = normalize(user.getEmail());
+
+        if (!email.isBlank()) {
+            return email;
+        }
+
+        return "User #" + user.getId();
+    }
+
+    private String getPermissionName(Permissions permission) {
+        String permissionName = normalize(permission.getPermissionName());
+
+        if (!permissionName.isBlank()) {
+            return permissionName;
+        }
+
+        String permissionCode = normalize(permission.getPermissionCode());
+
+        if (!permissionCode.isBlank()) {
+            return permissionCode;
+        }
+
+        String permissionModule = normalize(permission.getPermissionModule());
+
+        if (!permissionModule.isBlank()) {
+            return permissionModule;
+        }
+
+        return "-";
     }
 }

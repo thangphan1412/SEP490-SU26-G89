@@ -1,8 +1,11 @@
 import { useNavigate } from "react-router-dom";
-import "./Permission Management Styles/ViewPermissionPage.css";
-import InfoComponent from "./ViewPermissionComponents/InfoComponent.jsx";
-import RoleComponent from "./ViewPermissionComponents/RoleComponent.jsx";
-import StatusBadgeComponent from "./ViewPermissionComponents/StatusBadgeComponent.jsx";
+import { Button, Card, Container, Stack, Table } from "react-bootstrap";
+import "../../assets/styles/css/permissionStyles/ViewPermissionPage.css";
+import {
+  ViewPermissionInfo,
+  ViewPermissionRole,
+  ViewPermissionStatusBadge,
+} from "./PermissionComponents.jsx";
 
 const auditRows = [
   ["Created", "Alex Morgan", "May 10, 2025 10:15 AM", "Permission created"],
@@ -14,83 +17,84 @@ function ViewPermissionPage() {
   const navigate = useNavigate();
 
   return (
-    <div className="view-page">
-      <div className="view-card">
-        <div className="view-header">
+    <Container fluid as="main" className="view-page">
+      <Card className="view-card">
+        <Card.Header className="view-header">
           <div className="view-title-row">
-            <button
+            <Button
               type="button"
+              variant="light"
               className="view-back-button"
               onClick={() => navigate("/permission/list")}
             >
               {"<"}
-            </button>
+            </Button>
 
             <div>
-              <h1>View Permission</h1>
-              <p>View permission details and assigned roles.</p>
+              <Card.Title as="h1">View Permission</Card.Title>
+              <Card.Text>View permission details and assigned roles.</Card.Text>
             </div>
           </div>
 
-          <div className="view-actions">
-            <button
+          <Stack direction="horizontal" className="view-actions">
+            <Button
               type="button"
               className="view-primary-button"
               onClick={() => navigate("/permission/update")}
             >
               Edit Permission
-            </button>
-            <button type="button" className="view-more-button">
+            </Button>
+            <Button type="button" variant="light" className="view-more-button">
               ...
-            </button>
-          </div>
-        </div>
+            </Button>
+          </Stack>
+        </Card.Header>
 
-        <section className="view-section">
+        <Card as="section" className="view-section">
           <div className="view-section-title-row">
-            <h2>Permission Overview</h2>
-            <StatusBadgeComponent text="Active" />
+            <Card.Title as="h2">Permission Overview</Card.Title>
+            <ViewPermissionStatusBadge text="Active" />
           </div>
 
           <div className="view-overview-grid">
             <div className="view-shield">OK</div>
 
             <div className="view-info-column">
-              <InfoComponent label="Permission Name" value="View Contracts" />
-              <InfoComponent label="Module" value="Contracts" />
-              <InfoComponent
+              <ViewPermissionInfo label="Permission Name" value="View Contracts" />
+              <ViewPermissionInfo label="Module" value="Contracts" />
+              <ViewPermissionInfo
                 label="Description"
                 value="Allows users to view contract records and details."
               />
             </div>
 
             <div className="view-info-column">
-              <InfoComponent label="Access Level" value="Read Only" pill />
-              <InfoComponent label="Scope" value="System Wide" />
+              <ViewPermissionInfo label="Access Level" value="Read Only" pill />
+              <ViewPermissionInfo label="Scope" value="System Wide" />
             </div>
 
             <div className="view-info-column">
-              <InfoComponent label="Created By" value="Alex Morgan" />
+              <ViewPermissionInfo label="Created By" value="Alex Morgan" />
               <p className="view-date">May 10, 2025 10:15 AM</p>
-              <InfoComponent label="Updated By" value="Alex Morgan" />
+              <ViewPermissionInfo label="Updated By" value="Alex Morgan" />
               <p className="view-date">May 22, 2025 02:30 PM</p>
             </div>
           </div>
-        </section>
+        </Card>
 
-        <section className="view-section">
-          <h2>Assigned Roles (4)</h2>
-          <div className="view-role-list">
-            <RoleComponent text="Contract Manager" />
-            <RoleComponent text="Contract Viewer" />
-            <RoleComponent text="Admin" />
-            <RoleComponent text="Compliance Officer" />
-          </div>
-        </section>
+        <Card as="section" className="view-section">
+          <Card.Title as="h2">Assigned Roles (4)</Card.Title>
+          <Stack direction="horizontal" className="view-role-list">
+            <ViewPermissionRole text="Contract Manager" />
+            <ViewPermissionRole text="Contract Viewer" />
+            <ViewPermissionRole text="Admin" />
+            <ViewPermissionRole text="Compliance Officer" />
+          </Stack>
+        </Card>
 
-        <section className="view-section">
-          <h2>Audit Trail</h2>
-          <table className="view-table">
+        <Card as="section" className="view-section">
+          <Card.Title as="h2">Audit Trail</Card.Title>
+          <Table hover responsive={false} className="view-table mb-0">
             <thead>
               <tr>
                 <th>Action</th>
@@ -110,10 +114,10 @@ function ViewPermissionPage() {
                 </tr>
               ))}
             </tbody>
-          </table>
-        </section>
-      </div>
-    </div>
+          </Table>
+        </Card>
+      </Card>
+    </Container>
   );
 }
 

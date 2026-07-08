@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
-import "./Permission Management Styles/ListPermissionPage.css";
-import StatusBadgeComponent from "./ListPermissionComponents/StatusBadgeComponent.jsx";
+import { Button, Card, Container, Form, Stack, Table } from "react-bootstrap";
+import "../../assets/styles/css/permissionStyles/ListPermissionPage.css";
+import { ListPermissionStatusBadge } from "./PermissionComponents.jsx";
 
 const permissions = [
   ["View Contracts", "Contracts", 28, "Active", "May 22, 2025", "View"],
@@ -17,49 +18,52 @@ function ListPermissionPage() {
   const navigate = useNavigate();
 
   return (
-    <div className="list-page">
-      <div className="list-card">
-        <div className="list-header">
+    <Container fluid as="main" className="list-page">
+      <Card className="list-card">
+        <Card.Header className="list-header">
           <div>
-            <h1>Permissions</h1>
-            <p>Manage system permissions and access controls.</p>
+            <Card.Title as="h1">Permissions</Card.Title>
+            <Card.Text>Manage system permissions and access controls.</Card.Text>
           </div>
 
-          <button
+          <Button
             type="button"
             className="list-primary-button"
             onClick={() => navigate("/permission/create")}
           >
             + New Permission
-          </button>
-        </div>
+          </Button>
+        </Card.Header>
 
         <div className="list-toolbar">
-          <input className="list-search" placeholder="Search permissions..." />
+          <Form.Control
+            className="list-search"
+            placeholder="Search permissions..."
+          />
 
-          <select className="list-select" defaultValue="All">
+          <Form.Select className="list-select" defaultValue="All">
             <option>All</option>
             <option>Contracts</option>
             <option>Reports</option>
-          </select>
+          </Form.Select>
 
-          <select className="list-select" defaultValue="All">
+          <Form.Select className="list-select" defaultValue="All">
             <option>All</option>
             <option>Active</option>
             <option>Inactive</option>
-          </select>
+          </Form.Select>
 
-          <button type="button" className="list-outline-button">
+          <Button type="button" variant="light" className="list-outline-button">
             Filters
-          </button>
+          </Button>
 
-          <button type="button" className="list-outline-button">
+          <Button type="button" variant="light" className="list-outline-button">
             Refresh
-          </button>
+          </Button>
         </div>
 
         <div className="list-table-wrapper">
-          <table className="list-table">
+          <Table hover responsive={false} className="list-table mb-0">
             <thead>
               <tr>
                 <th>Permission Name</th>
@@ -76,54 +80,56 @@ function ListPermissionPage() {
                 ([name, moduleName, users, status, updatedAt, icon]) => (
                   <tr key={name}>
                     <td>
-                      <button
+                      <Button
                         type="button"
+                        variant="link"
                         className="list-name-button"
                         onClick={() => navigate("/permission/view")}
                       >
                         <span className="list-icon">{icon}</span>
                         <strong>{name}</strong>
-                      </button>
+                      </Button>
                     </td>
                     <td>{moduleName}</td>
                     <td>{users}</td>
                     <td>
-                      <StatusBadgeComponent status={status} />
+                      <ListPermissionStatusBadge status={status} />
                     </td>
                     <td>{updatedAt}</td>
                     <td>
-                      <button
+                      <Button
                         type="button"
+                        variant="light"
                         className="list-action-button"
                         onClick={() => navigate("/permission/update")}
                       >
                         ...
-                      </button>
+                      </Button>
                     </td>
                   </tr>
                 )
               )}
             </tbody>
-          </table>
+          </Table>
         </div>
 
         <div className="list-footer">
           <span>Showing 1 to 8 of 8 results</span>
 
-          <div className="list-pages">
-            <button type="button">{"<"}</button>
-            <button type="button" className="active">
+          <Stack direction="horizontal" className="list-pages">
+            <Button type="button" variant="light">{"<"}</Button>
+            <Button type="button" variant="light" className="active">
               1
-            </button>
-            <button type="button">{">"}</button>
+            </Button>
+            <Button type="button" variant="light">{">"}</Button>
 
-            <select defaultValue="10 / page">
+            <Form.Select defaultValue="10 / page">
               <option>10 / page</option>
-            </select>
-          </div>
+            </Form.Select>
+          </Stack>
         </div>
-      </div>
-    </div>
+      </Card>
+    </Container>
   );
 }
 
