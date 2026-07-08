@@ -61,7 +61,7 @@ export function StatusBadge({ status }) {
     };
 
     return (
-        <Badge bg="transparent" as="span" className={`project-status-badge ${classByStatus[normalizedStatus] || "project-status-badge--draft"}`}>
+        <Badge bg="" as="span" className={`project-status-badge ${classByStatus[normalizedStatus] || "project-status-badge--draft"}`}>
             {status || "Unknown"}
         </Badge>
     );

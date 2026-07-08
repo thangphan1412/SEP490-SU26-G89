@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Button, Form, InputGroup, Pagination, Table } from "react-bootstrap";
+import { useNavigate } from "react-router-dom";
 import { listProjects } from "../../config/axiosConfig.js";
 import { Icon, PagePanel, StatusBadge } from "./ProjectComponents.jsx";
 import "../../assets/styles/css/projectStyles/ListProject.css";
@@ -45,6 +46,7 @@ function createPageNumbers(currentPage, totalPages) {
 }
 
 function ListProject() {
+    const navigate = useNavigate();
     const [projects, setProjects] = useState([]);
     const [searchInput, setSearchInput] = useState("");
     const [search, setSearch] = useState("");
@@ -138,6 +140,21 @@ function ListProject() {
         setSearch("");
         setStatus("");
         setPage(0);
+    };
+
+    const openProjectDetail = (projectId) => {
+        if (!projectId) {
+            return;
+        }
+
+        navigate(`/project-management/view?id=${projectId}`);
+    };
+
+    const handleProjectRowKeyDown = (event, projectId) => {
+        if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            openProjectDetail(projectId);
+        }
     };
 
     return (
@@ -257,7 +274,16 @@ function ListProject() {
                             </tr>
                         ) : (
                             projects.map((project) => (
-                                <tr key={project.id} className="list-project-row">
+                                <tr
+                                    key={project.id}
+                                    className="list-project-row"
+                                    tabIndex={0}
+                                    role="button"
+                                    onClick={() => openProjectDetail(project.id)}
+                                    onKeyDown={(event) =>
+                                        handleProjectRowKeyDown(event, project.id)
+                                    }
+                                >
                                     <td className="list-project-project-cell">
                                         <span className="project-icon-circle list-project-avatar">
                                             <Icon name="document" size={20} />

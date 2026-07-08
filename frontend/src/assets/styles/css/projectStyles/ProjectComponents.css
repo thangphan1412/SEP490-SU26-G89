@@ -142,6 +142,7 @@
 }
 
 .project-status-badge.badge {
+    --bs-badge-color: #42516d;
     min-width: 62px;
     min-height: 31px;
     padding: 0 10px;
@@ -154,12 +155,47 @@
     line-height: 1;
 }
 
-.project-status-badge--active { border: 1px solid #a8e0bb; background: #ecfff2; color: #108139; }
-.project-status-badge--planning { border: 1px solid #b6cffc; background: #eef5ff; color: #1f4fff; }
-.project-status-badge--hold { border: 1px solid #fdba74; background: #fff7ed; color: #ea580c; }
-.project-status-badge--completed { border: 1px solid #cba6ff; background: #f5edff; color: #7c3aed; }
-.project-status-badge--draft { border: 1px solid #cfd8e5; background: #f8fafc; color: #42516d; }
-.project-status-badge--danger { border: 1px solid #ffb9c6; background: #fff1f3; color: #e11d48; }
+.project-status-badge.badge.project-status-badge--active {
+    --bs-badge-color: #108139;
+    border: 1px solid #a8e0bb;
+    background-color: #ecfff2;
+    color: #108139;
+}
+
+.project-status-badge.badge.project-status-badge--planning {
+    --bs-badge-color: #1f4fff;
+    border: 1px solid #b6cffc;
+    background-color: #eef5ff;
+    color: #1f4fff;
+}
+
+.project-status-badge.badge.project-status-badge--hold {
+    --bs-badge-color: #ea580c;
+    border: 1px solid #fdba74;
+    background-color: #fff7ed;
+    color: #ea580c;
+}
+
+.project-status-badge.badge.project-status-badge--completed {
+    --bs-badge-color: #7c3aed;
+    border: 1px solid #cba6ff;
+    background-color: #f5edff;
+    color: #7c3aed;
+}
+
+.project-status-badge.badge.project-status-badge--draft {
+    --bs-badge-color: #42516d;
+    border: 1px solid #cfd8e5;
+    background-color: #f8fafc;
+    color: #42516d;
+}
+
+.project-status-badge.badge.project-status-badge--danger {
+    --bs-badge-color: #e11d48;
+    border: 1px solid #ffb9c6;
+    background-color: #fff1f3;
+    color: #e11d48;
+}
 
 .project-icon-circle {
     width: 42px;
