@@ -1,6 +1,7 @@
+import { Button, Card, Col, ProgressBar, Row, Stack, Table } from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
 import { Icon, InfoAlert, PagePanel, PrimaryButton, StatusBadge } from "./ProjectComponents.jsx";
-import "./ViewProject.css";
+import "../../assets/styles/css/projectStyles/ViewProject.css";
 
 const overviewLeft = [
     ["document", "Project Name", "Digital Contract Rollout"],
@@ -35,11 +36,11 @@ const documents = [
 
 function DetailRow({ icon, label, value, type }) {
     return (
-        <div className="view-project-detail-row">
+        <Stack direction="horizontal" className="view-project-detail-row">
             <Icon name={icon} size={20} />
             <span className="view-project-detail-label">{label}</span>
             {type === "badge" ? <StatusBadge status={value} /> : type === "priority" ? <StatusBadge status="On Hold" /> : <span className="view-project-detail-value">{value}</span>}
-        </div>
+        </Stack>
     );
 }
 
@@ -52,33 +53,39 @@ function ViewProject() {
             description="Review project information, progress, and related contract documents."
             action={<PrimaryButton onClick={() => navigate("/project-management/update")}><Icon name="edit" size={20} color="#ffffff" />Edit Project</PrimaryButton>}
         >
-            <section className="project-card">
-                <h2 className="project-card-title">Project Overview</h2>
-                <div className="view-project-overview-grid">
-                    <div className="view-project-detail-column">{overviewLeft.map((item) => <DetailRow key={item[1]} icon={item[0]} label={item[1]} value={item[2]} type={item[3]} />)}</div>
-                    <div className="view-project-detail-column">{overviewMiddle.map((item) => <DetailRow key={item[1]} icon={item[0]} label={item[1]} value={item[2]} />)}</div>
-                    <div className="view-project-progress-column">
+            <Card as="section" className="project-card">
+                <Card.Title as="h2" className="project-card-title">Project Overview</Card.Title>
+                <Row className="view-project-overview-grid">
+                    <Col xs={12} md={6} lg={4} className="view-project-detail-column">
+                        {overviewLeft.map((item) => <DetailRow key={item[1]} icon={item[0]} label={item[1]} value={item[2]} type={item[3]} />)}
+                    </Col>
+                    <Col xs={12} md={6} lg={4} className="view-project-detail-column">
+                        {overviewMiddle.map((item) => <DetailRow key={item[1]} icon={item[0]} label={item[1]} value={item[2]} />)}
+                    </Col>
+                    <Col xs={12} lg={4} className="view-project-progress-column">
                         <p className="view-project-progress-title">Progress</p>
-                        <div className="view-project-progress-row"><span className="view-project-progress-bar"><span className="view-project-progress-fill" /></span><strong>68%</strong></div>
+                        <div className="view-project-progress-row"><ProgressBar now={68} className="view-project-progress-bar" /><strong>68%</strong></div>
                         <p className="view-project-description-title">Description</p>
                         <p className="view-project-description-text">Company-wide initiative to implement and standardize digital contract management processes across all departments. This project includes system rollout, policy updates, training, and vendor onboarding.</p>
-                    </div>
-                </div>
-                <div className="view-project-metric-grid">
+                    </Col>
+                </Row>
+                <Row className="view-project-metric-grid">
                     {metricItems.map(([label, value, description, icon]) => (
-                        <div key={label} className="view-project-metric-item">
-                            <span className="project-icon-circle"><Icon name={icon} size={28} /></span>
-                            <div><p className="view-project-metric-label">{label}</p><h3 className="view-project-metric-value">{value}</h3><p className="view-project-metric-description">{description}</p></div>
-                        </div>
+                        <Col xs={12} md={6} lg={3} key={label}>
+                            <Stack direction="horizontal" className="view-project-metric-item">
+                                <span className="project-icon-circle"><Icon name={icon} size={28} /></span>
+                                <div><p className="view-project-metric-label">{label}</p><h3 className="view-project-metric-value">{value}</h3><p className="view-project-metric-description">{description}</p></div>
+                            </Stack>
+                        </Col>
                     ))}
-                </div>
-            </section>
+                </Row>
+            </Card>
 
-            <section className="project-card">
-                <h2 className="project-card-title view-project-documents-title">Related Contracts & Documents</h2>
+            <Card as="section" className="project-card">
+                <Card.Title as="h2" className="project-card-title view-project-documents-title">Related Contracts & Documents</Card.Title>
                 <p className="view-project-sub-text">All contracts and documents associated with this project.</p>
                 <div className="view-project-table-wrap">
-                    <table className="view-project-table">
+                    <Table hover responsive={false} className="view-project-table mb-0">
                         <thead>
                             <tr>{["Document Name", "Type", "Status", "Owner", "Last Updated", "Actions"].map((h) => <th key={h} className="view-project-th">{h}</th>)}</tr>
                         </thead>
@@ -90,13 +97,13 @@ function ViewProject() {
                                     <td className="view-project-td"><StatusBadge status={status} /></td>
                                     <td className="view-project-td">{owner}</td>
                                     <td className="view-project-td">{updated}</td>
-                                    <td className="view-project-td"><button type="button" className="view-project-action-button"><Icon name="dots" size={18} color="#111827" /></button></td>
+                                    <td className="view-project-td"><Button type="button" variant="light" className="view-project-action-button"><Icon name="dots" size={18} color="#111827" /></Button></td>
                                 </tr>
                             ))}
                         </tbody>
-                    </table>
+                    </Table>
                 </div>
-            </section>
+            </Card>
             <InfoAlert>To make changes to this project, click <strong>Edit Project</strong>.</InfoAlert>
         </PagePanel>
     );

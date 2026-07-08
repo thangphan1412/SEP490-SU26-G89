@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
+import { Button, Form, InputGroup, Pagination, Table } from "react-bootstrap";
 import { listProjects } from "../../config/axiosConfig.js";
 import { Icon, PagePanel, StatusBadge } from "./ProjectComponents.jsx";
-import "./ListProject.css";
-
+import "../../assets/styles/css/projectStyles/ListProject.css";
 
 const sortableColumns = [
     ["Project", "projectName"],
@@ -146,11 +146,12 @@ function ListProject() {
             description="View and find projects, timelines, ownership, and current status."
         >
             <div className="list-project-toolbar">
-                {/* Search box and status filter */}
-                <label className="list-project-search-box">
-                    <Icon name="search" size={22} color="#3f4d6f" />
+                <InputGroup className="list-project-search-box">
+                    <InputGroup.Text className="list-project-search-icon">
+                        <Icon name="search" size={22} color="#3f4d6f" />
+                    </InputGroup.Text>
 
-                    <input
+                    <Form.Control
                         aria-label="Search projects"
                         placeholder="Search by code, name, description, or creator..."
                         className="list-project-search-input"
@@ -159,22 +160,22 @@ function ListProject() {
                     />
 
                     {searchInput && (
-                        <button
+                        <Button
                             type="button"
+                            variant="light"
                             aria-label="Clear search"
                             className="list-project-clear-search"
                             onClick={() => setSearchInput("")}
                         >
-                            ×
-                        </button>
+                            x
+                        </Button>
                     )}
-                </label>
+                </InputGroup>
 
-                {/* Status filter dropdown */}
-                <label className="list-project-select-box">
-                    <span className="list-project-select-label">Status</span>
+                <Form.Group className="list-project-select-box" controlId="project-status-filter">
+                    <Form.Label className="list-project-select-label">Status</Form.Label>
 
-                    <select
+                    <Form.Select
                         className="list-project-select"
                         value={status}
                         onChange={handleStatusChange}
@@ -186,37 +187,38 @@ function ListProject() {
                                 {availableStatus}
                             </option>
                         ))}
-                    </select>
+                    </Form.Select>
 
                     <span className="list-project-select-icon">
                         <Icon name="chevron" size={18} color="#243452" />
                     </span>
-                </label>
+                </Form.Group>
 
                 {(searchInput || status) && (
-                    <button
+                    <Button
                         type="button"
+                        variant="light"
                         className="list-project-filter-button"
                         onClick={clearFilters}
                     >
                         Clear filters
-                    </button>
+                    </Button>
                 )}
             </div>
 
-            {/* //Table of projects */}
             <div className="list-project-table-wrap">
-                <table className="list-project-table">
+                <Table hover responsive={false} className="list-project-table mb-0">
                     <thead>
                         <tr>
                             {sortableColumns.map(([label, field]) => (
                                 <th key={field} className="list-project-th">
-                                    <button
+                                    <Button
                                         type="button"
+                                        variant="link"
                                         className={`list-project-sort-button ${sortBy === field
-                                                ? "list-project-sort-button--active"
-                                                : ""
-                                            }`}
+                                            ? "list-project-sort-button--active"
+                                            : ""
+                                        }`}
                                         onClick={() => handleSort(field)}
                                         aria-label={`Sort by ${label}`}
                                     >
@@ -227,7 +229,7 @@ function ListProject() {
                                             size={13}
                                             color={sortBy === field ? "#1f4fff" : "#62708c"}
                                         />
-                                    </button>
+                                    </Button>
                                 </th>
                             ))}
                         </tr>
@@ -277,7 +279,7 @@ function ListProject() {
 
                                     <td className="list-project-td">
                                         <span className="list-project-code-badge">
-                                            {project.projectCode || "—"}
+                                            {project.projectCode || "-"}
                                         </span>
                                     </td>
 
@@ -294,7 +296,7 @@ function ListProject() {
                                     </td>
 
                                     <td className="list-project-td">
-                                        {project.projectCreatedBy || "—"}
+                                        {project.projectCreatedBy || "-"}
                                     </td>
 
                                     <td className="list-project-td">
@@ -304,50 +306,46 @@ function ListProject() {
                             ))
                         )}
                     </tbody>
-                </table>
+                </Table>
             </div>
 
             <div className="list-project-footer">
                 <span>Total: {totalElements} results</span>
 
-                {/*Pagination controls */}
-                <div className="list-project-pagination">
-                    <button
-                        type="button"
+                <Pagination className="list-project-pagination mb-0">
+                    <Pagination.Prev
                         aria-label="Previous page"
-                        className="list-project-page-button"
+                        className="list-project-page-item"
                         onClick={() =>
                             setPage((currentPage) => Math.max(0, currentPage - 1))
                         }
                         disabled={page === 0}
                     >
                         <Icon name="arrowLeft" size={18} color="#243452" />
-                    </button>
+                    </Pagination.Prev>
 
                     {pageNumbers.map((pageNumber) =>
                         typeof pageNumber === "number" ? (
-                            <button
+                            <Pagination.Item
                                 key={pageNumber}
-                                type="button"
-                                className={`list-project-page-button ${pageNumber === page
-                                        ? "list-project-page-button--current"
-                                        : ""
-                                    }`}
+                                className="list-project-page-item"
+                                active={pageNumber === page}
                                 onClick={() => setPage(pageNumber)}
                             >
                                 {pageNumber + 1}
-                            </button>
+                            </Pagination.Item>
                         ) : (
-                            <span key={pageNumber} className="list-project-ellipsis">
-                                …
-                            </span>
+                            <Pagination.Ellipsis
+                                key={pageNumber}
+                                disabled
+                                className="list-project-page-item list-project-ellipsis"
+                            />
                         )
                     )}
 
-                    <button
-                        type="button"
+                    <Pagination.Next
                         aria-label="Next page"
-                        className="list-project-page-button"
+                        className="list-project-page-item"
                         onClick={() =>
                             setPage((currentPage) =>
                                 Math.min(totalPages - 1, currentPage + 1)
@@ -356,8 +354,8 @@ function ListProject() {
                         disabled={totalPages === 0 || page >= totalPages - 1}
                     >
                         <Icon name="arrowRight" size={18} color="#243452" />
-                    </button>
-                </div>
+                    </Pagination.Next>
+                </Pagination>
             </div>
         </PagePanel>
     );
