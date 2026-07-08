@@ -38,7 +38,7 @@ public class ProjectController {
                 .body(new BaseResponse<>(projects));
     }
 
-    @GetMapping("/{id}")
+    @GetMapping("/view/{id}")
     public ResponseEntity<BaseResponse<ProjectDetailResponse>> getProjectById(@PathVariable int id) {
         ProjectDetailResponse project = projectService.getProjectById(id);
 

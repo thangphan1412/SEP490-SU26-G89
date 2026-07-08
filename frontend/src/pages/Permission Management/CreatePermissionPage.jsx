@@ -1,101 +1,114 @@
 import { useNavigate } from "react-router-dom";
-import "./Permission Management Styles/CreatePermissionPage.css";
-import FormFieldComponent from "./CreatePermissionComponents/FormFieldComponent.jsx";
-import ScopeCardComponent from "./CreatePermissionComponents/ScopeCardComponent.jsx";
-import TagComponent from "./CreatePermissionComponents/TagComponent.jsx";
+import { Button, Card, Container, Form, Stack } from "react-bootstrap";
+import "../../assets/styles/css/permissionStyles/CreatePermissionPage.css";
+import {
+  CreatePermissionFormField,
+  CreatePermissionScopeCard,
+  CreatePermissionTag,
+} from "./PermissionComponents.jsx";
 
 function CreatePermissionPage() {
   const navigate = useNavigate();
 
   return (
-    <div className="create-page">
-      <div className="create-card">
-        <div className="create-header">
-          <h1>Create Permission</h1>
-          <p>Define a new permission and assign its scope.</p>
-        </div>
+    <Container fluid as="main" className="create-page">
+      <Card className="create-card">
+        <Card.Header className="create-header">
+          <Card.Title as="h1">Create Permission</Card.Title>
+          <Card.Text>Define a new permission and assign its scope.</Card.Text>
+        </Card.Header>
 
-        <form className="create-form">
-          <FormFieldComponent label="Permission Name" required>
-            <input className="create-input" placeholder="Enter permission name" />
-          </FormFieldComponent>
+        <Form className="create-form">
+          <CreatePermissionFormField label="Permission Name" required>
+            <Form.Control
+              className="create-input"
+              placeholder="Enter permission name"
+            />
+          </CreatePermissionFormField>
 
-          <FormFieldComponent label="Module" required>
-            <select className="create-input" defaultValue="">
+          <CreatePermissionFormField label="Module" required>
+            <Form.Select className="create-input" defaultValue="">
               <option value="" disabled>
                 Select module
               </option>
               <option>Contracts</option>
               <option>Reports</option>
               <option>Users</option>
-            </select>
-          </FormFieldComponent>
+            </Form.Select>
+          </CreatePermissionFormField>
 
-          <FormFieldComponent label="Description">
+          <CreatePermissionFormField label="Description">
             <div className="create-textarea-box">
-              <textarea
+              <Form.Control
+                as="textarea"
                 className="create-textarea"
                 placeholder="Describe what this permission allows users to do."
                 maxLength={255}
               />
               <span>0 / 255</span>
             </div>
-          </FormFieldComponent>
+          </CreatePermissionFormField>
 
-          <FormFieldComponent label="Permission Scope" required>
+          <CreatePermissionFormField label="Permission Scope" required>
             <div className="create-scope-grid">
-              <ScopeCardComponent
+              <CreatePermissionScopeCard
                 title="System Wide"
                 description="Applies across the entire system"
                 active
               />
-              <ScopeCardComponent
+              <CreatePermissionScopeCard
                 title="Module Specific"
                 description="Applies to a specific module"
               />
             </div>
-          </FormFieldComponent>
+          </CreatePermissionFormField>
 
-          <FormFieldComponent label="Access Level" required>
-            <select className="create-input" defaultValue="">
+          <CreatePermissionFormField label="Access Level" required>
+            <Form.Select className="create-input" defaultValue="">
               <option value="" disabled>
                 Select access level
               </option>
               <option>Read Only</option>
               <option>Write</option>
               <option>Admin</option>
-            </select>
-          </FormFieldComponent>
+            </Form.Select>
+          </CreatePermissionFormField>
 
           <div className="create-status-row">
             <span className="create-label">Status</span>
-            <span className="create-toggle" />
-            <span>Active</span>
+            <Form.Check
+              type="switch"
+              id="create-permission-status"
+              className="create-status-switch"
+              defaultChecked
+              label="Active"
+            />
           </div>
 
-          <FormFieldComponent label="Assign to Roles (Optional)">
-            <div className="create-role-box">
-              <TagComponent text="Contract Manager" />
-              <TagComponent text="Legal Team" />
-              <TagComponent text="Compliance Officer" />
-            </div>
-          </FormFieldComponent>
+          <CreatePermissionFormField label="Assign to Roles (Optional)">
+            <Stack direction="horizontal" className="create-role-box">
+              <CreatePermissionTag text="Contract Manager" />
+              <CreatePermissionTag text="Legal Team" />
+              <CreatePermissionTag text="Compliance Officer" />
+            </Stack>
+          </CreatePermissionFormField>
 
-          <div className="create-actions">
-            <button
+          <Stack direction="horizontal" className="create-actions">
+            <Button
               type="button"
+              variant="light"
               className="create-cancel-button"
               onClick={() => navigate("/permission/list")}
             >
               Cancel
-            </button>
-            <button type="button" className="create-primary-button">
+            </Button>
+            <Button type="button" className="create-primary-button">
               Create Permission
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+            </Button>
+          </Stack>
+        </Form>
+      </Card>
+    </Container>
   );
 }
 
