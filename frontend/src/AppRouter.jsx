@@ -15,17 +15,21 @@ import ListProject from "./pages/ProjectManagement/ListProject.jsx";
 import CreateProject from "./pages/ProjectManagement/CreateProject.jsx";
 import ViewProject from "./pages/ProjectManagement/ViewProject.jsx";
 import UpdateProject from "./pages/ProjectManagement/UpdateProject.jsx";
+import ListContract from "./pages/ContractManagement/ListContract.jsx";
+import CreateContract from "./pages/ContractManagement/CreateContract.jsx";
+import ViewContract from "./pages/ContractManagement/ViewContract.jsx";
+import UpdateContract from "./pages/ContractManagement/UpdateContract.jsx";
 import PermissionCreatePage from "./pages/Permission Management/CreatePermissionPage.jsx";
 import ListPermissionPage from "./pages/Permission Management/ListPermissionPage.jsx";
 import ContractTypes from "./pages/contractType/ContractTypes.jsx";
 import CreateContractType from "./pages/contractType/CreateContractType.jsx";
 
-function AppRouter(){
-    return(
+function AppRouter() {
+    return (
         <Routes>
             <Route
                 path="/login"
-                element = {<LoginPage />}
+                element={<LoginPage />}
             />
             {/* <Route
                 path="/register"
@@ -37,55 +41,71 @@ function AppRouter(){
             />*/}
             <Route
                 path="/home_page"
-                element={<Homepage/>}
-            /> 
+                element={<Homepage />}
+            />
             <Route
                 path="/company-profile/view"
-                element = {<ViewProfile />}
+                element={<ViewProfile />}
             />
             <Route
                 path="/company-profile/update"
-                element = {<UpdateProfile />}
+                element={<UpdateProfile />}
             />
             <Route
                 path="/user-profile/view"
-                element = {<UserViewProfile />}
+                element={<UserViewProfile />}
             />
             <Route
                 path="/user-profile/update"
-                element = {<UserUpdateProfile />}
+                element={<UserUpdateProfile />}
             />
             <Route
                 path="/user-management/list"
-                element = {<ListUser />}
+                element={<ListUser />}
             />
             <Route
                 path="/user-management/create"
-                element = {<CreateUser />}
+                element={<CreateUser />}
             />
             <Route
                 path="/user-management/view"
-                element = {<ViewUser />}
+                element={<ViewUser />}
             />
             <Route
                 path="/user-management/update"
-                element = {<UpdateUser />}
+                element={<UpdateUser />}
             />
             <Route
                 path="/project-management/list"
-                element = {<ListProject />}
+                element={<ListProject />}
             />
             <Route
                 path="/project-management/create"
-                element = {<CreateProject />}
+                element={<CreateProject />}
             />
             <Route
                 path="/project-management/view"
-                element = {<ViewProject />}
+                element={<ViewProject />}
             />
             <Route
                 path="/project-management/update"
-                element = {<UpdateProject />}
+                element={<UpdateProject />}
+            />
+            <Route
+                path="/contract-management/list"
+                element={<ListContract />}
+            />
+            <Route
+                path="/contract-management/create"
+                element={<CreateContract />}
+            />
+            <Route
+                path="/contract-management/view/:id"
+                element={<ViewContract />}
+            />
+            <Route
+                path="/contract-management/update/:id"
+                element={<UpdateContract />}
             />
             <Route path="/permission/create" element={<PermissionCreatePage />}></Route>
             <Route path="/permission/list" element={<ListPermissionPage />}></Route>

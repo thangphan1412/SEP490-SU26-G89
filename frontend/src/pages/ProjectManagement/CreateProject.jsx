@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { CancelButton, Icon, InfoAlert, PagePanel, PrimaryButton, styles } from "./ProjectComponents.jsx";
+import { CancelButton, Icon, InfoAlert, PagePanel, PrimaryButton } from "./ProjectComponents.jsx";
+import "./CreateProject.css";
 
 const initialProject = {
     projectName: "",
@@ -52,25 +53,25 @@ function CreateProject({ onCreateProject }) {
 
     const renderField = ([label, name, type, placeholder, options]) => (
         <div key={name}>
-            <label htmlFor={name} style={styles.label}>{label}</label>
-            <div style={localStyles.inputWrap}>
+            <label htmlFor={name} className="project-field-label">{label}</label>
+            <div className="create-project-input-wrap">
                 {type === "select" ? (
                     <>
-                        <select id={name} name={name} value={project[name]} onChange={handleChange} style={styles.input}>
+                        <select id={name} name={name} value={project[name]} onChange={handleChange} className="project-input">
                             <option value="">{placeholder}</option>
                             {options.map((option) => <option key={option}>{option}</option>)}
                         </select>
-                        <span style={localStyles.rightIcon}><Icon name="chevron" size={18} color="#243452" /></span>
+                        <span className="create-project-right-icon"><Icon name="chevron" size={18} color="#243452" /></span>
                     </>
                 ) : type === "currency" ? (
-                    <div style={localStyles.currencyWrap}>
-                        <span style={localStyles.currencySymbol}>$</span>
-                        <input id={name} name={name} value={project[name]} onChange={handleChange} placeholder={placeholder} style={localStyles.currencyInput} />
+                    <div className="create-project-currency-wrap">
+                        <span className="create-project-currency-symbol">$</span>
+                        <input id={name} name={name} value={project[name]} onChange={handleChange} placeholder={placeholder} className="create-project-currency-input" />
                     </div>
                 ) : (
                     <>
-                        <input id={name} name={name} value={project[name]} onChange={handleChange} placeholder={placeholder} style={styles.input} />
-                        {type === "date" && <span style={localStyles.rightIcon}><Icon name="calendar" size={18} color="#53617e" /></span>}
+                        <input id={name} name={name} value={project[name]} onChange={handleChange} placeholder={placeholder} className="project-input" />
+                        {type === "date" && <span className="create-project-right-icon"><Icon name="calendar" size={18} color="#53617e" /></span>}
                     </>
                 )}
             </div>
@@ -81,26 +82,26 @@ function CreateProject({ onCreateProject }) {
         <PagePanel
             title="Create Project"
             description="Set up a new project, event, or initiative and assign ownership."
-            action={<div style={styles.actions}><CancelButton onClick={() => navigate("/project-management/list")} /><PrimaryButton type="submit"><span>Create Project</span></PrimaryButton></div>}
+            action={<div className="project-actions"><CancelButton onClick={() => navigate("/project-management/list")} /><PrimaryButton type="submit"><span>Create Project</span></PrimaryButton></div>}
         >
             <form onSubmit={handleSubmit}>
-                <section style={styles.card}>
-                    <h2 style={styles.cardTitle}>Project Information</h2>
-                    <div style={localStyles.formGrid}>{formFields.map(renderField)}</div>
-                    <div style={localStyles.fullWidth}>
-                        <label htmlFor="description" style={styles.label}>Description</label>
-                        <textarea id="description" name="description" value={project.description} onChange={handleChange} placeholder="Enter project description..." style={styles.textarea} />
-                        <div style={localStyles.counter}>0 / 1000</div>
+                <section className="project-card">
+                    <h2 className="project-card-title">Project Information</h2>
+                    <div className="create-project-form-grid">{formFields.map(renderField)}</div>
+                    <div className="create-project-full-width">
+                        <label htmlFor="description" className="project-field-label">Description</label>
+                        <textarea id="description" name="description" value={project.description} onChange={handleChange} placeholder="Enter project description..." className="project-textarea" />
+                        <div className="create-project-counter">0 / 1000</div>
                     </div>
                 </section>
 
-                <section style={styles.card}>
-                    <h2 style={styles.cardTitle}>Project Scope & Tracking</h2>
-                    <div style={localStyles.scopeGrid}>
+                <section className="project-card">
+                    <h2 className="project-card-title">Project Scope & Tracking</h2>
+                    <div className="create-project-scope-grid">
                         {scopeItems.map(([title, description, icon]) => (
-                            <div key={title} style={localStyles.scopeItem}>
-                                <span style={styles.iconCircle}><Icon name={icon} size={27} /></span>
-                                <div><h3 style={localStyles.scopeTitle}>{title}</h3><p style={localStyles.scopeText}>{description}</p></div>
+                            <div key={title} className="create-project-scope-item">
+                                <span className="project-icon-circle"><Icon name={icon} size={27} /></span>
+                                <div><h3 className="create-project-scope-title">{title}</h3><p className="create-project-scope-text">{description}</p></div>
                             </div>
                         ))}
                     </div>
@@ -110,20 +111,5 @@ function CreateProject({ onCreateProject }) {
         </PagePanel>
     );
 }
-
-const localStyles = {
-    formGrid: { display: "grid", gridTemplateColumns: "1fr 1fr", columnGap: 54, rowGap: 18 },
-    inputWrap: { position: "relative" },
-    rightIcon: { position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", display: "flex", pointerEvents: "none" },
-    currencyWrap: { height: 38, border: "1px solid #d5deeb", borderRadius: 6, display: "grid", gridTemplateColumns: "32px 1fr", overflow: "hidden" },
-    currencySymbol: { display: "flex", alignItems: "center", justifyContent: "center", borderRight: "1px solid #e3e9f2", color: "#243452" },
-    currencyInput: { border: 0, outline: "none", padding: "0 13px", color: "#243452", fontSize: 14 },
-    fullWidth: { marginTop: 18 },
-    counter: { textAlign: "right", color: "#52617f", fontSize: 13, marginTop: 5 },
-    scopeGrid: { display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 22 },
-    scopeItem: { border: "1px solid #d9e2ef", borderRadius: 8, padding: "16px", minHeight: 90, display: "flex", alignItems: "center", gap: 16 },
-    scopeTitle: { margin: "0 0 5px", fontSize: 15, fontWeight: 800 },
-    scopeText: { margin: 0, color: "#52617f", fontSize: 13, lineHeight: 1.45 },
-};
 
 export default CreateProject;

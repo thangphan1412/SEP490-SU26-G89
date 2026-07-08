@@ -14,21 +14,21 @@ import java.util.List;
 @Builder
 @Table(name = "projects")
 public class Projects extends BaseEntity {
-    @Column(name = "project_code")
+    @Column(name = "project_code" , unique = true)
     private String projectCode;
-    @Column(name = "project_name")
+    @Column(name = "project_name" , columnDefinition = "nvarchar(50)")
     private String projectName;
-    @Column(name = "project_description")
+    @Column(name = "project_description" , columnDefinition = "nvarchar(255)")
     private String projectDescription;
-    @Column(name = "project_status")
+    @Column(name = "project_status" , columnDefinition = "nvarchar(50)")
     private String projectStatus;
     @Column(name = "project_start_date")
     private LocalDate projectStartDate;
     @Column(name = "project_end_date")
     private LocalDate projectEndDate;
-    @Column(name = "project_creat-by")
+    @Column(name = "project_creat-by" , columnDefinition = "nvarchar(50)")
     private String projectCreatedBy;
-    @Column(name = "project_created_at")
+    @Column(name = "project_created_at" , columnDefinition = "nvarchar(50)")
     private String projectCreatedAt;
 
     /// Relation
