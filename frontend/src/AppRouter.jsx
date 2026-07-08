@@ -23,6 +23,8 @@ import PermissionCreatePage from "./pages/Permission Management/CreatePermission
 import ListPermissionPage from "./pages/Permission Management/ListPermissionPage.jsx";
 import ContractTypes from "./pages/contractType/ContractTypes.jsx";
 import CreateContractType from "./pages/contractType/CreateContractType.jsx";
+import ViewContractType from "./pages/contractType/ViewContractType.jsx";
+import UpdateContractType from "./pages/contractType/UpdateContractType.jsx";
 
 function AppRouter() {
     return (
@@ -117,6 +119,14 @@ function AppRouter() {
             <Route
                 path="/contract-types/new"
                 element={<CreateContractType />}
+            />
+            <Route
+                path="/contract-types/detail"
+                element={<ViewContractType />}
+            />
+            <Route
+                path="/contract-types/update"
+                element={<UpdateContractType />}
             />
         </Routes>
     )

@@ -71,25 +71,25 @@
   background: #f8fafc;
 }
 
-.agreement-create-page {
+.contract-type-create-page {
   min-height: 100vh;
   background: #f6f8fc;
   color: #17213d;
 }
 
-.agreement-layout {
+.contract-type-layout {
   display: grid;
   grid-template-columns: 256px minmax(0, 1fr);
   min-height: calc(100vh - 60px);
 }
 
-.agreement-sidebar {
+.contract-type-sidebar {
   padding: 28px 16px;
   background: #ffffff;
   border-right: 1px solid #e8edf5;
 }
 
-.agreement-sidebar-title {
+.contract-type-sidebar-title {
   margin: 0 10px 20px;
   color: #4b5a79;
   font-size: 13px;
@@ -97,11 +97,11 @@
   text-transform: uppercase;
 }
 
-.agreement-sidebar-nav {
+.contract-type-sidebar-nav {
   gap: 4px;
 }
 
-.agreement-sidebar-link.nav-link {
+.contract-type-sidebar-link.nav-link {
   display: flex;
   align-items: center;
   width: 100%;
@@ -114,78 +114,78 @@
   cursor: pointer;
 }
 
-.agreement-sidebar-link.nav-link:hover {
+.contract-type-sidebar-link.nav-link:hover {
   background: #f5f7fb;
   color: #1748df;
 }
 
-.agreement-sidebar-link.nav-link.active {
+.contract-type-sidebar-link.nav-link.active {
   color: #0d4eff;
   background: #eef3ff;
   font-weight: 700;
 }
 
-.agreement-sidebar-divider {
+.contract-type-sidebar-divider {
   height: 1px;
   width: 100%;
   margin: 12px 0;
   background: #e2e7f0;
 }
 
-.agreement-main {
+.contract-type-main {
   min-width: 0;
   padding: 30px;
 }
 
-.agreement-card.card {
+.contract-type-card.card {
   min-height: calc(100vh - 120px);
   border: 1px solid #e4eaf3;
   border-radius: 10px;
   box-shadow: 0 16px 38px rgba(28, 43, 78, 0.06);
 }
 
-.agreement-card > .card-body {
+.contract-type-card > .card-body {
   display: flex;
   flex-direction: column;
   padding: 30px 32px 36px;
 }
 
-.agreement-form-heading {
+.contract-type-form-heading {
   margin-bottom: 28px;
 }
 
-.agreement-form-heading h1 {
+.contract-type-form-heading h1 {
   margin: 0;
   color: #101936;
   font-size: 27px;
   font-weight: 800;
 }
 
-.agreement-form-heading p {
+.contract-type-form-heading p {
   margin: 7px 0 0;
   color: #62708e;
   font-size: 15px;
 }
 
-.agreement-form {
+.contract-type-form {
   display: grid;
   width: min(700px, 100%);
   gap: 24px;
 }
 
-.agreement-form .form-label {
+.contract-type-form .form-label {
   margin-bottom: 8px;
   color: #15213a;
   font-size: 14px;
   font-weight: 700;
 }
 
-.agreement-required {
+.contract-type-required {
   color: #ff3131;
 }
 
-.agreement-form .form-control,
-.agreement-form .form-select {
+.contract-type-form .form-control,
+.contract-type-form .form-select {
   min-height: 48px;
   padding: 12px 15px;
   border: 1px solid #d5ddea;
@@ -194,39 +194,39 @@
   font-size: 15px;
 }
 
-.agreement-form textarea.form-control {
+.contract-type-form textarea.form-control {
   min-height: 110px;
   resize: vertical;
 }
 
-.agreement-form .form-control:focus,
-.agreement-form .form-select:focus {
+.contract-type-form .form-control:focus,
+.contract-type-form .form-select:focus {
   border-color: #2b61ff;
   box-shadow: 0 0 0 3px rgba(43, 97, 255, 0.13);
 }
 
-.agreement-form .form-text {
+.contract-type-form .form-text {
   display: block;
   margin-top: 8px;
   color: #66728e;
   font-size: 13px;
 }
 
-.agreement-form-row.row {
+.contract-type-form-row.row {
   --bs-gutter-x: 48px;
   --bs-gutter-y: 24px;
 }
 
-.agreement-select-wrap {
+.contract-type-select-wrap {
   position: relative;
 }
 
-.agreement-select-wrap .form-select {
+.contract-type-select-wrap .form-select {
   appearance: none;
   padding-right: 44px;
 }
 
-.agreement-select-wrap svg {
+.contract-type-select-wrap svg {
   position: absolute;
   right: 16px;
   top: 50%;
@@ -235,30 +235,30 @@
   transform: translateY(-50%);
 }
 
-.agreement-status-options {
+.contract-type-status-options {
   gap: 34px;
   min-height: 30px;
 }
 
-.agreement-status-options .form-check-input {
+.contract-type-status-options .form-check-input {
   width: 20px;
   height: 20px;
   margin-right: 7px;
 }
 
-.agreement-status-options .form-check-input:checked {
+.contract-type-status-options .form-check-input:checked {
   background-color: #1c55ff;
   border-color: #1c55ff;
 }
 
-.agreement-actions {
+.contract-type-actions {
   justify-content: flex-end;
   gap: 16px;
   margin-top: auto;
   padding-top: 28px;
 }
 
-.agreement-actions .btn {
+.contract-type-actions .btn {
   min-height: 48px;
   border-radius: 7px;
   padding: 0 22px;
@@ -266,57 +266,302 @@
   font-weight: 700;
 }
 
-.agreement-actions .btn-primary {
+.contract-type-actions .btn-primary {
   min-width: 196px;
   background: #164dff;
   border-color: #164dff;
   box-shadow: 0 8px 18px rgba(22, 77, 255, 0.2);
 }
 
+.contract-type-update-card > .card-body {
+  min-height: calc(100vh - 122px);
+}
+
+.contract-type-update-form {
+  width: 100%;
+  max-width: none;
+}
+
+.contract-type-update-form > div:nth-child(-n + 2) {
+  width: min(510px, 100%);
+}
+
+.contract-type-update-form textarea.form-control {
+  min-height: 130px;
+}
+
+.contract-type-update-actions {
+  margin-top: 34px;
+  border-top: 1px solid #e2e7f0;
+}
+
+.contract-type-update-actions .btn-outline-secondary {
+  min-width: 136px;
+}
+
+.contract-type-update-actions .btn-primary {
+  min-width: 226px;
+}
+
+.contract-type-detail-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  margin: 4px 6px 30px;
+}
+
+.contract-type-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  margin-bottom: 22px;
+  color: #66728e;
+  font-size: 15px;
+}
+
+.contract-type-breadcrumb button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #164dff;
+  font: inherit;
+}
+
+.contract-type-detail-heading h1 {
+  margin: 0;
+  color: #111a35;
+  font-size: 28px;
+  font-weight: 800;
+}
+
+.contract-type-detail-heading p {
+  margin: 9px 0 0;
+  color: #65718c;
+  font-size: 15px;
+}
+
+.contract-type-edit-button.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 96px;
+  min-height: 48px;
+  justify-content: center;
+  border-width: 1.5px;
+  border-radius: 8px;
+  font-weight: 700;
+}
+
+.contract-type-detail-card.card {
+  border: 1px solid #e0e6ef;
+  border-radius: 10px;
+  box-shadow: 0 12px 30px rgba(29, 43, 75, 0.08);
+}
+
+.contract-type-detail-card > .card-body {
+  padding: 32px;
+}
+
+.contract-type-summary {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  padding-bottom: 30px;
+  border-bottom: 1px solid #e2e7f0;
+}
+
+.contract-type-code-tile {
+  display: grid;
+  place-items: center;
+  width: 118px;
+  height: 118px;
+  flex: 0 0 118px;
+  border: 1px solid #dbe4ff;
+  border-radius: 10px;
+  background: #eff3ff;
+  color: #164dff;
+  font-size: 30px;
+  font-weight: 800;
+}
+
+.contract-type-summary h2 {
+  margin: 0 0 12px;
+  color: #111a35;
+  font-size: 24px;
+  font-weight: 800;
+}
+
+.contract-type-summary p {
+  max-width: 620px;
+  margin: 0;
+  color: #5e6b87;
+  font-size: 16px;
+  line-height: 1.65;
+}
+
+.contract-type-info-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.contract-type-detail-item {
+  min-height: 142px;
+  padding: 34px 28px;
+  border-bottom: 1px solid #e2e7f0;
+}
+
+.contract-type-detail-item:not(:nth-child(3n + 1)) {
+  border-left: 1px solid #e2e7f0;
+}
+
+.contract-type-detail-item > span,
+.contract-type-audit-item div > span {
+  display: block;
+  margin-bottom: 15px;
+  color: #64708a;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.contract-type-detail-item > strong,
+.contract-type-audit-item div > strong {
+  color: #15203a;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.6;
+}
+
+.contract-type-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 30px;
+  padding: 3px 12px;
+  border: 1px solid #b9e7c8;
+  border-radius: 15px;
+  background: #e8f8ed;
+  color: #139245;
+  font-weight: 700;
+}
+
+.contract-type-status i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #12a84f;
+}
+
+.contract-type-audit-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  padding-top: 32px;
+}
+
+.contract-type-audit-item {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.contract-type-audit-icon {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  flex: 0 0 48px;
+  border: 1px solid #dbe4ff;
+  border-radius: 9px;
+  background: #f1f5ff;
+  color: #164dff;
+}
+
+.contract-type-audit-item div > span {
+  margin-bottom: 5px;
+}
+
 @media (max-width: 900px) {
-  .agreement-layout {
+  .contract-type-layout {
     grid-template-columns: 1fr;
   }
 
-  .agreement-sidebar {
+  .contract-type-sidebar {
     padding: 18px;
     border-right: 0;
     border-bottom: 1px solid #e8edf5;
   }
 
-  .agreement-sidebar-nav {
+  .contract-type-sidebar-nav {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
     gap: 8px;
   }
 
-  .agreement-sidebar-divider {
+  .contract-type-sidebar-divider {
     display: none;
   }
 
-  .agreement-main {
+  .contract-type-main {
     padding: 20px 14px 32px;
   }
 
-  .agreement-card.card {
+  .contract-type-card.card {
     min-height: auto;
   }
 
-  .agreement-card > .card-body {
+  .contract-type-card > .card-body {
     padding: 24px 20px 28px;
+  }
+
+  .contract-type-info-grid,
+  .contract-type-audit-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .contract-type-detail-item:not(:nth-child(3n + 1)) {
+    border-left: 0;
+  }
+
+  .contract-type-audit-grid {
+    gap: 24px;
   }
 }
 
 @media (max-width: 560px) {
-  .agreement-sidebar {
+  .contract-type-sidebar {
     display: none;
   }
 
-  .agreement-actions {
+  .contract-type-actions {
     flex-direction: column-reverse;
   }
 
-  .agreement-actions .btn {
+  .contract-type-actions .btn {
     width: 100%;
+  }
+
+  .contract-type-detail-heading,
+  .contract-type-summary {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .contract-type-edit-button.btn {
+    width: 100%;
+  }
+
+  .contract-type-detail-card > .card-body {
+    padding: 20px;
+  }
+
+  .contract-type-code-tile {
+    width: 96px;
+    height: 96px;
+    flex-basis: 96px;
+  }
+
+  .contract-type-detail-item {
+    min-height: auto;
+    padding: 24px 0;
   }
 }
