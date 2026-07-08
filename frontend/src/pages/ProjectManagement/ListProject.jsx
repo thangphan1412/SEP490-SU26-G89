@@ -146,7 +146,7 @@ function ListProject() {
             description="View and find projects, timelines, ownership, and current status."
         >
             <div className="list-project-toolbar">
-                // Search box and status filter
+                {/* Search box and status filter */}
                 <label className="list-project-search-box">
                     <Icon name="search" size={22} color="#3f4d6f" />
 
@@ -170,7 +170,7 @@ function ListProject() {
                     )}
                 </label>
 
-                // Status filter dropdown
+                {/* Status filter dropdown */}
                 <label className="list-project-select-box">
                     <span className="list-project-select-label">Status</span>
 
@@ -204,7 +204,7 @@ function ListProject() {
                 )}
             </div>
 
-            //Table of projects
+            {/* //Table of projects */}
             <div className="list-project-table-wrap">
                 <table className="list-project-table">
                     <thead>
@@ -310,7 +310,7 @@ function ListProject() {
             <div className="list-project-footer">
                 <span>Total: {totalElements} results</span>
 
-                // Pagination controls
+                {/*Pagination controls */}
                 <div className="list-project-pagination">
                     <button
                         type="button"
