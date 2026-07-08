@@ -8,7 +8,7 @@ function ContractTypes() {
     {
       code: "NDA",
       name: "Non-Disclosure Contract",
-      description: "Agreement to protect confidential information shared between parties.",
+      description: "contract to protect confidential information shared between parties.",
       status: "Active",
     },
     {
@@ -26,7 +26,7 @@ function ContractTypes() {
     {
       code: "SA",
       name: "Service Contract",
-      description: "Agreement for service performance.",
+      description: "contract for service performance.",
       status: "Active",
     },
     {

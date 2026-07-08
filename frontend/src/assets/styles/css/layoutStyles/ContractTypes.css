@@ -71,7 +71,252 @@
   background: #f8fafc;
 }
 
-.create-contract-type-page .card {
-  max-width: 640px;
-  margin: 0 auto;
+.agreement-create-page {
+  min-height: 100vh;
+  background: #f6f8fc;
+  color: #17213d;
+}
+
+.agreement-layout {
+  display: grid;
+  grid-template-columns: 256px minmax(0, 1fr);
+  min-height: calc(100vh - 60px);
+}
+
+.agreement-sidebar {
+  padding: 28px 16px;
+  background: #ffffff;
+  border-right: 1px solid #e8edf5;
+}
+
+.agreement-sidebar-title {
+  margin: 0 10px 20px;
+  color: #4b5a79;
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.agreement-sidebar-nav {
+  gap: 4px;
+}
+
+.agreement-sidebar-link.nav-link {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 48px;
+  gap: 13px;
+  padding: 0 12px;
+  border-radius: 8px;
+  color: #263551;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.agreement-sidebar-link.nav-link:hover {
+  background: #f5f7fb;
+  color: #1748df;
+}
+
+.agreement-sidebar-link.nav-link.active {
+  color: #0d4eff;
+  background: #eef3ff;
+  font-weight: 700;
+}
+
+.agreement-sidebar-divider {
+  height: 1px;
+  width: 100%;
+  margin: 12px 0;
+  background: #e2e7f0;
+}
+
+.agreement-main {
+  min-width: 0;
+  padding: 30px;
+}
+
+.agreement-card.card {
+  min-height: calc(100vh - 120px);
+  border: 1px solid #e4eaf3;
+  border-radius: 10px;
+  box-shadow: 0 16px 38px rgba(28, 43, 78, 0.06);
+}
+
+.agreement-card > .card-body {
+  display: flex;
+  flex-direction: column;
+  padding: 30px 32px 36px;
+}
+
+.agreement-form-heading {
+  margin-bottom: 28px;
+}
+
+.agreement-form-heading h1 {
+  margin: 0;
+  color: #101936;
+  font-size: 27px;
+  font-weight: 800;
+}
+
+.agreement-form-heading p {
+  margin: 7px 0 0;
+  color: #62708e;
+  font-size: 15px;
+}
+
+.agreement-form {
+  display: grid;
+  width: min(700px, 100%);
+  gap: 24px;
+}
+
+.agreement-form .form-label {
+  margin-bottom: 8px;
+  color: #15213a;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.agreement-required {
+  color: #ff3131;
+}
+
+.agreement-form .form-control,
+.agreement-form .form-select {
+  min-height: 48px;
+  padding: 12px 15px;
+  border: 1px solid #d5ddea;
+  border-radius: 8px;
+  color: #17213d;
+  font-size: 15px;
+}
+
+.agreement-form textarea.form-control {
+  min-height: 110px;
+  resize: vertical;
+}
+
+.agreement-form .form-control:focus,
+.agreement-form .form-select:focus {
+  border-color: #2b61ff;
+  box-shadow: 0 0 0 3px rgba(43, 97, 255, 0.13);
+}
+
+.agreement-form .form-text {
+  display: block;
+  margin-top: 8px;
+  color: #66728e;
+  font-size: 13px;
+}
+
+.agreement-form-row.row {
+  --bs-gutter-x: 48px;
+  --bs-gutter-y: 24px;
+}
+
+.agreement-select-wrap {
+  position: relative;
+}
+
+.agreement-select-wrap .form-select {
+  appearance: none;
+  padding-right: 44px;
+}
+
+.agreement-select-wrap svg {
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  color: #223252;
+  pointer-events: none;
+  transform: translateY(-50%);
+}
+
+.agreement-status-options {
+  gap: 34px;
+  min-height: 30px;
+}
+
+.agreement-status-options .form-check-input {
+  width: 20px;
+  height: 20px;
+  margin-right: 7px;
+}
+
+.agreement-status-options .form-check-input:checked {
+  background-color: #1c55ff;
+  border-color: #1c55ff;
+}
+
+.agreement-actions {
+  justify-content: flex-end;
+  gap: 16px;
+  margin-top: auto;
+  padding-top: 28px;
+}
+
+.agreement-actions .btn {
+  min-height: 48px;
+  border-radius: 7px;
+  padding: 0 22px;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.agreement-actions .btn-primary {
+  min-width: 196px;
+  background: #164dff;
+  border-color: #164dff;
+  box-shadow: 0 8px 18px rgba(22, 77, 255, 0.2);
+}
+
+@media (max-width: 900px) {
+  .agreement-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .agreement-sidebar {
+    padding: 18px;
+    border-right: 0;
+    border-bottom: 1px solid #e8edf5;
+  }
+
+  .agreement-sidebar-nav {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: 8px;
+  }
+
+  .agreement-sidebar-divider {
+    display: none;
+  }
+
+  .agreement-main {
+    padding: 20px 14px 32px;
+  }
+
+  .agreement-card.card {
+    min-height: auto;
+  }
+
+  .agreement-card > .card-body {
+    padding: 24px 20px 28px;
+  }
+}
+
+@media (max-width: 560px) {
+  .agreement-sidebar {
+    display: none;
+  }
+
+  .agreement-actions {
+    flex-direction: column-reverse;
+  }
+
+  .agreement-actions .btn {
+    width: 100%;
+  }
 }
