@@ -13,15 +13,15 @@ import java.time.LocalDateTime;
 @Builder
 @Table(name = "notifications")
 public class Notifications extends BaseEntity{
-    @Column(name = "title")
+    @Column(name = "notifications_title")
     private String title;
-    @Column(name = "content")
+    @Column(name = "notifications_content")
     private String content;
-    @Column(name = "type")
+    @Column(name = "notifications_type")
     private String type;
-    @Column(name = "is_read")
+    @Column(name = "notifications_is_read")
     private Boolean isRead;
-    @Column(name = "create_at")
+    @Column(name = "notifications_create_at")
     private LocalDateTime createAt;
 
     /// Relation

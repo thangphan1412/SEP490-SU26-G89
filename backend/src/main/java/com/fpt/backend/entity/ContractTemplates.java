@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @AllArgsConstructor
 @NoArgsConstructor
@@ -29,4 +30,7 @@ public class ContractTemplates extends BaseEntity{
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "contract_type_id")
     private ContractTypes contractType;
+    //contractAtribute
+    @OneToMany(mappedBy = "contractTemplates")
+    private List<ContractAttribute> contractAttributes;
 }

@@ -13,25 +13,25 @@ import java.time.LocalDateTime;
 @Builder
 @Table(name = "file_storage")
 public class FileStorage extends BaseEntity{
-    @Column(name = "original_name")
+    @Column(name = "fileStorage_original_name")
     private String originalName;
-    @Column(name = "stored_name")
+    @Column(name = "fileStorage_stored_name")
     private String storedName;
-    @Column(name = "mime_type")
+    @Column(name = "fileStorage_mime_type")
     private String mimeType;
-    @Column(name = "extension")
+    @Column(name = "fileStorage_extension")
     private String extension;
-    @Column(name = "storage_provider")
+    @Column(name = "fileStorage_storage_provider")
     private String storageProvider;
-    @Column(name = "storage_key")
+    @Column(name = "fileStorage_storage_key")
     private String storageKey;
-    @Column(name = "url")
+    @Column(name = "fileStorage_url")
     private String url;
-    @Column(name = "upload_by")
+    @Column(name = "fileStorage_upload_by")
     private String uploadBy;
-    @Column(name = "upload_at")
+    @Column(name = "fileStorage_upload_at")
     private LocalDateTime uploadAt;
-    @Column(name = "is_deleted")
+    @Column(name = "fileStorage_is_deleted")
     private Boolean isDeleted;
 
     /// Relation
