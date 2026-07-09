@@ -13,11 +13,11 @@ import lombok.*;
 public class Workflow extends BaseEntity{
     @Column(name = "workflow_name")
     private String workflowName;
-    @Column(name = "step_oder")
+    @Column(name = "workflow_step_oder")
     private String stepOder;
-    @Column(name = "approver_role")
+    @Column(name = "workflow_approver_role")
     private String approverRole;
-    @Column(name = "is_required")
+    @Column(name = "workflow_is_required")
     private String isRequired;
 
     /// Relation

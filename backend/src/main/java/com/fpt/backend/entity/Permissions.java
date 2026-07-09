@@ -16,7 +16,7 @@ import java.util.List;
 public class Permissions extends BaseEntity{
     @Column(name = "permission_name")
     private String permissionName;
-    @Column(name = "permission_code")
+    @Column(name = "permission_co   de")
     private String permissionCode;
     @Column(name = "permission_module")
     private String permissionModule;
