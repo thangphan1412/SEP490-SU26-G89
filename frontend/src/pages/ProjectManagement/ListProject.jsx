@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Button, Form, InputGroup, Pagination, Table } from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
 import { listProjects } from "../../config/axiosConfig.js";
-import { Icon, PagePanel, StatusBadge } from "./ProjectComponents.jsx";
+import { Icon, PagePanel, PrimaryButton, StatusBadge } from "./ProjectComponents.jsx";
 import "../../assets/styles/css/projectStyles/ListProject.css";
 
 const sortableColumns = [
@@ -157,10 +157,18 @@ function ListProject() {
         }
     };
 
+    const pageAction = (
+        <PrimaryButton onClick={() => navigate("/project-management/create")}>
+            <Icon name="plus" size={19} color="#fff" />
+            <span>Create Project</span>
+        </PrimaryButton>
+    );
+
     return (
         <PagePanel
             title="Projects"
             description="View and find projects, timelines, ownership, and current status."
+            action={pageAction}
         >
             <div className="list-project-toolbar">
                 <InputGroup className="list-project-search-box">

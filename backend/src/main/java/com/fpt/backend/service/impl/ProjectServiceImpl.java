@@ -1,8 +1,10 @@
 package com.fpt.backend.service.impl;
 
+import com.fpt.backend.dto.request.project.ProjectCreateRequest;
 import com.fpt.backend.dto.request.project.ProjectListRequest;
 import com.fpt.backend.dto.response.project.ProjectContractResponse;
 import com.fpt.backend.dto.response.project.ProjectDetailResponse;
+import com.fpt.backend.dto.response.project.ProjectEmployeeResponse;
 import com.fpt.backend.dto.response.project.ProjectListItemResponse;
 import com.fpt.backend.dto.response.project.ProjectListResponse;
 import com.fpt.backend.dto.response.project.ProjectUserResponse;
@@ -13,6 +15,7 @@ import com.fpt.backend.entity.UserPermission;
 import com.fpt.backend.entity.Users;
 import com.fpt.backend.repository.project.ProjectRepository;
 import com.fpt.backend.service.interfaces.ProjectService;
+import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -23,7 +26,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
@@ -35,6 +40,10 @@ public class ProjectServiceImpl implements ProjectService {
     private static final int PAGE_SIZE = 7;
     private static final String DATA_SOURCE = "DATABASE";
     private static final String DEFAULT_SORT_FIELD = "id";
+    private static final String DEFAULT_CREATED_BY = "Admin";
+    private static final String DEFAULT_PROJECT_STATUS = "Planning";
+    private static final String PROJECT_MEMBER_PERMISSION = "Project Member";
+    private static final String PROJECT_PERMISSION_MODULE = "PROJECT";
 
     private static final Set<String> SORT_FIELDS = Set.of(
             "id",
@@ -48,6 +57,7 @@ public class ProjectServiceImpl implements ProjectService {
     );
 
     private final ProjectRepository projectRepository;
+    private final EntityManager entityManager;
 
     @Override
     public ProjectListResponse getProjects(ProjectListRequest request) {
@@ -78,6 +88,24 @@ public class ProjectServiceImpl implements ProjectService {
         return toDetail(project);
     }
 
+    @Override
+    @Transactional
+    public ProjectDetailResponse createProject(ProjectCreateRequest request) {
+        Projects project = new Projects();
+        List<Integer> employeeIds = request == null ? null : request.employeeIds();
+        applyCreateRequest(project, request);
+
+        Projects savedProject = projectRepository.save(project);
+        addEmployeesToProject(savedProject, employeeIds);
+
+        return toDetail(savedProject);
+    }
+
+    @Override
+    public List<ProjectEmployeeResponse> getEmployeesForProjectSelection() {
+        return projectRepository.findEmployeesForProjectSelection();
+    }
+
     private Page<Projects> findProjects(String search, String status, Pageable pageable) {
         if (search.isBlank() && status.isBlank()) {
             return projectRepository.findAll(pageable);
@@ -106,6 +134,110 @@ public class ProjectServiceImpl implements ProjectService {
 
     private String normalize(String value) {
         return value == null ? "" : value.trim();
+    }
+
+    private void applyCreateRequest(Projects project, ProjectCreateRequest request) {
+        if (request == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Project information is required");
+        }
+
+        String projectName = requireText(request.projectName(), "Project name is required");
+        String projectCode = requireText(request.projectCode(), "Project code is required");
+        LocalDate startDate = request.projectStartDate();
+        LocalDate endDate = request.projectEndDate();
+
+        if (startDate == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Start date is required");
+        }
+
+        if (endDate == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "End date is required");
+        }
+
+        if (endDate.isBefore(startDate)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "End date must be after start date");
+        }
+
+        if (projectRepository.existsByProjectCodeIgnoreCase(projectCode)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Project code already exists");
+        }
+
+        project.setProjectName(projectName);
+        project.setProjectCode(projectCode);
+        project.setProjectStartDate(startDate);
+        project.setProjectEndDate(endDate);
+        project.setProjectCreatedAt(defaultIfBlank(request.projectCreatedAt(), LocalDate.now().toString()));
+        project.setProjectDescription(normalize(request.projectDescription()));
+        project.setProjectStatus(defaultIfBlank(request.projectStatus(), DEFAULT_PROJECT_STATUS));
+        project.setProjectCreatedBy(DEFAULT_CREATED_BY);
+    }
+
+    private String requireText(String value, String message) {
+        String normalizedValue = normalize(value);
+
+        if (normalizedValue.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, message);
+        }
+
+        return normalizedValue;
+    }
+
+    private String defaultIfBlank(String value, String defaultValue) {
+        String normalizedValue = normalize(value);
+        return normalizedValue.isBlank() ? defaultValue : normalizedValue;
+    }
+
+    private void addEmployeesToProject(Projects project, List<Integer> employeeIds) {
+        List<Integer> selectedEmployeeIds = normalizeEmployeeIds(employeeIds);
+
+        if (selectedEmployeeIds.isEmpty()) {
+            project.setPermission(new ArrayList<>());
+            return;
+        }
+
+        Permissions permission = Permissions.builder()
+                .permissionName(PROJECT_MEMBER_PERMISSION)
+                .permissionCode("PROJECT_MEMBER_" + project.getId())
+                .permissionModule(PROJECT_PERMISSION_MODULE)
+                .project(project)
+                .build();
+        entityManager.persist(permission);
+
+        List<UserPermission> userPermissions = new ArrayList<>();
+
+        for (Integer employeeId : selectedEmployeeIds) {
+            Users user = entityManager.find(Users.class, employeeId);
+
+            if (user == null) {
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Employee not found with id: " + employeeId);
+            }
+
+            UserPermission userPermission = UserPermission.builder()
+                    .user(user)
+                    .permission(permission)
+                    .build();
+            entityManager.persist(userPermission);
+            userPermissions.add(userPermission);
+        }
+
+        permission.setUserPermissions(userPermissions);
+        project.setPermission(List.of(permission));
+    }
+
+    private List<Integer> normalizeEmployeeIds(List<Integer> employeeIds) {
+        if (employeeIds == null || employeeIds.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        LinkedHashSet<Integer> uniqueIds = new LinkedHashSet<>();
+
+        for (Integer employeeId : employeeIds) {
+            if (employeeId != null && employeeId > 0) {
+                uniqueIds.add(employeeId);
+            }
+        }
+
+        return new ArrayList<>(uniqueIds);
     }
 
     private ProjectListItemResponse toListItem(Projects project) {

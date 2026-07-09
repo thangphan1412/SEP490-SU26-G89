@@ -18,3 +18,15 @@ export const viewProject = (projectId) => {
         },
     });
 };
+
+export const listProjectEmployees = () => {
+    return axios.get(PROJECT_API_BASE_URL + "/employees", {
+        headers: {
+            "Cache-Control": "no-cache",
+        },
+    });
+};
+
+export const createProject = (project) => {
+    return axios.post(PROJECT_API_BASE_URL + "/create", project);
+};
