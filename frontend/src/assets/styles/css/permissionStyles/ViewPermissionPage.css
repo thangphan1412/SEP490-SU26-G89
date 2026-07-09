@@ -6,7 +6,7 @@
   font-family: Inter, Arial, sans-serif;
 }
 
-.view-card {
+.view-card.card {
   max-width: 1230px;
   margin: 0 auto;
   padding-bottom: 28px;
@@ -23,6 +23,7 @@
   gap: 20px;
   padding: 28px 32px;
   border-bottom: 1px solid #dfe6f2;
+  background: #ffffff;
 }
 
 .view-title-row {
@@ -47,30 +48,31 @@
   gap: 16px;
 }
 
-.view-back-button,
-.view-primary-button,
-.view-more-button {
+.view-back-button.btn,
+.view-primary-button.btn,
+.view-more-button.btn {
   height: 44px;
   border-radius: 8px;
   cursor: pointer;
   font-weight: 700;
 }
 
-.view-back-button,
-.view-more-button {
+.view-back-button.btn,
+.view-more-button.btn {
   width: 44px;
   background: #ffffff;
   border: 1px solid #d6dfed;
+  color: #0d1734;
 }
 
-.view-primary-button {
+.view-primary-button.btn {
   min-width: 168px;
   color: #ffffff;
   background: #174cff;
   border: 1px solid #174cff;
 }
 
-.view-section {
+.view-section.card {
   margin: 28px 32px 0;
   padding: 22px;
   border: 1px solid #dfe6f2;
@@ -138,7 +140,8 @@
   gap: 16px;
 }
 
-.view-pill {
+.view-pill.badge {
+  --bs-badge-color: #1451ff;
   display: inline-flex;
   align-items: center;
   min-height: 34px;
@@ -150,7 +153,8 @@
   font-weight: 700;
 }
 
-.view-status {
+.view-status.badge {
+  --bs-badge-color: #15933d;
   padding: 7px 12px;
   color: #15933d;
   background: #effcf4;
@@ -159,10 +163,16 @@
   font-weight: 700;
 }
 
-.view-table {
+.view-table.table {
   width: 100%;
   border-collapse: collapse;
   border: 1px solid #e0e7f1;
+  --bs-table-bg: #ffffff;
+  --bs-table-hover-bg: #f8fbff;
+}
+
+.view-table.table > :not(caption) > * > * {
+  box-shadow: none;
 }
 
 .view-table th,

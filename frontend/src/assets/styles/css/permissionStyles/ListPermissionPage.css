@@ -6,7 +6,7 @@
   font-family: Inter, Arial, sans-serif;
 }
 
-.list-card {
+.list-card.card {
   max-width: 1220px;
   margin: 0 auto;
   overflow: hidden;
@@ -23,6 +23,7 @@
   gap: 20px;
   padding: 28px 36px;
   border-bottom: 1px solid #dfe6f2;
+  background: #ffffff;
 }
 
 .list-header h1 {
@@ -36,16 +37,16 @@
   color: #52627e;
 }
 
-.list-primary-button,
-.list-outline-button,
-.list-action-button,
+.list-primary-button.btn,
+.list-outline-button.btn,
+.list-action-button.btn,
 .list-pages button {
   cursor: pointer;
   border-radius: 8px;
   font-weight: 700;
 }
 
-.list-primary-button {
+.list-primary-button.btn {
   min-height: 44px;
   padding: 0 20px;
   color: #ffffff;
@@ -60,9 +61,9 @@
   padding: 26px 36px;
 }
 
-.list-search,
-.list-select,
-.list-outline-button {
+.list-search.form-control,
+.list-select.form-select,
+.list-outline-button.btn {
   height: 52px;
   padding: 0 14px;
   background: #ffffff;
@@ -70,7 +71,7 @@
   border-radius: 8px;
 }
 
-.list-search {
+.list-search.form-control {
   padding: 0 16px;
   font-size: 15px;
 }
@@ -82,9 +83,15 @@
   border-radius: 8px;
 }
 
-.list-table {
+.list-table.table {
   width: 100%;
   border-collapse: collapse;
+  --bs-table-bg: #ffffff;
+  --bs-table-hover-bg: #f8fbff;
+}
+
+.list-table.table > :not(caption) > * > * {
+  box-shadow: none;
 }
 
 .list-table th,
@@ -99,7 +106,7 @@
   background: #fbfcff;
 }
 
-.list-name-button {
+.list-name-button.btn {
   display: flex;
   align-items: center;
   gap: 14px;
@@ -108,6 +115,7 @@
   background: none;
   border: 0;
   cursor: pointer;
+  text-decoration: none;
 }
 
 .list-icon {
@@ -123,7 +131,8 @@
   font-weight: 700;
 }
 
-.list-status {
+.list-status.badge {
+  --bs-badge-color: #273348;
   display: inline-block;
   padding: 7px 12px;
   border-radius: 7px;
@@ -142,7 +151,7 @@
   border: 1px solid #cdd7e6;
 }
 
-.list-action-button {
+.list-action-button.btn {
   width: 40px;
   height: 40px;
   background: #ffffff;
@@ -160,6 +169,7 @@
 
 .list-pages {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 10px;
 }

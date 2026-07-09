@@ -1,4 +1,3 @@
-/* eslint-disable react-refresh/only-export-components */
 export const contractStatuses = ["Active", "Pending", "Expired", "Draft"];
 
 export const contractParties = [

@@ -11,4 +11,10 @@ export const listProjects = (params) => {
     });
 };
 
-
+export const viewProject = (projectId) => {
+    return axios.get(PROJECT_API_BASE_URL + "/view" + "/" + projectId, {
+        headers: {
+            "Cache-Control": "no-cache",
+        },
+    });
+};

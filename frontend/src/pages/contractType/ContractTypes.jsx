@@ -1,47 +1,9 @@
 import { useNavigate } from "react-router-dom";
+import { contractTypeRecords } from "./ContractTypeComponents.jsx";
 import "../../assets/styles/css/layoutStyles/ContractTypes.css";
 
 function ContractTypes() {
   const navigate = useNavigate();
-
-  const contractTypes = [
-    {
-      code: "NDA",
-      name: "Non-Disclosure Contract",
-      description: "Agreement to protect confidential information shared between parties.",
-      status: "Active",
-    },
-    {
-      code: "MSA",
-      name: "Master Service Contract",
-      description: "Governs long-term business relationship.",
-      status: "Active",
-    },
-    {
-      code: "SOW",
-      name: "Statement of Work",
-      description: "Defines scope of work and deliverables.",
-      status: "Active",
-    },
-    {
-      code: "SA",
-      name: "Service Contract",
-      description: "Agreement for service performance.",
-      status: "Active",
-    },
-    {
-      code: "LOA",
-      name: "Letter of Contract",
-      description: "Letter confirming mutual understanding.",
-      status: "Inactive",
-    },
-    {
-      code: "POA",
-      name: "Power of Attorney",
-      description: "Authorization to act on behalf of another.",
-      status: "Inactive",
-    },
-  ];
 
   return (
     <div className="contract-types-page">
@@ -87,7 +49,7 @@ function ContractTypes() {
               </tr>
             </thead>
             <tbody>
-              {contractTypes.map((item) => (
+              {contractTypeRecords.map((item) => (
                 <tr key={item.code}>
                   <td>{item.code}</td>
                   <td>{item.name}</td>
@@ -104,8 +66,13 @@ function ContractTypes() {
                     </span>
                   </td>
                   <td>
-                    <button type="button" className="btn btn-sm btn-light">
-                      ...
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-light"
+                      onClick={() => navigate("/contract-types/detail", { state: { code: item.code } })}
+                      aria-label={`View ${item.name}`}
+                    >
+                      View
                     </button>
                   </td>
                 </tr>

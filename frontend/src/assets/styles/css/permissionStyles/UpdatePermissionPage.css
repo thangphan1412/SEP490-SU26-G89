@@ -6,7 +6,7 @@
   font-family: Inter, Arial, sans-serif;
 }
 
-.update-card {
+.update-card.card {
   max-width: 1190px;
   margin: 0 auto;
   background: #ffffff;
@@ -18,6 +18,7 @@
 .update-header {
   padding: 28px 50px;
   border-bottom: 1px solid #dfe6f2;
+  background: #ffffff;
 }
 
 .update-header h1 {
@@ -51,7 +52,8 @@
   color: #ef3131;
 }
 
-.update-input {
+.update-input.form-control,
+.update-input.form-select {
   height: 52px;
   padding: 0 16px;
   color: #33425f;
@@ -64,7 +66,7 @@
   position: relative;
 }
 
-.update-textarea {
+.update-textarea.form-control {
   width: 100%;
   min-height: 94px;
   padding: 14px 16px 30px;
@@ -87,7 +89,7 @@
   gap: 42px;
 }
 
-.update-radio-text {
+.update-radio-text.btn {
   display: inline-flex;
   align-items: center;
   gap: 10px;
@@ -96,6 +98,7 @@
   background: none;
   border: 0;
   cursor: pointer;
+  text-decoration: none;
 }
 
 .update-radio {
@@ -115,11 +118,26 @@
   gap: 14px;
 }
 
-.update-toggle {
+.update-status-switch.form-switch {
+  min-height: 28px;
+  padding-left: 54px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.update-status-switch .form-check-input {
   width: 50px;
   height: 28px;
-  background: #174cff;
-  border-radius: 999px;
+  margin-left: -54px;
+  border-color: #174cff;
+  background-color: #174cff;
+  box-shadow: none;
+}
+
+.update-status-switch .form-check-label {
+  color: #1d2a47;
+  font-weight: 600;
 }
 
 .update-role-box {
@@ -132,7 +150,8 @@
   border-radius: 8px;
 }
 
-.update-tag {
+.update-tag.badge {
+  --bs-badge-color: #1451ff;
   display: inline-flex;
   align-items: center;
   min-height: 34px;
@@ -146,13 +165,14 @@
 
 .update-actions {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
   gap: 18px;
   margin-top: 18px;
 }
 
-.update-cancel-button,
-.update-primary-button {
+.update-cancel-button.btn,
+.update-primary-button.btn {
   min-width: 142px;
   height: 44px;
   border-radius: 8px;
@@ -160,12 +180,13 @@
   font-weight: 700;
 }
 
-.update-cancel-button {
+.update-cancel-button.btn {
   background: #ffffff;
   border: 1px solid #d6dfed;
+  color: #0d1734;
 }
 
-.update-primary-button {
+.update-primary-button.btn {
   min-width: 178px;
   color: #ffffff;
   background: #174cff;

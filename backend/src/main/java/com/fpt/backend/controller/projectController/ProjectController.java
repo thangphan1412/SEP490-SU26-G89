@@ -1,6 +1,7 @@
 package com.fpt.backend.controller.projectController;
 
 import com.fpt.backend.dto.request.project.ProjectListRequest;
+import com.fpt.backend.dto.response.project.ProjectDetailResponse;
 import com.fpt.backend.dto.response.project.ProjectListResponse;
 import com.fpt.backend.service.interfaces.ProjectService;
 import com.fpt.backend.util.BaseResponse;
@@ -9,6 +10,7 @@ import org.springframework.http.CacheControl;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -34,5 +36,14 @@ public class ProjectController {
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.noStore())
                 .body(new BaseResponse<>(projects));
+    }
+
+    @GetMapping("/view/{id}")
+    public ResponseEntity<BaseResponse<ProjectDetailResponse>> getProjectById(@PathVariable int id) {
+        ProjectDetailResponse project = projectService.getProjectById(id);
+
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .body(new BaseResponse<>(project));
     }
 }

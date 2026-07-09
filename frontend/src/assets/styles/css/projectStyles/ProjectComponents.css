@@ -1,0 +1,232 @@
+.project-management-page,
+.project-management-page * {
+    box-sizing: border-box;
+}
+
+.project-management-page.container-fluid {
+    min-height: 100vh;
+    padding: 22px 32px;
+    background: #f6f8fc;
+    color: #111827;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.project-management-panel.card {
+    max-width: 1160px;
+    margin: 0 auto;
+    overflow: hidden;
+    border: 1px solid #dce4f0;
+    border-radius: 16px;
+    background: #fff;
+    box-shadow: 0 8px 24px rgba(31, 41, 55, 0.06);
+}
+
+.project-management-page-header.card-header {
+    min-height: 104px;
+    padding: 26px 34px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    border-bottom: 1px solid #e6ebf3;
+    background: #fff;
+}
+
+.project-management-page-title {
+    margin: 0;
+    font-size: 29px;
+    font-weight: 800;
+}
+
+.project-management-page-description {
+    margin: 6px 0 0;
+    color: #51607f;
+    font-size: 16px;
+}
+
+.project-management-primary-button.btn,
+.project-management-cancel-button.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 7px;
+    cursor: pointer;
+    line-height: 1;
+}
+
+.project-management-primary-button.btn {
+    --bs-btn-bg: #2450f5;
+    --bs-btn-border-color: #2450f5;
+    --bs-btn-hover-bg: #1f45d7;
+    --bs-btn-hover-border-color: #1f45d7;
+    --bs-btn-active-bg: #1a3bb8;
+    --bs-btn-active-border-color: #1a3bb8;
+    min-width: 142px;
+    height: 47px;
+    gap: 10px;
+    border: 0;
+    color: #fff;
+    font-size: 16px;
+    font-weight: 700;
+}
+
+.project-management-cancel-button.btn {
+    --bs-btn-bg: #fff;
+    --bs-btn-border-color: #d7dfeb;
+    --bs-btn-hover-bg: #f8fafc;
+    --bs-btn-hover-border-color: #cbd5e1;
+    min-width: 84px;
+    height: 43px;
+    border: 1px solid #d7dfeb;
+    color: #111827;
+    font-size: 15px;
+}
+
+.project-management-actions {
+    display: flex;
+    gap: 12px;
+}
+
+.project-management-card.card {
+    margin: 20px 28px;
+    padding: 20px;
+    border: 1px solid #d9e2ef;
+    border-radius: 9px;
+    background: #fff;
+}
+
+.project-management-card-title.card-title {
+    margin: 0 0 18px;
+    font-size: 18px;
+    font-weight: 800;
+}
+
+.project-management-field-label.form-label {
+    display: block;
+    margin-bottom: 7px;
+    color: #243452;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.project-management-input,
+.project-management-textarea {
+    width: 100%;
+    border: 1px solid #d5deeb;
+    border-radius: 6px;
+    background-color: #fff;
+    color: #243452;
+    font-size: 14px;
+    outline: none;
+}
+
+.project-management-input.form-control,
+.project-management-input.form-select {
+    height: 38px;
+    padding: 0 13px;
+    appearance: none;
+    background-image: none;
+}
+
+.project-management-textarea.form-control {
+    min-height: 78px;
+    padding: 12px 13px;
+    resize: vertical;
+}
+
+.project-management-input.form-control:focus,
+.project-management-input.form-select:focus,
+.project-management-textarea.form-control:focus {
+    border-color: #9db4ff;
+    box-shadow: 0 0 0 3px rgba(36, 80, 245, 0.12);
+}
+
+.project-management-status-badge.badge {
+    --bs-badge-color: #42516d;
+    min-width: 62px;
+    min-height: 31px;
+    padding: 0 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 800;
+    line-height: 1;
+}
+
+.project-management-status-badge.badge.project-management-status-badge--active {
+    --bs-badge-color: #108139;
+    border: 1px solid #a8e0bb;
+    background-color: #ecfff2;
+    color: #108139;
+}
+
+.project-management-status-badge.badge.project-management-status-badge--planning {
+    --bs-badge-color: #1f4fff;
+    border: 1px solid #b6cffc;
+    background-color: #eef5ff;
+    color: #1f4fff;
+}
+
+.project-management-status-badge.badge.project-management-status-badge--hold {
+    --bs-badge-color: #ea580c;
+    border: 1px solid #fdba74;
+    background-color: #fff7ed;
+    color: #ea580c;
+}
+
+.project-management-status-badge.badge.project-management-status-badge--completed {
+    --bs-badge-color: #7c3aed;
+    border: 1px solid #cba6ff;
+    background-color: #f5edff;
+    color: #7c3aed;
+}
+
+.project-management-status-badge.badge.project-management-status-badge--draft {
+    --bs-badge-color: #42516d;
+    border: 1px solid #cfd8e5;
+    background-color: #f8fafc;
+    color: #42516d;
+}
+
+.project-management-status-badge.badge.project-management-status-badge--danger {
+    --bs-badge-color: #e11d48;
+    border: 1px solid #ffb9c6;
+    background-color: #fff1f3;
+    color: #e11d48;
+}
+
+.project-management-icon-circle {
+    width: 42px;
+    height: 42px;
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: #eef3ff;
+}
+
+.project-management-info-alert.alert {
+    min-height: 43px;
+    margin: 0 28px 22px;
+    padding: 10px 16px;
+    border: 1px solid #b9ceff;
+    border-radius: 7px;
+    background: #edf4ff;
+    color: #2450f5;
+    font-size: 14px;
+}
+
+.project-management-info-alert .hstack {
+    align-items: center;
+}
+
+@media (max-width: 700px) {
+    .project-management-page.container-fluid { padding: 14px; }
+    .project-management-page-header.card-header { padding: 22px; align-items: flex-start; flex-direction: column; }
+    .project-management-actions { width: 100%; flex-wrap: wrap; }
+    .project-management-card.card { margin: 16px; }
+    .project-management-info-alert.alert { margin: 0 16px 16px; }
+}
