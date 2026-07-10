@@ -50,7 +50,7 @@
 
 .view-back-button.btn,
 .view-primary-button.btn,
-.view-more-button.btn {
+.view-delete-button.btn {
   height: 44px;
   border-radius: 8px;
   cursor: pointer;
@@ -58,11 +58,21 @@
 }
 
 .view-back-button.btn,
-.view-more-button.btn {
-  width: 44px;
+.view-delete-button.btn {
   background: #ffffff;
   border: 1px solid #d6dfed;
   color: #0d1734;
+}
+
+.view-back-button.btn {
+  width: 44px;
+}
+
+.view-delete-button.btn {
+  min-width: 90px;
+  color: #b42318;
+  background: #fff7f6;
+  border-color: #f6c7c2;
 }
 
 .view-primary-button.btn {
@@ -94,7 +104,7 @@
 
 .view-overview-grid {
   display: grid;
-  grid-template-columns: 140px 1fr 1fr 1fr;
+  grid-template-columns: 140px 1fr 1fr;
   gap: 28px;
   align-items: center;
 }
@@ -127,6 +137,15 @@
   color: #1d2a47;
   line-height: 1.5;
   font-weight: 700;
+}
+
+.view-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 210px;
+  color: #52627e;
 }
 
 .view-date {

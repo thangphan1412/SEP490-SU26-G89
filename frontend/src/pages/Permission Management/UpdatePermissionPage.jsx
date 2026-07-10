@@ -1,82 +1,194 @@
-import { useNavigate } from "react-router-dom";
-import { Button, Card, Container, Form, Stack } from "react-bootstrap";
+import { useEffect, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { Alert, Button, Card, Container, Form, Spinner, Stack } from "react-bootstrap";
 import "../../assets/styles/css/permissionStyles/UpdatePermissionPage.css";
 import {
-  UpdatePermissionFormField,
-  UpdatePermissionRadioText,
-  UpdatePermissionTag,
-} from "./PermissionComponents.jsx";
+  listPermissionProjects,
+  updatePermission,
+  viewPermission,
+} from "../../config/axiosConfig.js";
+import { UpdatePermissionFormField } from "./PermissionComponents.jsx";
+
+const initialPermission = {
+  permissionName: "",
+  permissionCode: "",
+  permissionModule: "",
+  projectId: "",
+};
 
 function UpdatePermissionPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const permissionId = searchParams.get("edit");
+  const [permission, setPermission] = useState(initialPermission);
+  const [projects, setProjects] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    let isActive = true;
+
+    const loadPage = async () => {
+      if (!permissionId) {
+        if (isActive) {
+          setError("Permission id is missing. Please choose a permission from the list.");
+          setLoading(false);
+        }
+        return;
+      }
+
+      try {
+        setLoading(true);
+        setError("");
+        const [permissionResponse, projectResponse] = await Promise.all([
+          viewPermission(permissionId),
+          listPermissionProjects(),
+        ]);
+        const permissionPayload = permissionResponse.data?.data ?? permissionResponse.data;
+        const projectPayload = projectResponse.data?.data ?? projectResponse.data;
+
+        if (isActive) {
+          setPermission({
+            permissionName: permissionPayload?.permissionName || "",
+            permissionCode: permissionPayload?.permissionCode || "",
+            permissionModule: permissionPayload?.permissionModule || "",
+            projectId: permissionPayload?.projectId ? String(permissionPayload.projectId) : "",
+          });
+          setProjects(Array.isArray(projectPayload) ? projectPayload : []);
+        }
+      } catch (requestError) {
+        console.error("Unable to load permission for update:", requestError);
+
+        if (isActive) {
+          setError(getErrorMessage(requestError));
+        }
+      } finally {
+        if (isActive) {
+          setLoading(false);
+        }
+      }
+    };
+
+    loadPage();
+
+    return () => {
+      isActive = false;
+    };
+  }, [permissionId]);
+
+  const handleChange = (event) => {
+    const { name, value } = event.target;
+    setPermission((currentPermission) => ({
+      ...currentPermission,
+      [name]: value,
+    }));
+  };
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+
+    if (!permissionId) {
+      return;
+    }
+
+    try {
+      setSaving(true);
+      setError("");
+      const response = await updatePermission(permissionId, {
+        permissionName: permission.permissionName.trim(),
+        permissionCode: permission.permissionCode.trim(),
+        permissionModule: permission.permissionModule.trim(),
+        projectId: Number(permission.projectId),
+      });
+      const updatedPermission = response.data?.data ?? response.data;
+      navigate(`/permission/list?view=${updatedPermission?.id || permissionId}`);
+    } catch (requestError) {
+      console.error("Unable to update permission:", requestError);
+      setError(getErrorMessage(requestError));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <Container fluid as="main" className="update-page">
+        <Card className="update-card">
+          <div className="update-state"><Spinner animation="border" /> Loading permission...</div>
+        </Card>
+      </Container>
+    );
+  }
+
+  if (error && !permissionId) {
+    return (
+      <Container fluid as="main" className="update-page">
+        <Card className="update-card"><Alert variant="danger" className="m-4">{error}</Alert></Card>
+      </Container>
+    );
+  }
 
   return (
     <Container fluid as="main" className="update-page">
       <Card className="update-card">
         <Card.Header className="update-header">
           <Card.Title as="h1">Update Permission</Card.Title>
-          <Card.Text>Modify permission details and settings.</Card.Text>
+          <Card.Text>Update the permission information saved in the system.</Card.Text>
         </Card.Header>
 
-        <Form className="update-form">
+        <Form className="update-form" onSubmit={handleSubmit}>
+          {error && <Alert variant="danger" className="mb-0">{error}</Alert>}
+
           <UpdatePermissionFormField label="Permission Name" required>
             <Form.Control
               className="update-input"
-              defaultValue="Edit Contracts"
+              name="permissionName"
+              value={permission.permissionName}
+              onChange={handleChange}
+              maxLength={50}
+              required
             />
           </UpdatePermissionFormField>
 
-          <UpdatePermissionFormField label="Module" required>
-            <Form.Select className="update-input" defaultValue="Contracts">
-              <option>Contracts</option>
-              <option>Reports</option>
-              <option>Users</option>
-            </Form.Select>
-          </UpdatePermissionFormField>
-
-          <UpdatePermissionFormField label="Description">
-            <div className="update-textarea-box">
-              <Form.Control
-                as="textarea"
-                className="update-textarea"
-                defaultValue="Allows users to edit existing contract records and update contract details."
-                maxLength={255}
-              />
-              <span>65 / 255</span>
-            </div>
-          </UpdatePermissionFormField>
-
-          <UpdatePermissionFormField label="Permission Scope">
-            <div className="update-radio-group">
-              <UpdatePermissionRadioText text="System Wide" active />
-              <UpdatePermissionRadioText text="Module Specific" />
-            </div>
-          </UpdatePermissionFormField>
-
-          <UpdatePermissionFormField label="Access Level" required>
-            <Form.Select className="update-input" defaultValue="Write">
-              <option>Read Only</option>
-              <option>Write</option>
-              <option>Admin</option>
-            </Form.Select>
-          </UpdatePermissionFormField>
-
-          <div className="update-status-row">
-            <span className="update-label">Status</span>
-            <Form.Check
-              type="switch"
-              id="update-permission-status"
-              className="update-status-switch"
-              defaultChecked
-              label="Active"
+          <UpdatePermissionFormField label="Permission Code" required>
+            <Form.Control
+              className="update-input"
+              name="permissionCode"
+              value={permission.permissionCode}
+              onChange={handleChange}
+              maxLength={50}
+              required
             />
-          </div>
+          </UpdatePermissionFormField>
 
-          <UpdatePermissionFormField label="Assign to Roles (Optional)">
-            <Stack direction="horizontal" className="update-role-box">
-              <UpdatePermissionTag text="Contract Manager" />
-              <UpdatePermissionTag text="Legal Team" />
-            </Stack>
+          <UpdatePermissionFormField label="Permission Module" required>
+            <Form.Control
+              className="update-input"
+              name="permissionModule"
+              value={permission.permissionModule}
+              onChange={handleChange}
+              maxLength={255}
+              required
+            />
+          </UpdatePermissionFormField>
+
+          <UpdatePermissionFormField label="Project" required>
+            <Form.Select
+              className="update-input"
+              name="projectId"
+              value={permission.projectId}
+              onChange={handleChange}
+              disabled={projects.length === 0}
+              required
+            >
+              <option value="" disabled>Select project</option>
+              {projects.map((project) => (
+                <option key={project.id} value={project.id}>
+                  {formatProjectName(project)}
+                </option>
+              ))}
+            </Form.Select>
           </UpdatePermissionFormField>
 
           <Stack direction="horizontal" className="update-actions">
@@ -84,18 +196,35 @@ function UpdatePermissionPage() {
               type="button"
               variant="light"
               className="update-cancel-button"
-              onClick={() => navigate("/permission/list")}
+              disabled={saving}
+              onClick={() => navigate(`/permission/list?view=${permissionId}`)}
             >
               Cancel
             </Button>
-            <Button type="button" className="update-primary-button">
-              Update Permission
+            <Button
+              type="submit"
+              className="update-primary-button"
+              disabled={saving || projects.length === 0}
+            >
+              {saving ? "Saving..." : "Update Permission"}
             </Button>
           </Stack>
         </Form>
       </Card>
     </Container>
   );
+}
+
+function formatProjectName(project) {
+  const projectCode = project.projectCode ? `${project.projectCode} - ` : "";
+  return `${projectCode}${project.projectName || `Project #${project.id}`}`;
+}
+
+function getErrorMessage(error) {
+  return error.response?.data?.message
+    || error.response?.data?.detail
+    || error.response?.data?.error
+    || "Unable to load or update permission. Please try again later.";
 }
 
 export default UpdatePermissionPage;

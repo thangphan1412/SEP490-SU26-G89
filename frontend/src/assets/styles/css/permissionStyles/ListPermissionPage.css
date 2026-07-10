@@ -56,7 +56,7 @@
 
 .list-toolbar {
   display: grid;
-  grid-template-columns: 1fr 150px 150px 130px 100px;
+  grid-template-columns: minmax(240px, 1fr) minmax(210px, 280px) auto auto;
   gap: 16px;
   padding: 26px 36px;
 }
@@ -106,16 +106,32 @@
   background: #fbfcff;
 }
 
-.list-name-button.btn {
+.list-sort-button.btn {
   display: flex;
   align-items: center;
-  gap: 14px;
   padding: 0;
-  color: #111a34;
+  color: #31405d;
   background: none;
   border: 0;
   cursor: pointer;
+  font-weight: 700;
   text-decoration: none;
+}
+
+.list-row {
+  cursor: pointer;
+}
+
+.list-row:focus {
+  outline: 2px solid #174cff;
+  outline-offset: -2px;
+}
+
+.list-name-value {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  color: #111a34;
 }
 
 .list-icon {
@@ -152,10 +168,33 @@
 }
 
 .list-action-button.btn {
-  width: 40px;
+  min-width: 56px;
   height: 40px;
   background: #ffffff;
   border: 1px solid #d5dfec;
+}
+
+.list-delete-button.btn {
+  min-width: 66px;
+  height: 40px;
+  color: #b42318;
+  background: #fff7f6;
+  border: 1px solid #f6c7c2;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.list-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.list-state-cell {
+  padding: 36px !important;
+  color: #52627e;
+  text-align: center !important;
 }
 
 .list-footer {

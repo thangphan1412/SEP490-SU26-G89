@@ -2,7 +2,6 @@ package com.fpt.backend.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
-import org.apache.catalina.User;
 
 import java.util.List;
 
@@ -14,16 +13,16 @@ import java.util.List;
 @Builder
 @Table(name = "permissions")
 public class Permissions extends BaseEntity{
-    @Column(name = "permission_name")
+    @Column(name = "permission_name" , columnDefinition = "nvarchar(50)")
     private String permissionName;
-    @Column(name = "permission_code")
+    @Column(name = "permission_code" , columnDefinition = "nvarchar(50)")
     private String permissionCode;
-    @Column(name = "permission_module")
+    @Column(name = "permission_module" , columnDefinition = "nvarchar(255)")
     private String permissionModule;
 
     /// Relation
     // userpermistion
-    @OneToMany(mappedBy = "permission")
+    @OneToMany(mappedBy = "permission", cascade = CascadeType.REMOVE, orphanRemoval = true)
     private List<UserPermission> userPermissions;
     //Project
     @ManyToOne(fetch = FetchType.LAZY)

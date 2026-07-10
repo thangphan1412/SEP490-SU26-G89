@@ -38,6 +38,15 @@
   padding: 28px 50px 40px;
 }
 
+.update-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 220px;
+  color: #52627e;
+}
+
 .update-field {
   display: grid;
   gap: 10px;

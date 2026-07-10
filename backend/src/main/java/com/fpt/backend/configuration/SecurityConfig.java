@@ -22,7 +22,7 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(
                         authorizeRequests -> authorizeRequests
-                                .requestMatchers("/api/projects/**").permitAll() //Xóa sau khi xong login
+                                .requestMatchers("/api/permissions/**").permitAll() //Xóa sau khi xong login
                                 .anyRequest().authenticated())
                 // .sessionManagement(sess ->
                 // sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
