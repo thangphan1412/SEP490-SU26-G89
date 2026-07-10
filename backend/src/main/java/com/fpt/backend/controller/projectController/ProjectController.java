@@ -1,19 +1,26 @@
 package com.fpt.backend.controller.projectController;
 
+import com.fpt.backend.dto.request.project.ProjectCreateRequest;
 import com.fpt.backend.dto.request.project.ProjectListRequest;
 import com.fpt.backend.dto.response.project.ProjectDetailResponse;
+import com.fpt.backend.dto.response.project.ProjectEmployeeResponse;
 import com.fpt.backend.dto.response.project.ProjectListResponse;
 import com.fpt.backend.service.interfaces.ProjectService;
 import com.fpt.backend.util.BaseResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.CacheControl;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/projects")
@@ -45,5 +52,26 @@ public class ProjectController {
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.noStore())
                 .body(new BaseResponse<>(project));
+    }
+
+    @GetMapping("/employees")
+    public ResponseEntity<BaseResponse<List<ProjectEmployeeResponse>>> getEmployeesForProjectSelection() {
+        List<ProjectEmployeeResponse> employees = projectService.getEmployeesForProjectSelection();
+
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .body(new BaseResponse<>(employees));
+    }
+
+    @PostMapping("/create")
+    public ResponseEntity<BaseResponse<ProjectDetailResponse>> createProject(@RequestBody ProjectCreateRequest request) {
+        ProjectDetailResponse project = projectService.createProject(request);
+
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(new BaseResponse<>(
+                        HttpStatus.CREATED.value(),
+                        "Created",
+                        project
+                ));
     }
 }
