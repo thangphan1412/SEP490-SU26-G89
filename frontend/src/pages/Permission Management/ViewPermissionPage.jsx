@@ -1,20 +1,78 @@
-import { useNavigate } from "react-router-dom";
-import { Button, Card, Container, Stack, Table } from "react-bootstrap";
+import { useEffect, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { Alert, Button, Card, Container, Spinner, Stack } from "react-bootstrap";
 import "../../assets/styles/css/permissionStyles/ViewPermissionPage.css";
-import {
-  ViewPermissionInfo,
-  ViewPermissionRole,
-  ViewPermissionStatusBadge,
-} from "./PermissionComponents.jsx";
-
-const auditRows = [
-  ["Created", "Alex Morgan", "May 10, 2025 10:15 AM", "Permission created"],
-  ["Updated", "Alex Morgan", "May 22, 2025 02:30 PM", "Updated description"],
-  ["Status Changed", "Alex Morgan", "May 22, 2025 02:31 PM", "Active permission"],
-];
+import { deletePermission, viewPermission } from "../../config/axiosConfig.js";
+import { ViewPermissionInfo } from "./PermissionComponents.jsx";
 
 function ViewPermissionPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const permissionId = searchParams.get("view");
+  const [permission, setPermission] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [deleting, setDeleting] = useState(false);
+
+  useEffect(() => {
+    let isActive = true;
+
+    const loadPermission = async () => {
+      if (!permissionId) {
+        if (isActive) {
+          setError("Permission id is missing. Please choose a permission from the list.");
+          setLoading(false);
+        }
+        return;
+      }
+
+      try {
+        setLoading(true);
+        setError("");
+        const response = await viewPermission(permissionId);
+        const payload = response.data?.data ?? response.data;
+
+        if (isActive) {
+          setPermission(payload || null);
+        }
+      } catch (requestError) {
+        console.error("Unable to load permission:", requestError);
+
+        if (isActive) {
+          setPermission(null);
+          setError(getErrorMessage(requestError));
+        }
+      } finally {
+        if (isActive) {
+          setLoading(false);
+        }
+      }
+    };
+
+    loadPermission();
+
+    return () => {
+      isActive = false;
+    };
+  }, [permissionId]);
+
+  const handleDelete = async () => {
+    if (!permission?.id || !window.confirm("Delete this permission?")) {
+      return;
+    }
+
+    try {
+      setDeleting(true);
+      setError("");
+      await deletePermission(permission.id);
+      navigate("/permission/list");
+    } catch (requestError) {
+      console.error("Unable to delete permission:", requestError);
+      setError(getErrorMessage(requestError));
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   return (
     <Container fluid as="main" className="view-page">
@@ -26,99 +84,77 @@ function ViewPermissionPage() {
               variant="light"
               className="view-back-button"
               onClick={() => navigate("/permission/list")}
+              aria-label="Back to permissions"
             >
               {"<"}
             </Button>
 
             <div>
               <Card.Title as="h1">View Permission</Card.Title>
-              <Card.Text>View permission details and assigned roles.</Card.Text>
+              <Card.Text>Review the permission information saved in the system.</Card.Text>
             </div>
           </div>
 
-          <Stack direction="horizontal" className="view-actions">
-            <Button
-              type="button"
-              className="view-primary-button"
-              onClick={() => navigate("/permission/update")}
-            >
-              Edit Permission
-            </Button>
-            <Button type="button" variant="light" className="view-more-button">
-              ...
-            </Button>
-          </Stack>
+          {permission && (
+            <Stack direction="horizontal" className="view-actions">
+              <Button
+                type="button"
+                className="view-primary-button"
+                onClick={() => navigate(`/permission/list?edit=${permission.id}`)}
+              >
+                Edit Permission
+              </Button>
+              <Button
+                type="button"
+                variant="light"
+                className="view-delete-button"
+                disabled={deleting}
+                onClick={handleDelete}
+              >
+                {deleting ? "Deleting..." : "Delete"}
+              </Button>
+            </Stack>
+          )}
         </Card.Header>
 
-        <Card as="section" className="view-section">
-          <div className="view-section-title-row">
-            <Card.Title as="h2">Permission Overview</Card.Title>
-            <ViewPermissionStatusBadge text="Active" />
+        {loading ? (
+          <div className="view-state">
+            <Spinner animation="border" role="status" />
+            <span>Loading permission...</span>
           </div>
+        ) : error ? (
+          <Alert variant="danger" className="m-4">{error}</Alert>
+        ) : !permission ? (
+          <div className="view-state">Permission was not found.</div>
+        ) : (
+          <Card as="section" className="view-section">
+            <Card.Title as="h2">Permission Information</Card.Title>
 
-          <div className="view-overview-grid">
-            <div className="view-shield">OK</div>
+            <div className="view-overview-grid">
+              <div className="view-shield">PERM</div>
 
-            <div className="view-info-column">
-              <ViewPermissionInfo label="Permission Name" value="View Contracts" />
-              <ViewPermissionInfo label="Module" value="Contracts" />
-              <ViewPermissionInfo
-                label="Description"
-                value="Allows users to view contract records and details."
-              />
+              <div className="view-info-column">
+                <ViewPermissionInfo label="Permission Name" value={permission.permissionName} />
+                <ViewPermissionInfo label="Permission Code" value={permission.permissionCode} />
+              </div>
+
+              <div className="view-info-column">
+                <ViewPermissionInfo label="Permission Module" value={permission.permissionModule} />
+                <ViewPermissionInfo label="Project" value={permission.projectName} />
+              </div>
             </div>
-
-            <div className="view-info-column">
-              <ViewPermissionInfo label="Access Level" value="Read Only" pill />
-              <ViewPermissionInfo label="Scope" value="System Wide" />
-            </div>
-
-            <div className="view-info-column">
-              <ViewPermissionInfo label="Created By" value="Alex Morgan" />
-              <p className="view-date">May 10, 2025 10:15 AM</p>
-              <ViewPermissionInfo label="Updated By" value="Alex Morgan" />
-              <p className="view-date">May 22, 2025 02:30 PM</p>
-            </div>
-          </div>
-        </Card>
-
-        <Card as="section" className="view-section">
-          <Card.Title as="h2">Assigned Roles (4)</Card.Title>
-          <Stack direction="horizontal" className="view-role-list">
-            <ViewPermissionRole text="Contract Manager" />
-            <ViewPermissionRole text="Contract Viewer" />
-            <ViewPermissionRole text="Admin" />
-            <ViewPermissionRole text="Compliance Officer" />
-          </Stack>
-        </Card>
-
-        <Card as="section" className="view-section">
-          <Card.Title as="h2">Audit Trail</Card.Title>
-          <Table hover responsive={false} className="view-table mb-0">
-            <thead>
-              <tr>
-                <th>Action</th>
-                <th>By</th>
-                <th>Date & Time</th>
-                <th>Details</th>
-              </tr>
-            </thead>
-
-            <tbody>
-              {auditRows.map(([action, by, date, detail]) => (
-                <tr key={`${action}-${date}`}>
-                  <td>{action}</td>
-                  <td>{by}</td>
-                  <td>{date}</td>
-                  <td>{detail}</td>
-                </tr>
-              ))}
-            </tbody>
-          </Table>
-        </Card>
+          </Card>
+        )}
       </Card>
     </Container>
   );
+}
+
+function getErrorMessage(error) {
+  return error.response?.data?.message
+    || error.response?.data?.detail
+    || error.response?.data?.error
+    || "Unable to load permission. Please try again later.";
 }
 
 export default ViewPermissionPage;
