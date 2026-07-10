@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+// THÊM useParams ĐỂ LẤY ID TỪ URL
+import { useNavigate, useParams } from "react-router-dom";
 import { Container, Card, Row, Col, Button, NavDropdown, Spinner, Alert, Stack } from "react-bootstrap";
 import {
     IconWorld,
@@ -17,44 +18,55 @@ import {
     IconInfoCircle
 } from "@tabler/icons-react";
 
+// IMPORT HÀM GỌI API
+import { getUserById } from "../../config/userApi/userApi";
+
 function ViewUser() {
     const navigate = useNavigate();
+    const { id } = useParams(); // Lấy ID người dùng từ đường dẫn URL
 
     // State quản lý dữ liệu và trạng thái loading
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
 
-    // Mô phỏng gọi API lấy chi tiết User giống file cũ của bạn
+    // Dùng useEffect để lấy thông tin User từ Backend
     useEffect(() => {
         const fetchUserDetails = async () => {
             setLoading(true);
             try {
-                // Chờ API 1 giây
-                await new Promise(resolve => setTimeout(resolve, 1000));
+                // Gọi API lấy chi tiết user
+                const response = await getUserById(id);
+                const data = response.data.data;
 
-                // Trả về dữ liệu giả lập
+                // Gán dữ liệu thật từ BE và Hardcode các trường không có
                 setUser({
-                    fullName: "Emma Nguyen",
-                    email: "emma.nguyen@econtract.com",
-                    phoneNumber: "+1 (555) 123-4567",
+                    firstName: data.firstName || "",
+                    lastName: data.lastName || "",
+                    email: data.email || "",
+                    phoneNumber: data.numberPhone || "",
+                    role: data.role || "N/A",
+                    status: data.status || "Inactive",
+                    // Hardcode các trường dưới đây
                     employeeId: "EMP-001248",
                     department: "Legal Department",
                     position: "Senior Legal Counsel",
-                    role: "Contract Manager",
                     accessScope: "Department Level",
                     dateJoined: "Jan 15, 2024",
                     lastLogin: "May 22, 2025, 09:32 AM",
-                    status: "Active"
                 });
             } catch (error) {
                 console.error("Lỗi khi lấy dữ liệu người dùng:", error);
+                alert("Không thể tải thông tin người dùng!");
+                navigate("/user-management/list");
             } finally {
                 setLoading(false);
             }
         };
 
-        fetchUserDetails();
-    }, []);
+        if (id) {
+            fetchUserDetails();
+        }
+    }, [id, navigate]);
 
     return (
         <div className="bg-light min-vh-screen">
@@ -86,7 +98,7 @@ function ViewUser() {
                         <Button
                             variant="primary"
                             className="fw-bold px-4 d-flex align-items-center gap-2"
-                            onClick={() => navigate("/user-management/update")}
+                            onClick={() => navigate(`/user-management/update/${id}`)} // Chuyển hướng kèm ID
                             disabled={loading}
                         >
                             <IconEdit size={19} color="#ffffff" /> Edit User
@@ -113,16 +125,18 @@ function ViewUser() {
                                                 className="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center fw-bold shadow-sm"
                                                 style={{ width: "100px", height: "100px", fontSize: "36px", boxShadow: "0 0 0 4px #edf2ff" }}
                                             >
-                                                {user.fullName ? user.fullName.split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase() : 'U'}
+                                                {/* Lấy chữ cái đầu của First Name và Last Name */}
+                                                {user.firstName?.charAt(0)}{user.lastName?.charAt(0)}
                                             </div>
                                         </div>
-                                        <h3 className="h6 fw-bold mb-2 text-dark">{user.fullName}</h3>
-                                        <span className="badge bg-success bg-opacity-10 text-success px-3 py-2 rounded-pill fw-bold">
+                                        {/* Ghép First Name và Last Name */}
+                                        <h3 className="h6 fw-bold mb-2 text-dark">{user.firstName} {user.lastName}</h3>
+                                        <span className={`badge ${user.status === 'Active' ? 'bg-success bg-opacity-10 text-success' : 'bg-secondary bg-opacity-10 text-secondary'} px-3 py-2 rounded-pill fw-bold`}>
                                             ● {user.status}
                                         </span>
                                     </Col>
 
-                                    {/* Cột 2: Thông tin chi tiết bên trái (Đã fix căn thẳng dấu hai chấm) */}
+                                    {/* Cột 2: Thông tin chi tiết bên trái */}
                                     <Col md={4} className="border-end px-3">
                                         <Stack gap={3} className="small">
                                             {/* Full Name */}
@@ -131,7 +145,7 @@ function ViewUser() {
                                                     <Col xs={1} className="d-flex text-secondary"><IconUser size={18} /></Col>
                                                     <Col xs={4} className="text-muted fw-medium ps-2">Full Name</Col>
                                                     <Col xs={1} className="text-muted text-center">:</Col>
-                                                    <Col xs={6} className="text-dark fw-semibold">{user.fullName}</Col>
+                                                    <Col xs={6} className="text-dark fw-semibold">{user.firstName} {user.lastName}</Col>
                                                 </Row>
                                             </div>
                                             {/* Email */}
@@ -149,7 +163,7 @@ function ViewUser() {
                                                     <Col xs={1} className="d-flex text-secondary"><IconPhone size={18} /></Col>
                                                     <Col xs={4} className="text-muted fw-medium ps-2">Phone Number</Col>
                                                     <Col xs={1} className="text-muted text-center">:</Col>
-                                                    <Col xs={6} className="text-dark fw-semibold">{user.phoneNumber}</Col>
+                                                    <Col xs={6} className="text-dark fw-semibold">{user.phoneNumber || 'N/A'}</Col>
                                                 </Row>
                                             </div>
                                             {/* Employee ID */}
@@ -173,7 +187,7 @@ function ViewUser() {
                                         </Stack>
                                     </Col>
 
-                                    {/* Cột 3: Thông tin chi tiết bên phải (Đã fix căn thẳng dấu hai chấm) */}
+                                    {/* Cột 3: Thông tin chi tiết bên phải */}
                                     <Col md={5} className="px-3">
                                         <Stack gap={3} className="small">
                                             {/* Position */}
@@ -285,7 +299,7 @@ function ViewUser() {
                             <Alert variant="info" className="mx-4 mb-4 d-flex align-items-center gap-2">
                                 <IconInfoCircle size={20} />
                                 <span>
-                                    To make changes to this user, click <strong className="text-primary" style={{ cursor: "pointer" }} onClick={() => navigate("/user-management/update")}>Edit User</strong>.
+                                    To make changes to this user, click <strong className="text-primary" style={{ cursor: "pointer" }} onClick={() => navigate(`/user-management/update/${id}`)}>Edit User</strong>.
                                 </span>
                             </Alert>
                         </>

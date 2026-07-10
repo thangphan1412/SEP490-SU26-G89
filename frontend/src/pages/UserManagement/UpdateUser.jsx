@@ -1,5 +1,6 @@
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+// THÊM useParams để lấy ID từ URL
+import { useNavigate, useParams } from "react-router-dom";
 import { Container, Card, Row, Col, Form, Button, NavDropdown, Spinner, Stack, Alert } from "react-bootstrap";
 import {
     IconWorld,
@@ -19,25 +20,63 @@ import {
     IconInfoCircle
 } from "@tabler/icons-react";
 
-// Dữ liệu User mẫu ban đầu (khi chưa có API)
-const initialUser = {
-    fullName: "Emma Nguyen",
-    phoneNumber: "(555) 123-4567",
-    email: "emma.nguyen@company.com",
-    employeeId: "EMP-00987",
-    department: "Legal",
-    startDate: "Jun 15, 2023",
-    role: "Legal Reviewer",
-    status: "Active",
-    position: "Senior Legal Counsel",
-    accessScope: "Department Level Access",
-    deactivateAccount: false,
-};
+// IMPORT HÀM GỌI API
+import { getUserById, updateUser } from "../../config/userApi/userApi";
 
 function UpdateUser({ onUpdateUser }) {
     const navigate = useNavigate();
-    const [user, setUser] = useState(initialUser);
+    const { id } = useParams(); // Lấy ID người dùng từ đường dẫn URL
+
+    // State khởi tạo (tách firstName, lastName và giữ nguyên các trường hardcode)
+    const [user, setUser] = useState({
+        firstName: "",
+        lastName: "",
+        phoneNumber: "",
+        email: "",
+        role: "Legal Reviewer",
+        status: "Active",
+        // Các trường bên dưới là Hardcode
+        employeeId: "EMP-00987",
+        department: "Legal",
+        startDate: "2023-06-15",
+        position: "Senior Legal Counsel",
+        accessScope: "Department Level Access",
+        deactivateAccount: false,
+    });
+
+    const [isLoadingData, setIsLoadingData] = useState(true); // State chờ tải dữ liệu cũ
     const [isSubmitting, setIsSubmitting] = useState(false);
+
+    // Dùng useEffect để lấy thông tin User từ Backend khi vừa vào trang
+    useEffect(() => {
+        const fetchUser = async () => {
+            try {
+                const response = await getUserById(id);
+                const data = response.data.data;
+
+                // Cập nhật State với dữ liệu từ BE, các trường không có ở BE giữ nguyên cấu hình mặc định
+                setUser(prev => ({
+                    ...prev,
+                    firstName: data.firstName || "",
+                    lastName: data.lastName || "",
+                    email: data.email || "",
+                    phoneNumber: data.numberPhone || "",
+                    role: data.role || "Legal Reviewer",
+                    status: data.status || "Active",
+                }));
+            } catch (error) {
+                console.error("Lỗi khi tải dữ liệu user:", error);
+                alert("Không thể tải thông tin người dùng!");
+                navigate("/user-management/list"); // Lỗi thì quay về trang list
+            } finally {
+                setIsLoadingData(false);
+            }
+        };
+
+        if (id) {
+            fetchUser();
+        }
+    }, [id, navigate]);
 
     const handleChange = (event) => {
         const { name, value, checked, type } = event.target;
@@ -52,17 +91,27 @@ function UpdateUser({ onUpdateUser }) {
         setIsSubmitting(true);
 
         try {
-            // Giả lập thời gian gửi API lên Backend mất 1.5 giây
-            await new Promise((resolve) => setTimeout(resolve, 1500));
+            // Chuẩn bị payload chỉ chứa những dữ liệu Backend cần
+            const payload = {
+                firstName: user.firstName,
+                lastName: user.lastName,
+                email: user.email,
+                numberPhone: user.phoneNumber, // Map sang tên biến của BE
+                role: user.role,
+                status: user.status
+            };
 
-            onUpdateUser?.(user);
+            // Gọi API Update
+            await updateUser(id, payload);
+
+            if (onUpdateUser) onUpdateUser(user);
 
             alert("Cập nhật thông tin người dùng thành công!");
             navigate("/user-management/list");
 
         } catch (error) {
             console.error("Lỗi:", error);
-            alert("Có lỗi xảy ra trong quá trình lưu dữ liệu, vui lòng thử lại!");
+            alert("Có lỗi xảy ra trong quá trình lưu dữ liệu: " + (error.response?.data?.message || "Vui lòng thử lại!"));
         } finally {
             setIsSubmitting(false);
         }
@@ -102,7 +151,7 @@ function UpdateUser({ onUpdateUser }) {
                                 variant="outline-secondary"
                                 className="fw-bold px-3"
                                 onClick={() => navigate("/user-management/list")}
-                                disabled={isSubmitting}
+                                disabled={isSubmitting || isLoadingData}
                             >
                                 Cancel
                             </Button>
@@ -110,7 +159,7 @@ function UpdateUser({ onUpdateUser }) {
                                 type="submit"
                                 variant="primary"
                                 className="fw-bold px-4 d-flex align-items-center gap-2"
-                                disabled={isSubmitting}
+                                disabled={isSubmitting || isLoadingData}
                             >
                                 {isSubmitting ? (
                                     <>
@@ -127,238 +176,257 @@ function UpdateUser({ onUpdateUser }) {
                         </div>
                     </div>
 
-                    {/* --- FORM SECTION --- */}
-                    <Card className="m-4 border rounded-3 p-4">
-                        <h2 className="h5 fw-bold mb-4 text-dark">User Information</h2>
+                    {/* Hiển thị vòng load nếu đang tải API */}
+                    {isLoadingData ? (
+                        <div className="text-center py-5 my-5">
+                            <Spinner animation="border" variant="primary" />
+                            <p className="text-muted mt-3">Đang tải thông tin người dùng...</p>
+                        </div>
+                    ) : (
+                        <>
+                            {/* --- FORM SECTION --- */}
+                            <Card className="m-4 border rounded-3 p-4">
+                                <h2 className="h5 fw-bold mb-4 text-dark">User Information</h2>
 
-                        <Row className="g-4">
-                            {/* Full Name */}
-                            <Col md={6}>
-                                <Form.Group>
-                                    <Form.Label className="small fw-bold text-secondary">Full Name</Form.Label>
-                                    <div className="position-relative">
-                                        <IconUser className="position-absolute start-0 top-50 translate-middle-y ms-3 text-muted" size={18} />
-                                        <Form.Control id="fullName" name="fullName" type="text" value={user.fullName} onChange={handleChange} disabled={isSubmitting} className="ps-5 py-2" />
-                                    </div>
-                                </Form.Group>
-                            </Col>
+                                <Row className="g-4">
+                                    {/* --- TÁCH THÀNH FIRST NAME VÀ LAST NAME --- */}
+                                    {/* First Name */}
+                                    <Col md={6}>
+                                        <Form.Group>
+                                            <Form.Label className="small fw-bold text-secondary">First Name</Form.Label>
+                                            <div className="position-relative">
+                                                <IconUser className="position-absolute start-0 top-50 translate-middle-y ms-3 text-muted" size={18} />
+                                                <Form.Control id="firstName" name="firstName" type="text" required value={user.firstName} onChange={handleChange} disabled={isSubmitting} className="ps-5 py-2" />
+                                            </div>
+                                        </Form.Group>
+                                    </Col>
 
-                            {/* Phone Number */}
-                            <Col md={6}>
-                                <Form.Group>
-                                    <Form.Label className="small fw-bold text-secondary">Phone Number</Form.Label>
-                                    <div className="position-relative">
-                                        <IconPhone className="position-absolute start-0 top-50 translate-middle-y ms-3 text-muted" size={18} />
-                                        <Form.Control id="phoneNumber" name="phoneNumber" type="text" value={user.phoneNumber} onChange={handleChange} disabled={isSubmitting} className="ps-5 py-2" />
-                                    </div>
-                                </Form.Group>
-                            </Col>
+                                    {/* Last Name */}
+                                    <Col md={6}>
+                                        <Form.Group>
+                                            <Form.Label className="small fw-bold text-secondary">Last Name</Form.Label>
+                                            <div className="position-relative">
+                                                <IconUser className="position-absolute start-0 top-50 translate-middle-y ms-3 text-muted" size={18} />
+                                                <Form.Control id="lastName" name="lastName" type="text" required value={user.lastName} onChange={handleChange} disabled={isSubmitting} className="ps-5 py-2" />
+                                            </div>
+                                        </Form.Group>
+                                    </Col>
 
-                            {/* Email Address */}
-                            <Col md={6}>
-                                <Form.Group>
-                                    <Form.Label className="small fw-bold text-secondary">Email Address</Form.Label>
-                                    <div className="position-relative">
-                                        <IconMail className="position-absolute start-0 top-50 translate-middle-y ms-3 text-muted" size={18} />
-                                        <Form.Control id="email" name="email" type="email" value={user.email} onChange={handleChange} disabled={isSubmitting} className="ps-5 py-2" />
-                                    </div>
-                                </Form.Group>
-                            </Col>
+                                    {/* Phone Number */}
+                                    <Col md={6}>
+                                        <Form.Group>
+                                            <Form.Label className="small fw-bold text-secondary">Phone Number</Form.Label>
+                                            <div className="position-relative">
+                                                <IconPhone className="position-absolute start-0 top-50 translate-middle-y ms-3 text-muted" size={18} />
+                                                <Form.Control id="phoneNumber" name="phoneNumber" type="text" value={user.phoneNumber} onChange={handleChange} disabled={isSubmitting} className="ps-5 py-2" />
+                                            </div>
+                                        </Form.Group>
+                                    </Col>
 
-                            {/* Employee ID */}
-                            <Col md={6}>
-                                <Form.Group>
-                                    <Form.Label className="small fw-bold text-secondary">Employee ID</Form.Label>
-                                    <div className="position-relative">
-                                        <IconId className="position-absolute start-0 top-50 translate-middle-y ms-3 text-muted" size={18} />
-                                        <Form.Control id="employeeId" name="employeeId" type="text" value={user.employeeId} onChange={handleChange} disabled={isSubmitting} className="ps-5 py-2" />
-                                    </div>
-                                </Form.Group>
-                            </Col>
+                                    {/* Email Address */}
+                                    <Col md={6}>
+                                        <Form.Group>
+                                            <Form.Label className="small fw-bold text-secondary">Email Address</Form.Label>
+                                            <div className="position-relative">
+                                                <IconMail className="position-absolute start-0 top-50 translate-middle-y ms-3 text-muted" size={18} />
+                                                <Form.Control id="email" name="email" type="email" required value={user.email} onChange={handleChange} disabled={isSubmitting} className="ps-5 py-2" />
+                                            </div>
+                                        </Form.Group>
+                                    </Col>
 
-                            {/* Department */}
-                            <Col md={6}>
-                                <Form.Group>
-                                    <Form.Label className="small fw-bold text-secondary">Department</Form.Label>
-                                    <div className="position-relative">
-                                        <IconBuilding className="position-absolute start-0 top-50 translate-middle-y ms-3 text-muted" size={18} style={{ zIndex: 5 }} />
-                                        <Form.Select id="department" name="department" value={user.department} onChange={handleChange} disabled={isSubmitting} className="ps-5 py-2">
-                                            <option value="Legal">Legal</option>
-                                            <option value="HR">HR</option>
-                                            <option value="Finance">Finance</option>
-                                            <option value="Sales">Sales</option>
-                                        </Form.Select>
-                                    </div>
-                                </Form.Group>
-                            </Col>
+                                    {/* Employee ID */}
+                                    <Col md={6}>
+                                        <Form.Group>
+                                            <Form.Label className="small fw-bold text-secondary">Employee ID</Form.Label>
+                                            <div className="position-relative">
+                                                <IconId className="position-absolute start-0 top-50 translate-middle-y ms-3 text-muted" size={18} />
+                                                <Form.Control id="employeeId" name="employeeId" type="text" value={user.employeeId} onChange={handleChange} disabled={isSubmitting} className="ps-5 py-2" />
+                                            </div>
+                                        </Form.Group>
+                                    </Col>
 
-                            {/* Start Date */}
-                            <Col md={6}>
-                                <Form.Group>
-                                    <Form.Label className="small fw-bold text-secondary">Start Date</Form.Label>
-                                    <div className="position-relative">
-                                        {/* Thêm z-index để icon luôn nổi lên trên */}
-                                        <IconCalendar
-                                            className="position-absolute start-0 top-50 translate-middle-y ms-3 text-muted"
-                                            size={18}
-                                            style={{ zIndex: 5 }}
-                                        />
-                                        {/* ps-5 (padding-start) giúp đẩy chữ mm/dd/yyyy sang phải không bị đè */}
-                                        <Form.Control
-                                            type="date"
-                                            name="startDate"
-                                            value={user.startDate}
-                                            onChange={handleChange}
-                                            required
-                                            disabled={isSubmitting}
-                                            className="ps-5 py-2"
-                                        />
-                                    </div>
-                                </Form.Group>
-                            </Col>
+                                    {/* Department */}
+                                    <Col md={6}>
+                                        <Form.Group>
+                                            <Form.Label className="small fw-bold text-secondary">Department</Form.Label>
+                                            <div className="position-relative">
+                                                <IconBuilding className="position-absolute start-0 top-50 translate-middle-y ms-3 text-muted" size={18} style={{ zIndex: 5 }} />
+                                                <Form.Select id="department" name="department" value={user.department} onChange={handleChange} disabled={isSubmitting} className="ps-5 py-2">
+                                                    <option value="Legal">Legal</option>
+                                                    <option value="HR">HR</option>
+                                                    <option value="Finance">Finance</option>
+                                                    <option value="Sales">Sales</option>
+                                                </Form.Select>
+                                            </div>
+                                        </Form.Group>
+                                    </Col>
 
-                            {/* Role */}
-                            <Col md={6}>
-                                <Form.Group>
-                                    <Form.Label className="small fw-bold text-secondary">Role</Form.Label>
-                                    <div className="position-relative">
-                                        <IconShieldCheck className="position-absolute start-0 top-50 translate-middle-y ms-3 text-muted" size={18} style={{ zIndex: 5 }} />
-                                        <Form.Select id="role" name="role" value={user.role} onChange={handleChange} disabled={isSubmitting} className="ps-5 py-2">
-                                            <option value="Legal Reviewer">Legal Reviewer</option>
-                                            <option value="Contract Manager">Contract Manager</option>
-                                            <option value="Approver">Approver</option>
-                                            <option value="Viewer">Viewer</option>
-                                        </Form.Select>
-                                    </div>
-                                </Form.Group>
-                            </Col>
+                                    {/* Start Date */}
+                                    <Col md={6}>
+                                        <Form.Group>
+                                            <Form.Label className="small fw-bold text-secondary">Start Date</Form.Label>
+                                            <div className="position-relative">
+                                                <IconCalendar
+                                                    className="position-absolute start-0 top-50 translate-middle-y ms-3 text-muted"
+                                                    size={18}
+                                                    style={{ zIndex: 5 }}
+                                                />
+                                                <Form.Control
+                                                    type="date"
+                                                    name="startDate"
+                                                    value={user.startDate}
+                                                    onChange={handleChange}
+                                                    required
+                                                    disabled={isSubmitting}
+                                                    className="ps-5 py-2"
+                                                />
+                                            </div>
+                                        </Form.Group>
+                                    </Col>
 
-                            {/* Status */}
-                            <Col md={6}>
-                                <Form.Group>
-                                    <Form.Label className="small fw-bold text-secondary">Status</Form.Label>
-                                    <Form.Select id="status" name="status" value={user.status} onChange={handleChange} disabled={isSubmitting} className="py-2">
-                                        <option value="Active">Active</option>
-                                        <option value="Inactive">Inactive</option>
-                                        <option value="Deactivated">Deactivated</option>
-                                    </Form.Select>
-                                </Form.Group>
-                            </Col>
+                                    {/* Role */}
+                                    <Col md={6}>
+                                        <Form.Group>
+                                            <Form.Label className="small fw-bold text-secondary">Role</Form.Label>
+                                            <div className="position-relative">
+                                                <IconShieldCheck className="position-absolute start-0 top-50 translate-middle-y ms-3 text-muted" size={18} style={{ zIndex: 5 }} />
+                                                <Form.Select id="role" name="role" value={user.role} onChange={handleChange} disabled={isSubmitting} className="ps-5 py-2">
+                                                    <option value="Legal Reviewer">Legal Reviewer</option>
+                                                    <option value="Contract Manager">Contract Manager</option>
+                                                    <option value="Approver">Approver</option>
+                                                    <option value="Viewer">Viewer</option>
+                                                </Form.Select>
+                                            </div>
+                                        </Form.Group>
+                                    </Col>
 
-                            {/* Position */}
-                            <Col md={6}>
-                                <Form.Group>
-                                    <Form.Label className="small fw-bold text-secondary">Position</Form.Label>
-                                    <div className="position-relative">
-                                        <IconBriefcase className="position-absolute start-0 top-50 translate-middle-y ms-3 text-muted" size={18} />
-                                        <Form.Control id="position" name="position" type="text" value={user.position} onChange={handleChange} disabled={isSubmitting} className="ps-5 py-2" />
-                                    </div>
-                                </Form.Group>
-                            </Col>
+                                    {/* Status */}
+                                    <Col md={6}>
+                                        <Form.Group>
+                                            <Form.Label className="small fw-bold text-secondary">Status</Form.Label>
+                                            <Form.Select id="status" name="status" value={user.status} onChange={handleChange} disabled={isSubmitting} className="py-2">
+                                                <option value="Active">Active</option>
+                                                <option value="Inactive">Inactive</option>
+                                            </Form.Select>
+                                        </Form.Group>
+                                    </Col>
 
-                            {/* Access Scope */}
-                            <Col md={6}>
-                                <Form.Group>
-                                    <Form.Label className="small fw-bold text-secondary">Access Scope</Form.Label>
-                                    <div className="position-relative">
-                                        <IconLock className="position-absolute start-0 top-50 translate-middle-y ms-3 text-muted" size={18} style={{ zIndex: 5 }} />
-                                        <Form.Select id="accessScope" name="accessScope" value={user.accessScope} onChange={handleChange} disabled={isSubmitting} className="ps-5 py-2">
-                                            <option value="Department Level Access">Department Level Access</option>
-                                            <option value="Full Access">Full Access</option>
-                                            <option value="Limited Access">Limited Access</option>
-                                        </Form.Select>
-                                    </div>
-                                </Form.Group>
-                            </Col>
-                        </Row>
+                                    {/* Position */}
+                                    <Col md={6}>
+                                        <Form.Group>
+                                            <Form.Label className="small fw-bold text-secondary">Position</Form.Label>
+                                            <div className="position-relative">
+                                                <IconBriefcase className="position-absolute start-0 top-50 translate-middle-y ms-3 text-muted" size={18} />
+                                                <Form.Control id="position" name="position" type="text" value={user.position} onChange={handleChange} disabled={isSubmitting} className="ps-5 py-2" />
+                                            </div>
+                                        </Form.Group>
+                                    </Col>
 
-                        {/* --- DEACTIVATE ACCOUNT TOGGLE --- */}
-                        <Stack direction="horizontal" gap={3} className="mt-4 pt-4 border-top align-items-center">
-                            <Form.Check
-                                type="switch"
-                                id="deactivateAccount"
-                                name="deactivateAccount"
-                                checked={user.deactivateAccount}
-                                onChange={handleChange}
-                                disabled={isSubmitting}
-                                style={{ transform: "scale(1.3)" }}
-                            />
-                            <div>
-                                <h3 className="h6 fw-bold mb-1 text-dark">Deactivate Account</h3>
-                                <p className="small text-muted mb-0">
-                                    Revoke this user's access to the system. This action can be reversed later if needed.
-                                </p>
-                            </div>
-                        </Stack>
-                    </Card>
+                                    {/* Access Scope */}
+                                    <Col md={6}>
+                                        <Form.Group>
+                                            <Form.Label className="small fw-bold text-secondary">Access Scope</Form.Label>
+                                            <div className="position-relative">
+                                                <IconLock className="position-absolute start-0 top-50 translate-middle-y ms-3 text-muted" size={18} style={{ zIndex: 5 }} />
+                                                <Form.Select id="accessScope" name="accessScope" value={user.accessScope} onChange={handleChange} disabled={isSubmitting} className="ps-5 py-2">
+                                                    <option value="Department Level Access">Department Level Access</option>
+                                                    <option value="Full Access">Full Access</option>
+                                                    <option value="Limited Access">Limited Access</option>
+                                                </Form.Select>
+                                            </div>
+                                        </Form.Group>
+                                    </Col>
+                                </Row>
 
-                    {/* --- ACCESS PREVIEW SECTION --- */}
-                    <Card className="mx-4 mb-4 border rounded-3 p-4">
-                        <h2 className="h5 fw-bold mb-4 text-dark">Access Preview</h2>
-
-                        <Row className="g-3">
-                            {/* Current Role */}
-                            <Col lg={3} md={6}>
-                                <div className="p-3 border rounded h-100 d-flex align-items-start gap-3 bg-light">
-                                    <div className="p-2 bg-primary bg-opacity-10 text-primary rounded-circle d-flex">
-                                        <IconUserShield size={24} />
-                                    </div>
+                                {/* --- DEACTIVATE ACCOUNT TOGGLE --- */}
+                                <Stack direction="horizontal" gap={3} className="mt-4 pt-4 border-top align-items-center">
+                                    <Form.Check
+                                        type="switch"
+                                        id="deactivateAccount"
+                                        name="deactivateAccount"
+                                        checked={user.deactivateAccount}
+                                        onChange={handleChange}
+                                        disabled={isSubmitting}
+                                        style={{ transform: "scale(1.3)" }}
+                                    />
                                     <div>
-                                        <h3 className="h6 fw-bold mb-1 text-dark">Current Role</h3>
-                                        <p className="small text-muted mb-2">Legal Reviewer</p>
-                                        <span className="badge bg-white text-secondary border px-2 py-1 small">Approval Level: L2</span>
+                                        <h3 className="h6 fw-bold mb-1 text-dark">Deactivate Account</h3>
+                                        <p className="small text-muted mb-0">
+                                            Revoke this user's access to the system. This action can be reversed later if needed.
+                                        </p>
                                     </div>
-                                </div>
-                            </Col>
+                                </Stack>
+                            </Card>
 
-                            {/* Department Access */}
-                            <Col lg={3} md={6}>
-                                <div className="p-3 border rounded h-100 d-flex align-items-start gap-3 bg-light">
-                                    <div className="p-2 bg-primary bg-opacity-10 text-primary rounded-circle d-flex">
-                                        <IconBuilding size={24} />
-                                    </div>
-                                    <div>
-                                        <h3 className="h6 fw-bold mb-1 text-dark">Department Access</h3>
-                                        <p className="small text-muted mb-2">Legal Department</p>
-                                        <span className="badge bg-white text-secondary border px-2 py-1 small">12 Modules</span>
-                                    </div>
-                                </div>
-                            </Col>
+                            {/* --- ACCESS PREVIEW SECTION --- */}
+                            <Card className="mx-4 mb-4 border rounded-3 p-4">
+                                <h2 className="h5 fw-bold mb-4 text-dark">Access Preview</h2>
 
-                            {/* Approval Workflow */}
-                            <Col lg={3} md={6}>
-                                <div className="p-3 border rounded h-100 d-flex align-items-start gap-3 bg-light">
-                                    <div className="p-2 bg-primary bg-opacity-10 text-primary rounded-circle d-flex">
-                                        <IconGitMerge size={24} />
-                                    </div>
-                                    <div>
-                                        <h3 className="h6 fw-bold mb-1 text-dark">Approval Workflow</h3>
-                                        <p className="small text-muted mb-2">Can review & approve</p>
-                                        <span className="badge bg-white text-secondary border px-2 py-1 small">Level 2 Access</span>
-                                    </div>
-                                </div>
-                            </Col>
+                                <Row className="g-3">
+                                    {/* Current Role */}
+                                    <Col lg={3} md={6}>
+                                        <div className="p-3 border rounded h-100 d-flex align-items-start gap-3 bg-light">
+                                            <div className="p-2 bg-primary bg-opacity-10 text-primary rounded-circle d-flex">
+                                                <IconUserShield size={24} />
+                                            </div>
+                                            <div>
+                                                <h3 className="h6 fw-bold mb-1 text-dark">Current Role</h3>
+                                                <p className="small text-muted mb-2">{user.role}</p>
+                                                <span className="badge bg-white text-secondary border px-2 py-1 small">Approval Level: L2</span>
+                                            </div>
+                                        </div>
+                                    </Col>
 
-                            {/* Audit Trail */}
-                            <Col lg={3} md={6}>
-                                <div className="p-3 border rounded h-100 d-flex align-items-start gap-3 bg-light">
-                                    <div className="p-2 bg-primary bg-opacity-10 text-primary rounded-circle d-flex">
-                                        <IconClipboardList size={24} />
-                                    </div>
-                                    <div>
-                                        <h3 className="h6 fw-bold mb-1 text-dark">Audit Trail</h3>
-                                        <p className="small text-muted mb-2">All actions are logged</p>
-                                        <span className="badge bg-white text-secondary border px-2 py-1 small">Full Visibility</span>
-                                    </div>
-                                </div>
-                            </Col>
-                        </Row>
+                                    {/* Department Access */}
+                                    <Col lg={3} md={6}>
+                                        <div className="p-3 border rounded h-100 d-flex align-items-start gap-3 bg-light">
+                                            <div className="p-2 bg-primary bg-opacity-10 text-primary rounded-circle d-flex">
+                                                <IconBuilding size={24} />
+                                            </div>
+                                            <div>
+                                                <h3 className="h6 fw-bold mb-1 text-dark">Department Access</h3>
+                                                <p className="small text-muted mb-2">{user.department}</p>
+                                                <span className="badge bg-white text-secondary border px-2 py-1 small">12 Modules</span>
+                                            </div>
+                                        </div>
+                                    </Col>
 
-                        <Alert variant="info" className="mt-4 mb-0 d-flex align-items-center gap-2">
-                            <IconInfoCircle size={20} />
-                            <span>Please review all changes carefully before saving. Updates will take effect immediately after confirmation.</span>
-                        </Alert>
-                    </Card>
+                                    {/* Approval Workflow */}
+                                    <Col lg={3} md={6}>
+                                        <div className="p-3 border rounded h-100 d-flex align-items-start gap-3 bg-light">
+                                            <div className="p-2 bg-primary bg-opacity-10 text-primary rounded-circle d-flex">
+                                                <IconGitMerge size={24} />
+                                            </div>
+                                            <div>
+                                                <h3 className="h6 fw-bold mb-1 text-dark">Approval Workflow</h3>
+                                                <p className="small text-muted mb-2">Can review & approve</p>
+                                                <span className="badge bg-white text-secondary border px-2 py-1 small">Level 2 Access</span>
+                                            </div>
+                                        </div>
+                                    </Col>
+
+                                    {/* Audit Trail */}
+                                    <Col lg={3} md={6}>
+                                        <div className="p-3 border rounded h-100 d-flex align-items-start gap-3 bg-light">
+                                            <div className="p-2 bg-primary bg-opacity-10 text-primary rounded-circle d-flex">
+                                                <IconClipboardList size={24} />
+                                            </div>
+                                            <div>
+                                                <h3 className="h6 fw-bold mb-1 text-dark">Audit Trail</h3>
+                                                <p className="small text-muted mb-2">All actions are logged</p>
+                                                <span className="badge bg-white text-secondary border px-2 py-1 small">Full Visibility</span>
+                                            </div>
+                                        </div>
+                                    </Col>
+                                </Row>
+
+                                <Alert variant="info" className="mt-4 mb-0 d-flex align-items-center gap-2">
+                                    <IconInfoCircle size={20} />
+                                    <span>Please review all changes carefully before saving. Updates will take effect immediately after confirmation.</span>
+                                </Alert>
+                            </Card>
+                        </>
+                    )}
                 </Form>
             </Container>
         </div>
