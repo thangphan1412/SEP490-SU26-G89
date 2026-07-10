@@ -10,11 +10,15 @@ import {
     IconUserCheck,
     IconInfoCircle
 } from "@tabler/icons-react";
+// IMPORT FILE API VÀO ĐÂY
+import { createUser } from "../../config/userApi/userApi";
 
 function CreateUser() {
     const navigate = useNavigate();
+
+    // Đã thay fullName thành firstName và lastName
     const [user, setUser] = useState({
-        fullName: "", email: "", initialPassword: "", confirmPassword: "",
+        firstName: "", lastName: "", email: "", initialPassword: "", confirmPassword: "",
         department: "", role: "", position: "", phoneNumber: "",
         employeeId: "", startDate: "", status: "Active", sendWelcomeEmail: true
     });
@@ -31,11 +35,34 @@ function CreateUser() {
             alert("Mật khẩu xác nhận không khớp!");
             return;
         }
+
         setIsSubmitting(true);
-        await new Promise(resolve => setTimeout(resolve, 1500)); // Giả lập gửi API
-        setIsSubmitting(false);
-        alert("Tạo tài khoản thành công!");
-        navigate("/user-management/list");
+
+        try {
+            // Chuẩn bị Payload (Chỉ lấy những trường có trong Entity Users ở BE)
+            const payload = {
+                firstName: user.firstName,
+                lastName: user.lastName,
+                email: user.email,
+                password: user.initialPassword,
+                numberPhone: user.phoneNumber,
+                role: user.role,
+                status: user.status
+            };
+
+            // Gọi API từ thư mục config/api/userApi.js
+            await createUser(payload);
+
+            alert("Tạo tài khoản thành công!");
+            navigate("/user-management/list");
+
+        } catch (error) {
+            console.error("Lỗi khi tạo user:", error);
+            // Hiển thị lỗi từ BE trả về (nếu có)
+            alert("Có lỗi xảy ra: " + (error.response?.data?.message || "Vui lòng kiểm tra lại thông tin."));
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     return (
@@ -78,15 +105,26 @@ function CreateUser() {
                     <Card className="m-4 border rounded-3 p-4">
                         <h2 className="h5 fw-bold mb-4 text-dark">User Information</h2>
                         <Row className="g-4">
+                            {/* --- TÁCH THÀNH 2 TRƯỜNG FIRST NAME VÀ LAST NAME --- */}
                             <Col md={6}>
                                 <Form.Group>
-                                    <Form.Label className="small fw-bold">Full Name <span
+                                    <Form.Label className="small fw-bold">First Name <span
                                         className="text-danger">*</span></Form.Label>
-                                    <Form.Control type="text" name="fullName" value={user.fullName}
-                                                  onChange={handleChange} required placeholder="Enter full name"
+                                    <Form.Control type="text" name="firstName" value={user.firstName}
+                                                  onChange={handleChange} required placeholder="Enter first name"
                                                   disabled={isSubmitting}/>
                                 </Form.Group>
                             </Col>
+                            <Col md={6}>
+                                <Form.Group>
+                                    <Form.Label className="small fw-bold">Last Name <span
+                                        className="text-danger">*</span></Form.Label>
+                                    <Form.Control type="text" name="lastName" value={user.lastName}
+                                                  onChange={handleChange} required placeholder="Enter last name"
+                                                  disabled={isSubmitting}/>
+                                </Form.Group>
+                            </Col>
+
                             <Col md={6}>
                                 <Form.Group>
                                     <Form.Label className="small fw-bold">Email Address <span
@@ -94,6 +132,12 @@ function CreateUser() {
                                     <Form.Control type="email" name="email" value={user.email} onChange={handleChange}
                                                   required placeholder="Enter email address" disabled={isSubmitting}/>
                                 </Form.Group>
+                            </Col>
+                            <Col md={6}>
+                                <Form.Group>
+                                    <Form.Label className="small fw-bold">Phone Number</Form.Label><Form.Control
+                                    type="text" name="phoneNumber" value={user.phoneNumber} onChange={handleChange}
+                                    placeholder="Enter phone number" disabled={isSubmitting}/></Form.Group>
                             </Col>
                             <Col md={6}>
                                 <Form.Group>
@@ -113,6 +157,8 @@ function CreateUser() {
                                                   placeholder="Confirm initial password" disabled={isSubmitting}/>
                                 </Form.Group>
                             </Col>
+
+                            {/* CÁC TRƯỜNG BÊN DƯỚI ĐƯỢC GIỮ NGUYÊN (HARDCODE) THEO Ý BẠN */}
                             <Col md={6}>
                                 <Form.Group>
                                     <Form.Label className="small fw-bold">Department <span
@@ -145,11 +191,6 @@ function CreateUser() {
                                 <Form.Group><Form.Label className="small fw-bold">Position</Form.Label><Form.Control
                                     type="text" name="position" value={user.position} onChange={handleChange}
                                     placeholder="Enter position" disabled={isSubmitting}/></Form.Group>
-                            </Col>
-                            <Col md={6}>
-                                <Form.Group><Form.Label className="small fw-bold">Phone Number</Form.Label><Form.Control
-                                    type="text" name="phoneNumber" value={user.phoneNumber} onChange={handleChange}
-                                    placeholder="Enter phone number" disabled={isSubmitting}/></Form.Group>
                             </Col>
                             <Col md={6}>
                                 <Form.Group><Form.Label className="small fw-bold">Employee ID</Form.Label><Form.Control

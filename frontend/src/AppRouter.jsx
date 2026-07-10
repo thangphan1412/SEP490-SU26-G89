@@ -72,11 +72,11 @@ function AppRouter() {
                 element={<CreateUser />}
             />
             <Route
-                path="/user-management/view"
+                path="/user-management/view/:id"
                 element={<ViewUser />}
             />
             <Route
-                path="/user-management/update"
+                path="/user-management/update/:id"
                 element={<UpdateUser />}
             />
             <Route

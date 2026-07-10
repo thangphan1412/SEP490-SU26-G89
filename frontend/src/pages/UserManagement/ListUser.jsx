@@ -1,7 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Container, Card, Row, Col, Form, Button, Table, Pagination, NavDropdown, Stack } from "react-bootstrap";
-import { IconWorld, IconPlus, IconSearch, IconFilter, IconRefresh, IconArrowsSort, IconDots } from "@tabler/icons-react";
+// IMPORT THÊM IconEdit VÀ IconEye ĐỂ LÀM NÚT ACTION TẠI BẢNG
+import { IconWorld, IconPlus, IconSearch, IconFilter, IconRefresh, IconArrowsSort, IconDots, IconEdit, IconEye } from "@tabler/icons-react";
+
+// IMPORT HÀM GỌI API
+import { getAllUsers } from "../../config/userApi/userApi";
 
 function ListUser() {
     const navigate = useNavigate();
@@ -17,13 +21,32 @@ function ListUser() {
     });
 
     // 2. FETCH DATA FROM API
-    const fetchData = (currPage, currKeyword) => {
+    const fetchData = async (currPage, currKeyword) => {
         setLoading(true);
-        setTimeout(() => {
-            setUsers([]); // Để mảng rỗng chờ API Spring Boot của bạn
-            setPagination(prev => ({ ...prev, page: currPage, totalElements: 0 }));
+        try {
+            // Gọi API lấy danh sách user từ Backend Spring Boot
+            const response = await getAllUsers();
+
+            // Giả sử API BE trả về cấu trúc: { status: 200, message: "...", data: [...] }
+            const data = response.data?.data || [];
+
+            // Lọc dữ liệu ngay trên Front-end (Vì Backend hiện tại của bạn dùng findAll() chưa có tìm kiếm)
+            const filteredData = data.filter(u => {
+                const fullName = `${u.firstName || ''} ${u.lastName || ''}`.toLowerCase();
+                const email = (u.email || '').toLowerCase();
+                const keyword = (currKeyword || '').toLowerCase();
+                return fullName.includes(keyword) || email.includes(keyword);
+            });
+
+            setUsers(filteredData);
+            setPagination(prev => ({ ...prev, page: currPage, totalElements: filteredData.length }));
+
+        } catch (error) {
+            console.error("Lỗi khi tải danh sách người dùng:", error);
+            setUsers([]);
+        } finally {
             setLoading(false);
-        }, 500);
+        }
     };
 
     useEffect(() => {
@@ -79,7 +102,7 @@ function ListUser() {
                             <Col lg={4} md={6}>
                                 <Form.Group className="position-relative">
                                     <IconSearch className="position-absolute start-0 top-50 translate-middle-y ms-3 text-muted" size={20} />
-                                    <Form.Control type="text" placeholder="Search users..." className="ps-5 py-2" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSearch()} />
+                                    <Form.Control type="text" placeholder="Search users by name or email..." className="ps-5 py-2" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSearch()} />
                                 </Form.Group>
                             </Col>
                             <Col lg={2} md={6}>
@@ -110,7 +133,7 @@ function ListUser() {
                                 <thead className="table-light">
                                 <tr>
                                     {["User Name", "Email", "Department", "Role", "Status", "Last Active", "Actions"].map((h) => (
-                                        <th key={h} className="text-secondary py-3 px-3 fs-6 fw-bold">
+                                        <th key={h} className="text-secondary py-3 px-3 fs-6 fw-bold text-nowrap">
                                                 <span className="d-inline-flex align-items-center gap-1">
                                                     {h} {h !== "Actions" && <IconArrowsSort size={14} />}
                                                 </span>
@@ -126,7 +149,42 @@ function ListUser() {
                                 ) : (
                                     users.map((u) => (
                                         <tr key={u.id}>
-                                            {/* Map dữ liệu thật của bạn tại đây */}
+                                            {/* Ghép First Name và Last Name */}
+                                            <td className="fw-semibold">
+                                                <div className="d-flex align-items-center gap-2">
+                                                    <div className="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" style={{ width: "32px", height: "32px", fontSize: "13px" }}>
+                                                        {u.firstName?.charAt(0) || ''}{u.lastName?.charAt(0) || ''}
+                                                    </div>
+                                                    {u.firstName} {u.lastName}
+                                                </div>
+                                            </td>
+
+                                            {/* Dữ liệu thật từ DB */}
+                                            <td>{u.email}</td>
+
+                                            {/* Dữ liệu Hardcode */}
+                                            <td>Legal</td>
+
+                                            {/* Dữ liệu thật từ DB */}
+                                            <td><span className="badge bg-light text-dark border">{u.role || "N/A"}</span></td>
+                                            <td>
+                                                <span className={`badge ${u.status === 'Active' ? 'bg-success bg-opacity-10 text-success' : 'bg-secondary bg-opacity-10 text-secondary'}`}>
+                                                    ● {u.status || "Inactive"}
+                                                </span>
+                                            </td>
+
+                                            {/* Dữ liệu Hardcode */}
+                                            <td className="text-muted small">Just now</td>
+
+                                            {/* Actions */}
+                                            <td>
+                                                <Button variant="link" className="p-0 me-3 text-primary" onClick={() => navigate(`/user-management/view/${u.id}`)} title="View Detail">
+                                                    <IconEye size={18} />
+                                                </Button>
+                                                <Button variant="link" className="p-0 text-warning" onClick={() => navigate(`/user-management/update/${u.id}`)} title="Edit User">
+                                                    <IconEdit size={18} />
+                                                </Button>
+                                            </td>
                                         </tr>
                                     ))
                                 )}
@@ -136,7 +194,7 @@ function ListUser() {
 
                         {/* Footer & Pagination */}
                         <Stack direction="horizontal" className="justify-content-between align-items-center text-muted small">
-                            <span>Showing 0 to 0 of 0 results</span>
+                            <span>Showing {users.length > 0 ? 1 : 0} to {users.length} of {pagination.totalElements} results</span>
                             <div className="d-flex align-items-center gap-2">
                                 <Pagination className="mb-0">
                                     <Pagination.Prev disabled />
