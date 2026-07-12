@@ -56,4 +56,7 @@ public class Users extends BaseEntity {
     // userrole
     @OneToMany(mappedBy = "user")
     private List<UserRole> userRoles;
+    // contracappoval
+    @OneToMany(mappedBy = "user")
+    private List<ContractApprovals>  contractApprovals;
 }
