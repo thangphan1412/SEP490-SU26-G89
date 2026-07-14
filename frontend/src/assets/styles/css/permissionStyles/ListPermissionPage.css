@@ -56,7 +56,7 @@
 
 .list-toolbar {
   display: grid;
-  grid-template-columns: minmax(240px, 1fr) minmax(210px, 280px) auto auto;
+  grid-template-columns: minmax(240px, 1fr) minmax(210px, 280px) auto;
   gap: 16px;
   padding: 26px 36px;
 }
@@ -200,7 +200,7 @@
 .list-footer {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 16px;
   padding: 24px 36px;
   color: #52627e;
@@ -235,8 +235,7 @@
 }
 
 @media (max-width: 900px) {
-  .list-header,
-  .list-footer {
+  .list-header {
     align-items: flex-start;
     flex-direction: column;
   }

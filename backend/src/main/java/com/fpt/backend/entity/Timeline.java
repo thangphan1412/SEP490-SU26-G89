@@ -6,32 +6,53 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
-@Setter
 @Getter
-@AllArgsConstructor
+@Setter
 @NoArgsConstructor
+@AllArgsConstructor
 @Entity
 @Table(name = "time_line")
-public class Timeline extends BaseEntity{
-    private String title;
-    private String description;
-    private Date startDate;
-    private Date endDate;
-    private String status;
-    private Double Progress;
+public class Timeline extends BaseEntity {
 
-    /// Reltion
-    // deliverble
-    @OneToMany(mappedBy = "timeline")
-    private List<Deliverable> deliverable;
-    //project
+    @Column(name = "title", nullable = false, columnDefinition = "nvarchar(150)")
+    private String title;
+
+    @Column(name = "description", columnDefinition = "nvarchar(500)")
+    private String description;
+
+    @Column(name = "start_date", nullable = false)
+    private Date startDate;
+
+    @Column(name = "end_date", nullable = false)
+    private Date endDate;
+
+    @Column(name = "status", nullable = false, length = 30)
+    private String status;
+
+    @Column(name = "progress")
+    private Double progress;
+
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "project_id")
+    @JoinColumn(name = "project_id", nullable = false)
     private Projects project;
-    //timelineTask
+
+    /*
+     * Giữ nguyên TimelineTask.
+     */
     @OneToMany(mappedBy = "timeline")
-    private List<TimelineTask>  timelineTasks;
+    private List<TimelineTask> timelineTasks = new ArrayList<>();
+
+    @OneToMany(mappedBy = "timeline")
+    private List<Deliverable> deliverables = new ArrayList<>();
+
+    /*
+     * Xóa Timeline sẽ chỉ xóa các liên kết,
+     * không xóa Contracts.
+     */
+    @OneToMany(mappedBy = "timeline", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<TimelineContract> timelineContracts = new ArrayList<>();
 }

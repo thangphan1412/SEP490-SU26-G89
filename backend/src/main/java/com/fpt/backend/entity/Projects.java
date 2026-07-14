@@ -14,40 +14,44 @@ import java.util.List;
 @Builder
 @Table(name = "projects")
 public class Projects extends BaseEntity {
-    @Column(name = "project_code" , unique = true)
+    @Column(name = "project_code", unique = true)
     private String projectCode;
-    @Column(name = "project_name" , columnDefinition = "nvarchar(50)")
+    @Column(name = "project_name", columnDefinition = "nvarchar(50)")
     private String projectName;
-    @Column(name = "project_description" , columnDefinition = "nvarchar(255)")
+    @Column(name = "project_description", columnDefinition = "nvarchar(255)")
     private String projectDescription;
-    @Column(name = "project_status" , columnDefinition = "nvarchar(50)")
+    @Column(name = "project_status", columnDefinition = "nvarchar(50)")
     private String projectStatus;
     @Column(name = "project_start_date")
     private LocalDate projectStartDate;
     @Column(name = "project_end_date")
     private LocalDate projectEndDate;
-    @Column(name = "project_creat-by" , columnDefinition = "nvarchar(50)")
+    @Column(name = "project_creat-by", columnDefinition = "nvarchar(50)")
     private String projectCreatedBy;
-    @Column(name = "project_created_at" , columnDefinition = "nvarchar(50)")
+    @Column(name = "project_created_at", columnDefinition = "nvarchar(50)")
     private String projectCreatedAt;
 
     /// Relation
     // permission
     @OneToMany(mappedBy = "project")
     private List<Permissions> permission;
-    //Logs
+    // Logs
     @OneToMany(mappedBy = "project")
     private List<ActivityLog> activityLog;
-    //Workflow
+    // Workflow
     @OneToMany(mappedBy = "project")
-    private List<Workflow>  workflow;
-    //Contract
+    private List<Workflow> workflow;
+    // Contract
     @OneToMany(mappedBy = "project")
     private List<Contracts> contract;
-    //proposal
+    // proposal
     @OneToMany(mappedBy = "project")
     private List<Proposals> proposals;
-    //projectmember
+    // projectmember
     @OneToMany(mappedBy = "project")
-    private List<ProjectMember>  projectMembers;
+    private List<ProjectMember> projectMembers;
+    // timeline
+    @OneToMany(mappedBy = "project")
+    @OrderBy("sequenceNo ASC")
+    private List<Timeline> timelines;
 }
