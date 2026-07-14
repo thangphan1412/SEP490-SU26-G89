@@ -33,4 +33,8 @@ public class ContractTemplates extends BaseEntity{
     //contractAtribute
     @OneToMany(mappedBy = "contractTemplates")
     private List<ContractAttribute> contractAttributes;
+    // contractposition
+    @OneToMany(mappedBy = "contractTemplates")
+    private List<ContractPositions> contractPositions;
+
 }

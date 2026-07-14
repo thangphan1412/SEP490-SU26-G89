@@ -47,4 +47,7 @@ public class Projects extends BaseEntity {
     //proposal
     @OneToMany(mappedBy = "project")
     private List<Proposals> proposals;
+    //projectmember
+    @OneToMany(mappedBy = "project")
+    private List<ProjectMember>  projectMembers;
 }

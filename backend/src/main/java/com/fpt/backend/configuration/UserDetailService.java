@@ -17,6 +17,8 @@ import java.util.stream.Collectors;
 public class UserDetailService implements UserDetailsService {
     @Autowired
     private UserRepository userRepository;
+
+//    private MyUserDetail myUserDetail;
     @Override
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
         Users users = userRepository.findByEmail(email)

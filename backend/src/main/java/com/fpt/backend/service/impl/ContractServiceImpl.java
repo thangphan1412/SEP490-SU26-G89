@@ -35,7 +35,7 @@ public class ContractServiceImpl implements ContractService {
             "contractTitle",
             "contractStatus",
             "effectiveDate",
-            "experationDate",
+            "expirationDate",
             "contractCreateBy",
             "contractCreatedAt"
     );
@@ -123,7 +123,7 @@ public class ContractServiceImpl implements ContractService {
         contract.setContractTitle(request.contractTitle());
         contract.setContractStatus(request.contractStatus());
         contract.setEffectiveDate(request.effectiveDate());
-        contract.setExperationDate(request.expirationDate());
+        contract.setExpirationDate(request.expirationDate());
         contract.setContractCreateBy(request.contractCreatedBy());
         contract.setProject(resolveProject(request.projectId()));
     }
@@ -167,7 +167,7 @@ public class ContractServiceImpl implements ContractService {
                 contract.getContractTitle(),
                 contract.getContractStatus(),
                 contract.getEffectiveDate(),
-                contract.getExperationDate(),
+                contract.getExpirationDate(),
                 contract.getContractCreateBy(),
                 contract.getContractCreatedAt()
         );

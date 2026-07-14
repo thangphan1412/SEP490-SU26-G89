@@ -23,8 +23,8 @@ public class Contracts extends BaseEntity {
     private String contractStatus;
     @Column(name = "contract_effective_date")
     private LocalDate effectiveDate;
-    @Column(name = "contract_experation_date")
-    private LocalDate experationDate;
+    @Column(name = "contract_expiration_date")
+    private LocalDate expirationDate;
     @Column(name = "contract_created_by")
     private String contractCreateBy;
     @Column(name = "contract_created_at")
@@ -41,4 +41,13 @@ public class Contracts extends BaseEntity {
     //contract type
     @OneToMany(mappedBy = "contract")
     private List<ContractTypes>  contractTypes;
+    // contrac approvals
+    @OneToMany(mappedBy = "contract")
+    private List<ContractApprovals> contractApprovals;
+    //contract attribute value
+    @OneToMany(mappedBy = "contract")
+    private List<ContractAttributeValues> contractAttributeValues;
+    // external
+    @OneToMany(mappedBy = "contract")
+    private List<ExternalAccess> externalAccess;
 }
