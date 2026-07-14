@@ -2,11 +2,8 @@ package com.fpt.backend.controller.authencationController;
 
 import com.fpt.backend.configuration.JWTService;
 import com.fpt.backend.dto.request.authentication.AuthenticateRequest;
-import com.fpt.backend.dto.request.authentication.RegisterRequest;
 import com.fpt.backend.dto.response.authentication.AuthenticateResponse;
-import com.fpt.backend.dto.response.authentication.RegisterResponse;
 import com.fpt.backend.entity.Users;
-import com.fpt.backend.service.impl.user.UserServiceImpl;
 import com.fpt.backend.util.BaseResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -21,23 +18,29 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api")
-public class AuthenticationController {
+@RequestMapping("")
+public class AuthenticateController {
     @Autowired
-    private UserServiceImpl userService;
-
+    private AuthenticationManager authenticationManager;
     @Autowired
     private JWTService jwtService;
-    @PostMapping("/register")
-    public ResponseEntity<BaseResponse<RegisterResponse>> registerUser(@RequestBody RegisterRequest registerRequest) {
-        RegisterResponse registerResponse = userService.create(registerRequest);
-        BaseResponse<RegisterResponse> response = new BaseResponse<>(
+    @PostMapping("/login")
+    public ResponseEntity<BaseResponse<AuthenticateResponse>> authenticateUser(@RequestBody AuthenticateRequest authenticateRequest) {
+        Authentication authenticate =  authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(
+                authenticateRequest.getEmail(),
+                authenticateRequest.getPassword()
+        ));
+        Users users = (Users) authenticate.getPrincipal();
+        var token  = jwtService.generateToken((UserDetails) users);
+        AuthenticateResponse authenticateResponse = new AuthenticateResponse();
+        authenticateResponse.setToken(token);
+        authenticateResponse.setRole(users.getRole());
+        authenticateResponse.setFullName(users.getFirstName()+" "+users.getLastName());
+        BaseResponse<AuthenticateResponse> response = new BaseResponse<>(
                 HttpStatus.CREATED.value(),
-                "Create successful news",
-                registerResponse
+                "Login susscessed",
+                authenticateResponse
         );
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
-
-
 }

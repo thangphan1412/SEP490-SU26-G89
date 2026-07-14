@@ -1,4 +1,4 @@
-package com.fpt.backend.dto.response.Authentication;
+package com.fpt.backend.dto.response.authentication;
 
 import lombok.*;
 
