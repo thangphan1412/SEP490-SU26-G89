@@ -20,12 +20,14 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .cors(Customizer.withDefaults())
-                .csrf(AbstractHttpConfigurer::disable)
+                .csrf(custom -> custom.disable())
                 .authorizeHttpRequests(
                         authorizeRequests -> authorizeRequests
                                 .anyRequest().permitAll())
                 .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .formLogin(Customizer.withDefaults());
+                .formLogin(Customizer.withDefaults())
+                .httpBasic(Customizer.withDefaults());
+
 
 //                .authenticationProvider(authenticationProvider)
 //                .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);

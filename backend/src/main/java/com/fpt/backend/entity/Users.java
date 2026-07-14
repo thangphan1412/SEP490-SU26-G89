@@ -59,4 +59,8 @@ public class Users extends BaseEntity {
     // contracappoval
     @OneToMany(mappedBy = "user")
     private List<ContractApprovals>  contractApprovals;
+    @OneToMany(mappedBy = "user")
+    private List<ProjectMember>  projectMembers;
+    @OneToMany(mappedBy = "assignedTo")
+    private List<TimelineTask>  timelineTasks;
 }
