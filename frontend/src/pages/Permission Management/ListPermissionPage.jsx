@@ -68,15 +68,13 @@ function PermissionListContent() {
   const [search, setSearch] = useState("");
   const [projectId, setProjectId] = useState("");
   const [page, setPage] = useState(0);
-  const [totalElements, setTotalElements] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
-  const [pageSize, setPageSize] = useState(10);
   const [sortBy, setSortBy] = useState("id");
   const [sortDirection, setSortDirection] = useState("desc");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [deletingId, setDeletingId] = useState(null);
-  const [reloadKey, setReloadKey] = useState(0);
+  const [deleteVersion, setDeleteVersion] = useState(0);
 
   useEffect(() => {
     const debounceId = window.setTimeout(() => {
@@ -133,9 +131,7 @@ function PermissionListContent() {
         }
 
         setPermissions(items);
-        setTotalElements(Number(payload?.totalElements) || 0);
         setTotalPages(responseTotalPages);
-        setPageSize(Number(payload?.size) || 10);
 
         if (responseTotalPages > 0 && page >= responseTotalPages) {
           setPage(responseTotalPages - 1);
@@ -145,7 +141,6 @@ function PermissionListContent() {
 
         if (isActive) {
           setPermissions([]);
-          setTotalElements(0);
           setTotalPages(0);
           setError(getErrorMessage(requestError));
         }
@@ -161,7 +156,7 @@ function PermissionListContent() {
     return () => {
       isActive = false;
     };
-  }, [page, projectId, reloadKey, search, sortBy, sortDirection]);
+  }, [page, projectId, deleteVersion, search, sortBy, sortDirection]);
 
   const handleSort = (field) => {
     setPage(0);
@@ -206,7 +201,7 @@ function PermissionListContent() {
       setDeletingId(permission.id);
       setError("");
       await deletePermission(permission.id);
-      setReloadKey((currentKey) => currentKey + 1);
+      setDeleteVersion((currentVersion) => currentVersion + 1);
     } catch (requestError) {
       console.error("Unable to delete permission:", requestError);
       setError(getErrorMessage(requestError));
@@ -216,8 +211,6 @@ function PermissionListContent() {
   };
 
   const pageNumbers = createPageNumbers(page, totalPages);
-  const firstResult = totalElements === 0 ? 0 : page * pageSize + 1;
-  const lastResult = Math.min((page + 1) * pageSize, totalElements);
 
   return (
     <Container fluid as="main" className="list-page">
@@ -272,14 +265,6 @@ function PermissionListContent() {
             </Button>
           )}
 
-          <Button
-            type="button"
-            variant="light"
-            className="list-outline-button"
-            onClick={() => setReloadKey((currentKey) => currentKey + 1)}
-          >
-            Refresh
-          </Button>
         </div>
 
         {error && <Alert variant="danger" className="mx-4 mb-0">{error}</Alert>}
@@ -367,8 +352,6 @@ function PermissionListContent() {
         </div>
 
         <div className="list-footer">
-          <span>Showing {firstResult} to {lastResult} of {totalElements} results</span>
-
           <Pagination className="list-pages mb-0">
             <Pagination.Prev
               aria-label="Previous page"
