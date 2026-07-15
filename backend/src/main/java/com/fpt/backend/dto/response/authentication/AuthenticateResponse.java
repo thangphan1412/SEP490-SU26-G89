@@ -11,6 +11,7 @@ import lombok.Setter;
 @NoArgsConstructor
 public class AuthenticateResponse {
     private String token;
-    private String fullName;
     private String role;
+    private String fullName;
+   
 }
