@@ -44,6 +44,7 @@ public class UserServiceImpl implements IUserService {
         registerResponse.setId(user.getId());
         return registerResponse;
     }
+
     // 1. List User
     @Override
     public List<UserResponseDTO> getAllUsers() {
@@ -69,8 +70,8 @@ public class UserServiceImpl implements IUserService {
 
         Users newUser = Users.builder()
                 .email(request.getEmail())
-                // Lưu ý: Password nên được mã hóa (VD: passwordEncoder.encode(request.getPassword())) trong thực tế
-                .password(request.getPassword())
+                // ĐÃ SỬA: Sử dụng passwordEncoder.encode() để mã hóa mật khẩu
+                .password(passwordEncoder.encode(request.getPassword()))
                 .firstName(request.getFirstName())
                 .lastName(request.getLastName())
                 .numberPhone(request.getNumberPhone())
@@ -102,9 +103,9 @@ public class UserServiceImpl implements IUserService {
             existingUser.setEmail(request.getEmail());
         }
 
-        // Cập nhật password nếu có truyền lên
+        // ĐÃ SỬA: Cập nhật và mã hóa password nếu có truyền lên
         if (request.getPassword() != null && !request.getPassword().isEmpty()) {
-            existingUser.setPassword(request.getPassword()); // Nhớ mã hóa nếu có dùng Spring Security
+            existingUser.setPassword(passwordEncoder.encode(request.getPassword()));
         }
 
         Users updatedUser = userRepository.save(existingUser);
