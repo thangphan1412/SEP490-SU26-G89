@@ -2,6 +2,8 @@ package com.fpt.backend.configuration;
 
 import com.fpt.backend.entity.Users;
 import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.Setter;
 import org.jspecify.annotations.Nullable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.GrantedAuthority;
@@ -14,6 +16,8 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @AllArgsConstructor
+@Setter
+@Getter
 public class MyUserDetail implements UserDetails {
 
     private final Users users;
