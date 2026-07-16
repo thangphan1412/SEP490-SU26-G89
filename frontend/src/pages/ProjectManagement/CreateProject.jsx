@@ -342,14 +342,27 @@ function getEmployeeName(employee) {
 }
 
 function getEmployeeDescription(employee) {
-    return [employee.email, employee.role, employee.status].filter(Boolean).join(" | ") || "No employee detail";
+    const roleNames = getEmployeeRoleNames(employee);
+    return [employee.email, roleNames.join(", ") || "No assigned role", employee.status]
+        .filter(Boolean)
+        .join(" | ");
 }
 
 function getEmployeeSearchText(employee) {
-    return [employee.firstName, employee.lastName, employee.email, employee.role, employee.status]
+    return [employee.firstName, employee.lastName, employee.email, ...getEmployeeRoleNames(employee), employee.status]
         .filter(Boolean)
         .join(" ")
         .toLowerCase();
+}
+
+function getEmployeeRoleNames(employee) {
+    if (!Array.isArray(employee.roles)) {
+        return [];
+    }
+
+    return employee.roles
+        .map((role) => role?.roleName?.trim())
+        .filter(Boolean);
 }
 
 function getTodayValue() {

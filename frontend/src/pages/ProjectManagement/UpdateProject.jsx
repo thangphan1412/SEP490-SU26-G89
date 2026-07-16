@@ -3,6 +3,7 @@ import { Alert, Button, Card, Col, Form, Modal, Row, Stack } from "react-bootstr
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
     listProjectEmployees,
+    listProjectRoles,
     updateProject,
     viewProject,
 } from "../../config/projectApi/projectApi.js";
@@ -24,6 +25,7 @@ function UpdateProject({ onUpdateProject }) {
     const projectId = searchParams.get("id");
     const [project, setProject] = useState(null);
     const [employees, setEmployees] = useState([]);
+    const [memberRoleOptions, setMemberRoleOptions] = useState([]);
     const [permissionOptions, setPermissionOptions] = useState([]);
     const [showMemberModal, setShowMemberModal] = useState(false);
     const [memberSearch, setMemberSearch] = useState("");
@@ -46,12 +48,14 @@ function UpdateProject({ onUpdateProject }) {
             }
 
             try {
-                const [projectResponse, employeeResponse] = await Promise.all([
+                const [projectResponse, employeeResponse, roleResponse] = await Promise.all([
                     viewProject(projectId),
                     listProjectEmployees(),
+                    listProjectRoles(),
                 ]);
                 const projectData = projectResponse.data?.data ?? projectResponse.data;
                 const employeeData = employeeResponse.data?.data ?? employeeResponse.data;
+                const roleData = roleResponse.data?.data ?? roleResponse.data;
 
                 if (!isActive) {
                     return;
@@ -74,6 +78,7 @@ function UpdateProject({ onUpdateProject }) {
                     })),
                 });
                 setEmployees(mergeEmployees(employeeData, projectUsers));
+                setMemberRoleOptions(Array.isArray(roleData) ? roleData : []);
 
                 const projectPermissions = Array.isArray(projectData?.availablePermissions)
                     ? projectData.availablePermissions.filter((permission) => permission.id)
@@ -255,11 +260,10 @@ function UpdateProject({ onUpdateProject }) {
     }));
     const availableEmployees = employees.filter((employee) => !selectedMemberIds.has(employee.id));
     const normalizedMemberSearch = memberSearch.trim().toLowerCase();
-    const memberRoleOptions = getFilterOptions(availableEmployees, "role");
     const memberStatusOptions = getFilterOptions(availableEmployees, "status");
     const visibleAvailableEmployees = availableEmployees.filter((employee) => {
         const matchesSearch = getEmployeeSearchText(employee).includes(normalizedMemberSearch);
-        const matchesRole = !memberRoleFilter || employee.role === memberRoleFilter;
+        const matchesRole = !memberRoleFilter || employeeHasRole(employee, memberRoleFilter);
         const matchesStatus = !memberStatusFilter || employee.status === memberStatusFilter;
 
         return matchesSearch && matchesRole && matchesStatus;
@@ -521,7 +525,9 @@ function UpdateProject({ onUpdateProject }) {
                                 className="update-project-modal-filter-input"
                             >
                                 <option value="">All roles</option>
-                                {memberRoleOptions.map((role) => <option key={role} value={role}>{role}</option>)}
+                                {memberRoleOptions.map((role) => (
+                                    <option key={role.id} value={role.id}>{role.roleName}</option>
+                                ))}
                             </Form.Select>
                         </Form.Group>
 
@@ -575,7 +581,7 @@ function UpdateProject({ onUpdateProject }) {
                                             <small>{employee.email || "No email"}</small>
                                         </span>
                                         <span className="update-project-modal-user-meta">
-                                            <small>{employee.role || "No role"}</small>
+                                            <small>{getEmployeeRoleNames(employee).join(", ") || "No assigned role"}</small>
                                             <small>{employee.status || "Unknown"}</small>
                                         </span>
                                     </label>
@@ -631,7 +637,7 @@ function mergeEmployees(employeeData, projectUsers) {
                 id: user.userId,
                 email: user.email,
                 userName: user.userName,
-                role: user.role,
+                roles: [],
                 status: user.userStatus,
             });
         }
@@ -668,7 +674,10 @@ function getEmployeeName(employee) {
 }
 
 function getEmployeeDescription(employee) {
-    return [employee.email, employee.role, employee.status].filter(Boolean).join(" | ") || "No employee detail";
+    const roleNames = getEmployeeRoleNames(employee);
+    return [employee.email, roleNames.join(", ") || "No assigned role", employee.status]
+        .filter(Boolean)
+        .join(" | ");
 }
 
 function getEmployeeSearchText(employee) {
@@ -677,12 +686,30 @@ function getEmployeeSearchText(employee) {
         employee.lastName,
         employee.userName,
         employee.email,
-        employee.role,
+        ...getEmployeeRoleNames(employee),
         employee.status,
     ]
         .filter(Boolean)
         .join(" ")
         .toLowerCase();
+}
+
+function getEmployeeRoleNames(employee) {
+    if (!Array.isArray(employee.roles)) {
+        return [];
+    }
+
+    return employee.roles
+        .map((role) => role?.roleName?.trim())
+        .filter(Boolean);
+}
+
+function employeeHasRole(employee, roleId) {
+    if (!Array.isArray(employee.roles)) {
+        return false;
+    }
+
+    return employee.roles.some((role) => String(role.id) === String(roleId));
 }
 
 function getFilterOptions(employees, fieldName) {

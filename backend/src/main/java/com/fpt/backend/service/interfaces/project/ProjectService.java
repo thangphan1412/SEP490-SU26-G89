@@ -6,6 +6,7 @@ import com.fpt.backend.dto.request.project.ProjectUpdateRequest;
 import com.fpt.backend.dto.response.project.ProjectDetailResponse;
 import com.fpt.backend.dto.response.project.ProjectEmployeeResponse;
 import com.fpt.backend.dto.response.project.ProjectListResponse;
+import com.fpt.backend.dto.response.project.ProjectRoleResponse;
 
 import java.util.List;
 
@@ -21,4 +22,6 @@ public interface ProjectService {
     void deleteProject(int id);
 
     List<ProjectEmployeeResponse> getEmployeesForProjectSelection();
+
+    List<ProjectRoleResponse> getRolesForProjectMemberFilter();
 }

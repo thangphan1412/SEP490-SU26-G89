@@ -12,13 +12,16 @@ import com.fpt.backend.dto.response.project.ProjectListItemResponse;
 import com.fpt.backend.dto.response.project.ProjectListResponse;
 import com.fpt.backend.dto.response.project.ProjectPermissionOptionResponse;
 import com.fpt.backend.dto.response.project.ProjectPhaseResponse;
+import com.fpt.backend.dto.response.project.ProjectRoleResponse;
 import com.fpt.backend.dto.response.project.ProjectUserResponse;
 import com.fpt.backend.entity.Contracts;
 import com.fpt.backend.entity.Permissions;
 import com.fpt.backend.entity.ProjectMember;
 import com.fpt.backend.entity.Projects;
+import com.fpt.backend.entity.Role;
 import com.fpt.backend.entity.Timeline;
 import com.fpt.backend.entity.UserPermission;
+import com.fpt.backend.entity.UserRole;
 import com.fpt.backend.entity.Users;
 import com.fpt.backend.repository.project.ProjectRepository;
 import com.fpt.backend.service.interfaces.project.ProjectService;
@@ -34,6 +37,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -54,6 +58,8 @@ public class ProjectServiceImpl implements ProjectService {
     private static final String DEFAULT_CREATED_BY = "Admin";
     private static final String DEFAULT_PROJECT_STATUS = "Planning";
     private static final String DEFAULT_PHASE_STATUS = "Planning";
+    private static final ZoneId DATABASE_TIME_ZONE = ZoneId.of("UTC");
+    private static final ZoneId PROJECT_TIME_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
     private static final Set<String> SORT_FIELDS = Set.of(
             "id",
             "projectCode",
@@ -119,7 +125,10 @@ public class ProjectServiceImpl implements ProjectService {
                 null
         );
         project.setProjectCreatedBy(DEFAULT_CREATED_BY);
-        project.setProjectCreatedAt(defaultIfBlank(request.projectCreatedAt(), LocalDate.now().toString()));
+        project.setProjectCreatedAt(defaultIfBlank(
+                request.projectCreatedAt(),
+                LocalDate.now(PROJECT_TIME_ZONE).toString()
+        ));
 
         Projects savedProject = projectRepository.save(project);
         syncPhases(savedProject, request.phases(), false);
@@ -203,7 +212,68 @@ public class ProjectServiceImpl implements ProjectService {
 
     @Override
     public List<ProjectEmployeeResponse> getEmployeesForProjectSelection() {
-        return projectRepository.findEmployeesForProjectSelection();
+        List<Users> users = entityManager.createQuery(
+                        "SELECT user FROM Users user "
+                                + "ORDER BY user.firstName, user.lastName, user.email",
+                        Users.class
+                )
+                .getResultList();
+        Map<Integer, List<ProjectRoleResponse>> rolesByUserId = findRolesByUserId();
+
+        return users.stream()
+                .map(user -> new ProjectEmployeeResponse(
+                        user.getId(),
+                        user.getEmail(),
+                        user.getFirstName(),
+                        user.getLastName(),
+                        rolesByUserId.getOrDefault(user.getId(), List.of()),
+                        user.getStatus()
+                ))
+                .toList();
+    }
+
+    @Override
+    public List<ProjectRoleResponse> getRolesForProjectMemberFilter() {
+        return entityManager.createQuery(
+                        "SELECT role FROM Role role "
+                                + "WHERE role.roleName IS NOT NULL "
+                                + "AND TRIM(role.roleName) <> '' "
+                                + "ORDER BY role.roleName, role.id",
+                        Role.class
+                )
+                .getResultList()
+                .stream()
+                .map(role -> new ProjectRoleResponse(role.getId(), role.getRoleName()))
+                .toList();
+    }
+
+    private Map<Integer, List<ProjectRoleResponse>> findRolesByUserId() {
+        List<UserRole> userRoles = entityManager.createQuery(
+                        "SELECT userRole FROM UserRole userRole "
+                                + "JOIN FETCH userRole.user user "
+                                + "JOIN FETCH userRole.role role "
+                                + "ORDER BY user.id, role.roleName, role.id",
+                        UserRole.class
+                )
+                .getResultList();
+        Map<Integer, List<ProjectRoleResponse>> rolesByUserId = new LinkedHashMap<>();
+
+        for (UserRole userRole : userRoles) {
+            int userId = userRole.getUser().getId();
+            Role role = userRole.getRole();
+            List<ProjectRoleResponse> roles = rolesByUserId.computeIfAbsent(
+                    userId,
+                    ignored -> new ArrayList<>()
+            );
+            boolean roleAlreadyAdded = roles.stream()
+                    .anyMatch(existingRole -> existingRole.id() == role.getId());
+
+            if (!roleAlreadyAdded) {
+                roles.add(new ProjectRoleResponse(role.getId(), role.getRoleName()));
+            }
+        }
+
+        return rolesByUserId;
     }
 
     private Projects findProject(int id) {
@@ -305,6 +375,8 @@ public class ProjectServiceImpl implements ProjectService {
             }
 
             Timeline phase;
+            boolean isNewPhase = false;
+
             if (request.id() != null && request.id() > 0) {
                 phase = existingPhases.remove(request.id());
 
@@ -316,11 +388,14 @@ public class ProjectServiceImpl implements ProjectService {
                 }
             } else {
                 phase = new Timeline();
-                phase.setProject(project);
-                entityManager.persist(phase);
+                isNewPhase = true;
             }
 
             applyPhaseInformation(phase, request, project);
+
+            if (isNewPhase) {
+                entityManager.persist(phase);
+            }
         }
 
         for (Timeline removedPhase : existingPhases.values()) {
@@ -456,7 +531,7 @@ public class ProjectServiceImpl implements ProjectService {
                 member = new ProjectMember();
                 member.setProject(project);
                 member.setUser(user);
-                member.setJoinDate(new Date());
+                member.setJoinDate(getCurrentDatabaseDateTime());
                 entityManager.persist(member);
             }
 
@@ -571,7 +646,7 @@ public class ProjectServiceImpl implements ProjectService {
                     getUserName(user),
                     user.getRole(),
                     user.getStatus(),
-                    member == null ? null : toLocalDate(member.getJoinDate()),
+                    member == null ? null : toProjectJoinDate(member.getJoinDate()),
                     permission == null ? null : permission.getId(),
                     permission == null ? "Not assigned" : getPermissionName(permission),
                     permission == null ? null : permission.getPermissionCode()
@@ -711,7 +786,30 @@ public class ProjectServiceImpl implements ProjectService {
         }
 
         return value.toInstant()
-                .atZone(ZoneId.systemDefault())
+                .atZone(PROJECT_TIME_ZONE)
+                .toLocalDate();
+    }
+
+    private Date getCurrentDatabaseDateTime() {
+        LocalDateTime utcDateTime = LocalDateTime.now(DATABASE_TIME_ZONE);
+        return java.sql.Timestamp.valueOf(utcDateTime);
+    }
+
+    private LocalDate toProjectJoinDate(Date value) {
+        if (value == null) {
+            return null;
+        }
+
+        LocalDateTime databaseDateTime;
+        if (value instanceof java.sql.Timestamp timestamp) {
+            databaseDateTime = timestamp.toLocalDateTime();
+        } else {
+            databaseDateTime = LocalDateTime.ofInstant(value.toInstant(), ZoneId.systemDefault());
+        }
+
+        return databaseDateTime
+                .atZone(DATABASE_TIME_ZONE)
+                .withZoneSameInstant(PROJECT_TIME_ZONE)
                 .toLocalDate();
     }
 
