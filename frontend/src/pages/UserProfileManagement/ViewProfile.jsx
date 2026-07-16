@@ -13,6 +13,9 @@ import {
     IconInfoCircle
 } from "@tabler/icons-react";
 
+// IMPORT HÀM GỌI API PROFILE
+import { getMyProfile } from "../../config/userApi/userApi";
+
 function ViewProfile() {
     const navigate = useNavigate();
 
@@ -20,31 +23,33 @@ function ViewProfile() {
     const [userProfile, setUserProfile] = useState(null);
     const [loading, setLoading] = useState(true);
 
-    // Hiệu ứng giả lập gọi API giống file gốc của bạn
+    // Lấy thông tin từ Backend
     useEffect(() => {
         const fetchUserProfile = async () => {
             setLoading(true);
             try {
-                // Mô phỏng chờ API 1 giây
-                await new Promise((resolve) => setTimeout(resolve, 1000));
+                const response = await getMyProfile();
+                const data = response.data.data;
 
-                // Set dữ liệu trả về
+                // Ghép firstName và lastName thành fullName, map các trường thật và hardcode các trường thừa
                 setUserProfile({
-                    fullName: "Alex Morgan",
-                    email: "alex.morgan@econtract.com",
-                    phoneNumber: "+84 28 3822 5678",
+                    fullName: `${data.firstName || ""} ${data.lastName || ""}`.trim(),
+                    email: data.email || "",
+                    phoneNumber: data.numberPhone || "",
+                    accountStatus: data.status || "Active",
+                    // Các trường dưới đây không có trong DTO cập nhật profile nên hardcode
                     department: "Legal Department",
                     position: "Contract Manager",
                     employeeId: "EMP-00023",
                     dateJoined: "March 15, 2023",
                     timeZone: "(GMT+07:00) Bangkok, Hanoi, Jakarta",
                     language: "English",
-                    accountStatus: "Active",
                     defaultSignature: "Default Work Signature",
                     lastUpdated: "May 22, 2025",
                 });
             } catch (error) {
                 console.error("Lỗi khi tải thông tin cá nhân:", error);
+                // Xử lý lỗi chưa đăng nhập hoặc token hết hạn ở đây
             } finally {
                 setLoading(false);
             }
@@ -110,7 +115,7 @@ function ViewProfile() {
                                         </div>
                                         <h2 className="h5 fw-bold mb-0 text-dark">Personal Information</h2>
                                     </div>
-                                    <span className="badge bg-success bg-opacity-10 text-success px-3 py-2 rounded-pill fw-bold">
+                                    <span className={`badge ${userProfile.accountStatus === 'Active' ? 'bg-success text-success' : 'bg-secondary text-secondary'} bg-opacity-10 px-3 py-2 rounded-pill fw-bold`}>
                                         {userProfile.accountStatus}
                                     </span>
                                 </div>
@@ -243,7 +248,7 @@ function ViewProfile() {
                                             </Col>
                                         </Row>
                                     </Col>
-                                </Row> {/* <-- Đã vá lại thẻ đóng Row của cấu hình Avatar + Grid */}
+                                </Row>
                             </Card>
 
                             {/* --- ACCOUNT & ACCESS SUMMARY CARD --- */}
