@@ -2,8 +2,10 @@ package com.fpt.backend.service.impl.user;
 
 import com.fpt.backend.dto.request.authentication.RegisterRequest;
 import com.fpt.backend.dto.request.user.UserRequestDTO;
+import com.fpt.backend.dto.request.userProfile.UserProfileRequestDTO;
 import com.fpt.backend.dto.response.authentication.RegisterResponse;
 import com.fpt.backend.dto.response.user.UserResponseDTO;
+import com.fpt.backend.dto.response.userProfile.UserProfileResponseDTO;
 import com.fpt.backend.entity.Users;
 import com.fpt.backend.repository.user.UserRepository;
 import com.fpt.backend.service.interfaces.user.IUserService;
@@ -111,5 +113,36 @@ public class UserServiceImpl implements IUserService {
 
         Users updatedUser = userRepository.save(existingUser);
         return UserResponseDTO.fromEntity(updatedUser);
+    }
+
+
+    @Override
+    public UserProfileResponseDTO getMyProfile(Integer userId) {
+        Users user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        return UserProfileResponseDTO.fromEntity(user);
+    }
+
+    @Override
+    public UserProfileResponseDTO updateMyProfile(Integer userId, UserProfileRequestDTO request) {
+        Users existingUser = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        existingUser.setFirstName(request.getFirstName());
+        existingUser.setLastName(request.getLastName());
+        existingUser.setNumberPhone(request.getNumberPhone());
+
+        // Kiểm tra logic nếu user đổi email
+        if (!existingUser.getEmail().equals(request.getEmail())) {
+            if (userRepository.existsByEmail(request.getEmail())) {
+                throw new RuntimeException("Email is already in use by another account!");
+            }
+            existingUser.setEmail(request.getEmail());
+        }
+
+        // Lưu ý: Không cho phép tự ý đổi Role hoặc Status ở hàm Update Profile cá nhân
+
+        Users updatedUser = userRepository.save(existingUser);
+        return UserProfileResponseDTO.fromEntity(updatedUser);
     }
 }
