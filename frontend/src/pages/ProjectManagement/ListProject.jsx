@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Button, Form, InputGroup, Pagination, Table } from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
-import { listProjects } from "../../config/axiosConfig.js";
+import { listProjects } from "../../config/projectApi/projectApi.js";
 import { Icon, PagePanel, PrimaryButton, StatusBadge } from "./ProjectComponents.jsx";
 import "../../assets/styles/css/projectStyles/ListProject.css";
 

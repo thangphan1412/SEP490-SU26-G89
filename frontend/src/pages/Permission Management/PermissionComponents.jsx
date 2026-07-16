@@ -1,32 +1,57 @@
-import { Form } from "react-bootstrap";
+import { Badge, Card, Container, Form } from "react-bootstrap";
+import { IconShieldCheck } from "@tabler/icons-react";
+import "../../assets/styles/css/permissionStyles/PermissionComponents.css";
 
-export function CreatePermissionFormField({ label, required = false, children }) {
+export function PermissionPage({ title, description, action, children }) {
   return (
-    <Form.Group className="create-field">
-      <Form.Label className="create-label">
-        {label} {required && <span className="create-required">*</span>}
+    <Container fluid as="main" className="permission-page">
+      <Card as="section" className="permission-panel">
+        <Card.Header className="permission-page-header">
+          <div className="permission-heading">
+            <span className="permission-heading-icon">
+              <IconShieldCheck size={28} stroke={1.8} />
+            </span>
+            <div>
+              <h1>{title}</h1>
+              <p>{description}</p>
+            </div>
+          </div>
+          {action}
+        </Card.Header>
+        {children}
+      </Card>
+    </Container>
+  );
+}
+
+export function PermissionFormField({ controlId, label, required = false, hint, children }) {
+  return (
+    <Form.Group controlId={controlId} className="permission-field">
+      <Form.Label>
+        {label} {required && <span className="permission-required">*</span>}
       </Form.Label>
       {children}
+      {hint && <Form.Text>{hint}</Form.Text>}
     </Form.Group>
   );
 }
 
-export function UpdatePermissionFormField({ label, required = false, children }) {
-  return (
-    <Form.Group className="update-field">
-      <Form.Label className="update-label">
-        {label} {required && <span className="update-required">*</span>}
-      </Form.Label>
-      {children}
-    </Form.Group>
-  );
+export function PermissionStatusBadge({ status }) {
+  if (status === null || status === undefined) {
+    return <Badge className="permission-status permission-status--unset">Not set</Badge>;
+  }
+
+  const statusClass = status ? "permission-status--active" : "permission-status--inactive";
+  return <Badge className={`permission-status ${statusClass}`}>{status ? "Active" : "Inactive"}</Badge>;
 }
 
 export function ViewPermissionInfo({ label, value }) {
+  const displayValue = value === null || value === undefined || value === "" ? "-" : value;
+
   return (
-    <div>
-      <p className="view-info-label">{label}</p>
-      <p className="view-info-value">{value || "-"}</p>
+    <div className="permission-info-item">
+      <p className="permission-info-label">{label}</p>
+      <p className="permission-info-value">{displayValue}</p>
     </div>
   );
 }

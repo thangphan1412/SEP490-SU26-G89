@@ -1,19 +1,47 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Alert, Button, Card, Container, Form, Pagination, Spinner, Stack, Table } from "react-bootstrap";
+import {
+  Alert,
+  Button,
+  Form,
+  InputGroup,
+  Pagination,
+  Spinner,
+  Stack,
+  Table,
+} from "react-bootstrap";
+import {
+  IconArrowDown,
+  IconArrowLeft,
+  IconArrowRight,
+  IconArrowUp,
+  IconArrowsSort,
+  IconEdit,
+  IconPlus,
+  IconSearch,
+  IconShieldCheck,
+  IconTrash,
+  IconX,
+} from "@tabler/icons-react";
 import "../../assets/styles/css/permissionStyles/ListPermissionPage.css";
 import {
   deletePermission,
   listPermissionProjects,
+  listPermissionRoles,
   listPermissions,
-} from "../../config/axiosConfig.js";
+} from "../../config/permissionApi/permissionApi.js";
+import { PermissionPage, PermissionStatusBadge } from "./PermissionComponents.jsx";
+import { formatPermissionDate } from "./permissionUtils.js";
 import UpdatePermissionPage from "./UpdatePermissionPage.jsx";
 import ViewPermissionPage from "./ViewPermissionPage.jsx";
 
 const sortableColumns = [
-  ["Permission Name", "permissionName"],
-  ["Permission Code", "permissionCode"],
+  ["Permission", "permissionName"],
+  ["Code / Module", "permissionCode"],
   ["Project", "projectName"],
+  ["Role", "roleName"],
+  ["Status", "status"],
+  ["Last updated", "updatedAt"],
 ];
 
 function createPageNumbers(currentPage, totalPages) {
@@ -21,13 +49,7 @@ function createPageNumbers(currentPage, totalPages) {
     return Array.from({ length: totalPages }, (_, index) => index);
   }
 
-  const candidates = new Set([
-    0,
-    totalPages - 1,
-    currentPage - 1,
-    currentPage,
-    currentPage + 1,
-  ]);
+  const candidates = new Set([0, totalPages - 1, currentPage - 1, currentPage, currentPage + 1]);
   const visiblePages = [...candidates]
     .filter((pageNumber) => pageNumber >= 0 && pageNumber < totalPages)
     .sort((first, second) => first - second);
@@ -37,7 +59,6 @@ function createPageNumbers(currentPage, totalPages) {
     if (index > 0 && pageNumber - visiblePages[index - 1] > 1) {
       pages.push(`ellipsis-${pageNumber}`);
     }
-
     pages.push(pageNumber);
   });
 
@@ -64,9 +85,12 @@ function PermissionListContent() {
   const navigate = useNavigate();
   const [permissions, setPermissions] = useState([]);
   const [projects, setProjects] = useState([]);
+  const [roles, setRoles] = useState([]);
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [projectId, setProjectId] = useState("");
+  const [roleId, setRoleId] = useState("");
+  const [status, setStatus] = useState("");
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [sortBy, setSortBy] = useState("id");
@@ -88,20 +112,25 @@ function PermissionListContent() {
   useEffect(() => {
     let isActive = true;
 
-    const loadProjects = async () => {
+    const loadFilterOptions = async () => {
       try {
-        const response = await listPermissionProjects();
-        const payload = response.data?.data ?? response.data;
+        const [projectResponse, roleResponse] = await Promise.all([
+          listPermissionProjects(),
+          listPermissionRoles(),
+        ]);
+        const projectPayload = projectResponse.data?.data ?? projectResponse.data;
+        const rolePayload = roleResponse.data?.data ?? roleResponse.data;
 
         if (isActive) {
-          setProjects(Array.isArray(payload) ? payload : []);
+          setProjects(Array.isArray(projectPayload) ? projectPayload : []);
+          setRoles(Array.isArray(rolePayload) ? rolePayload : []);
         }
       } catch (requestError) {
-        console.error("Unable to load projects for permission filter:", requestError);
+        console.error("Unable to load permission filters:", requestError);
       }
     };
 
-    loadProjects();
+    loadFilterOptions();
 
     return () => {
       isActive = false;
@@ -118,6 +147,8 @@ function PermissionListContent() {
         const response = await listPermissions({
           search,
           projectId: projectId ? Number(projectId) : undefined,
+          roleId: roleId ? Number(roleId) : undefined,
+          status: status === "" ? undefined : status === "true",
           page,
           sortBy,
           sortDirection,
@@ -156,15 +187,13 @@ function PermissionListContent() {
     return () => {
       isActive = false;
     };
-  }, [page, projectId, deleteVersion, search, sortBy, sortDirection]);
+  }, [deleteVersion, page, projectId, roleId, search, sortBy, sortDirection, status]);
 
   const handleSort = (field) => {
     setPage(0);
 
     if (sortBy === field) {
-      setSortDirection((currentDirection) =>
-        currentDirection === "asc" ? "desc" : "asc"
-      );
+      setSortDirection((currentDirection) => currentDirection === "asc" ? "desc" : "asc");
       return;
     }
 
@@ -176,6 +205,8 @@ function PermissionListContent() {
     setSearchInput("");
     setSearch("");
     setProjectId("");
+    setRoleId("");
+    setStatus("");
     setPage(0);
   };
 
@@ -211,184 +242,204 @@ function PermissionListContent() {
   };
 
   const pageNumbers = createPageNumbers(page, totalPages);
+  const filtersAreActive = Boolean(searchInput || projectId || roleId || status);
+  const createAction = (
+    <Button className="permission-primary-button" onClick={() => navigate("/permission/create")}>
+      <IconPlus size={19} />
+      Create Permission
+    </Button>
+  );
 
   return (
-    <Container fluid as="main" className="list-page">
-      <Card className="list-card">
-        <Card.Header className="list-header">
-          <div>
-            <Card.Title as="h1">Permissions</Card.Title>
-            <Card.Text>View, filter, create, update, and delete permissions.</Card.Text>
-          </div>
-
-          <Button
-            type="button"
-            className="list-primary-button"
-            onClick={() => navigate("/permission/create")}
-          >
-            + Create Permission
-          </Button>
-        </Card.Header>
-
-        <div className="list-toolbar">
+    <PermissionPage
+      title="Permissions"
+      description="Manage access rules by project, role, module, and status."
+      action={createAction}
+    >
+      <div className="permission-list-toolbar">
+        <InputGroup className="permission-list-search">
+          <InputGroup.Text><IconSearch size={20} /></InputGroup.Text>
           <Form.Control
-            className="list-search"
-            placeholder="Search by name, code, module, or project..."
+            aria-label="Search permissions"
+            placeholder="Search name, code, module, description..."
             value={searchInput}
             onChange={(event) => setSearchInput(event.target.value)}
           />
-
-          <Form.Select
-            className="list-select"
-            value={projectId}
-            onChange={(event) => {
-              setProjectId(event.target.value);
-              setPage(0);
-            }}
-          >
-            <option value="">All projects</option>
-            {projects.map((project) => (
-              <option key={project.id} value={project.id}>
-                {formatProjectName(project)}
-              </option>
-            ))}
-          </Form.Select>
-
-          {(searchInput || projectId) && (
-            <Button
-              type="button"
-              variant="light"
-              className="list-outline-button"
-              onClick={clearFilters}
-            >
-              Clear filters
+          {searchInput && (
+            <Button variant="light" aria-label="Clear search" onClick={() => setSearchInput("")}>
+              <IconX size={18} />
             </Button>
           )}
+        </InputGroup>
 
-        </div>
-
-        {error && <Alert variant="danger" className="mx-4 mb-0">{error}</Alert>}
-
-        <div className="list-table-wrapper">
-          <Table hover responsive={false} className="list-table mb-0">
-            <thead>
-              <tr>
-                {sortableColumns.map(([label, field]) => (
-                  <th key={field}>
-                    <Button
-                      type="button"
-                      variant="link"
-                      className="list-sort-button"
-                      onClick={() => handleSort(field)}
-                    >
-                      {label}{sortBy === field ? (sortDirection === "asc" ? " ↑" : " ↓") : ""}
-                    </Button>
-                  </th>
-                ))}
-                <th>Actions</th>
-              </tr>
-            </thead>
-
-            <tbody>
-              {loading ? (
-                <tr>
-                  <td colSpan={4} className="list-state-cell">
-                    <Spinner animation="border" size="sm" /> Loading permissions...
-                  </td>
-                </tr>
-              ) : permissions.length === 0 ? (
-                <tr>
-                  <td colSpan={4} className="list-state-cell">
-                    No permissions found. Try changing the filters or create a permission.
-                  </td>
-                </tr>
-              ) : (
-                permissions.map((permission) => (
-                  <tr
-                    key={permission.id}
-                    className="list-row"
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => openPermissionDetail(permission.id)}
-                    onKeyDown={(event) => handleRowKeyDown(event, permission.id)}
-                  >
-                    <td>
-                      <span className="list-name-value">
-                        <span className="list-icon">PERM</span>
-                        <strong>{permission.permissionName || "Unnamed permission"}</strong>
-                      </span>
-                    </td>
-                    <td>{permission.permissionCode || "-"}</td>
-                    <td>{permission.projectName || "-"}</td>
-                    <td>
-                      <Stack direction="horizontal" className="list-row-actions">
-                        <Button
-                          type="button"
-                          variant="light"
-                          className="list-action-button"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            navigate(`/permission/list?edit=${permission.id}`);
-                          }}
-                        >
-                          Edit
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="light"
-                          className="list-delete-button"
-                          disabled={deletingId === permission.id}
-                          onClick={(event) => handleDelete(event, permission)}
-                        >
-                          {deletingId === permission.id ? "Deleting..." : "Delete"}
-                        </Button>
-                      </Stack>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </Table>
-        </div>
-
-        <div className="list-footer">
-          <Pagination className="list-pages mb-0">
-            <Pagination.Prev
-              aria-label="Previous page"
-              onClick={() => setPage((currentPage) => Math.max(0, currentPage - 1))}
-              disabled={page === 0 || loading}
-            />
-
-            {pageNumbers.map((pageNumber) => (
-              typeof pageNumber === "number" ? (
-                <Pagination.Item
-                  key={pageNumber}
-                  active={pageNumber === page}
-                  onClick={() => setPage(pageNumber)}
-                  disabled={loading}
-                >
-                  {pageNumber + 1}
-                </Pagination.Item>
-              ) : (
-                <Pagination.Ellipsis key={pageNumber} disabled />
-              )
+        <Form.Group className="permission-list-filter">
+          <Form.Label>Project</Form.Label>
+          <Form.Select value={projectId} onChange={(event) => { setProjectId(event.target.value); setPage(0); }}>
+            <option value="">All projects</option>
+            {projects.map((project) => (
+              <option key={project.id} value={project.id}>{formatProjectName(project)}</option>
             ))}
+          </Form.Select>
+        </Form.Group>
 
-            <Pagination.Next
-              aria-label="Next page"
-              onClick={() => setPage((currentPage) => Math.min(totalPages - 1, currentPage + 1))}
-              disabled={loading || totalPages === 0 || page >= totalPages - 1}
-            />
-          </Pagination>
-        </div>
-      </Card>
-    </Container>
+        <Form.Group className="permission-list-filter">
+          <Form.Label>Role</Form.Label>
+          <Form.Select value={roleId} onChange={(event) => { setRoleId(event.target.value); setPage(0); }}>
+            <option value="">All roles</option>
+            {roles.map((role) => (
+              <option key={role.id} value={role.id}>{role.roleName || `Role #${role.id}`}</option>
+            ))}
+          </Form.Select>
+        </Form.Group>
+
+        <Form.Group className="permission-list-filter">
+          <Form.Label>Status</Form.Label>
+          <Form.Select value={status} onChange={(event) => { setStatus(event.target.value); setPage(0); }}>
+            <option value="">All statuses</option>
+            <option value="true">Active</option>
+            <option value="false">Inactive</option>
+          </Form.Select>
+        </Form.Group>
+
+        {filtersAreActive && (
+          <Button variant="light" className="permission-list-clear" onClick={clearFilters}>
+            Clear filters
+          </Button>
+        )}
+      </div>
+
+      {error && <Alert variant="danger" className="permission-list-alert">{error}</Alert>}
+
+      <div className="permission-list-table-wrap">
+        <Table hover responsive={false} className="permission-list-table mb-0">
+          <thead>
+            <tr>
+              {sortableColumns.map(([label, field]) => (
+                <th key={field}>
+                  <Button
+                    variant="link"
+                    className={sortBy === field ? "permission-sort-button active" : "permission-sort-button"}
+                    onClick={() => handleSort(field)}
+                  >
+                    {label}
+                    <SortIcon field={field} sortBy={sortBy} sortDirection={sortDirection} />
+                  </Button>
+                </th>
+              ))}
+              <th className="permission-actions-heading">Actions</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            {loading ? (
+              <tr>
+                <td colSpan={7} className="permission-list-state">
+                  <Spinner animation="border" size="sm" /> Loading permissions...
+                </td>
+              </tr>
+            ) : permissions.length === 0 ? (
+              <tr>
+                <td colSpan={7} className="permission-list-state">
+                  <span className="permission-empty-icon"><IconShieldCheck size={28} /></span>
+                  <strong>No permissions found</strong>
+                  <span>Try changing the filters or create a new permission.</span>
+                </td>
+              </tr>
+            ) : (
+              permissions.map((permission) => (
+                <tr
+                  key={permission.id}
+                  className="permission-list-row"
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => openPermissionDetail(permission.id)}
+                  onKeyDown={(event) => handleRowKeyDown(event, permission.id)}
+                >
+                  <td className="permission-name-cell">
+                    <span className="permission-row-icon"><IconShieldCheck size={20} /></span>
+                    <span className="permission-name-text">
+                      <strong>{permission.permissionName || "Unnamed permission"}</strong>
+                      <small title={permission.permissionDescription || ""}>
+                        {permission.permissionDescription || "No description"}
+                      </small>
+                    </span>
+                  </td>
+                  <td>
+                    <span className="permission-code-badge">{permission.permissionCode || "-"}</span>
+                    <small className="permission-module-text">{permission.permissionModule || "-"}</small>
+                  </td>
+                  <td>{formatProjectValue(permission)}</td>
+                  <td>{permission.roleName || "Unassigned"}</td>
+                  <td><PermissionStatusBadge status={permission.status} /></td>
+                  <td>{formatPermissionDate(permission.updatedAt)}</td>
+                  <td>
+                    <Stack direction="horizontal" className="permission-row-actions">
+                      <Button
+                        variant="light"
+                        className="permission-table-action"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          navigate(`/permission/list?edit=${permission.id}`);
+                        }}
+                      >
+                        <IconEdit size={17} /> Edit
+                      </Button>
+                      <Button
+                        variant="light"
+                        className="permission-table-delete"
+                        disabled={deletingId === permission.id}
+                        onClick={(event) => handleDelete(event, permission)}
+                      >
+                        <IconTrash size={17} />
+                        {deletingId === permission.id ? "Deleting" : "Delete"}
+                      </Button>
+                    </Stack>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </Table>
+      </div>
+
+      <div className="permission-list-footer">
+        <Pagination className="permission-list-pagination mb-0">
+          <Pagination.Prev onClick={() => setPage((currentPage) => Math.max(0, currentPage - 1))} disabled={page === 0 || loading}>
+            <IconArrowLeft size={17} />
+          </Pagination.Prev>
+          {pageNumbers.map((pageNumber) => typeof pageNumber === "number" ? (
+            <Pagination.Item key={pageNumber} active={pageNumber === page} onClick={() => setPage(pageNumber)} disabled={loading}>
+              {pageNumber + 1}
+            </Pagination.Item>
+          ) : <Pagination.Ellipsis key={pageNumber} disabled />)}
+          <Pagination.Next onClick={() => setPage((currentPage) => Math.min(totalPages - 1, currentPage + 1))} disabled={loading || totalPages === 0 || page >= totalPages - 1}>
+            <IconArrowRight size={17} />
+          </Pagination.Next>
+        </Pagination>
+      </div>
+    </PermissionPage>
   );
+}
+
+function SortIcon({ field, sortBy, sortDirection }) {
+  if (field !== sortBy) {
+    return <IconArrowsSort size={14} />;
+  }
+
+  return sortDirection === "asc" ? <IconArrowUp size={14} /> : <IconArrowDown size={14} />;
 }
 
 function formatProjectName(project) {
   const projectCode = project.projectCode ? `${project.projectCode} - ` : "";
   return `${projectCode}${project.projectName || `Project #${project.id}`}`;
+}
+
+function formatProjectValue(permission) {
+  if (!permission.projectName && !permission.projectCode) {
+    return "Unassigned";
+  }
+
+  return [permission.projectCode, permission.projectName].filter(Boolean).join(" - ");
 }
 
 function getErrorMessage(error) {

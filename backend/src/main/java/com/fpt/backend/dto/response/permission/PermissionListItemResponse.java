@@ -1,11 +1,20 @@
 package com.fpt.backend.dto.response.permission;
 
+import java.time.LocalDateTime;
+
 public record PermissionListItemResponse(
         int id,
         String permissionName,
         String permissionCode,
         String permissionModule,
+        String permissionDescription,
+        Boolean status,
         Integer projectId,
-        String projectName
+        String projectCode,
+        String projectName,
+        Integer roleId,
+        String roleName,
+        LocalDateTime createdAt,
+        LocalDateTime updatedAt
 ) {
 }

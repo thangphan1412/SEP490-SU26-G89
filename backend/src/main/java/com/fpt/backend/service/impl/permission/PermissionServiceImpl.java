@@ -6,8 +6,10 @@ import com.fpt.backend.dto.response.permission.PermissionDetailResponse;
 import com.fpt.backend.dto.response.permission.PermissionListItemResponse;
 import com.fpt.backend.dto.response.permission.PermissionListResponse;
 import com.fpt.backend.dto.response.permission.PermissionProjectResponse;
+import com.fpt.backend.dto.response.permission.PermissionRoleResponse;
 import com.fpt.backend.entity.Permissions;
 import com.fpt.backend.entity.Projects;
+import com.fpt.backend.entity.Role;
 import com.fpt.backend.repository.permission.PermissionRepository;
 import com.fpt.backend.repository.project.ProjectRepository;
 import com.fpt.backend.service.interfaces.permission.PermissionService;
@@ -21,6 +23,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
@@ -37,7 +40,12 @@ public class PermissionServiceImpl implements PermissionService {
             "permissionName",
             "permissionCode",
             "permissionModule",
-            "projectName"
+            "permissionDescription",
+            "status",
+            "projectName",
+            "roleName",
+            "createdAt",
+            "updatedAt"
     );
 
     private final PermissionRepository permissionRepository;
@@ -46,7 +54,7 @@ public class PermissionServiceImpl implements PermissionService {
     @Override
     public PermissionListResponse getPermissions(PermissionListRequest request) {
         PermissionListRequest validRequest = request == null
-                ? new PermissionListRequest("", null, 0, DEFAULT_SORT_FIELD, "desc")
+                ? new PermissionListRequest("", null, null, null, 0, DEFAULT_SORT_FIELD, "desc")
                 : request;
         String search = normalize(validRequest.search());
         Pageable pageable = createPageable(
@@ -54,7 +62,13 @@ public class PermissionServiceImpl implements PermissionService {
                 validRequest.sortBy(),
                 validRequest.sortDirection()
         );
-        Page<Permissions> permissions = findPermissions(search, validRequest.projectId(), pageable);
+        Page<Permissions> permissions = permissionRepository.searchPermissions(
+                search.toLowerCase(Locale.ROOT),
+                validRequest.projectId(),
+                validRequest.roleId(),
+                validRequest.status(),
+                pageable
+        );
 
         return new PermissionListResponse(
                 DATA_SOURCE,
@@ -107,20 +121,12 @@ public class PermissionServiceImpl implements PermissionService {
                 .toList();
     }
 
-    private Page<Permissions> findPermissions(String search, Integer projectId, Pageable pageable) {
-        if (search.isBlank() && projectId == null) {
-            return permissionRepository.findAll(pageable);
-        }
-
-        if (search.isBlank()) {
-            return permissionRepository.findByProject_Id(projectId, pageable);
-        }
-
-        return permissionRepository.searchPermissions(
-                search.toLowerCase(Locale.ROOT),
-                projectId,
-                pageable
-        );
+    @Override
+    public List<PermissionRoleResponse> getRolesForPermissionSelection() {
+        return permissionRepository.findRolesForPermissionSelection()
+                .stream()
+                .map(role -> new PermissionRoleResponse(role.getId(), role.getRoleName()))
+                .toList();
     }
 
     private void applyRequest(Permissions permission, PermissionRequest request, Integer currentId) {
@@ -131,7 +137,10 @@ public class PermissionServiceImpl implements PermissionService {
         String permissionName = requireText(request.permissionName(), "Permission name is required", 50);
         String permissionCode = requireText(request.permissionCode(), "Permission code is required", 50);
         String permissionModule = requireText(request.permissionModule(), "Permission module is required", 255);
+        String permissionDescription = normalize(request.permissionDescription());
+        validateMaxLength(permissionDescription, "Permission description", 255);
         Projects project = findProject(request.projectId());
+        Role role = findRole(request.roleId());
 
         boolean duplicateCode = currentId == null
                 ? permissionRepository.existsByPermissionCodeIgnoreCase(permissionCode)
@@ -144,7 +153,16 @@ public class PermissionServiceImpl implements PermissionService {
         permission.setPermissionName(permissionName);
         permission.setPermissionCode(permissionCode);
         permission.setPermissionModule(permissionModule);
+        permission.setPermissionDescription(permissionDescription);
+        permission.setStatus(request.status() == null || request.status());
         permission.setProject(project);
+        permission.setRole(role);
+
+        LocalDateTime now = LocalDateTime.now();
+        if (permission.getCreatedAt() == null) {
+            permission.setCreatedAt(now);
+        }
+        permission.setUpdatedAt(now);
     }
 
     private Permissions findPermission(int id) {
@@ -161,12 +179,23 @@ public class PermissionServiceImpl implements PermissionService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Project not found"));
     }
 
+    private Role findRole(Integer roleId) {
+        if (roleId == null || roleId <= 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Role is required");
+        }
+
+        return permissionRepository.findPermissionRoleById(roleId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Role not found"));
+    }
+
     private Pageable createPageable(int page, String sortBy, String sortDirection) {
         int validPage = Math.max(page, 0);
-        String sortField = SORT_FIELDS.contains(sortBy) ? sortBy : DEFAULT_SORT_FIELD;
+        String sortField = sortBy != null && SORT_FIELDS.contains(sortBy) ? sortBy : DEFAULT_SORT_FIELD;
 
         if ("projectName".equals(sortField)) {
             sortField = "project.projectName";
+        } else if ("roleName".equals(sortField)) {
+            sortField = "role.roleName";
         }
 
         Sort.Direction direction = "asc".equalsIgnoreCase(sortDirection)
@@ -193,33 +222,58 @@ public class PermissionServiceImpl implements PermissionService {
         return normalizedValue;
     }
 
+    private void validateMaxLength(String value, String fieldName, int maxLength) {
+        if (value.length() > maxLength) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    fieldName + " must not be longer than " + maxLength + " characters"
+            );
+        }
+    }
+
     private String normalize(String value) {
         return value == null ? "" : value.trim();
     }
 
     private PermissionListItemResponse toListItem(Permissions permission) {
         Projects project = permission.getProject();
+        Role role = permission.getRole();
 
         return new PermissionListItemResponse(
                 permission.getId(),
                 permission.getPermissionName(),
                 permission.getPermissionCode(),
                 permission.getPermissionModule(),
+                permission.getPermissionDescription(),
+                permission.getStatus(),
                 project == null ? null : project.getId(),
-                project == null ? null : project.getProjectName()
+                project == null ? null : project.getProjectCode(),
+                project == null ? null : project.getProjectName(),
+                role == null ? null : role.getId(),
+                role == null ? null : role.getRoleName(),
+                permission.getCreatedAt(),
+                permission.getUpdatedAt()
         );
     }
 
     private PermissionDetailResponse toDetail(Permissions permission) {
         Projects project = permission.getProject();
+        Role role = permission.getRole();
 
         return new PermissionDetailResponse(
                 permission.getId(),
                 permission.getPermissionName(),
                 permission.getPermissionCode(),
                 permission.getPermissionModule(),
+                permission.getPermissionDescription(),
+                permission.getStatus(),
                 project == null ? null : project.getId(),
-                project == null ? null : project.getProjectName()
+                project == null ? null : project.getProjectCode(),
+                project == null ? null : project.getProjectName(),
+                role == null ? null : role.getId(),
+                role == null ? null : role.getRoleName(),
+                permission.getCreatedAt(),
+                permission.getUpdatedAt()
         );
     }
 }

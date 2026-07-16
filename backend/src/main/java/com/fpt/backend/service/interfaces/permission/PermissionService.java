@@ -5,6 +5,7 @@ import com.fpt.backend.dto.request.permission.PermissionRequest;
 import com.fpt.backend.dto.response.permission.PermissionDetailResponse;
 import com.fpt.backend.dto.response.permission.PermissionListResponse;
 import com.fpt.backend.dto.response.permission.PermissionProjectResponse;
+import com.fpt.backend.dto.response.permission.PermissionRoleResponse;
 
 import java.util.List;
 
@@ -20,4 +21,6 @@ public interface PermissionService {
     void deletePermission(int id);
 
     List<PermissionProjectResponse> getProjectsForPermissionSelection();
+
+    List<PermissionRoleResponse> getRolesForPermissionSelection();
 }

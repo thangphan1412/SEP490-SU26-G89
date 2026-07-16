@@ -15,6 +15,8 @@ import java.util.List;
 public interface ProjectRepository extends JpaRepository<Projects, Integer> {
     boolean existsByProjectCodeIgnoreCase(String projectCode);
 
+    boolean existsByProjectCodeIgnoreCaseAndIdNot(String projectCode, int id);
+
     Page<Projects> findByProjectStatusIgnoreCase(String projectStatus, Pageable pageable);
 
     @Query("""

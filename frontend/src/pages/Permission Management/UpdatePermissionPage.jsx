@@ -1,19 +1,30 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Alert, Button, Card, Container, Form, Spinner, Stack } from "react-bootstrap";
+import { Alert, Button, Card, Col, Form, Row, Spinner } from "react-bootstrap";
+import { IconArrowLeft, IconClock, IconDeviceFloppy, IconInfoCircle } from "@tabler/icons-react";
 import "../../assets/styles/css/permissionStyles/UpdatePermissionPage.css";
 import {
   listPermissionProjects,
+  listPermissionRoles,
   updatePermission,
   viewPermission,
-} from "../../config/axiosConfig.js";
-import { UpdatePermissionFormField } from "./PermissionComponents.jsx";
+} from "../../config/permissionApi/permissionApi.js";
+import {
+  PermissionFormField,
+  PermissionPage,
+} from "./PermissionComponents.jsx";
+import { formatPermissionDate } from "./permissionUtils.js";
 
 const initialPermission = {
   permissionName: "",
   permissionCode: "",
   permissionModule: "",
+  permissionDescription: "",
   projectId: "",
+  roleId: "",
+  status: true,
+  createdAt: null,
+  updatedAt: null,
 };
 
 function UpdatePermissionPage() {
@@ -22,7 +33,9 @@ function UpdatePermissionPage() {
   const permissionId = searchParams.get("edit");
   const [permission, setPermission] = useState(initialPermission);
   const [projects, setProjects] = useState([]);
+  const [roles, setRoles] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -33,6 +46,7 @@ function UpdatePermissionPage() {
       if (!permissionId) {
         if (isActive) {
           setError("Permission id is missing. Please choose a permission from the list.");
+          setLoadFailed(true);
           setLoading(false);
         }
         return;
@@ -41,27 +55,36 @@ function UpdatePermissionPage() {
       try {
         setLoading(true);
         setError("");
-        const [permissionResponse, projectResponse] = await Promise.all([
+        setLoadFailed(false);
+        const [permissionResponse, projectResponse, roleResponse] = await Promise.all([
           viewPermission(permissionId),
           listPermissionProjects(),
+          listPermissionRoles(),
         ]);
         const permissionPayload = permissionResponse.data?.data ?? permissionResponse.data;
         const projectPayload = projectResponse.data?.data ?? projectResponse.data;
+        const rolePayload = roleResponse.data?.data ?? roleResponse.data;
 
         if (isActive) {
           setPermission({
             permissionName: permissionPayload?.permissionName || "",
             permissionCode: permissionPayload?.permissionCode || "",
             permissionModule: permissionPayload?.permissionModule || "",
+            permissionDescription: permissionPayload?.permissionDescription || "",
             projectId: permissionPayload?.projectId ? String(permissionPayload.projectId) : "",
+            roleId: permissionPayload?.roleId ? String(permissionPayload.roleId) : "",
+            status: permissionPayload?.status ?? true,
+            createdAt: permissionPayload?.createdAt || null,
+            updatedAt: permissionPayload?.updatedAt || null,
           });
           setProjects(Array.isArray(projectPayload) ? projectPayload : []);
+          setRoles(Array.isArray(rolePayload) ? rolePayload : []);
         }
       } catch (requestError) {
         console.error("Unable to load permission for update:", requestError);
-
         if (isActive) {
           setError(getErrorMessage(requestError));
+          setLoadFailed(true);
         }
       } finally {
         if (isActive) {
@@ -99,7 +122,10 @@ function UpdatePermissionPage() {
         permissionName: permission.permissionName.trim(),
         permissionCode: permission.permissionCode.trim(),
         permissionModule: permission.permissionModule.trim(),
+        permissionDescription: permission.permissionDescription.trim(),
         projectId: Number(permission.projectId),
+        roleId: Number(permission.roleId),
+        status: permission.status,
       });
       const updatedPermission = response.data?.data ?? response.data;
       navigate(`/permission/list?view=${updatedPermission?.id || permissionId}`);
@@ -111,107 +137,154 @@ function UpdatePermissionPage() {
     }
   };
 
+  const goBack = () => {
+    navigate(permissionId ? `/permission/list?view=${permissionId}` : "/permission/list");
+  };
+  const backAction = (
+    <Button className="permission-secondary-button" onClick={goBack}>
+      <IconArrowLeft size={18} /> Back
+    </Button>
+  );
+
   if (loading) {
     return (
-      <Container fluid as="main" className="update-page">
-        <Card className="update-card">
-          <div className="update-state"><Spinner animation="border" /> Loading permission...</div>
-        </Card>
-      </Container>
+      <PermissionPage title="Update Permission" description="Loading the permission information..." action={backAction}>
+        <div className="permission-page-state"><Spinner animation="border" /> Loading permission...</div>
+      </PermissionPage>
     );
   }
 
-  if (error && !permissionId) {
+  if (loadFailed) {
     return (
-      <Container fluid as="main" className="update-page">
-        <Card className="update-card"><Alert variant="danger" className="m-4">{error}</Alert></Card>
-      </Container>
+      <PermissionPage title="Update Permission" description="The permission could not be opened." action={backAction}>
+        <Alert variant="danger" className="permission-update-load-error">{error}</Alert>
+      </PermissionPage>
     );
   }
+
+  const noOptions = projects.length === 0 || roles.length === 0;
 
   return (
-    <Container fluid as="main" className="update-page">
-      <Card className="update-card">
-        <Card.Header className="update-header">
-          <Card.Title as="h1">Update Permission</Card.Title>
-          <Card.Text>Update the permission information saved in the system.</Card.Text>
-        </Card.Header>
+    <PermissionPage
+      title="Update Permission"
+      description="Review the current values and save only the changes you need."
+      action={backAction}
+    >
+      <Form className="permission-update-form" onSubmit={handleSubmit}>
+        {error && <Alert variant="danger">{error}</Alert>}
+        {noOptions && (
+          <Alert variant="warning">At least one project and one role are required to save this permission.</Alert>
+        )}
 
-        <Form className="update-form" onSubmit={handleSubmit}>
-          {error && <Alert variant="danger" className="mb-0">{error}</Alert>}
+        <Card as="section" className="permission-form-card">
+          <div className="permission-section-heading">
+            <span className="permission-section-number">1</span>
+            <div>
+              <h2>Permission information</h2>
+              <p>Keep the name, code, module, and description clear for other users.</p>
+            </div>
+          </div>
 
-          <UpdatePermissionFormField label="Permission Name" required>
-            <Form.Control
-              className="update-input"
-              name="permissionName"
-              value={permission.permissionName}
-              onChange={handleChange}
-              maxLength={50}
-              required
-            />
-          </UpdatePermissionFormField>
+          <Row className="g-4">
+            <Col md={6}>
+              <PermissionFormField controlId="update-permission-name" label="Permission Name" required>
+                <Form.Control className="permission-input" name="permissionName" value={permission.permissionName} onChange={handleChange} maxLength={50} required />
+              </PermissionFormField>
+            </Col>
+            <Col md={6}>
+              <PermissionFormField controlId="update-permission-code" label="Permission Code" required hint="The code must remain unique.">
+                <Form.Control className="permission-input" name="permissionCode" value={permission.permissionCode} onChange={handleChange} maxLength={50} required />
+              </PermissionFormField>
+            </Col>
+            <Col md={6}>
+              <PermissionFormField controlId="update-permission-module" label="Permission Module" required>
+                <Form.Control className="permission-input" name="permissionModule" value={permission.permissionModule} onChange={handleChange} maxLength={255} required />
+              </PermissionFormField>
+            </Col>
+            <Col xs={12}>
+              <PermissionFormField controlId="update-permission-description" label="Description">
+                <div className="permission-description-box">
+                  <Form.Control
+                    as="textarea"
+                    className="permission-textarea"
+                    name="permissionDescription"
+                    value={permission.permissionDescription}
+                    onChange={handleChange}
+                    placeholder="Explain what this permission allows a user to do..."
+                    maxLength={255}
+                  />
+                  <span>{permission.permissionDescription.length} / 255</span>
+                </div>
+              </PermissionFormField>
+            </Col>
+          </Row>
+        </Card>
 
-          <UpdatePermissionFormField label="Permission Code" required>
-            <Form.Control
-              className="update-input"
-              name="permissionCode"
-              value={permission.permissionCode}
-              onChange={handleChange}
-              maxLength={50}
-              required
-            />
-          </UpdatePermissionFormField>
+        <Card as="section" className="permission-form-card">
+          <div className="permission-section-heading">
+            <span className="permission-section-number">2</span>
+            <div>
+              <h2>Assignment and status</h2>
+              <p>Change the project, role, or availability when business rules change.</p>
+            </div>
+          </div>
 
-          <UpdatePermissionFormField label="Permission Module" required>
-            <Form.Control
-              className="update-input"
-              name="permissionModule"
-              value={permission.permissionModule}
-              onChange={handleChange}
-              maxLength={255}
-              required
-            />
-          </UpdatePermissionFormField>
+          <Row className="g-4">
+            <Col md={6}>
+              <PermissionFormField controlId="update-permission-project" label="Project" required>
+                <Form.Select className="permission-input" name="projectId" value={permission.projectId} onChange={handleChange} disabled={projects.length === 0} required>
+                  <option value="" disabled>Select project</option>
+                  {projects.map((project) => (
+                    <option key={project.id} value={project.id}>{formatProjectName(project)}</option>
+                  ))}
+                </Form.Select>
+              </PermissionFormField>
+            </Col>
+            <Col md={6}>
+              <PermissionFormField controlId="update-permission-role" label="Role" required>
+                <Form.Select className="permission-input" name="roleId" value={permission.roleId} onChange={handleChange} disabled={roles.length === 0} required>
+                  <option value="" disabled>Select role</option>
+                  {roles.map((role) => (
+                    <option key={role.id} value={role.id}>{role.roleName || `Role #${role.id}`}</option>
+                  ))}
+                </Form.Select>
+              </PermissionFormField>
+            </Col>
+            <Col xs={12}>
+              <div className="permission-status-control">
+                <div>
+                  <strong>Permission status</strong>
+                  <span>Turn this off when the permission should no longer be available.</span>
+                </div>
+                <Form.Check
+                  type="switch"
+                  id="update-permission-status"
+                  label={permission.status ? "Active" : "Inactive"}
+                  checked={permission.status}
+                  onChange={(event) => setPermission((current) => ({ ...current, status: event.target.checked }))}
+                />
+              </div>
+            </Col>
+          </Row>
+        </Card>
 
-          <UpdatePermissionFormField label="Project" required>
-            <Form.Select
-              className="update-input"
-              name="projectId"
-              value={permission.projectId}
-              onChange={handleChange}
-              disabled={projects.length === 0}
-              required
-            >
-              <option value="" disabled>Select project</option>
-              {projects.map((project) => (
-                <option key={project.id} value={project.id}>
-                  {formatProjectName(project)}
-                </option>
-              ))}
-            </Form.Select>
-          </UpdatePermissionFormField>
+        <div className="permission-update-audit">
+          <IconInfoCircle size={19} />
+          <div>
+            <strong>Audit information</strong>
+            <span><IconClock size={16} /> Created: {formatPermissionDate(permission.createdAt)} · Last updated: {formatPermissionDate(permission.updatedAt)}</span>
+          </div>
+        </div>
 
-          <Stack direction="horizontal" className="update-actions">
-            <Button
-              type="button"
-              variant="light"
-              className="update-cancel-button"
-              disabled={saving}
-              onClick={() => navigate(`/permission/list?view=${permissionId}`)}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              className="update-primary-button"
-              disabled={saving || projects.length === 0}
-            >
-              {saving ? "Saving..." : "Update Permission"}
-            </Button>
-          </Stack>
-        </Form>
-      </Card>
-    </Container>
+        <div className="permission-form-actions">
+          <Button className="permission-secondary-button" onClick={goBack} disabled={saving}>Cancel</Button>
+          <Button type="submit" className="permission-primary-button" disabled={saving || noOptions}>
+            {saving ? <Spinner animation="border" size="sm" /> : <IconDeviceFloppy size={18} />}
+            {saving ? "Saving..." : "Save Changes"}
+          </Button>
+        </div>
+      </Form>
+    </PermissionPage>
   );
 }
 
