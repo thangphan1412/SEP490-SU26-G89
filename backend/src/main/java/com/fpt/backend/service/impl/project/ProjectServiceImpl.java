@@ -34,7 +34,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -55,13 +54,6 @@ public class ProjectServiceImpl implements ProjectService {
     private static final String DEFAULT_CREATED_BY = "Admin";
     private static final String DEFAULT_PROJECT_STATUS = "Planning";
     private static final String DEFAULT_PHASE_STATUS = "Planning";
-    private static final String CUSTOM_PERMISSION_PREFIX = "PERMISSION_";
-
-    private static final String VIEWER = "VIEWER";
-    private static final String MEMBER = "MEMBER";
-    private static final String MANAGER = "MANAGER";
-    private static final List<String> DEFAULT_PERMISSION_VALUES = List.of(VIEWER, MEMBER, MANAGER);
-
     private static final Set<String> SORT_FIELDS = Set.of(
             "id",
             "projectCode",
@@ -449,8 +441,6 @@ public class ProjectServiceImpl implements ProjectService {
             entityManager.remove(userPermission);
         }
 
-        Map<String, Permissions> defaultPermissions = ensureDefaultProjectPermissions(project);
-
         for (ProjectMemberRequest request : requestByUserId.values()) {
             Users user = entityManager.find(Users.class, request.userId());
 
@@ -470,15 +460,13 @@ public class ProjectServiceImpl implements ProjectService {
                 entityManager.persist(member);
             }
 
-            Permissions permission = resolvePermission(
-                    project,
-                    request.permissionValue(),
-                    defaultPermissions
-            );
-            UserPermission userPermission = new UserPermission();
-            userPermission.setUser(user);
-            userPermission.setPermission(permission);
-            entityManager.persist(userPermission);
+            if (request.permissionId() != null) {
+                Permissions permission = resolvePermission(project, request.permissionId());
+                UserPermission userPermission = new UserPermission();
+                userPermission.setUser(user);
+                userPermission.setPermission(permission);
+                entityManager.persist(userPermission);
+            }
         }
 
         for (ProjectMember removedMember : existingMemberByUserId.values()) {
@@ -486,81 +474,26 @@ public class ProjectServiceImpl implements ProjectService {
         }
     }
 
-    private Map<String, Permissions> ensureDefaultProjectPermissions(Projects project) {
-        Map<String, Permissions> defaultPermissions = new LinkedHashMap<>();
-
-        for (Permissions permission : findProjectPermissions(project.getId())) {
-            String defaultValue = getDefaultPermissionValue(permission, project.getId());
-
-            if (defaultValue != null) {
-                defaultPermissions.putIfAbsent(defaultValue, permission);
-            }
-        }
-
-        for (String value : DEFAULT_PERMISSION_VALUES) {
-            if (defaultPermissions.containsKey(value)) {
-                Permissions existingPermission = defaultPermissions.get(value);
-
-                if (existingPermission.getCreatedAt() == null) {
-                    existingPermission.setCreatedAt(LocalDateTime.now());
-                }
-                if (existingPermission.getUpdatedAt() == null) {
-                    existingPermission.setUpdatedAt(existingPermission.getCreatedAt());
-                }
-                continue;
-            }
-
-            LocalDateTime now = LocalDateTime.now();
-            Permissions permission = new Permissions();
-            permission.setPermissionName(getDefaultPermissionName(value));
-            permission.setPermissionCode(getDefaultPermissionCode(value, project.getId()));
-            permission.setPermissionModule("PROJECT");
-            permission.setPermissionDescription(getDefaultPermissionDescription(value));
-            permission.setStatus(true);
-            permission.setCreatedAt(now);
-            permission.setUpdatedAt(now);
-            permission.setProject(project);
-            entityManager.persist(permission);
-            defaultPermissions.put(value, permission);
-        }
-
-        return defaultPermissions;
-    }
-
-    private Permissions resolvePermission(
-            Projects project,
-            String permissionValue,
-            Map<String, Permissions> defaultPermissions) {
-        String value = defaultIfBlank(permissionValue, MEMBER).toUpperCase(Locale.ROOT);
-
-        if (DEFAULT_PERMISSION_VALUES.contains(value)) {
-            return defaultPermissions.get(value);
-        }
-
-        String idValue = value.startsWith(CUSTOM_PERMISSION_PREFIX)
-                ? value.substring(CUSTOM_PERMISSION_PREFIX.length())
-                : value;
-
-        try {
-            int permissionId = Integer.parseInt(idValue);
-            Permissions permission = entityManager.find(Permissions.class, permissionId);
-
-            if (permission == null
-                    || permission.getProject() == null
-                    || permission.getProject().getId() != project.getId()) {
-                throw new ResponseStatusException(
-                        HttpStatus.BAD_REQUEST,
-                        "Selected permission does not belong to this project"
-                );
-            }
-
-            return permission;
-        } catch (NumberFormatException exception) {
+    private Permissions resolvePermission(Projects project, Integer permissionId) {
+        if (permissionId <= 0) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
                     "Selected permission is invalid"
             );
         }
+
+        Permissions permission = entityManager.find(Permissions.class, permissionId);
+
+        if (permission == null
+                || permission.getProject() == null
+                || permission.getProject().getId() != project.getId()) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Selected permission does not belong to this project"
+            );
+        }
+
+        return permission;
     }
 
     private ProjectListItemResponse toListItem(Projects project) {
@@ -632,10 +565,6 @@ public class ProjectServiceImpl implements ProjectService {
         for (Users user : userById.values()) {
             ProjectMember member = memberByUserId.get(user.getId());
             Permissions permission = permissionByUserId.get(user.getId());
-            String permissionValue = permission == null
-                    ? MEMBER
-                    : getPermissionValue(permission, projectId);
-
             users.add(new ProjectUserResponse(
                     user.getId(),
                     user.getEmail(),
@@ -643,7 +572,6 @@ public class ProjectServiceImpl implements ProjectService {
                     user.getRole(),
                     user.getStatus(),
                     member == null ? null : toLocalDate(member.getJoinDate()),
-                    permissionValue,
                     permission == null ? null : permission.getId(),
                     permission == null ? "Not assigned" : getPermissionName(permission),
                     permission == null ? null : permission.getPermissionCode()
@@ -658,55 +586,20 @@ public class ProjectServiceImpl implements ProjectService {
     }
 
     private List<ProjectPermissionOptionResponse> toPermissionOptions(Projects project) {
-        List<Permissions> projectPermissions = findProjectPermissions(project.getId());
-        Map<String, Permissions> defaultPermissions = new LinkedHashMap<>();
-        List<Permissions> customPermissions = new ArrayList<>();
-
-        for (Permissions permission : projectPermissions) {
-            String defaultValue = getDefaultPermissionValue(permission, project.getId());
-
-            if (defaultValue == null) {
-                customPermissions.add(permission);
-            } else {
-                defaultPermissions.putIfAbsent(defaultValue, permission);
-            }
-        }
-
-        List<ProjectPermissionOptionResponse> options = new ArrayList<>();
-
-        for (String value : DEFAULT_PERMISSION_VALUES) {
-            Permissions permission = defaultPermissions.get(value);
-            options.add(new ProjectPermissionOptionResponse(
-                    permission == null ? null : permission.getId(),
-                    value,
-                    permission == null ? getDefaultPermissionName(value) : getPermissionName(permission),
-                    permission == null
-                            ? getDefaultPermissionCode(value, project.getId())
-                            : permission.getPermissionCode(),
-                    permission == null
-                            ? getDefaultPermissionDescription(value)
-                            : permission.getPermissionDescription(),
-                    permission == null ? true : permission.getStatus()
-            ));
-        }
-
-        customPermissions.sort(Comparator.comparing(
-                this::getPermissionName,
-                String.CASE_INSENSITIVE_ORDER
-        ));
-
-        for (Permissions permission : customPermissions) {
-            options.add(new ProjectPermissionOptionResponse(
-                    permission.getId(),
-                    CUSTOM_PERMISSION_PREFIX + permission.getId(),
-                    getPermissionName(permission),
-                    permission.getPermissionCode(),
-                    permission.getPermissionDescription(),
-                    permission.getStatus()
-            ));
-        }
-
-        return options;
+        return findProjectPermissions(project.getId())
+                .stream()
+                .sorted(Comparator.comparing(
+                        this::getPermissionName,
+                        String.CASE_INSENSITIVE_ORDER
+                ))
+                .map(permission -> new ProjectPermissionOptionResponse(
+                        permission.getId(),
+                        getPermissionName(permission),
+                        permission.getPermissionCode(),
+                        permission.getPermissionDescription(),
+                        permission.getStatus()
+                ))
+                .toList();
     }
 
     private List<ProjectContractResponse> toProjectContracts(int projectId) {
@@ -784,45 +677,6 @@ public class ProjectServiceImpl implements ProjectService {
         return entityManager.createQuery(query, Long.class)
                 .setParameter("projectId", projectId)
                 .getSingleResult();
-    }
-
-    private String getDefaultPermissionValue(Permissions permission, int projectId) {
-        String code = normalize(permission.getPermissionCode()).toUpperCase(Locale.ROOT);
-
-        for (String value : DEFAULT_PERMISSION_VALUES) {
-            if (code.equals(getDefaultPermissionCode(value, projectId))) {
-                return value;
-            }
-        }
-
-        return null;
-    }
-
-    private String getPermissionValue(Permissions permission, int projectId) {
-        String defaultValue = getDefaultPermissionValue(permission, projectId);
-        return defaultValue == null
-                ? CUSTOM_PERMISSION_PREFIX + permission.getId()
-                : defaultValue;
-    }
-
-    private String getDefaultPermissionCode(String value, int projectId) {
-        return "PROJECT_" + value + "_" + projectId;
-    }
-
-    private String getDefaultPermissionName(String value) {
-        return switch (value) {
-            case VIEWER -> "Project Viewer";
-            case MANAGER -> "Project Manager";
-            default -> "Project Member";
-        };
-    }
-
-    private String getDefaultPermissionDescription(String value) {
-        return switch (value) {
-            case VIEWER -> "Can view project information, phases, and members";
-            case MANAGER -> "Can manage project information, phases, members, and permissions";
-            default -> "Can participate in project work and update assigned information";
-        };
     }
 
     private String getUserName(Users user) {

@@ -9,7 +9,6 @@ public record ProjectUserResponse(
         String role,
         String userStatus,
         LocalDate joinDate,
-        String permissionValue,
         Integer permissionId,
         String permissionName,
         String permissionCode

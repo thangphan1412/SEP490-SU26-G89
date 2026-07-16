@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Alert, Button, Card, Col, Form, Row, Stack } from "react-bootstrap";
+import { Alert, Button, Card, Col, Form, Modal, Row, Stack } from "react-bootstrap";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
     listProjectEmployees,
@@ -17,11 +17,6 @@ import "../../assets/styles/css/projectStyles/UpdateProject.css";
 
 const projectStatusOptions = ["Planning", "Active", "On Hold", "Completed", "Cancelled"];
 const phaseStatusOptions = ["Planning", "In Progress", "On Hold", "Completed"];
-const fallbackPermissionOptions = [
-    { value: "VIEWER", permissionName: "Viewer", permissionCode: "PROJECT_VIEWER", status: true },
-    { value: "MEMBER", permissionName: "Member", permissionCode: "PROJECT_MEMBER", status: true },
-    { value: "MANAGER", permissionName: "Manager", permissionCode: "PROJECT_MANAGER", status: true },
-];
 
 function UpdateProject({ onUpdateProject }) {
     const navigate = useNavigate();
@@ -29,8 +24,12 @@ function UpdateProject({ onUpdateProject }) {
     const projectId = searchParams.get("id");
     const [project, setProject] = useState(null);
     const [employees, setEmployees] = useState([]);
-    const [permissionOptions, setPermissionOptions] = useState(fallbackPermissionOptions);
-    const [employeeSearch, setEmployeeSearch] = useState("");
+    const [permissionOptions, setPermissionOptions] = useState([]);
+    const [showMemberModal, setShowMemberModal] = useState(false);
+    const [memberSearch, setMemberSearch] = useState("");
+    const [memberRoleFilter, setMemberRoleFilter] = useState("");
+    const [memberStatusFilter, setMemberStatusFilter] = useState("");
+    const [pendingMemberIds, setPendingMemberIds] = useState([]);
     const [loading, setLoading] = useState(true);
     const [loadError, setLoadError] = useState("");
     const [submitError, setSubmitError] = useState("");
@@ -71,17 +70,15 @@ function UpdateProject({ onUpdateProject }) {
                     phases: mapPhases(projectData?.phases),
                     members: projectUsers.map((user) => ({
                         userId: user.userId,
-                        permissionValue: user.permissionValue || "MEMBER",
+                        permissionId: user.permissionId ?? null,
                     })),
                 });
                 setEmployees(mergeEmployees(employeeData, projectUsers));
 
                 const projectPermissions = Array.isArray(projectData?.availablePermissions)
-                    ? projectData.availablePermissions.filter((permission) => permission.value)
+                    ? projectData.availablePermissions.filter((permission) => permission.id)
                     : [];
-                setPermissionOptions(
-                    projectPermissions.length > 0 ? projectPermissions : fallbackPermissionOptions
-                );
+                setPermissionOptions(projectPermissions);
                 setLoadError("");
             } catch (error) {
                 console.error("Unable to load project update data:", error);
@@ -148,25 +145,59 @@ function UpdateProject({ onUpdateProject }) {
         }));
     };
 
-    const toggleMember = (userId) => {
-        setProject((currentProject) => {
-            const isSelected = currentProject.members.some((member) => member.userId === userId);
-            const defaultPermission = permissionOptions.some((option) => option.value === "MEMBER")
-                ? "MEMBER"
-                : permissionOptions[0]?.value || "MEMBER";
-            const members = isSelected
-                ? currentProject.members.filter((member) => member.userId !== userId)
-                : [...currentProject.members, { userId, permissionValue: defaultPermission }];
-
-            return { ...currentProject, members };
-        });
+    const openMemberModal = () => {
+        setMemberSearch("");
+        setMemberRoleFilter("");
+        setMemberStatusFilter("");
+        setPendingMemberIds([]);
+        setShowMemberModal(true);
     };
 
-    const changeMemberPermission = (userId, permissionValue) => {
+    const closeMemberModal = () => {
+        setShowMemberModal(false);
+        setPendingMemberIds([]);
+    };
+
+    const togglePendingMember = (userId) => {
+        setPendingMemberIds((currentIds) =>
+            currentIds.includes(userId)
+                ? currentIds.filter((id) => id !== userId)
+                : [...currentIds, userId]
+        );
+    };
+
+    const addSelectedMembers = () => {
+        setProject((currentProject) => {
+            const currentMemberIds = new Set(
+                currentProject.members.map((member) => member.userId)
+            );
+            const newMembers = pendingMemberIds
+                .filter((userId) => !currentMemberIds.has(userId))
+                .map((userId) => ({ userId, permissionId: null }));
+
+            return {
+                ...currentProject,
+                members: [...currentProject.members, ...newMembers],
+            };
+        });
+
+        closeMemberModal();
+    };
+
+    const removeMember = (userId) => {
+        setProject((currentProject) => ({
+            ...currentProject,
+            members: currentProject.members.filter((member) => member.userId !== userId),
+        }));
+    };
+
+    const changeMemberPermission = (userId, selectedValue) => {
+        const permissionId = selectedValue ? Number(selectedValue) : null;
+
         setProject((currentProject) => ({
             ...currentProject,
             members: currentProject.members.map((member) =>
-                member.userId === userId ? { ...member, permissionValue } : member
+                member.userId === userId ? { ...member, permissionId } : member
             ),
         }));
     };
@@ -213,11 +244,26 @@ function UpdateProject({ onUpdateProject }) {
         }
     };
 
-    const normalizedSearch = employeeSearch.trim().toLowerCase();
-    const visibleEmployees = employees.filter((employee) =>
-        getEmployeeSearchText(employee).includes(normalizedSearch)
-    );
     const selectedMemberIds = new Set(project?.members.map((member) => member.userId) || []);
+    const employeeById = new Map(employees.map((employee) => [employee.id, employee]));
+    const currentProjectMembers = (project?.members || []).map((member) => ({
+        ...member,
+        employee: employeeById.get(member.userId) || {
+            id: member.userId,
+            userName: "User #" + member.userId,
+        },
+    }));
+    const availableEmployees = employees.filter((employee) => !selectedMemberIds.has(employee.id));
+    const normalizedMemberSearch = memberSearch.trim().toLowerCase();
+    const memberRoleOptions = getFilterOptions(availableEmployees, "role");
+    const memberStatusOptions = getFilterOptions(availableEmployees, "status");
+    const visibleAvailableEmployees = availableEmployees.filter((employee) => {
+        const matchesSearch = getEmployeeSearchText(employee).includes(normalizedMemberSearch);
+        const matchesRole = !memberRoleFilter || employee.role === memberRoleFilter;
+        const matchesStatus = !memberStatusFilter || employee.status === memberStatusFilter;
+
+        return matchesSearch && matchesRole && matchesStatus;
+    });
 
     const pageAction = (
         <Stack direction="horizontal" className="project-management-actions">
@@ -372,52 +418,188 @@ function UpdateProject({ onUpdateProject }) {
                         <div className="update-project-section-header">
                             <div>
                                 <Card.Title as="h2" className="project-management-card-title">Project Members</Card.Title>
-                                <p className="update-project-section-note">Select a person, then edit that person's permission directly below their information.</p>
+                                <p className="update-project-section-note">Only current project members are shown here. You can update permission or remove a member before saving.</p>
                             </div>
-                            <span className="update-project-selected-count">{project.members.length} selected</span>
+                            <div className="update-project-member-header-actions">
+                                <span className="update-project-selected-count">{project.members.length} members</span>
+                                <Button type="button" variant="light" className="update-project-add-button" onClick={openMemberModal}>
+                                    <Icon name="plus" size={18} /> Add Members
+                                </Button>
+                            </div>
                         </div>
 
-                        <Form.Control className="update-project-employee-search" value={employeeSearch} onChange={(event) => setEmployeeSearch(event.target.value)} placeholder="Search employee by name, email, role..." />
-
-                        {visibleEmployees.length === 0 ? (
-                            <div className="update-project-empty-state">No employees match the search.</div>
+                        {currentProjectMembers.length === 0 ? (
+                            <div className="update-project-empty-state">No members have been added to this project.</div>
                         ) : (
-                            <div className="update-project-employee-grid">
-                                {visibleEmployees.map((employee) => {
-                                    const selected = selectedMemberIds.has(employee.id);
-                                    const member = project.members.find((item) => item.userId === employee.id);
-
-                                    return (
-                                        <div key={employee.id} className={selected ? "update-project-employee-option selected" : "update-project-employee-option"}>
-                                            <Form.Check type="checkbox" id={"update-project-employee-" + employee.id} checked={selected} onChange={() => toggleMember(employee.id)} className="update-project-employee-check" />
-                                            <span className="project-management-icon-circle update-project-employee-avatar"><Icon name="users" size={20} /></span>
-                                            <div className="update-project-employee-text">
-                                                <strong>{getEmployeeName(employee)}</strong>
-                                                <small>{getEmployeeDescription(employee)}</small>
-                                                <Form.Select
-                                                    aria-label={"Permission for " + getEmployeeName(employee)}
-                                                    disabled={!selected}
-                                                    value={member?.permissionValue || "MEMBER"}
-                                                    onChange={(event) => changeMemberPermission(employee.id, event.target.value)}
-                                                    className="update-project-permission-select"
-                                                >
-                                                    {permissionOptions.map((permission) => (
-                                                        <option key={permission.value} value={permission.value}>
-                                                            {getPermissionLabel(permission)}
-                                                        </option>
-                                                    ))}
-                                                </Form.Select>
-                                            </div>
+                            <div className="update-project-member-list">
+                                {currentProjectMembers.map((member) => (
+                                    <div key={member.userId} className="update-project-member-row">
+                                        <span className="project-management-icon-circle update-project-employee-avatar">
+                                            <Icon name="users" size={20} />
+                                        </span>
+                                        <div className="update-project-employee-text">
+                                            <strong>{getEmployeeName(member.employee)}</strong>
+                                            <small>{getEmployeeDescription(member.employee)}</small>
                                         </div>
-                                    );
-                                })}
+                                        <div className="update-project-member-permission">
+                                            <Form.Label className="project-management-field-label">Permission</Form.Label>
+                                            <Form.Select
+                                                aria-label={"Permission for " + getEmployeeName(member.employee)}
+                                                disabled={permissionOptions.length === 0}
+                                                value={member.permissionId ?? ""}
+                                                onChange={(event) => changeMemberPermission(member.userId, event.target.value)}
+                                                className="update-project-permission-select"
+                                            >
+                                                <option value="">
+                                                    {permissionOptions.length === 0
+                                                        ? "No permissions configured"
+                                                        : "Not assigned"}
+                                                </option>
+                                                {permissionOptions.map((permission) => (
+                                                    <option
+                                                        key={permission.id}
+                                                        value={permission.id}
+                                                        disabled={permission.status === false
+                                                            && member.permissionId !== permission.id}
+                                                    >
+                                                        {getPermissionLabel(permission)}
+                                                    </option>
+                                                ))}
+                                            </Form.Select>
+                                        </div>
+                                        <Button
+                                            type="button"
+                                            variant="link"
+                                            className="update-project-remove-member-button"
+                                            onClick={() => removeMember(member.userId)}
+                                            aria-label={"Remove " + getEmployeeName(member.employee)}
+                                        >
+                                            <Icon name="trash" size={17} color="#b42318" />
+                                            Remove
+                                        </Button>
+                                    </div>
+                                ))}
                             </div>
                         )}
                     </Card>
 
-                    <InfoAlert>Removing a phase that already has tasks or deliverables will be blocked to protect project data.</InfoAlert>
+                    <InfoAlert>Only permissions stored in the database for this project are available. Members may remain Not assigned.</InfoAlert>
                 </Form>
             )}
+
+            <Modal
+                show={showMemberModal}
+                onHide={closeMemberModal}
+                centered
+                size="lg"
+                className="update-project-member-modal"
+            >
+                <Modal.Header closeButton>
+                    <div>
+                        <Modal.Title>Add Project Members</Modal.Title>
+                        <p className="update-project-modal-description">Select users who are not currently part of this project.</p>
+                    </div>
+                </Modal.Header>
+
+                <Modal.Body>
+                    <div className="update-project-modal-filter-grid">
+                        <Form.Group className="update-project-modal-search" controlId="add-member-search">
+                            <Form.Label className="project-management-field-label">Search</Form.Label>
+                            <Form.Control
+                                value={memberSearch}
+                                onChange={(event) => setMemberSearch(event.target.value)}
+                                placeholder="Search by name, email, role..."
+                                className="update-project-modal-filter-input"
+                            />
+                        </Form.Group>
+
+                        <Form.Group controlId="add-member-role-filter">
+                            <Form.Label className="project-management-field-label">Role</Form.Label>
+                            <Form.Select
+                                value={memberRoleFilter}
+                                onChange={(event) => setMemberRoleFilter(event.target.value)}
+                                className="update-project-modal-filter-input"
+                            >
+                                <option value="">All roles</option>
+                                {memberRoleOptions.map((role) => <option key={role} value={role}>{role}</option>)}
+                            </Form.Select>
+                        </Form.Group>
+
+                        <Form.Group controlId="add-member-status-filter">
+                            <Form.Label className="project-management-field-label">Status</Form.Label>
+                            <Form.Select
+                                value={memberStatusFilter}
+                                onChange={(event) => setMemberStatusFilter(event.target.value)}
+                                className="update-project-modal-filter-input"
+                            >
+                                <option value="">All statuses</option>
+                                {memberStatusOptions.map((status) => <option key={status} value={status}>{status}</option>)}
+                            </Form.Select>
+                        </Form.Group>
+                    </div>
+
+                    <div className="update-project-modal-result-header">
+                        <span>{visibleAvailableEmployees.length} available users</span>
+                        <span>{pendingMemberIds.length} selected</span>
+                    </div>
+
+                    {availableEmployees.length === 0 ? (
+                        <div className="update-project-modal-empty">All users have already been added to this project.</div>
+                    ) : visibleAvailableEmployees.length === 0 ? (
+                        <div className="update-project-modal-empty">No users match the selected filters.</div>
+                    ) : (
+                        <div className="update-project-modal-user-list">
+                            {visibleAvailableEmployees.map((employee) => {
+                                const isSelected = pendingMemberIds.includes(employee.id);
+
+                                return (
+                                    <label
+                                        key={employee.id}
+                                        htmlFor={"add-project-member-" + employee.id}
+                                        className={isSelected
+                                            ? "update-project-modal-user selected"
+                                            : "update-project-modal-user"}
+                                    >
+                                        <Form.Check
+                                            type="checkbox"
+                                            id={"add-project-member-" + employee.id}
+                                            checked={isSelected}
+                                            onChange={() => togglePendingMember(employee.id)}
+                                            className="update-project-modal-user-check"
+                                        />
+                                        <span className="project-management-icon-circle update-project-modal-user-avatar">
+                                            <Icon name="users" size={19} />
+                                        </span>
+                                        <span className="update-project-modal-user-info">
+                                            <strong>{getEmployeeName(employee)}</strong>
+                                            <small>{employee.email || "No email"}</small>
+                                        </span>
+                                        <span className="update-project-modal-user-meta">
+                                            <small>{employee.role || "No role"}</small>
+                                            <small>{employee.status || "Unknown"}</small>
+                                        </span>
+                                    </label>
+                                );
+                            })}
+                        </div>
+                    )}
+                </Modal.Body>
+
+                <Modal.Footer>
+                    <Button type="button" variant="light" className="update-project-modal-cancel-button" onClick={closeMemberModal}>
+                        Cancel
+                    </Button>
+                    <Button
+                        type="button"
+                        className="update-project-modal-add-button"
+                        disabled={pendingMemberIds.length === 0}
+                        onClick={addSelectedMembers}
+                    >
+                        <Icon name="plus" size={18} color="#fff" />
+                        Add Members ({pendingMemberIds.length})
+                    </Button>
+                </Modal.Footer>
+            </Modal>
         </PagePanel>
     );
 }
@@ -503,8 +685,16 @@ function getEmployeeSearchText(employee) {
         .toLowerCase();
 }
 
+function getFilterOptions(employees, fieldName) {
+    return [...new Set(
+        employees
+            .map((employee) => employee[fieldName])
+            .filter(Boolean)
+    )].sort((firstValue, secondValue) => firstValue.localeCompare(secondValue));
+}
+
 function getPermissionLabel(permission) {
-    const name = permission.permissionName || permission.value;
+    const name = permission.permissionName || "Permission #" + permission.id;
     const code = permission.permissionCode ? " (" + permission.permissionCode + ")" : "";
     const inactive = permission.status === false ? " - Inactive" : "";
     return name + code + inactive;
