@@ -34,6 +34,7 @@ public class UserServiceImpl implements IUserService {
     @Override
     public RegisterResponse create(RegisterRequest registerRequest) {
         List<Users> users = userRepository.findAll();
+        
         Users user = new Users();
         user.setFirstName(registerRequest.getFirstName());
         user.setLastName(registerRequest.getLastName());

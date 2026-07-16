@@ -2,6 +2,7 @@ package com.fpt.backend.controller.authencationController;
 
 import com.fpt.backend.configuration.JWTService;
 import com.fpt.backend.configuration.MyUserDetail;
+import com.fpt.backend.constant.ApiConstant;
 import com.fpt.backend.dto.request.authentication.AuthenticateRequest;
 import com.fpt.backend.dto.response.authentication.AuthenticateResponse;
 import com.fpt.backend.entity.Users;
@@ -19,15 +20,16 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api")
+@RequestMapping(ApiConstant.API)
 public class AuthenticateController {
     @Autowired
     private AuthenticationManager authenticationManager;
     @Autowired
     private JWTService jwtService;
-    @PostMapping("/login")
+    @PostMapping(ApiConstant.Authentication.LOGIN)
     public ResponseEntity<BaseResponse<AuthenticateResponse>> authenticateUser(@RequestBody AuthenticateRequest authenticateRequest)  {
         try{
+
             Authentication authenticate =  authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(
                     authenticateRequest.getEmail(),
                     authenticateRequest.getPassword()
@@ -36,6 +38,7 @@ public class AuthenticateController {
             MyUserDetail myUsersDetail = (MyUserDetail) authenticate.getPrincipal();
             Users users =  myUsersDetail.getUsers();
             var token  = jwtService.generateToken(myUsersDetail);
+            System.out.println(">>> Login controller called");
             System.out.println(token);
             AuthenticateResponse authenticateResponse = new AuthenticateResponse();
             authenticateResponse.setToken(token);
