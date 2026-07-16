@@ -14,19 +14,8 @@ import {
     IconInfoCircle
 } from "@tabler/icons-react";
 
-// Dữ liệu mẫu ban đầu (sẽ thay bằng API lấy dữ liệu thực tế)
-const defaultCompanyProfile = {
-    companyName: "ABC Holdings Co., Ltd.",
-    email: "legal@abcholdings.vn",
-    taxCode: "0312345678",
-    phone: "+84 28 3822 5678",
-    registeredAddress: "125 Nguyen Hue Boulevard, Ben Nghe Ward, District 1, Ho Chi Minh City, Vietnam",
-    businessRegistrationNumber: "BRN-2025-00981",
-    legalRepresentative: "Nguyen Minh An",
-    registrationDate: "May 12, 2020",
-    lastVerifiedDate: "May 10, 2025",
-    verifiedBy: "Alex Morgan",
-};
+// IMPORT HÀM GỌI API
+import { getCompanyProfile } from "../../config/companyApi/companyApi";
 
 function ViewProfile({ onEditProfile }) {
     const navigate = useNavigate();
@@ -35,15 +24,16 @@ function ViewProfile({ onEditProfile }) {
     const [profile, setProfile] = useState(null);
     const [loading, setLoading] = useState(true);
 
-    // Mô phỏng gọi API lấy dữ liệu Company Profile
+    // Gọi API lấy dữ liệu Company Profile
     useEffect(() => {
         const fetchProfile = async () => {
             setLoading(true);
             try {
-                // Mô phỏng thời gian chờ 1 giây
-                await new Promise(resolve => setTimeout(resolve, 1000));
+                // Gọi API lấy thông tin Company
+                const response = await getCompanyProfile();
 
-                setProfile(defaultCompanyProfile);
+                // Gán dữ liệu trả về từ API vào state
+                setProfile(response.data.data);
             } catch (error) {
                 console.error("Lỗi khi tải dữ liệu công ty:", error);
             } finally {
@@ -102,7 +92,7 @@ function ViewProfile({ onEditProfile }) {
                     {/* Check Loading State */}
                     {loading ? (
                         <div className="text-center py-5 my-5 text-secondary">
-                            <Spinner animation="border" className="mb-3" style={{ width: "3rem", height: "3xl" }} />
+                            <Spinner animation="border" className="mb-3" style={{ width: "3rem", height: "3rem" }} />
                             <p>Loading company profile details...</p>
                         </div>
                     ) : profile ? (
@@ -225,7 +215,7 @@ function ViewProfile({ onEditProfile }) {
                             <p className="fw-bold">Profile not found or an error occurred.</p>
                         </div>
                     )}
-                </section> {/* <-- ĐÃ SỬA TỪ </div> THÀNH </section> Ở ĐÂY */}
+                </section>
             </Container>
         </div>
     );
