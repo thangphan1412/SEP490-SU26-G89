@@ -4,6 +4,9 @@ public record PermissionRequest(
         String permissionName,
         String permissionCode,
         String permissionModule,
-        Integer projectId
+        String permissionDescription,
+        Boolean status,
+        Integer projectId,
+        Integer roleId
 ) {
 }

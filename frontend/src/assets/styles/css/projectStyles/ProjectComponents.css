@@ -45,7 +45,8 @@
 }
 
 .project-management-primary-button.btn,
-.project-management-cancel-button.btn {
+.project-management-cancel-button.btn,
+.project-management-danger-button.btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -80,6 +81,24 @@
     border: 1px solid #d7dfeb;
     color: #111827;
     font-size: 15px;
+}
+
+.project-management-danger-button.btn {
+    min-width: 98px;
+    height: 43px;
+    gap: 8px;
+    border: 1px solid #f0c1bd;
+    color: #b42318;
+    background: #fff6f5;
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.project-management-danger-button.btn:hover,
+.project-management-danger-button.btn:focus {
+    border-color: #e3a19b;
+    color: #921d14;
+    background: #ffebe9;
 }
 
 .project-management-actions {

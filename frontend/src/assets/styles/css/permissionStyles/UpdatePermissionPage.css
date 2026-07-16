@@ -1,210 +1,43 @@
-.update-page {
-  min-height: 100vh;
-  padding: 32px;
-  color: #0d1734;
-  background: #f7f9fd;
-  font-family: Inter, Arial, sans-serif;
+.permission-update-load-error.alert {
+  margin: 28px;
 }
 
-.update-card.card {
-  max-width: 1190px;
-  margin: 0 auto;
-  background: #ffffff;
-  border: 1px solid #dfe6f2;
-  border-radius: 16px;
-  box-shadow: 0 14px 32px rgba(24, 42, 86, 0.08);
-}
-
-.update-header {
-  padding: 28px 50px;
-  border-bottom: 1px solid #dfe6f2;
-  background: #ffffff;
-}
-
-.update-header h1 {
-  margin: 0;
-  font-size: 28px;
-  font-weight: 800;
-}
-
-.update-header p {
-  margin: 6px 0 0;
-  color: #52627e;
-}
-
-.update-form {
-  display: grid;
-  gap: 24px;
-  padding: 28px 50px 40px;
-}
-
-.update-state {
+.permission-update-audit {
+  min-height: 62px;
+  padding: 13px 16px;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  min-height: 220px;
-  color: #52627e;
-}
-
-.update-field {
-  display: grid;
+  align-items: flex-start;
   gap: 10px;
+  border: 1px solid #bfd0ff;
+  border-radius: 9px;
+  color: #2450f5;
+  background: #eff4ff;
 }
 
-.update-label {
-  color: #1d2a47;
-  font-weight: 700;
+.permission-update-audit strong,
+.permission-update-audit span {
+  display: block;
 }
 
-.update-required {
-  color: #ef3131;
+.permission-update-audit strong {
+  margin-bottom: 4px;
+  font-size: 13px;
 }
 
-.update-input.form-control,
-.update-input.form-select {
-  height: 52px;
-  padding: 0 16px;
-  color: #33425f;
-  background: #ffffff;
-  border: 1px solid #d5dfec;
-  border-radius: 8px;
-}
-
-.update-textarea-box {
-  position: relative;
-}
-
-.update-textarea.form-control {
-  width: 100%;
-  min-height: 94px;
-  padding: 14px 16px 30px;
-  color: #33425f;
-  border: 1px solid #d5dfec;
-  border-radius: 8px;
-  resize: none;
-}
-
-.update-textarea-box span {
-  position: absolute;
-  right: 16px;
-  bottom: 12px;
-  color: #52627e;
-  font-size: 14px;
-}
-
-.update-radio-group {
-  display: flex;
-  gap: 42px;
-}
-
-.update-radio-text.btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  padding: 0;
-  color: #273653;
-  background: none;
-  border: 0;
-  cursor: pointer;
-  text-decoration: none;
-}
-
-.update-radio {
-  width: 24px;
-  height: 24px;
-  border: 2px solid #c5d0e4;
-  border-radius: 50%;
-}
-
-.update-radio.active {
-  border: 6px solid #2c63ff;
-}
-
-.update-status-row {
+.permission-update-audit span {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 5px;
+  color: #526a9d;
+  font-size: 12px;
 }
 
-.update-status-switch.form-switch {
-  min-height: 28px;
-  padding-left: 54px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
+@media (max-width: 600px) {
+  .permission-update-load-error.alert {
+    margin: 18px;
+  }
 
-.update-status-switch .form-check-input {
-  width: 50px;
-  height: 28px;
-  margin-left: -54px;
-  border-color: #174cff;
-  background-color: #174cff;
-  box-shadow: none;
-}
-
-.update-status-switch .form-check-label {
-  color: #1d2a47;
-  font-weight: 600;
-}
-
-.update-role-box {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  min-height: 52px;
-  padding: 8px 12px;
-  border: 1px solid #d5dfec;
-  border-radius: 8px;
-}
-
-.update-tag.badge {
-  --bs-badge-color: #1451ff;
-  display: inline-flex;
-  align-items: center;
-  min-height: 34px;
-  padding: 0 14px;
-  color: #1451ff;
-  background: #f4f7ff;
-  border: 1px solid #cbd8ff;
-  border-radius: 6px;
-  font-weight: 700;
-}
-
-.update-actions {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 18px;
-  margin-top: 18px;
-}
-
-.update-cancel-button.btn,
-.update-primary-button.btn {
-  min-width: 142px;
-  height: 44px;
-  border-radius: 8px;
-  cursor: pointer;
-  font-weight: 700;
-}
-
-.update-cancel-button.btn {
-  background: #ffffff;
-  border: 1px solid #d6dfed;
-  color: #0d1734;
-}
-
-.update-primary-button.btn {
-  min-width: 178px;
-  color: #ffffff;
-  background: #174cff;
-  border: 1px solid #174cff;
-}
-
-@media (max-width: 760px) {
-  .update-radio-group,
-  .update-actions {
-    flex-direction: column;
+  .permission-update-audit span {
+    align-items: flex-start;
   }
 }

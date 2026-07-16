@@ -13,7 +13,9 @@ public record ProjectDetailResponse(
         LocalDate projectEndDate,
         String projectCreatedBy,
         String projectCreatedAt,
+        List<ProjectPhaseResponse> phases,
         List<ProjectUserResponse> users,
+        List<ProjectPermissionOptionResponse> availablePermissions,
         List<ProjectContractResponse> contracts
 ) {
 }

@@ -29,6 +29,7 @@ export function Icon({ name, size = 22, color = "#1f4fff" }) {
         shield: <><path d="M12 3 19 6v5c0 5-3.5 8.5-7 10-3.5-1.5-7-5-7-10V6z" /><path d="m9 12 2 2 4-4" /></>,
         chart: <><path d="M5 20V9" /><path d="M12 20V4" /><path d="M19 20v-7" /><path d="M3 20h18" /></>,
         edit: <><path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16z" /><path d="m13.5 6.5 4 4" /></>,
+        trash: <><path d="M4 7h16" /><path d="M9 7V4h6v3" /><path d="M7 7l1 14h8l1-14" /><path d="M10 11v6" /><path d="M14 11v6" /></>,
         save: <><path d="M5 3h12l2 2v16H5z" /><path d="M8 3v6h8V3" /><path d="M8 21v-7h8v7" /></>,
         calendar: <><path d="M5 4h14v16H5z" /><path d="M8 2v4" /><path d="M16 2v4" /><path d="M5 9h14" /></>,
         dollar: <><circle cx="12" cy="12" r="9" /><path d="M12 6v12" /><path d="M15 8.5c-.8-.7-1.8-1-3-1-1.6 0-2.7.8-2.7 2s1 1.8 2.7 2.2c1.8.4 3 1 3 2.5S13.7 17 12 17c-1.3 0-2.5-.4-3.5-1.2" /></>,
@@ -90,6 +91,10 @@ export function PrimaryButton({ children, onClick, type = "button", ...buttonPro
 
 export function CancelButton({ children = "Cancel", onClick, ...buttonProps }) {
     return <Button type="button" variant="light" className="project-management-cancel-button" onClick={onClick} {...buttonProps}>{children}</Button>;
+}
+
+export function DangerButton({ children, onClick, ...buttonProps }) {
+    return <Button type="button" variant="light" className="project-management-danger-button" onClick={onClick} {...buttonProps}>{children}</Button>;
 }
 
 export function InfoAlert({ children }) {

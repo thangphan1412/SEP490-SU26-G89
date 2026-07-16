@@ -1,9 +1,25 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Alert, Button, Card, Container, Spinner, Stack } from "react-bootstrap";
+import { Alert, Button, Card, Spinner, Stack } from "react-bootstrap";
+import {
+  IconArrowLeft,
+  IconClock,
+  IconEdit,
+  IconFileDescription,
+  IconFolder,
+  IconKey,
+  IconShieldCheck,
+  IconTrash,
+  IconUserShield,
+} from "@tabler/icons-react";
 import "../../assets/styles/css/permissionStyles/ViewPermissionPage.css";
-import { deletePermission, viewPermission } from "../../config/axiosConfig.js";
-import { ViewPermissionInfo } from "./PermissionComponents.jsx";
+import { deletePermission, viewPermission } from "../../config/permissionApi/permissionApi.js";
+import {
+  PermissionPage,
+  PermissionStatusBadge,
+  ViewPermissionInfo,
+} from "./PermissionComponents.jsx";
+import { formatPermissionDate } from "./permissionUtils.js";
 
 function ViewPermissionPage() {
   const navigate = useNavigate();
@@ -37,7 +53,6 @@ function ViewPermissionPage() {
         }
       } catch (requestError) {
         console.error("Unable to load permission:", requestError);
-
         if (isActive) {
           setPermission(null);
           setError(getErrorMessage(requestError));
@@ -57,7 +72,7 @@ function ViewPermissionPage() {
   }, [permissionId]);
 
   const handleDelete = async () => {
-    if (!permission?.id || !window.confirm("Delete this permission?")) {
+    if (!permission?.id || !window.confirm(`Delete permission "${permission.permissionName}"?`)) {
       return;
     }
 
@@ -74,80 +89,114 @@ function ViewPermissionPage() {
     }
   };
 
-  return (
-    <Container fluid as="main" className="view-page">
-      <Card className="view-card">
-        <Card.Header className="view-header">
-          <div className="view-title-row">
-            <Button
-              type="button"
-              variant="light"
-              className="view-back-button"
-              onClick={() => navigate("/permission/list")}
-              aria-label="Back to permissions"
-            >
-              {"<"}
-            </Button>
-
-            <div>
-              <Card.Title as="h1">View Permission</Card.Title>
-              <Card.Text>Review the permission information saved in the system.</Card.Text>
-            </div>
-          </div>
-
-          {permission && (
-            <Stack direction="horizontal" className="view-actions">
-              <Button
-                type="button"
-                className="view-primary-button"
-                onClick={() => navigate(`/permission/list?edit=${permission.id}`)}
-              >
-                Edit Permission
-              </Button>
-              <Button
-                type="button"
-                variant="light"
-                className="view-delete-button"
-                disabled={deleting}
-                onClick={handleDelete}
-              >
-                {deleting ? "Deleting..." : "Delete"}
-              </Button>
-            </Stack>
-          )}
-        </Card.Header>
-
-        {loading ? (
-          <div className="view-state">
-            <Spinner animation="border" role="status" />
-            <span>Loading permission...</span>
-          </div>
-        ) : error ? (
-          <Alert variant="danger" className="m-4">{error}</Alert>
-        ) : !permission ? (
-          <div className="view-state">Permission was not found.</div>
-        ) : (
-          <Card as="section" className="view-section">
-            <Card.Title as="h2">Permission Information</Card.Title>
-
-            <div className="view-overview-grid">
-              <div className="view-shield">PERM</div>
-
-              <div className="view-info-column">
-                <ViewPermissionInfo label="Permission Name" value={permission.permissionName} />
-                <ViewPermissionInfo label="Permission Code" value={permission.permissionCode} />
-              </div>
-
-              <div className="view-info-column">
-                <ViewPermissionInfo label="Permission Module" value={permission.permissionModule} />
-                <ViewPermissionInfo label="Project" value={permission.projectName} />
-              </div>
-            </div>
-          </Card>
-        )}
-      </Card>
-    </Container>
+  const pageActions = (
+    <Stack direction="horizontal" className="permission-view-actions">
+      <Button className="permission-secondary-button" onClick={() => navigate("/permission/list")}>
+        <IconArrowLeft size={18} /> Back
+      </Button>
+      {permission && (
+        <>
+          <Button className="permission-primary-button" onClick={() => navigate(`/permission/list?edit=${permission.id}`)}>
+            <IconEdit size={18} /> Edit
+          </Button>
+          <Button className="permission-danger-button" disabled={deleting} onClick={handleDelete}>
+            <IconTrash size={18} /> {deleting ? "Deleting..." : "Delete"}
+          </Button>
+        </>
+      )}
+    </Stack>
   );
+
+  return (
+    <PermissionPage
+      title="Permission Details"
+      description="Review the access rule, assignment, status, and audit information."
+      action={pageActions}
+    >
+      {loading ? (
+        <div className="permission-page-state"><Spinner animation="border" /> Loading permission...</div>
+      ) : !permission ? (
+        error
+          ? <Alert variant="danger" className="permission-view-message">{error}</Alert>
+          : <div className="permission-page-state">Permission was not found.</div>
+      ) : (
+        <div className="permission-view-content">
+          {error && <Alert variant="danger">{error}</Alert>}
+
+          <Card as="section" className="permission-view-hero">
+            <span className="permission-view-shield"><IconShieldCheck size={38} stroke={1.7} /></span>
+            <div className="permission-view-identity">
+              <div className="permission-view-title-line">
+                <h2>{permission.permissionName || "Unnamed permission"}</h2>
+                <PermissionStatusBadge status={permission.status} />
+              </div>
+              <span className="permission-view-code"><IconKey size={15} /> {permission.permissionCode || "No code"}</span>
+              <p>{permission.permissionDescription || "No description has been added for this permission."}</p>
+            </div>
+            <span className="permission-view-id">ID #{permission.id}</span>
+          </Card>
+
+          <div className="permission-view-grid">
+            <Card as="section" className="permission-view-card permission-view-card--wide">
+              <div className="permission-view-card-title">
+                <span><IconFolder size={20} /></span>
+                <div><h3>Access assignment</h3><p>Where this permission applies and which role receives it.</p></div>
+              </div>
+              <div className="permission-view-info-grid">
+                <ViewPermissionInfo label="Project" value={formatProjectValue(permission)} />
+                <ViewPermissionInfo label="Role" value={permission.roleName || "Unassigned"} />
+                <ViewPermissionInfo label="Module" value={permission.permissionModule} />
+                <div className="permission-info-item">
+                  <p className="permission-info-label">Status</p>
+                  <PermissionStatusBadge status={permission.status} />
+                </div>
+              </div>
+            </Card>
+
+            <Card as="section" className="permission-view-card">
+              <div className="permission-view-card-title">
+                <span><IconClock size={20} /></span>
+                <div><h3>Audit information</h3><p>Times recorded automatically by the server.</p></div>
+              </div>
+              <div className="permission-view-audit-list">
+                <ViewPermissionInfo label="Created at" value={formatPermissionDate(permission.createdAt)} />
+                <ViewPermissionInfo label="Last updated" value={formatPermissionDate(permission.updatedAt)} />
+              </div>
+            </Card>
+
+            <Card as="section" className="permission-view-card permission-view-card--wide">
+              <div className="permission-view-card-title">
+                <span><IconFileDescription size={20} /></span>
+                <div><h3>Description</h3><p>A plain-language explanation of the access rule.</p></div>
+              </div>
+              <p className="permission-view-description">
+                {permission.permissionDescription || "No description has been added."}
+              </p>
+            </Card>
+
+            <Card as="section" className="permission-view-card">
+              <div className="permission-view-card-title">
+                <span><IconUserShield size={20} /></span>
+                <div><h3>Technical values</h3><p>Values used by the application.</p></div>
+              </div>
+              <div className="permission-view-audit-list">
+                <ViewPermissionInfo label="Permission code" value={permission.permissionCode} />
+                <ViewPermissionInfo label="Module" value={permission.permissionModule} />
+              </div>
+            </Card>
+          </div>
+        </div>
+      )}
+    </PermissionPage>
+  );
+}
+
+function formatProjectValue(permission) {
+  if (!permission.projectName && !permission.projectCode) {
+    return "Unassigned";
+  }
+
+  return [permission.projectCode, permission.projectName].filter(Boolean).join(" - ");
 }
 
 function getErrorMessage(error) {

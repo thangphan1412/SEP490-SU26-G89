@@ -2,19 +2,22 @@ package com.fpt.backend.controller.projectController;
 
 import com.fpt.backend.dto.request.project.ProjectCreateRequest;
 import com.fpt.backend.dto.request.project.ProjectListRequest;
+import com.fpt.backend.dto.request.project.ProjectUpdateRequest;
 import com.fpt.backend.dto.response.project.ProjectDetailResponse;
 import com.fpt.backend.dto.response.project.ProjectEmployeeResponse;
 import com.fpt.backend.dto.response.project.ProjectListResponse;
-import com.fpt.backend.service.interfaces.ProjectService;
+import com.fpt.backend.service.interfaces.project.ProjectService;
 import com.fpt.backend.util.BaseResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.CacheControl;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -73,5 +76,18 @@ public class ProjectController {
                         "Created",
                         project
                 ));
+    }
+
+    @PutMapping({"/{id}", "/update/{id}"})
+    public ResponseEntity<BaseResponse<ProjectDetailResponse>> updateProject(
+            @PathVariable int id,
+            @RequestBody ProjectUpdateRequest request) {
+        return ResponseEntity.ok(new BaseResponse<>(projectService.updateProject(id, request)));
+    }
+
+    @DeleteMapping({"/{id}", "/delete/{id}"})
+    public ResponseEntity<BaseResponse<Void>> deleteProject(@PathVariable int id) {
+        projectService.deleteProject(id);
+        return ResponseEntity.ok(new BaseResponse<>(HttpStatus.OK.value(), "Deleted", null));
     }
 }

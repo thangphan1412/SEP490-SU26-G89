@@ -1,50 +1,68 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Alert, Button, Card, Container, Form, Stack } from "react-bootstrap";
+import { Alert, Button, Card, Col, Form, Row, Spinner } from "react-bootstrap";
+import {
+  IconArrowLeft,
+  IconClock,
+  IconDeviceFloppy,
+  IconInfoCircle,
+} from "@tabler/icons-react";
 import "../../assets/styles/css/permissionStyles/CreatePermissionPage.css";
-import { createPermission, listPermissionProjects } from "../../config/axiosConfig.js";
-import { CreatePermissionFormField } from "./PermissionComponents.jsx";
+import {
+  createPermission,
+  listPermissionProjects,
+  listPermissionRoles,
+} from "../../config/permissionApi/permissionApi.js";
+import { PermissionFormField, PermissionPage } from "./PermissionComponents.jsx";
 
 const initialPermission = {
   permissionName: "",
   permissionCode: "",
   permissionModule: "",
+  permissionDescription: "",
   projectId: "",
+  roleId: "",
+  status: true,
 };
 
 function CreatePermissionPage() {
   const navigate = useNavigate();
   const [permission, setPermission] = useState(initialPermission);
   const [projects, setProjects] = useState([]);
-  const [loadingProjects, setLoadingProjects] = useState(true);
+  const [roles, setRoles] = useState([]);
+  const [loadingOptions, setLoadingOptions] = useState(true);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     let isActive = true;
 
-    const loadProjects = async () => {
+    const loadOptions = async () => {
       try {
-        const response = await listPermissionProjects();
-        const payload = response.data?.data ?? response.data;
+        const [projectResponse, roleResponse] = await Promise.all([
+          listPermissionProjects(),
+          listPermissionRoles(),
+        ]);
+        const projectPayload = projectResponse.data?.data ?? projectResponse.data;
+        const rolePayload = roleResponse.data?.data ?? roleResponse.data;
 
         if (isActive) {
-          setProjects(Array.isArray(payload) ? payload : []);
+          setProjects(Array.isArray(projectPayload) ? projectPayload : []);
+          setRoles(Array.isArray(rolePayload) ? rolePayload : []);
         }
       } catch (requestError) {
-        console.error("Unable to load projects for permission:", requestError);
-
+        console.error("Unable to load permission options:", requestError);
         if (isActive) {
-          setError("Unable to load projects. Please try again later.");
+          setError("Unable to load projects or roles. Please try again later.");
         }
       } finally {
         if (isActive) {
-          setLoadingProjects(false);
+          setLoadingOptions(false);
         }
       }
     };
 
-    loadProjects();
+    loadOptions();
 
     return () => {
       isActive = false;
@@ -69,7 +87,10 @@ function CreatePermissionPage() {
         permissionName: permission.permissionName.trim(),
         permissionCode: permission.permissionCode.trim(),
         permissionModule: permission.permissionModule.trim(),
+        permissionDescription: permission.permissionDescription.trim(),
         projectId: Number(permission.projectId),
+        roleId: Number(permission.roleId),
+        status: permission.status,
       });
       const createdPermission = response.data?.data ?? response.data;
 
@@ -87,94 +108,178 @@ function CreatePermissionPage() {
     }
   };
 
+  const backAction = (
+    <Button className="permission-secondary-button" onClick={() => navigate("/permission/list")}>
+      <IconArrowLeft size={18} /> Back to list
+    </Button>
+  );
+  const noOptions = !loadingOptions && (projects.length === 0 || roles.length === 0);
+
   return (
-    <Container fluid as="main" className="create-page">
-      <Card className="create-card">
-        <Card.Header className="create-header">
-          <Card.Title as="h1">Create Permission</Card.Title>
-          <Card.Text>Enter the information stored for this permission.</Card.Text>
-        </Card.Header>
+    <PermissionPage
+      title="Create Permission"
+      description="Define a clear access rule and assign it to a project and role."
+      action={backAction}
+    >
+      <Form className="permission-create-form" onSubmit={handleSubmit}>
+        {error && <Alert variant="danger">{error}</Alert>}
+        {noOptions && (
+          <Alert variant="warning">
+            At least one project and one role are required before a permission can be created.
+          </Alert>
+        )}
 
-        <Form className="create-form" onSubmit={handleSubmit}>
-          {error && <Alert variant="danger" className="mb-0">{error}</Alert>}
+        <Card as="section" className="permission-form-card">
+          <div className="permission-section-heading">
+            <span className="permission-section-number">1</span>
+            <div>
+              <h2>Permission information</h2>
+              <p>Use a short name and a unique code that are easy to understand.</p>
+            </div>
+          </div>
 
-          <CreatePermissionFormField label="Permission Name" required>
-            <Form.Control
-              className="create-input"
-              name="permissionName"
-              value={permission.permissionName}
-              onChange={handleChange}
-              placeholder="Enter permission name"
-              maxLength={50}
-              required
-            />
-          </CreatePermissionFormField>
+          <Row className="g-4">
+            <Col md={6}>
+              <PermissionFormField controlId="permission-name" label="Permission Name" required>
+                <Form.Control
+                  className="permission-input"
+                  name="permissionName"
+                  value={permission.permissionName}
+                  onChange={handleChange}
+                  placeholder="Example: View contracts"
+                  maxLength={50}
+                  required
+                />
+              </PermissionFormField>
+            </Col>
 
-          <CreatePermissionFormField label="Permission Code" required>
-            <Form.Control
-              className="create-input"
-              name="permissionCode"
-              value={permission.permissionCode}
-              onChange={handleChange}
-              placeholder="Example: CONTRACT_VIEW"
-              maxLength={50}
-              required
-            />
-          </CreatePermissionFormField>
+            <Col md={6}>
+              <PermissionFormField controlId="permission-code" label="Permission Code" required hint="Use a unique code, for example CONTRACT_VIEW.">
+                <Form.Control
+                  className="permission-input"
+                  name="permissionCode"
+                  value={permission.permissionCode}
+                  onChange={handleChange}
+                  placeholder="CONTRACT_VIEW"
+                  maxLength={50}
+                  required
+                />
+              </PermissionFormField>
+            </Col>
 
-          <CreatePermissionFormField label="Permission Module" required>
-            <Form.Control
-              className="create-input"
-              name="permissionModule"
-              value={permission.permissionModule}
-              onChange={handleChange}
-              placeholder="Example: CONTRACT"
-              maxLength={255}
-              required
-            />
-          </CreatePermissionFormField>
+            <Col md={6}>
+              <PermissionFormField controlId="permission-module" label="Permission Module" required hint="The feature area protected by this permission.">
+                <Form.Control
+                  className="permission-input"
+                  name="permissionModule"
+                  value={permission.permissionModule}
+                  onChange={handleChange}
+                  placeholder="CONTRACT"
+                  maxLength={255}
+                  required
+                />
+              </PermissionFormField>
+            </Col>
 
-          <CreatePermissionFormField label="Project" required>
-            <Form.Select
-              className="create-input"
-              name="projectId"
-              value={permission.projectId}
-              onChange={handleChange}
-              disabled={loadingProjects || projects.length === 0}
-              required
-            >
-              <option value="" disabled>
-                {loadingProjects ? "Loading projects..." : "Select project"}
-              </option>
-              {projects.map((project) => (
-                <option key={project.id} value={project.id}>
-                  {formatProjectName(project)}
-                </option>
-              ))}
-            </Form.Select>
-          </CreatePermissionFormField>
+            <Col xs={12}>
+              <PermissionFormField controlId="permission-description" label="Description">
+                <div className="permission-description-box">
+                  <Form.Control
+                    as="textarea"
+                    className="permission-textarea"
+                    name="permissionDescription"
+                    value={permission.permissionDescription}
+                    onChange={handleChange}
+                    placeholder="Explain what this permission allows a user to do..."
+                    maxLength={255}
+                  />
+                  <span>{permission.permissionDescription.length} / 255</span>
+                </div>
+              </PermissionFormField>
+            </Col>
+          </Row>
+        </Card>
 
-          <Stack direction="horizontal" className="create-actions">
-            <Button
-              type="button"
-              variant="light"
-              className="create-cancel-button"
-              disabled={saving}
-              onClick={() => navigate("/permission/list")}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              className="create-primary-button"
-              disabled={saving || loadingProjects || projects.length === 0}
-            >
-              {saving ? "Creating..." : "Create Permission"}
-            </Button>
-          </Stack>
-        </Form>
-      </Card>
-    </Container>
+        <Card as="section" className="permission-form-card">
+          <div className="permission-section-heading">
+            <span className="permission-section-number">2</span>
+            <div>
+              <h2>Assignment and status</h2>
+              <p>Choose where this permission is used and who receives it.</p>
+            </div>
+          </div>
+
+          <Row className="g-4">
+            <Col md={6}>
+              <PermissionFormField controlId="permission-project" label="Project" required>
+                <Form.Select
+                  className="permission-input"
+                  name="projectId"
+                  value={permission.projectId}
+                  onChange={handleChange}
+                  disabled={loadingOptions || projects.length === 0}
+                  required
+                >
+                  <option value="" disabled>{loadingOptions ? "Loading projects..." : "Select project"}</option>
+                  {projects.map((project) => (
+                    <option key={project.id} value={project.id}>{formatProjectName(project)}</option>
+                  ))}
+                </Form.Select>
+              </PermissionFormField>
+            </Col>
+
+            <Col md={6}>
+              <PermissionFormField controlId="permission-role" label="Role" required>
+                <Form.Select
+                  className="permission-input"
+                  name="roleId"
+                  value={permission.roleId}
+                  onChange={handleChange}
+                  disabled={loadingOptions || roles.length === 0}
+                  required
+                >
+                  <option value="" disabled>{loadingOptions ? "Loading roles..." : "Select role"}</option>
+                  {roles.map((role) => (
+                    <option key={role.id} value={role.id}>{role.roleName || `Role #${role.id}`}</option>
+                  ))}
+                </Form.Select>
+              </PermissionFormField>
+            </Col>
+
+            <Col xs={12}>
+              <div className="permission-status-control">
+                <div>
+                  <strong>Permission status</strong>
+                  <span>Inactive permissions remain stored but are marked as unavailable.</span>
+                </div>
+                <Form.Check
+                  type="switch"
+                  id="permission-status"
+                  label={permission.status ? "Active" : "Inactive"}
+                  checked={permission.status}
+                  onChange={(event) => setPermission((current) => ({ ...current, status: event.target.checked }))}
+                />
+              </div>
+            </Col>
+          </Row>
+        </Card>
+
+        <div className="permission-audit-note">
+          <IconInfoCircle size={19} />
+          <span><IconClock size={16} /> Created and updated times are recorded automatically by the server.</span>
+        </div>
+
+        <div className="permission-form-actions">
+          <Button className="permission-secondary-button" onClick={() => navigate("/permission/list")} disabled={saving}>
+            Cancel
+          </Button>
+          <Button type="submit" className="permission-primary-button" disabled={saving || loadingOptions || noOptions}>
+            {saving ? <Spinner animation="border" size="sm" /> : <IconDeviceFloppy size={18} />}
+            {saving ? "Creating..." : "Create Permission"}
+          </Button>
+        </div>
+      </Form>
+    </PermissionPage>
   );
 }
 
