@@ -6,6 +6,7 @@ import com.fpt.backend.dto.request.project.ProjectUpdateRequest;
 import com.fpt.backend.dto.response.project.ProjectDetailResponse;
 import com.fpt.backend.dto.response.project.ProjectEmployeeResponse;
 import com.fpt.backend.dto.response.project.ProjectListResponse;
+import com.fpt.backend.dto.response.project.ProjectRoleResponse;
 import com.fpt.backend.service.interfaces.project.ProjectService;
 import com.fpt.backend.util.BaseResponse;
 import lombok.RequiredArgsConstructor;
@@ -64,6 +65,15 @@ public class ProjectController {
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.noStore())
                 .body(new BaseResponse<>(employees));
+    }
+
+    @GetMapping("/roles")
+    public ResponseEntity<BaseResponse<List<ProjectRoleResponse>>> getRolesForProjectMemberFilter() {
+        List<ProjectRoleResponse> roles = projectService.getRolesForProjectMemberFilter();
+
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .body(new BaseResponse<>(roles));
     }
 
     @PostMapping("/create")

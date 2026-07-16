@@ -7,11 +7,6 @@ import "../../assets/styles/css/projectStyles/CreateProject.css";
 
 const statusOptions = ["Planning", "Active", "On Hold", "Completed", "Cancelled"];
 const phaseStatusOptions = ["Planning", "In Progress", "On Hold", "Completed"];
-const accessOptions = [
-    { value: "VIEWER", label: "Viewer", description: "Can view project information" },
-    { value: "MEMBER", label: "Member", description: "Can participate in project work" },
-    { value: "MANAGER", label: "Manager", description: "Can manage the project and members" },
-];
 
 const initialProject = {
     projectName: "",
@@ -116,19 +111,10 @@ function CreateProject({ onCreateProject }) {
             const isSelected = currentProject.members.some((member) => member.userId === employeeId);
             const members = isSelected
                 ? currentProject.members.filter((member) => member.userId !== employeeId)
-                : [...currentProject.members, { userId: employeeId, permissionValue: "MEMBER" }];
+                : [...currentProject.members, { userId: employeeId, permissionId: null }];
 
             return { ...currentProject, members };
         });
-    };
-
-    const changeMemberPermission = (employeeId, permissionValue) => {
-        setProject((currentProject) => ({
-            ...currentProject,
-            members: currentProject.members.map((member) =>
-                member.userId === employeeId ? { ...member, permissionValue } : member
-            ),
-        }));
     };
 
     const handleSubmit = async (event) => {
@@ -304,7 +290,7 @@ function CreateProject({ onCreateProject }) {
                     <div className="create-project-section-header">
                         <div>
                             <Card.Title as="h2" className="project-management-card-title">Project Members</Card.Title>
-                            <p className="create-project-section-note">Select members and assign a different permission to each person.</p>
+                            <p className="create-project-section-note">Select initial members. Permissions can be assigned after the project has database permissions.</p>
                         </div>
                         <span className="create-project-selected-count">{project.members.length} selected</span>
                     </div>
@@ -321,7 +307,6 @@ function CreateProject({ onCreateProject }) {
                         <div className="create-project-employee-grid">
                             {visibleEmployees.map((employee) => {
                                 const selected = selectedMemberIds.has(employee.id);
-                                const member = project.members.find((item) => item.userId === employee.id);
 
                                 return (
                                     <div key={employee.id} className={selected ? "create-project-employee-option selected" : "create-project-employee-option"}>
@@ -330,17 +315,9 @@ function CreateProject({ onCreateProject }) {
                                         <div className="create-project-employee-text">
                                             <strong>{getEmployeeName(employee)}</strong>
                                             <small>{getEmployeeDescription(employee)}</small>
-                                            <Form.Select
-                                                aria-label={"Permission for " + getEmployeeName(employee)}
-                                                disabled={!selected}
-                                                value={member?.permissionValue || "MEMBER"}
-                                                onChange={(event) => changeMemberPermission(employee.id, event.target.value)}
-                                                className="create-project-permission-select"
-                                            >
-                                                {accessOptions.map((option) => (
-                                                    <option key={option.value} value={option.value}>{option.label} - {option.description}</option>
-                                                ))}
-                                            </Form.Select>
+                                            {selected && (
+                                                <span className="create-project-unassigned-permission">Permission: Not assigned</span>
+                                            )}
                                         </div>
                                     </div>
                                 );
@@ -349,7 +326,7 @@ function CreateProject({ onCreateProject }) {
                     )}
                 </Card>
 
-                <InfoAlert>Viewer, Member, and Manager permissions are created automatically for the new project.</InfoAlert>
+                <InfoAlert>No permissions are generated automatically. Create project permissions in Permission Management, then assign them in Update Project.</InfoAlert>
             </Form>
         </PagePanel>
     );
@@ -365,14 +342,27 @@ function getEmployeeName(employee) {
 }
 
 function getEmployeeDescription(employee) {
-    return [employee.email, employee.role, employee.status].filter(Boolean).join(" | ") || "No employee detail";
+    const roleNames = getEmployeeRoleNames(employee);
+    return [employee.email, roleNames.join(", ") || "No assigned role", employee.status]
+        .filter(Boolean)
+        .join(" | ");
 }
 
 function getEmployeeSearchText(employee) {
-    return [employee.firstName, employee.lastName, employee.email, employee.role, employee.status]
+    return [employee.firstName, employee.lastName, employee.email, ...getEmployeeRoleNames(employee), employee.status]
         .filter(Boolean)
         .join(" ")
         .toLowerCase();
+}
+
+function getEmployeeRoleNames(employee) {
+    if (!Array.isArray(employee.roles)) {
+        return [];
+    }
+
+    return employee.roles
+        .map((role) => role?.roleName?.trim())
+        .filter(Boolean);
 }
 
 function getTodayValue() {

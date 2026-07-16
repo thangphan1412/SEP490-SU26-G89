@@ -23,6 +23,10 @@ export const listProjectEmployees = () => {
   return axios.get(`${PROJECT_API_BASE_URL}/employees`, noCacheConfig);
 };
 
+export const listProjectRoles = () => {
+  return axios.get(`${PROJECT_API_BASE_URL}/roles`, noCacheConfig);
+};
+
 export const createProject = (project) => {
   return axios.post(`${PROJECT_API_BASE_URL}/create`, project);
 };

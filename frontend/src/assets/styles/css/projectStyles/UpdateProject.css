@@ -137,70 +137,35 @@
     white-space: nowrap;
 }
 
-.update-project-employee-search.form-control {
-    height: 42px;
-    margin-bottom: 15px;
-    border: 1px solid #d5deeb;
-    border-radius: 8px;
-    background: #fff;
-    color: #243452;
-    font-size: 14px;
-    box-shadow: none;
-}
-
-.update-project-employee-search.form-control:focus {
-    border-color: #9db4ff;
-    box-shadow: 0 0 0 3px rgba(36, 80, 245, 0.12);
-}
-
-.update-project-employee-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
-}
-
-.update-project-employee-option {
-    min-width: 0;
-    min-height: 118px;
-    padding: 13px;
+.update-project-member-header-actions {
     display: flex;
-    align-items: flex-start;
-    gap: 11px;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.update-project-member-list {
+    display: grid;
+    gap: 10px;
+}
+
+.update-project-member-row {
+    min-width: 0;
+    min-height: 78px;
+    padding: 13px 14px;
+    display: grid;
+    grid-template-columns: 40px minmax(180px, 1fr) minmax(230px, 0.8fr) auto;
+    align-items: center;
+    gap: 13px;
     border: 1px solid #d9e2ef;
     border-radius: 9px;
     background: #fff;
-    transition: border-color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
+    transition: border-color 0.15s ease, background-color 0.15s ease;
 }
 
-.update-project-employee-option:hover {
+.update-project-member-row:hover {
     border-color: #b9c9e2;
-}
-
-.update-project-employee-option.selected {
-    border-color: #9db4ff;
-    background: #f8faff;
-    box-shadow: 0 0 0 2px rgba(36, 80, 245, 0.06);
-}
-
-.update-project-employee-check.form-check {
-    min-height: 0;
-    margin: 10px 0 0;
-    padding-left: 0;
-}
-
-.update-project-employee-check .form-check-input {
-    float: none;
-    width: 18px;
-    height: 18px;
-    margin: 0;
-    border-color: #aebbd0;
-    cursor: pointer;
-    box-shadow: none;
-}
-
-.update-project-employee-check .form-check-input:checked {
-    border-color: #2450f5;
-    background-color: #2450f5;
+    background: #fbfcff;
 }
 
 .update-project-employee-avatar {
@@ -232,9 +197,18 @@
     white-space: nowrap;
 }
 
+.update-project-member-permission {
+    min-width: 0;
+}
+
+.update-project-member-permission .project-management-field-label.form-label {
+    margin-bottom: 5px;
+    font-size: 11px;
+}
+
 .update-project-permission-select.form-select {
     height: 35px;
-    margin-top: 7px;
+    margin-top: 0;
     padding: 0 32px 0 10px;
     border: 1px solid #cdd8e8;
     border-radius: 6px;
@@ -249,8 +223,248 @@
 }
 
 .update-project-permission-select.form-select:disabled {
+    border-color: #d5deeb;
     background-color: #f1f4f9;
-    color: #8b95a7;
+    color: #7a869b;
+    opacity: 1;
+}
+
+.update-project-remove-member-button.btn-link {
+    padding: 8px 5px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    color: #b42318;
+    font-size: 12px;
+    font-weight: 700;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.update-project-remove-member-button.btn-link:hover,
+.update-project-remove-member-button.btn-link:focus {
+    color: #8f1d15;
+    text-decoration: underline;
+}
+
+.update-project-member-modal .modal-content {
+    overflow: hidden;
+    border: 0;
+    border-radius: 14px;
+    box-shadow: 0 22px 60px rgba(25, 40, 72, 0.2);
+}
+
+.update-project-member-modal .modal-header {
+    padding: 20px 22px 17px;
+    align-items: flex-start;
+    border-bottom: 1px solid #e5eaf2;
+    background: #fff;
+}
+
+.update-project-member-modal .modal-title {
+    color: #18253e;
+    font-size: 20px;
+    font-weight: 800;
+}
+
+.update-project-modal-description {
+    margin: 5px 0 0;
+    color: #65728c;
+    font-size: 13px;
+}
+
+.update-project-member-modal .modal-body {
+    padding: 20px 22px;
+    background: #fbfcff;
+}
+
+.update-project-modal-filter-grid {
+    display: grid;
+    grid-template-columns: minmax(220px, 2fr) minmax(145px, 1fr) minmax(145px, 1fr);
+    align-items: end;
+    gap: 12px;
+}
+
+.update-project-modal-filter-input.form-control,
+.update-project-modal-filter-input.form-select {
+    height: 40px;
+    border: 1px solid #d5deeb;
+    border-radius: 7px;
+    background-color: #fff;
+    color: #243452;
+    font-size: 13px;
+    box-shadow: none;
+}
+
+.update-project-modal-filter-input.form-control:focus,
+.update-project-modal-filter-input.form-select:focus {
+    border-color: #9db4ff;
+    box-shadow: 0 0 0 3px rgba(36, 80, 245, 0.1);
+}
+
+.update-project-modal-result-header {
+    margin: 16px 0 9px;
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    color: #65728c;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.update-project-modal-user-list {
+    max-height: 360px;
+    display: grid;
+    gap: 8px;
+    overflow-y: auto;
+    scrollbar-gutter: stable;
+}
+
+.update-project-modal-user {
+    min-width: 0;
+    min-height: 64px;
+    padding: 10px 12px;
+    display: grid;
+    grid-template-columns: 20px 38px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 11px;
+    border: 1px solid #dce4ef;
+    border-radius: 9px;
+    background: #fff;
+    cursor: pointer;
+    transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.update-project-modal-user:hover {
+    border-color: #b9c9e2;
+    background: #f8faff;
+}
+
+.update-project-modal-user.selected {
+    border-color: #8eabff;
+    background: #eef3ff;
+}
+
+.update-project-modal-user-check.form-check {
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+}
+
+.update-project-modal-user-check .form-check-input {
+    float: none;
+    width: 18px;
+    height: 18px;
+    margin: 0;
+    border-color: #aebbd0;
+    cursor: pointer;
+    box-shadow: none;
+}
+
+.update-project-modal-user-check .form-check-input:checked {
+    border-color: #2450f5;
+    background-color: #2450f5;
+}
+
+.update-project-modal-user-avatar {
+    width: 38px;
+    height: 38px;
+}
+
+.update-project-modal-user-info,
+.update-project-modal-user-meta {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.update-project-modal-user-info strong {
+    overflow: hidden;
+    color: #243452;
+    font-size: 13px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.update-project-modal-user-info small {
+    overflow: hidden;
+    color: #65728c;
+    font-size: 11px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.update-project-modal-user-meta {
+    align-items: flex-end;
+}
+
+.update-project-modal-user-meta small {
+    max-width: 170px;
+    padding: 3px 7px;
+    overflow: hidden;
+    border-radius: 5px;
+    background: #f1f5fb;
+    color: #52617f;
+    font-size: 10px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.update-project-modal-empty {
+    min-height: 150px;
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px dashed #cbd5e1;
+    border-radius: 9px;
+    background: #fff;
+    color: #65728c;
+    font-size: 13px;
+    text-align: center;
+}
+
+.update-project-member-modal .modal-footer {
+    padding: 14px 22px;
+    border-top: 1px solid #e5eaf2;
+    background: #fff;
+}
+
+.update-project-modal-cancel-button.btn,
+.update-project-modal-add-button.btn {
+    min-height: 40px;
+    padding: 0 16px;
+    border-radius: 7px;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.update-project-modal-cancel-button.btn {
+    border: 1px solid #d5deeb;
+    background: #fff;
+    color: #243452;
+}
+
+.update-project-modal-add-button.btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    border-color: #2450f5;
+    background: #2450f5;
+    color: #fff;
+}
+
+.update-project-modal-add-button.btn:hover,
+.update-project-modal-add-button.btn:focus {
+    border-color: #1f45d7;
+    background: #1f45d7;
+}
+
+.update-project-modal-add-button.btn:disabled {
+    border-color: #9db4d8;
+    background: #9db4d8;
 }
 
 .update-project-state-text {
@@ -265,8 +479,17 @@
 }
 
 @media (max-width: 900px) {
-    .update-project-employee-grid {
-        grid-template-columns: 1fr;
+    .update-project-member-row {
+        grid-template-columns: 40px minmax(0, 1fr) auto;
+    }
+
+    .update-project-member-permission {
+        grid-column: 2 / 3;
+    }
+
+    .update-project-remove-member-button.btn-link {
+        grid-column: 3;
+        grid-row: 1 / 3;
     }
 }
 
@@ -285,5 +508,40 @@
 
     .update-project-add-button.btn {
         width: 100%;
+    }
+
+    .update-project-member-header-actions {
+        width: 100%;
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .update-project-member-row {
+        grid-template-columns: 40px minmax(0, 1fr);
+    }
+
+    .update-project-member-permission,
+    .update-project-remove-member-button.btn-link {
+        grid-column: 1 / -1;
+    }
+
+    .update-project-remove-member-button.btn-link {
+        grid-row: auto;
+        justify-content: flex-start;
+    }
+
+    .update-project-modal-filter-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .update-project-modal-user {
+        grid-template-columns: 20px 38px minmax(0, 1fr);
+    }
+
+    .update-project-modal-user-meta {
+        grid-column: 3;
+        align-items: flex-start;
+        flex-direction: row;
+        flex-wrap: wrap;
     }
 }

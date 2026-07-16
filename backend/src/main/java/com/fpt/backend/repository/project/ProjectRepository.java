@@ -1,6 +1,5 @@
 package com.fpt.backend.repository.project;
 
-import com.fpt.backend.dto.response.project.ProjectEmployeeResponse;
 import com.fpt.backend.entity.Projects;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -48,17 +47,4 @@ public interface ProjectRepository extends JpaRepository<Projects, Integer> {
             """)
     List<String> findDistinctProjectStatuses();
 
-    @Query("""
-            SELECT new com.fpt.backend.dto.response.project.ProjectEmployeeResponse(
-                u.id,
-                u.email,
-                u.firstName,
-                u.lastName,
-                u.role,
-                u.status
-            )
-            FROM Users u
-            ORDER BY u.firstName, u.lastName, u.email
-            """)
-    List<ProjectEmployeeResponse> findEmployeesForProjectSelection();
 }
