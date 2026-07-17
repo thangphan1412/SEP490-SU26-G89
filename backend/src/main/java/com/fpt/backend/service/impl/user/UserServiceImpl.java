@@ -98,7 +98,6 @@ public class UserServiceImpl implements IUserService {
 
         Users newUser = Users.builder()
                 .email(request.getEmail())
-                // ĐÃ SỬA: Sử dụng passwordEncoder.encode() để mã hóa mật khẩu
                 .password(passwordEncoder.encode(request.getPassword()))
                 .firstName(request.getFirstName())
                 .lastName(request.getLastName())
@@ -108,6 +107,23 @@ public class UserServiceImpl implements IUserService {
                 .build();
 
         Users savedUser = userRepository.save(newUser);
+
+        // THÊM DÒNG NÀY ĐỂ DEBUG:
+        System.out.println("====== Gửi mail không? " + request.getSendWelcomeEmail());
+
+        // GỬI MAIL CHÀO MỪNG (Khi tạo mới)
+        if (Boolean.TRUE.equals(request.getSendWelcomeEmail())) {
+            MessageInfor messageInfor = new MessageInfor();
+            messageInfor.setEmail(savedUser.getEmail());
+            messageInfor.setTitle("Welcome to E-CONTRACT System");
+            messageInfor.setText("Hello " + savedUser.getFirstName() + ",\n\n" +
+                    "Your account has been successfully created.\n" +
+                    "Email: " + savedUser.getEmail() + "\n" +
+                    "Password: " + request.getPassword() + "\n\n" +
+                    "Please log in and change your password as soon as possible.");
+            emailService.sendEmail(messageInfor);
+        }
+
         return UserResponseDTO.fromEntity(savedUser);
     }
 
@@ -123,20 +139,51 @@ public class UserServiceImpl implements IUserService {
         existingUser.setRole(request.getRole());
         existingUser.setStatus(request.getStatus());
 
-        // Cân nhắc logic nếu cho phép đổi email, phải check trùng email
+        boolean isEmailChanged = false;
+        // Kiểm tra logic nếu user đổi email
         if (!existingUser.getEmail().equals(request.getEmail())) {
             if (userRepository.existsByEmail(request.getEmail())) {
                 throw new RuntimeException("Email is already in use by another account!");
             }
             existingUser.setEmail(request.getEmail());
+            isEmailChanged = true;
         }
 
-        // ĐÃ SỬA: Cập nhật và mã hóa password nếu có truyền lên
+        boolean isPasswordChanged = false;
+        // Cập nhật và mã hóa password nếu có truyền lên
         if (request.getPassword() != null && !request.getPassword().isEmpty()) {
             existingUser.setPassword(passwordEncoder.encode(request.getPassword()));
+            isPasswordChanged = true;
         }
 
         Users updatedUser = userRepository.save(existingUser);
+
+        // THÊM DÒNG NÀY ĐỂ CHECK XEM BACKEND NHẬN ĐƯỢC GÌ:
+        System.out.println("====== UPDATE USER - Có gửi mail không? " + request.getSendWelcomeEmail());
+
+        // GỬI MAIL THÔNG BÁO UPDATE
+        if (Boolean.TRUE.equals(request.getSendWelcomeEmail())) {
+            MessageInfor messageInfor = new MessageInfor();
+            messageInfor.setEmail(updatedUser.getEmail()); // Sẽ gửi vào mail mới nhất
+            messageInfor.setTitle("Your E-CONTRACT Account Has Been Updated");
+
+            StringBuilder emailBody = new StringBuilder("Hello " + updatedUser.getFirstName() + ",\n\nYour account information has been updated by the Administrator.\n");
+            if (isEmailChanged) {
+                emailBody.append("- Your registered email has been changed to: ").append(updatedUser.getEmail()).append("\n");
+            }
+            if (isPasswordChanged) {
+                // Lấy mật khẩu gốc từ request.getPassword() thay vì updatedUser.getPassword()
+                emailBody.append("- Your password has been reset. Your new password is: ")
+                        .append(request.getPassword())
+                        .append("\n");
+                emailBody.append("  (Please log in and change this password immediately for security reasons).\n");
+            }
+            emailBody.append("\nIf you did not request this change, please contact support immediately.");
+
+            messageInfor.setText(emailBody.toString());
+            emailService.sendEmail(messageInfor);
+        }
+
         return UserResponseDTO.fromEntity(updatedUser);
     }
 
@@ -170,6 +217,8 @@ public class UserServiceImpl implements IUserService {
         Users updatedUser = userRepository.save(existingUser);
         return UserProfileResponseDTO.fromEntity(updatedUser);
     }
+
+
     public void forgotPassword(String email) {
 
         Users users = userRepository.findByEmail(email)
