@@ -1,7 +1,5 @@
-import { Route, Routes } from "react-router-dom";
+import {Navigate, Route, Routes} from "react-router-dom";
 import LoginPage from "./pages/Authentication/LoginPage.jsx";
-// import RegisterPage from "./pages/Authentication/RegisterPage.jsx";
-// import FogotPassword from "./pages/Authentication/FogotPassword.jsx";
 import Homepage from "./pages/homePage/HomePage.jsx";
 import ViewProfile from "./pages/CompanyProfileManagement/ViewProfile.jsx";
 import UpdateProfile from "./pages/CompanyProfileManagement/UpdateProfile.jsx";
@@ -27,13 +25,26 @@ import ContractTypes from "./pages/contractType/ContractTypes.jsx";
 import CreateContractType from "./pages/contractType/CreateContractType.jsx";
 import ViewContractType from "./pages/contractType/ViewContractType.jsx";
 import UpdateContractType from "./pages/contractType/UpdateContractType.jsx";
+import ProtectedRoute from "./components/common/ProtectedRouter.jsx";
+import HeaderForm from "./components/layout/HeaderForm.jsx";
 
 function AppRouter() {
     return (
         <Routes>
+            <Route path="/"
+                   element={<Navigate to="/login" replace />}
+            />
             <Route
                 path="/login"
                 element={<LoginPage />}
+            />
+            <Route
+                path="/home_page"
+                element={
+                    <ProtectedRoute>
+                        <Homepage/>
+                    </ProtectedRoute>
+                }
             />
             {/* <Route
                 path="/register"
@@ -43,10 +54,10 @@ function AppRouter() {
                 path="/forgot_password"
                 element={<FogotPassword />}
             />*/}
-            <Route
-                path="/home_page"
-                element={<Homepage />}
-            />
+            {/*<Route*/}
+            {/*    path="/home_page"*/}
+            {/*    element={<Homepage />}*/}
+            {/*/>*/}
             <Route
                 path="/company-profile/view"
                 element={<ViewProfile />}

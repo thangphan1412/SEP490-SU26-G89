@@ -1,14 +1,20 @@
 package com.fpt.backend.service.impl.user;
 
 import com.fpt.backend.dto.request.authentication.RegisterRequest;
+import com.fpt.backend.dto.request.authentication.ResetPasswordRequest;
 import com.fpt.backend.dto.request.user.UserRequestDTO;
 import com.fpt.backend.dto.request.userProfile.UserProfileRequestDTO;
 import com.fpt.backend.dto.response.authentication.RegisterResponse;
 import com.fpt.backend.dto.response.user.UserResponseDTO;
 import com.fpt.backend.dto.response.userProfile.UserProfileResponseDTO;
 import com.fpt.backend.entity.Users;
+import com.fpt.backend.mail.EmailService;
+import com.fpt.backend.mail.MessageInfor;
 import com.fpt.backend.repository.user.UserRepository;
 import com.fpt.backend.service.interfaces.user.IUserService;
+import com.fpt.backend.util.OTPGenerator;
+import com.fpt.backend.util.ValidateEmail;
+import org.apache.catalina.User;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -22,7 +28,13 @@ public class UserServiceImpl implements IUserService {
     private UserRepository userRepository;
     @Autowired
     private PasswordEncoder passwordEncoder;
-
+    private static final String EMAIL_REGEX = "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$";
+    @Autowired
+    private OTPGenerator otpGenerator;
+    @Autowired
+    private RedisOtpService redisOtpService;
+    @Autowired
+    private EmailService emailService;
     @Override
     public Boolean existsByEmail(String email) {
         return userRepository.existsByEmail(email);
@@ -35,8 +47,21 @@ public class UserServiceImpl implements IUserService {
 
     @Override
     public RegisterResponse create(RegisterRequest registerRequest) {
+        ValidateEmail validateEmail = new ValidateEmail();
+        String regexPattern = "^(.+)@(\\S+)$";
         List<Users> users = userRepository.findAll();
-        
+//        if(users.isEmpty() || users.get(0).getEmail() == null || users.get(0).getPassword() == null || users.get(0).getPassword().isEmpty()){
+//            throw new RuntimeException("Email or password is empty");
+//        }
+        if(userRepository.existsByEmail(registerRequest.getEmail())){
+            throw new RuntimeException("Email already exists");
+        }
+        if(!ValidateEmail.validateEmail(registerRequest.getEmail(), regexPattern)){
+            throw new RuntimeException("Invalid format email: abc@domain.com");
+        }
+        if(registerRequest.getPassword().length() < 8){
+            throw new RuntimeException("Password too short, have to be at least 8 characters");
+        }
         Users user = new Users();
         user.setFirstName(registerRequest.getFirstName());
         user.setLastName(registerRequest.getLastName());
@@ -144,5 +169,45 @@ public class UserServiceImpl implements IUserService {
 
         Users updatedUser = userRepository.save(existingUser);
         return UserProfileResponseDTO.fromEntity(updatedUser);
+    }
+    public void forgotPassword(String email) {
+
+        Users users = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found with email: " + email));
+        String otp = otpGenerator.generateOTP();
+        redisOtpService.saveOTP(email, otp);
+        MessageInfor messageInfor = new MessageInfor();
+        messageInfor.setEmail(email);
+        messageInfor.setTitle("OTP Reset Password");
+        messageInfor.setText("OTP:"+otp+"\n\n this code will expire in 5 minutes.");
+        emailService.sendEmail(messageInfor);
+    }
+
+    public void  resetPassword(ResetPasswordRequest resetPasswordRequest) {
+
+
+        String otp = redisOtpService.getOTP(resetPasswordRequest.getEmail());
+        if(otp == null || otp.isEmpty()){
+            throw new RuntimeException("OTP is empty");
+        }
+        if(!otp.equals(resetPasswordRequest.getOtp())){
+            throw new RuntimeException("Invalid OTP");
+        }
+        Users users = userRepository.findByEmail(resetPasswordRequest.getEmail())
+                .orElseThrow(() -> new RuntimeException("User not found with email: " + resetPasswordRequest.getEmail()));
+        if(resetPasswordRequest.getEmail() == null || resetPasswordRequest.getEmail().isEmpty()){
+            throw new RuntimeException("Email is empty");
+        }  if(resetPasswordRequest.getNewPassword() == null || resetPasswordRequest.getNewPassword().isEmpty()){
+            throw new RuntimeException("New password is empty");
+        }
+        if(resetPasswordRequest.getNewPasswordConfirm() == null || resetPasswordRequest.getNewPasswordConfirm().isEmpty()){
+            throw new RuntimeException("New password confirm is empty");
+        }
+        if(!resetPasswordRequest.getNewPassword().equals(resetPasswordRequest.getNewPasswordConfirm())){
+            throw new RuntimeException("New passwords do not match");
+        }
+        users.setPassword(passwordEncoder.encode(resetPasswordRequest.getNewPassword()));
+        userRepository.save(users);
+        redisOtpService.deleteOTP(resetPasswordRequest.getEmail());
     }
 }

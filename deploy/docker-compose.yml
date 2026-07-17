@@ -1,4 +1,11 @@
 services:
+  redis:
+    image: redis:7.2-alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+    networks:
+        - app-network
   sqlserver:
     image: mcr.microsoft.com/mssql/server:2022-latest
     container_name: sqlserver_db
@@ -56,9 +63,13 @@ services:
     volumes:
       - ./frontend:/app
       - /app/node_modules
+
+
+
 volumes:
   sqlserver_data:
 
 networks:
   app-network:
     driver: bridge
+
