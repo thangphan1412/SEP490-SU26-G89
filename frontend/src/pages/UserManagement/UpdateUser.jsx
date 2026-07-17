@@ -41,7 +41,7 @@ function UpdateUser({ onUpdateUser }) {
         startDate: "2023-06-15",
         position: "Senior Legal Counsel",
         accessScope: "Department Level Access",
-        deactivateAccount: false,
+        sendUpdateEmail: true,
     });
 
     const [isLoadingData, setIsLoadingData] = useState(true); // State chờ tải dữ liệu cũ
@@ -96,10 +96,15 @@ function UpdateUser({ onUpdateUser }) {
                 firstName: user.firstName,
                 lastName: user.lastName,
                 email: user.email,
-                numberPhone: user.phoneNumber, // Map sang tên biến của BE
+                numberPhone: user.phoneNumber,
                 role: user.role,
-                status: user.status
+                status: user.status,
+                // Map sang đúng tên biến mà DTO backend đang đợi
+                sendWelcomeEmail: user.sendUpdateEmail
             };
+
+            // IN THỬ RA XEM TRƯỚC KHI GỌI API:
+            console.log("Payload Update chuẩn bị gửi đi:", payload);
 
             // Gọi API Update
             await updateUser(id, payload);
@@ -120,19 +125,19 @@ function UpdateUser({ onUpdateUser }) {
     return (
         <div className="bg-light min-vh-screen">
             {/* --- HEADER ĐỒNG BỘ --- */}
-            <header className="d-flex justify-content-between align-items-center px-4 py-3 bg-white border-bottom mb-4">
-                <div className="d-flex align-items-center gap-2">
-                    <span className="fs-4">🛡️</span>
-                    <div className="d-flex flex-column lh-sm">
-                        <strong className="text-dark">E-CONTRACT</strong>
-                        <small className="text-muted" style={{ fontSize: "12px" }}>Management System</small>
-                    </div>
-                </div>
-                <NavDropdown title={<span className="text-dark fw-semibold"><IconWorld size={20} className="me-1"/>English</span>} id="lang-dropdown">
-                    <NavDropdown.Item>English</NavDropdown.Item>
-                    <NavDropdown.Item>Vietnamese</NavDropdown.Item>
-                </NavDropdown>
-            </header>
+            {/*<header className="d-flex justify-content-between align-items-center px-4 py-3 bg-white border-bottom mb-4">*/}
+            {/*    <div className="d-flex align-items-center gap-2">*/}
+            {/*        <span className="fs-4">🛡️</span>*/}
+            {/*        <div className="d-flex flex-column lh-sm">*/}
+            {/*            <strong className="text-dark">E-CONTRACT</strong>*/}
+            {/*            <small className="text-muted" style={{ fontSize: "12px" }}>Management System</small>*/}
+            {/*        </div>*/}
+            {/*    </div>*/}
+            {/*    <NavDropdown title={<span className="text-dark fw-semibold"><IconWorld size={20} className="me-1"/>English</span>} id="lang-dropdown">*/}
+            {/*        <NavDropdown.Item>English</NavDropdown.Item>*/}
+            {/*        <NavDropdown.Item>Vietnamese</NavDropdown.Item>*/}
+            {/*    </NavDropdown>*/}
+            {/*</header>*/}
 
             {/* --- MAIN CONTENT --- */}
             <Container fluid="lg" className="mb-5">
@@ -338,21 +343,21 @@ function UpdateUser({ onUpdateUser }) {
                                     </Col>
                                 </Row>
 
-                                {/* --- DEACTIVATE ACCOUNT TOGGLE --- */}
+                                {/* --- SEND NOTIFICATION EMAIL TOGGLE --- */}
                                 <Stack direction="horizontal" gap={3} className="mt-4 pt-4 border-top align-items-center">
                                     <Form.Check
                                         type="switch"
-                                        id="deactivateAccount"
-                                        name="deactivateAccount"
-                                        checked={user.deactivateAccount}
+                                        id="sendUpdateEmail"
+                                        name="sendUpdateEmail"
+                                        checked={user.sendUpdateEmail}
                                         onChange={handleChange}
                                         disabled={isSubmitting}
                                         style={{ transform: "scale(1.3)" }}
                                     />
                                     <div>
-                                        <h3 className="h6 fw-bold mb-1 text-dark">Deactivate Account</h3>
+                                        <h3 className="h6 fw-bold mb-1 text-dark">Send Notification Email</h3>
                                         <p className="small text-muted mb-0">
-                                            Revoke this user's access to the system. This action can be reversed later if needed.
+                                            Send an email to the user notifying them of these account changes.
                                         </p>
                                     </div>
                                 </Stack>
