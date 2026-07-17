@@ -1,5 +1,23 @@
+import { useLayoutEffect } from "react";
 import { Alert, Badge, Button, Card, Container, Stack } from "react-bootstrap";
 import "../../assets/styles/css/projectStyles/ProjectComponents.css";
+
+function useHideMainHeader() {
+    useLayoutEffect(() => {
+        const header = document.querySelector(".header-container-fluid");
+
+        if (!header) {
+            return undefined;
+        }
+
+        const wasHidden = header.hidden;
+        header.hidden = true;
+
+        return () => {
+            header.hidden = wasHidden;
+        };
+    }, []);
+}
 
 export function Icon({ name, size = 22, color = "#1f4fff" }) {
     const props = {
@@ -69,6 +87,8 @@ export function StatusBadge({ status }) {
 }
 
 export function PagePanel({ title, description, action, children }) {
+    useHideMainHeader();
+
     return (
         <Container fluid as="main" className="project-management-page">
             <Card as="section" className="project-management-panel">

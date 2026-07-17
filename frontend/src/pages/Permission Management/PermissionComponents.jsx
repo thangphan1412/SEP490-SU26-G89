@@ -1,8 +1,28 @@
+import { useLayoutEffect } from "react";
 import { Badge, Card, Container, Form } from "react-bootstrap";
 import { IconShieldCheck } from "@tabler/icons-react";
 import "../../assets/styles/css/permissionStyles/PermissionComponents.css";
 
+function useHideMainHeader() {
+  useLayoutEffect(() => {
+    const header = document.querySelector(".header-container-fluid");
+
+    if (!header) {
+      return undefined;
+    }
+
+    const wasHidden = header.hidden;
+    header.hidden = true;
+
+    return () => {
+      header.hidden = wasHidden;
+    };
+  }, []);
+}
+
 export function PermissionPage({ title, description, action, children }) {
+  useHideMainHeader();
+
   return (
     <Container fluid as="main" className="permission-page">
       <Card as="section" className="permission-panel">

@@ -108,10 +108,45 @@ function UpdateProject({ onUpdateProject }) {
 
     const handleProjectChange = (event) => {
         const { name, value } = event.target;
-        setProject((currentProject) => ({ ...currentProject, [name]: value }));
+        setProject((currentProject) => {
+            let phases = currentProject.phases;
+
+            if (name === "projectStartDate" && phases.length > 0) {
+                phases = recalculatePhaseStarts(phases, value);
+            }
+
+            if (name === "projectEndDate" && phases.length > 0) {
+                phases = phases.map((phase, index) =>
+                    index === phases.length - 1 ? { ...phase, endDate: value } : phase
+                );
+            }
+
+            return { ...currentProject, [name]: value, phases };
+        });
     };
 
     const addPhase = () => {
+        if (!project.projectStartDate || !project.projectEndDate) {
+            setSubmitError("Select the project start date and end date before adding phases.");
+            return;
+        }
+
+        if (project.projectEndDate < project.projectStartDate) {
+            setSubmitError("Project end date must not be before its start date.");
+            return;
+        }
+
+        const lastPhase = project.phases[project.phases.length - 1];
+        const nextStartDate = lastPhase
+            ? addOneDay(lastPhase.endDate)
+            : project.projectStartDate;
+
+        if (!nextStartDate || nextStartDate > project.projectEndDate) {
+            setSubmitError("Shorten the current final phase before adding another phase.");
+            return;
+        }
+
+        setSubmitError("");
         setProject((currentProject) => ({
             ...currentProject,
             phases: [
@@ -121,7 +156,7 @@ function UpdateProject({ onUpdateProject }) {
                     clientId: createClientId(),
                     title: "",
                     description: "",
-                    startDate: currentProject.projectStartDate,
+                    startDate: nextStartDate,
                     endDate: currentProject.projectEndDate,
                     status: "Planning",
                     progress: 0,
@@ -133,21 +168,36 @@ function UpdateProject({ onUpdateProject }) {
     const updatePhase = (clientId, event) => {
         const { name, value } = event.target;
 
-        setProject((currentProject) => ({
-            ...currentProject,
-            phases: currentProject.phases.map((phase) =>
+        setProject((currentProject) => {
+            let phases = currentProject.phases.map((phase) =>
                 phase.clientId === clientId
                     ? { ...phase, [name]: name === "progress" ? Number(value) : value }
                     : phase
-            ),
-        }));
+            );
+
+            if (name === "endDate") {
+                phases = recalculatePhaseStarts(phases, currentProject.projectStartDate);
+            }
+
+            return { ...currentProject, phases };
+        });
     };
 
     const removePhase = (clientId) => {
-        setProject((currentProject) => ({
-            ...currentProject,
-            phases: currentProject.phases.filter((phase) => phase.clientId !== clientId),
-        }));
+        setProject((currentProject) => {
+            let phases = currentProject.phases.filter((phase) => phase.clientId !== clientId);
+
+            if (phases.length > 0) {
+                phases = phases.map((phase, index) =>
+                    index === phases.length - 1
+                        ? { ...phase, endDate: currentProject.projectEndDate }
+                        : phase
+                );
+                phases = recalculatePhaseStarts(phases, currentProject.projectStartDate);
+            }
+
+            return { ...currentProject, phases };
+        });
     };
 
     const openMemberModal = () => {
@@ -367,7 +417,7 @@ function UpdateProject({ onUpdateProject }) {
                         <div className="update-project-section-header">
                             <div>
                                 <Card.Title as="h2" className="project-management-card-title">Project Phases</Card.Title>
-                                <p className="update-project-section-note">Phase dates must stay inside the project date range.</p>
+                                <p className="update-project-section-note">Phases must cover the full project timeline without gaps or overlapping dates.</p>
                             </div>
                             <Button type="button" variant="light" className="update-project-add-button" onClick={addPhase}>
                                 <Icon name="plus" size={18} /> Add Phase
@@ -391,7 +441,8 @@ function UpdateProject({ onUpdateProject }) {
                                             </Col>
                                             <Col md={3}>
                                                 <Form.Label className="project-management-field-label">Start Date</Form.Label>
-                                                <Form.Control required type="date" name="startDate" min={project.projectStartDate} max={project.projectEndDate} value={phase.startDate} onChange={(event) => updatePhase(phase.clientId, event)} className="project-management-input" />
+                                                <Form.Control readOnly required type="date" name="startDate" value={phase.startDate} className="project-management-input update-project-phase-start-input" />
+                                                <Form.Text className="update-project-phase-date-note">Calculated from the project or previous phase.</Form.Text>
                                             </Col>
                                             <Col md={3}>
                                                 <Form.Label className="project-management-field-label">End Date</Form.Label>
@@ -647,21 +698,77 @@ function mergeEmployees(employeeData, projectUsers) {
 }
 
 function validateProject(project) {
+    if (!project.projectStartDate || !project.projectEndDate) {
+        return "Project start date and end date are required.";
+    }
+
     if (project.projectEndDate < project.projectStartDate) {
         return "Project end date must not be before its start date.";
     }
 
-    for (const phase of project.phases) {
+    if (project.phases.length === 0) {
+        return "Add at least one phase to cover the full project timeline.";
+    }
+
+    let expectedStartDate = project.projectStartDate;
+
+    for (let index = 0; index < project.phases.length; index += 1) {
+        const phase = project.phases[index];
+        const phaseNumber = index + 1;
+
+        if (!phase.startDate || !phase.endDate) {
+            return "Phase " + phaseNumber + " requires both a start date and an end date.";
+        }
+
         if (phase.endDate < phase.startDate) {
-            return "Each phase end date must not be before its start date.";
+            return "Phase " + phaseNumber + " end date must not be before its start date.";
         }
 
         if (phase.startDate < project.projectStartDate || phase.endDate > project.projectEndDate) {
-            return "Every phase must stay inside the project date range.";
+            return "Phase " + phaseNumber + " must stay inside the project date range.";
         }
+
+        if (phase.startDate !== expectedStartDate) {
+            if (phase.startDate < expectedStartDate) {
+                return "Phase " + phaseNumber + " overlaps the previous phase. It must start on " + expectedStartDate + ".";
+            }
+
+            return "There is a gap before Phase " + phaseNumber + ". It must start on " + expectedStartDate + ".";
+        }
+
+        expectedStartDate = addOneDay(phase.endDate);
+    }
+
+    const finalPhase = project.phases[project.phases.length - 1];
+    if (finalPhase.endDate !== project.projectEndDate) {
+        return "The final phase must end on the project end date " + project.projectEndDate + ".";
     }
 
     return "";
+}
+
+function recalculatePhaseStarts(phases, projectStartDate) {
+    let expectedStartDate = projectStartDate;
+
+    return phases.map((phase) => {
+        const updatedPhase = { ...phase, startDate: expectedStartDate };
+        expectedStartDate = phase.endDate ? addOneDay(phase.endDate) : "";
+        return updatedPhase;
+    });
+}
+
+function addOneDay(dateValue) {
+    if (!dateValue) {
+        return "";
+    }
+
+    const date = new Date(dateValue + "T00:00:00Z");
+    if (Number.isNaN(date.getTime())) {
+        return "";
+    }
+
+    date.setUTCDate(date.getUTCDate() + 1);
+    return date.toISOString().slice(0, 10);
 }
 
 function createClientId() {

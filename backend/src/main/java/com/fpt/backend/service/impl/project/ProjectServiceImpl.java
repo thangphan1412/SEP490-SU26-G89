@@ -131,7 +131,7 @@ public class ProjectServiceImpl implements ProjectService {
         ));
 
         Projects savedProject = projectRepository.save(project);
-        syncPhases(savedProject, request.phases(), false);
+        syncPhases(savedProject, request.phases());
         syncMembers(savedProject, request.members(), false);
         entityManager.flush();
 
@@ -158,7 +158,7 @@ public class ProjectServiceImpl implements ProjectService {
         );
         projectRepository.save(project);
 
-        syncPhases(project, request.phases(), true);
+        syncPhases(project, request.phases());
         syncMembers(project, request.members(), true);
         entityManager.flush();
 
@@ -356,13 +356,9 @@ public class ProjectServiceImpl implements ProjectService {
 
     private void syncPhases(
             Projects project,
-            List<ProjectPhaseRequest> phaseRequests,
-            boolean keepExistingWhenMissing) {
-        if (phaseRequests == null && keepExistingWhenMissing) {
-            return;
-        }
-
+            List<ProjectPhaseRequest> phaseRequests) {
         List<ProjectPhaseRequest> requests = phaseRequests == null ? List.of() : phaseRequests;
+        validatePhaseSchedule(project, requests);
         Map<Integer, Timeline> existingPhases = new LinkedHashMap<>();
 
         for (Timeline phase : findProjectPhases(project.getId())) {
@@ -400,6 +396,86 @@ public class ProjectServiceImpl implements ProjectService {
 
         for (Timeline removedPhase : existingPhases.values()) {
             removePhase(removedPhase);
+        }
+    }
+
+    private void validatePhaseSchedule(
+            Projects project,
+            List<ProjectPhaseRequest> requests) {
+        if (requests.isEmpty()) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "At least one phase is required to cover the full project timeline"
+            );
+        }
+
+        LocalDate expectedStartDate = project.getProjectStartDate();
+
+        for (int index = 0; index < requests.size(); index++) {
+            ProjectPhaseRequest request = requests.get(index);
+            int phaseNumber = index + 1;
+
+            if (request == null) {
+                throw new ResponseStatusException(
+                        HttpStatus.BAD_REQUEST,
+                        "Phase " + phaseNumber + " information is required"
+                );
+            }
+
+            LocalDate startDate = request.startDate();
+            LocalDate endDate = request.endDate();
+
+            if (startDate == null || endDate == null) {
+                throw new ResponseStatusException(
+                        HttpStatus.BAD_REQUEST,
+                        "Phase " + phaseNumber + " start date and end date are required"
+                );
+            }
+
+            if (endDate.isBefore(startDate)) {
+                throw new ResponseStatusException(
+                        HttpStatus.BAD_REQUEST,
+                        "Phase " + phaseNumber + " end date must not be before its start date"
+                );
+            }
+
+            if (startDate.isBefore(project.getProjectStartDate())
+                    || endDate.isAfter(project.getProjectEndDate())) {
+                throw new ResponseStatusException(
+                        HttpStatus.BAD_REQUEST,
+                        "Phase " + phaseNumber + " must stay inside the project date range"
+                );
+            }
+
+            if (!startDate.equals(expectedStartDate)) {
+                if (index == 0) {
+                    throw new ResponseStatusException(
+                            HttpStatus.BAD_REQUEST,
+                            "Phase 1 must start on the project start date "
+                                    + project.getProjectStartDate()
+                    );
+                }
+
+                String problem = startDate.isBefore(expectedStartDate)
+                        ? " overlaps the previous phase"
+                        : " leaves a gap after the previous phase";
+                throw new ResponseStatusException(
+                        HttpStatus.BAD_REQUEST,
+                        "Phase " + phaseNumber + problem
+                                + " and must start on " + expectedStartDate
+                );
+            }
+
+            expectedStartDate = endDate.plusDays(1);
+        }
+
+        ProjectPhaseRequest finalPhase = requests.get(requests.size() - 1);
+        if (!finalPhase.endDate().equals(project.getProjectEndDate())) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "The final phase must end on the project end date "
+                            + project.getProjectEndDate()
+            );
         }
     }
 
