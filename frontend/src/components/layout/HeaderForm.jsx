@@ -1,4 +1,3 @@
-import Container from 'react-bootstrap/Container';
 import Nav from 'react-bootstrap/Nav';
 import Navbar from 'react-bootstrap/Navbar';
 import NavDropdown from 'react-bootstrap/NavDropdown';
@@ -14,17 +13,9 @@ import {    IconContract,
             IconSettings,
             IconUserCircle
         } from '@tabler/icons-react';
-import {useEffect, useState} from "react";
-
 function HeaderForm(){
-    const [fullName, setFullName] = useState("");
-    const [role, setRole] = useState("");
-    useEffect(() => {
-        const storedFullName = localStorage.getItem("fullName");
-        const storedRole = localStorage.getItem("role");
-        if(storedFullName) setFullName(storedFullName);
-        if(storedRole) setRole(storedRole)
-    }, []);
+    const fullName = localStorage.getItem("fullName") || "Alex Morgan";
+    const role = localStorage.getItem("role") || "Contract Manager";
     return(
      
         <div className="header-container-fluid">
@@ -45,7 +36,7 @@ function HeaderForm(){
                         <Nav.Link href="#" className="nav-item"><IconContract stroke={2}/>Contract Management</Nav.Link>
                         <Nav.Link href="#" className="nav-item"><IconCreditCard stroke={2} />Subscription Management</Nav.Link>
                         <Nav.Link href="#" className="nav-item"><IconShieldCheck stroke={2} />Permission Management</Nav.Link>
-                        <Nav.Link href="#" className="nav-item"><IconBuildingSkyscraper stroke={2} />Department Management</Nav.Link>
+                        <Nav.Link href="/department-management/list" className="nav-item"><IconBuildingSkyscraper stroke={2} />Department Management</Nav.Link>
                         <Nav.Link href="#" className="nav-item"><IconUserPlus stroke={2} />Employee Management</Nav.Link>
                         <Nav.Link href="#" className="nav-item"><IconReportAnalytics stroke={2} />Reports</Nav.Link>
                         <Nav.Link href="#" className="nav-item"><IconSettings stroke={2} />Settings</Nav.Link>
