@@ -27,6 +27,7 @@ import ViewContractType from "./pages/contractType/ViewContractType.jsx";
 import UpdateContractType from "./pages/contractType/UpdateContractType.jsx";
 import ProtectedRoute from "./components/common/ProtectedRouter.jsx";
 import HeaderForm from "./components/layout/HeaderForm.jsx";
+import MainLayout from "./components/layout/MainLayout.jsx";
 
 function AppRouter() {
     return (
@@ -38,122 +39,121 @@ function AppRouter() {
                 path="/login"
                 element={<LoginPage />}
             />
-            <Route
-                path="/home_page"
-                element={
-                    <ProtectedRoute>
-                        <Homepage/>
-                    </ProtectedRoute>
-                }
-            />
-            {/* <Route
+            <Route element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
+                <Route
+                    path="/home_page"
+                    element={<Homepage/>}
+                />
+                {/* <Route
                 path="/register"
                 element={<RegisterPage/>}
             /> */}
-            {/* <Route
+                {/* <Route
                 path="/forgot_password"
                 element={<FogotPassword />}
             />*/}
-            {/*<Route*/}
-            {/*    path="/home_page"*/}
-            {/*    element={<Homepage />}*/}
-            {/*/>*/}
-            <Route
-                path="/company-profile/view"
-                element={<ViewProfile />}
-            />
-            <Route
-                path="/company-profile/update"
-                element={<UpdateProfile />}
-            />
-            <Route
-                path="/user-profile/view"
-                element={<UserViewProfile />}
-            />
-            <Route
-                path="/user-profile/update"
-                element={<UserUpdateProfile />}
-            />
-            <Route
-                path="/user-management/list"
-                element={<ListUser />}
-            />
-            <Route
-                path="/user-management/create"
-                element={<CreateUser />}
-            />
-            <Route
-                path="/user-management/view/:id"
-                element={<ViewUser />}
-            />
-            <Route
-                path="/user-management/update/:id"
-                element={<UpdateUser />}
-            />
-            <Route
-                path="/project-management/list"
-                element={<ListProject />}
-            />
-            <Route
-                path="/project-management/create"
-                element={<CreateProject />}
-            />
-            <Route
-                path="/project-management/view"
-                element={<ViewProject />}
-            />
-            <Route
-                path="/project-management/update"
-                element={<UpdateProject />}
-            />
-            <Route
-                path="/contract-management/list"
-                element={<ListContract />}
-            />
-            <Route
-                path="/contract-management/create"
-                element={<CreateContract />}
-            />
-            <Route
-                path="/contract-management/view/:id"
-                element={<ViewContract />}
-            />
-            <Route
-                path="/contract-management/update/:id"
-                element={<UpdateContract />}
-            />
-            <Route
-                path="/permission/create"
-                element={<PermissionCreatePage />}
-            />
-            <Route
-                path="/permission/list"
-                element={<ListPermissionPage />}
-            />
-            <Route
-                path="/permission/view"
-                element={<ViewPermissionPage />}
-            />
-            <Route
-                path="/permission/update"
-                element={<UpdatePermissionPage />}
-            />
-            <Route
-                path="/contract-types"
-                element={<ContractTypes />}
-            />
-            <Route
-                path="/contract-types/new"
-                element={<CreateContractType />}
-            />
-            <Route
-                path="/contract-types/detail"
-                element={<ViewContractType />}
-            />
-            <Route
-                path="/contract-types/update"
-                element={<UpdateContractType />}
-            />
+                {/*<Route*/}
+                {/*    path="/home_page"*/}
+                {/*    element={<Homepage />}*/}
+                {/*/>*/}
+                <Route
+                    path="/company-profile/view"
+                    element={<ViewProfile />}
+                />
+                <Route
+                    path="/company-profile/update"
+                    element={<UpdateProfile />}
+                />
+                <Route
+                    path="/user-profile/view"
+                    element={<UserViewProfile />}
+                />
+                <Route
+                    path="/user-profile/update"
+                    element={<UserUpdateProfile />}
+                />
+                <Route
+                    path="/user-management/list"
+                    element={<ListUser />}
+                />
+                <Route
+                    path="/user-management/create"
+                    element={<CreateUser />}
+                />
+                <Route
+                    path="/user-management/view/:id"
+                    element={<ViewUser />}
+                />
+                <Route
+                    path="/user-management/update/:id"
+                    element={<UpdateUser />}
+                />
+                <Route
+                    path="/project-management/list"
+                    element={<ListProject />}
+                />
+                <Route
+                    path="/project-management/create"
+                    element={<CreateProject />}
+                />
+                <Route
+                    path="/project-management/view"
+                    element={<ViewProject />}
+                />
+                <Route
+                    path="/project-management/update"
+                    element={<UpdateProject />}
+                />
+                <Route
+                    path="/contract-management/list"
+                    element={<ListContract />}
+                />
+                <Route
+                    path="/contract-management/create"
+                    element={<CreateContract />}
+                />
+                <Route
+                    path="/contract-management/view/:id"
+                    element={<ViewContract />}
+                />
+                <Route
+                    path="/contract-management/update/:id"
+                    element={<UpdateContract />}
+                />
+                <Route
+                    path="/permission/create"
+                    element={<PermissionCreatePage />}
+                />
+                <Route
+                    path="/permission/list"
+                    element={<ListPermissionPage />}
+                />
+                <Route
+                    path="/permission/view"
+                    element={<ViewPermissionPage />}
+                />
+                <Route
+                    path="/permission/update"
+                    element={<UpdatePermissionPage />}
+                />
+                <Route
+                    path="/contract-types"
+                    element={<ContractTypes />}
+                />
+                <Route
+                    path="/contract-types/new"
+                    element={<CreateContractType />}
+                />
+                <Route
+                    path="/contract-types/detail"
+                    element={<ViewContractType />}
+                />
+                <Route
+                    path="/contract-types/update"
+                    element={<UpdateContractType />}
+                />
+            </Route>
+
         </Routes>
     )
 

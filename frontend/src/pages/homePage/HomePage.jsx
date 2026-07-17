@@ -7,7 +7,7 @@ function Homepage(){
     return(
         <div className="home-page-container-fluid">
             <div className="header-main">
-                <HeaderForm/>
+
             </div>
         </div>
     )
