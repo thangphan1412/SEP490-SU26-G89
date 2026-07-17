@@ -1,4 +1,4 @@
-import {Navigate, Route, Routes} from "react-router-dom";
+import { Navigate, Route, Routes } from "react-router-dom";
 import LoginPage from "./pages/Authentication/LoginPage.jsx";
 import Homepage from "./pages/homePage/HomePage.jsx";
 import ViewProfile from "./pages/CompanyProfileManagement/ViewProfile.jsx";
@@ -25,15 +25,18 @@ import ContractTypes from "./pages/contractType/ContractTypes.jsx";
 import CreateContractType from "./pages/contractType/CreateContractType.jsx";
 import ViewContractType from "./pages/contractType/ViewContractType.jsx";
 import UpdateContractType from "./pages/contractType/UpdateContractType.jsx";
+import ListDepartment from "./pages/Departments/ListDepartment.jsx";
+import CreateDepartment from "./pages/Departments/CreateDepartment.jsx";
+import ViewDepartment from "./pages/Departments/ViewDepartment.jsx";
+import UpdateDepartment from "./pages/Departments/UpdateDepartment.jsx";
 import ProtectedRoute from "./components/common/ProtectedRouter.jsx";
-import HeaderForm from "./components/layout/HeaderForm.jsx";
 import MainLayout from "./components/layout/MainLayout.jsx";
 
 function AppRouter() {
     return (
         <Routes>
             <Route path="/"
-                   element={<Navigate to="/login" replace />}
+                element={<Navigate to="/login" replace />}
             />
             <Route
                 path="/login"
@@ -42,7 +45,7 @@ function AppRouter() {
             <Route element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
                 <Route
                     path="/home_page"
-                    element={<Homepage/>}
+                    element={<Homepage />}
                 />
                 {/* <Route
                 path="/register"
@@ -151,6 +154,22 @@ function AppRouter() {
                 <Route
                     path="/contract-types/update"
                     element={<UpdateContractType />}
+                />
+                <Route
+                    path="/department-management/list"
+                    element={<ListDepartment />}
+                />
+                <Route
+                    path="/department-management/create"
+                    element={<CreateDepartment />}
+                />
+                <Route
+                    path="/department-management/view/:id"
+                    element={<ViewDepartment />}
+                />
+                <Route
+                    path="/department-management/update/:id"
+                    element={<UpdateDepartment />}
                 />
             </Route>
 
