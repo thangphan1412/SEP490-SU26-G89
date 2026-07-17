@@ -36,13 +36,18 @@ export const updateUser = (id, userData) => {
     });
 };
 
+// Lấy token an toàn
+const getAuthHeader = () => {
+    const token = localStorage.getItem("token");
+    return token ? { "Authorization": `Bearer ${token}` } : {};
+};
+
 // Lấy profile của người đang đăng nhập
 export const getMyProfile = () => {
     return axios.get(PROFILE_API_BASE_URL, {
         headers: {
             "Cache-Control": "no-cache",
-            // NẾU BẠN CHƯA CẤU HÌNH JWT GLOBAL TRONG AXIOS, NHỚ THÊM DÒNG DƯỚI VÀO ĐÂY NHÉ:
-            // "Authorization": `Bearer ${localStorage.getItem("token")}`
+            ...getAuthHeader() // Rải header vào đây nếu có token
         },
     });
 };
@@ -52,7 +57,7 @@ export const updateMyProfile = (profileData) => {
     return axios.put(PROFILE_API_BASE_URL, profileData, {
         headers: {
             "Cache-Control": "no-cache",
-            // "Authorization": `Bearer ${localStorage.getItem("token")}`
+            ...getAuthHeader()
         },
     });
 };
