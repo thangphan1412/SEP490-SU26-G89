@@ -9,5 +9,5 @@
 //@Getter
 //@AllArgsConstructor
 //@NoArgsConstructor
-//public class ForgotPasswordResponse {
+//public class ResetPasswordResponse {
 //}
