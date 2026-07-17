@@ -40,6 +40,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
         jwtToken = header.substring(7);
         email = jwtService.extractUsername(jwtToken);
+        System.out.println(header);
         if(email != null && SecurityContextHolder.getContext().getAuthentication() == null){
             MyUserDetail userDetails = (MyUserDetail) userDetailsService.loadUserByUsername(email);
             if (jwtService.isTokenValid(jwtToken, userDetails)){
@@ -55,5 +56,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             }
         }
         filterChain.doFilter(request, response);
+    }
+
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        String path = request.getServletPath();
+        return path.startsWith("/api/v1/auth/");
     }
 }

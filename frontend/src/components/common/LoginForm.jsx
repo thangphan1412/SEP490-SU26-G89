@@ -16,20 +16,22 @@ function LoginForm() {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const handelLogin = async()=> {
-        try{
-            console.log("Button clicked");
-            const response = await authenService.login({
-                email,
-                password
-            });
-            console.log(response.data);
-            localStorage.setItem("token", response.data.token);
-            localStorage.setItem("role", response.data.role);
-            localStorage.setItem("username", response.data.username);
-            navigate("/home_page")
-        }
-        catch(error){
-            console.log(error.response?.data)
+        try {
+            localStorage.removeItem("token");
+            localStorage.removeItem("role");
+            localStorage.removeItem("fullName");
+
+            const response = await authenService.login({ email, password });
+            console.log("Response data:", response.data);
+            const { token, role, fullName } = response.data.data;
+            console.log("token:", token, "role:", role, "fullName:", fullName);
+            localStorage.setItem("token", token);
+            localStorage.setItem("role", role ?? "");
+            localStorage.setItem("fullName", fullName ?? "");
+
+            navigate("/home_page");
+        } catch (error) {
+            console.log(error.response?.data);
         }
     }
 

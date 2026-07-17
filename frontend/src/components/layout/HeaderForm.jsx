@@ -17,12 +17,12 @@ import {    IconContract,
 import {useEffect, useState} from "react";
 
 function HeaderForm(){
-    const [username, setUsername] = useState("");
+    const [fullName, setFullName] = useState("");
     const [role, setRole] = useState("");
     useEffect(() => {
-        const storedUsername = localStorage.getItem("username");
+        const storedFullName = localStorage.getItem("fullName");
         const storedRole = localStorage.getItem("role");
-        if(storedUsername) setUsername(storedUsername);
+        if(storedFullName) setFullName(storedFullName);
         if(storedRole) setRole(storedRole)
     }, []);
     return(
@@ -60,7 +60,7 @@ function HeaderForm(){
                             
                           <IconUserCircle stroke={2} />
                             <span className="user-text">
-                                <span  className="user-name">{username}</span>
+                                <span  className="user-name">{fullName}</span>
                                 <span  className="user-role">{role}</span>
                                 
                             </span>
