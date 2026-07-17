@@ -55,4 +55,11 @@ public class AuthenticateController {
         }
 
     }
+
+    @PostMapping("/forgotPassword")
+    public ResponseEntity<BaseResponse<?>> forGotPassword(){
+
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(new BaseResponse<>());
+    }
 }

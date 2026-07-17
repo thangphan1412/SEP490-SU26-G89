@@ -7,6 +7,7 @@ import com.fpt.backend.dto.response.user.UserResponseDTO;
 import com.fpt.backend.entity.Users;
 import com.fpt.backend.repository.user.UserRepository;
 import com.fpt.backend.service.interfaces.user.IUserService;
+import com.fpt.backend.util.ValidateEmail;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -20,7 +21,7 @@ public class UserServiceImpl implements IUserService {
     private UserRepository userRepository;
     @Autowired
     private PasswordEncoder passwordEncoder;
-
+    private static final String EMAIL_REGEX = "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$";
     @Override
     public Boolean existsByEmail(String email) {
         return userRepository.existsByEmail(email);
@@ -33,8 +34,21 @@ public class UserServiceImpl implements IUserService {
 
     @Override
     public RegisterResponse create(RegisterRequest registerRequest) {
+        ValidateEmail validateEmail = new ValidateEmail();
+        String regexPattern = "^(.+)@(\\S+)$";
         List<Users> users = userRepository.findAll();
-        
+        if(users.isEmpty() || users.get(0).getEmail() == null || users.get(0).getPassword() == null || users.get(0).getPassword().isEmpty()){
+            throw new RuntimeException("Email or password is empty");
+        }
+        if(userRepository.existsByEmail(registerRequest.getEmail())){
+            throw new RuntimeException("Email already exists");
+        }
+        if(!ValidateEmail.validateEmail(registerRequest.getEmail(), regexPattern)){
+            throw new RuntimeException("Invalid format email: abc@domain.com");
+        }
+        if(registerRequest.getPassword().length() < 8){
+            throw new RuntimeException("Password too short, have to be at least 8 characters");
+        }
         Users user = new Users();
         user.setFirstName(registerRequest.getFirstName());
         user.setLastName(registerRequest.getLastName());

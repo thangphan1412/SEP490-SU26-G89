@@ -14,8 +14,17 @@ import {    IconContract,
             IconSettings,
             IconUserCircle
         } from '@tabler/icons-react';
+import {useEffect, useState} from "react";
 
 function HeaderForm(){
+    const [username, setUsername] = useState("");
+    const [role, setRole] = useState("");
+    useEffect(() => {
+        const storedUsername = localStorage.getItem("username");
+        const storedRole = localStorage.getItem("role");
+        if(storedUsername) setUsername(storedUsername);
+        if(storedRole) setRole(storedRole)
+    }, []);
     return(
      
         <div className="header-container-fluid">
@@ -51,8 +60,8 @@ function HeaderForm(){
                             
                           <IconUserCircle stroke={2} />
                             <span className="user-text">
-                                <span  className="user-name">Alex</span>
-                                <span  className="user-role">Contract Manager</span>
+                                <span  className="user-name">{username}</span>
+                                <span  className="user-role">{role}</span>
                                 
                             </span>
                         </span>

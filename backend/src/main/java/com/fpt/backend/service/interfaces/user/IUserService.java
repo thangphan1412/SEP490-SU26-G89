@@ -19,4 +19,6 @@ public interface IUserService {
     UserResponseDTO getUserById(Integer id); // Sửa thành Integer
     UserResponseDTO createUser(UserRequestDTO request);
     UserResponseDTO updateUser(Integer id, UserRequestDTO request); // Sửa thành Integer
+
+
 }
