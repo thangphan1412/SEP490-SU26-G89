@@ -1,7 +1,11 @@
 import { useEffect, useState } from "react";
-import { Alert, Button, Card, Col, Form, Row, Stack } from "react-bootstrap";
+import { Alert, Button, Card, Col, Form, Modal, Row, Stack } from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
-import { createProject, listProjectEmployees } from "../../config/projectApi/projectApi.js";
+import {
+    createProject,
+    listProjectEmployees,
+    listProjectRoles,
+} from "../../config/projectApi/projectApi.js";
 import { CancelButton, Icon, InfoAlert, PagePanel, PrimaryButton } from "./ProjectComponents.jsx";
 import "../../assets/styles/css/projectStyles/CreateProject.css";
 
@@ -24,7 +28,12 @@ function CreateProject({ onCreateProject }) {
     const navigate = useNavigate();
     const [project, setProject] = useState(initialProject);
     const [employees, setEmployees] = useState([]);
-    const [employeeSearch, setEmployeeSearch] = useState("");
+    const [memberRoleOptions, setMemberRoleOptions] = useState([]);
+    const [showMemberModal, setShowMemberModal] = useState(false);
+    const [memberSearch, setMemberSearch] = useState("");
+    const [memberRoleFilter, setMemberRoleFilter] = useState("");
+    const [memberStatusFilter, setMemberStatusFilter] = useState("");
+    const [pendingMemberIds, setPendingMemberIds] = useState([]);
     const [loadingEmployees, setLoadingEmployees] = useState(true);
     const [employeeError, setEmployeeError] = useState("");
     const [submitError, setSubmitError] = useState("");
@@ -33,13 +42,18 @@ function CreateProject({ onCreateProject }) {
     useEffect(() => {
         let isActive = true;
 
-        const loadEmployees = async () => {
+        const loadMemberOptions = async () => {
             try {
-                const response = await listProjectEmployees();
-                const payload = response.data?.data ?? response.data;
+                const [employeeResponse, roleResponse] = await Promise.all([
+                    listProjectEmployees(),
+                    listProjectRoles(),
+                ]);
+                const employeeData = employeeResponse.data?.data ?? employeeResponse.data;
+                const roleData = roleResponse.data?.data ?? roleResponse.data;
 
                 if (isActive) {
-                    setEmployees(Array.isArray(payload) ? payload : []);
+                    setEmployees(Array.isArray(employeeData) ? employeeData : []);
+                    setMemberRoleOptions(Array.isArray(roleData) ? roleData : []);
                     setEmployeeError("");
                 }
             } catch (error) {
@@ -56,7 +70,7 @@ function CreateProject({ onCreateProject }) {
             }
         };
 
-        loadEmployees();
+        loadMemberOptions();
 
         return () => {
             isActive = false;
@@ -65,10 +79,45 @@ function CreateProject({ onCreateProject }) {
 
     const handleChange = (event) => {
         const { name, value } = event.target;
-        setProject((currentProject) => ({ ...currentProject, [name]: value }));
+        setProject((currentProject) => {
+            let phases = currentProject.phases;
+
+            if (name === "projectStartDate" && phases.length > 0) {
+                phases = recalculatePhaseStarts(phases, value);
+            }
+
+            if (name === "projectEndDate" && phases.length > 0) {
+                phases = phases.map((phase, index) =>
+                    index === phases.length - 1 ? { ...phase, endDate: value } : phase
+                );
+            }
+
+            return { ...currentProject, [name]: value, phases };
+        });
     };
 
     const addPhase = () => {
+        if (!project.projectStartDate || !project.projectEndDate) {
+            setSubmitError("Select the project start date and end date before adding phases.");
+            return;
+        }
+
+        if (project.projectEndDate < project.projectStartDate) {
+            setSubmitError("Project end date must not be before its start date.");
+            return;
+        }
+
+        const lastPhase = project.phases[project.phases.length - 1];
+        const nextStartDate = lastPhase
+            ? addOneDay(lastPhase.endDate)
+            : project.projectStartDate;
+
+        if (!nextStartDate || nextStartDate > project.projectEndDate) {
+            setSubmitError("Shorten the current final phase before adding another phase.");
+            return;
+        }
+
+        setSubmitError("");
         setProject((currentProject) => ({
             ...currentProject,
             phases: [
@@ -77,7 +126,7 @@ function CreateProject({ onCreateProject }) {
                     clientId: createClientId(),
                     title: "",
                     description: "",
-                    startDate: currentProject.projectStartDate,
+                    startDate: nextStartDate,
                     endDate: currentProject.projectEndDate,
                     status: "Planning",
                     progress: 0,
@@ -89,32 +138,82 @@ function CreateProject({ onCreateProject }) {
     const updatePhase = (clientId, event) => {
         const { name, value } = event.target;
 
-        setProject((currentProject) => ({
-            ...currentProject,
-            phases: currentProject.phases.map((phase) =>
+        setProject((currentProject) => {
+            let phases = currentProject.phases.map((phase) =>
                 phase.clientId === clientId
                     ? { ...phase, [name]: name === "progress" ? Number(value) : value }
                     : phase
-            ),
-        }));
+            );
+
+            if (name === "endDate") {
+                phases = recalculatePhaseStarts(phases, currentProject.projectStartDate);
+            }
+
+            return { ...currentProject, phases };
+        });
     };
 
     const removePhase = (clientId) => {
-        setProject((currentProject) => ({
-            ...currentProject,
-            phases: currentProject.phases.filter((phase) => phase.clientId !== clientId),
-        }));
+        setProject((currentProject) => {
+            let phases = currentProject.phases.filter((phase) => phase.clientId !== clientId);
+
+            if (phases.length > 0) {
+                phases = phases.map((phase, index) =>
+                    index === phases.length - 1
+                        ? { ...phase, endDate: currentProject.projectEndDate }
+                        : phase
+                );
+                phases = recalculatePhaseStarts(phases, currentProject.projectStartDate);
+            }
+
+            return { ...currentProject, phases };
+        });
     };
 
-    const toggleMember = (employeeId) => {
-        setProject((currentProject) => {
-            const isSelected = currentProject.members.some((member) => member.userId === employeeId);
-            const members = isSelected
-                ? currentProject.members.filter((member) => member.userId !== employeeId)
-                : [...currentProject.members, { userId: employeeId, permissionId: null }];
+    const openMemberModal = () => {
+        setMemberSearch("");
+        setMemberRoleFilter("");
+        setMemberStatusFilter("");
+        setPendingMemberIds([]);
+        setShowMemberModal(true);
+    };
 
-            return { ...currentProject, members };
+    const closeMemberModal = () => {
+        setShowMemberModal(false);
+        setPendingMemberIds([]);
+    };
+
+    const togglePendingMember = (userId) => {
+        setPendingMemberIds((currentIds) =>
+            currentIds.includes(userId)
+                ? currentIds.filter((id) => id !== userId)
+                : [...currentIds, userId]
+        );
+    };
+
+    const addSelectedMembers = () => {
+        setProject((currentProject) => {
+            const currentMemberIds = new Set(
+                currentProject.members.map((member) => member.userId)
+            );
+            const newMembers = pendingMemberIds
+                .filter((userId) => !currentMemberIds.has(userId))
+                .map((userId) => ({ userId, permissionId: null }));
+
+            return {
+                ...currentProject,
+                members: [...currentProject.members, ...newMembers],
+            };
         });
+
+        closeMemberModal();
+    };
+
+    const removeMember = (userId) => {
+        setProject((currentProject) => ({
+            ...currentProject,
+            members: currentProject.members.filter((member) => member.userId !== userId),
+        }));
     };
 
     const handleSubmit = async (event) => {
@@ -162,11 +261,25 @@ function CreateProject({ onCreateProject }) {
         }
     };
 
-    const normalizedSearch = employeeSearch.trim().toLowerCase();
-    const visibleEmployees = employees.filter((employee) =>
-        getEmployeeSearchText(employee).includes(normalizedSearch)
-    );
     const selectedMemberIds = new Set(project.members.map((member) => member.userId));
+    const employeeById = new Map(employees.map((employee) => [employee.id, employee]));
+    const currentProjectMembers = project.members.map((member) => ({
+        ...member,
+        employee: employeeById.get(member.userId) || {
+            id: member.userId,
+            userName: "User #" + member.userId,
+        },
+    }));
+    const availableEmployees = employees.filter((employee) => !selectedMemberIds.has(employee.id));
+    const normalizedMemberSearch = memberSearch.trim().toLowerCase();
+    const memberStatusOptions = getFilterOptions(availableEmployees, "status");
+    const visibleAvailableEmployees = availableEmployees.filter((employee) => {
+        const matchesSearch = getEmployeeSearchText(employee).includes(normalizedMemberSearch);
+        const matchesRole = !memberRoleFilter || employeeHasRole(employee, memberRoleFilter);
+        const matchesStatus = !memberStatusFilter || employee.status === memberStatusFilter;
+
+        return matchesSearch && matchesRole && matchesStatus;
+    });
 
     const pageAction = (
         <Stack direction="horizontal" className="project-management-actions">
@@ -235,7 +348,7 @@ function CreateProject({ onCreateProject }) {
                     <div className="create-project-section-header">
                         <div>
                             <Card.Title as="h2" className="project-management-card-title">Project Phases</Card.Title>
-                            <p className="create-project-section-note">Break the project into clear date-based phases.</p>
+                            <p className="create-project-section-note">Phases must cover the full project timeline without gaps or overlapping dates.</p>
                         </div>
                         <Button type="button" variant="light" className="create-project-add-button" onClick={addPhase}>
                             <Icon name="plus" size={18} /> Add Phase
@@ -259,7 +372,8 @@ function CreateProject({ onCreateProject }) {
                                         </Col>
                                         <Col md={3}>
                                             <Form.Label className="project-management-field-label">Start Date</Form.Label>
-                                            <Form.Control required type="date" name="startDate" min={project.projectStartDate} max={project.projectEndDate} value={phase.startDate} onChange={(event) => updatePhase(phase.clientId, event)} className="project-management-input" />
+                                            <Form.Control readOnly required type="date" name="startDate" value={phase.startDate} className="project-management-input create-project-phase-start-input" />
+                                            <Form.Text className="create-project-phase-date-note">Calculated from the project or previous phase.</Form.Text>
                                         </Col>
                                         <Col md={3}>
                                             <Form.Label className="project-management-field-label">End Date</Form.Label>
@@ -290,44 +404,176 @@ function CreateProject({ onCreateProject }) {
                     <div className="create-project-section-header">
                         <div>
                             <Card.Title as="h2" className="project-management-card-title">Project Members</Card.Title>
-                            <p className="create-project-section-note">Select initial members. Permissions can be assigned after the project has database permissions.</p>
+                            <p className="create-project-section-note">Only selected members are shown here. Use Add Members to choose users from the database.</p>
                         </div>
-                        <span className="create-project-selected-count">{project.members.length} selected</span>
+                        <div className="create-project-member-header-actions">
+                            <span className="create-project-selected-count">{project.members.length} members</span>
+                            <Button
+                                type="button"
+                                variant="light"
+                                className="create-project-add-button"
+                                disabled={loadingEmployees || Boolean(employeeError)}
+                                onClick={openMemberModal}
+                            >
+                                <Icon name="plus" size={18} /> Add Members
+                            </Button>
+                        </div>
                     </div>
-
-                    <Form.Control className="create-project-employee-search" value={employeeSearch} onChange={(event) => setEmployeeSearch(event.target.value)} placeholder="Search employee by name, email, role..." />
 
                     {employeeError ? (
                         <Alert variant="warning" className="create-project-employee-alert">{employeeError}</Alert>
                     ) : loadingEmployees ? (
                         <div className="create-project-empty-state">Loading employees...</div>
-                    ) : visibleEmployees.length === 0 ? (
-                        <div className="create-project-empty-state">No employees match the search.</div>
+                    ) : currentProjectMembers.length === 0 ? (
+                        <div className="create-project-empty-state">No members have been added to this project.</div>
                     ) : (
-                        <div className="create-project-employee-grid">
-                            {visibleEmployees.map((employee) => {
-                                const selected = selectedMemberIds.has(employee.id);
-
-                                return (
-                                    <div key={employee.id} className={selected ? "create-project-employee-option selected" : "create-project-employee-option"}>
-                                        <Form.Check type="checkbox" id={"project-employee-" + employee.id} checked={selected} onChange={() => toggleMember(employee.id)} className="create-project-employee-check" />
-                                        <span className="project-management-icon-circle create-project-employee-avatar"><Icon name="users" size={20} /></span>
-                                        <div className="create-project-employee-text">
-                                            <strong>{getEmployeeName(employee)}</strong>
-                                            <small>{getEmployeeDescription(employee)}</small>
-                                            {selected && (
-                                                <span className="create-project-unassigned-permission">Permission: Not assigned</span>
-                                            )}
-                                        </div>
+                        <div className="create-project-member-list">
+                            {currentProjectMembers.map((member) => (
+                                <div key={member.userId} className="create-project-member-row">
+                                    <span className="project-management-icon-circle create-project-employee-avatar">
+                                        <Icon name="users" size={20} />
+                                    </span>
+                                    <div className="create-project-employee-text">
+                                        <strong>{getEmployeeName(member.employee)}</strong>
+                                        <small>{getEmployeeDescription(member.employee)}</small>
                                     </div>
-                                );
-                            })}
+                                    <span className="create-project-unassigned-permission">Permission: Not assigned</span>
+                                    <Button
+                                        type="button"
+                                        variant="link"
+                                        className="create-project-remove-member-button"
+                                        onClick={() => removeMember(member.userId)}
+                                        aria-label={"Remove " + getEmployeeName(member.employee)}
+                                    >
+                                        <Icon name="trash" size={17} color="#b42318" />
+                                        Remove
+                                    </Button>
+                                </div>
+                            ))}
                         </div>
                     )}
                 </Card>
 
                 <InfoAlert>No permissions are generated automatically. Create project permissions in Permission Management, then assign them in Update Project.</InfoAlert>
             </Form>
+
+            <Modal
+                show={showMemberModal}
+                onHide={closeMemberModal}
+                centered
+                size="lg"
+                className="create-project-member-modal"
+            >
+                <Modal.Header closeButton>
+                    <div>
+                        <Modal.Title>Add Project Members</Modal.Title>
+                        <p className="create-project-modal-description">Select users who have not been added to this project.</p>
+                    </div>
+                </Modal.Header>
+
+                <Modal.Body>
+                    <div className="create-project-modal-filter-grid">
+                        <Form.Group className="create-project-modal-search" controlId="create-project-member-search">
+                            <Form.Label className="project-management-field-label">Search</Form.Label>
+                            <Form.Control
+                                value={memberSearch}
+                                onChange={(event) => setMemberSearch(event.target.value)}
+                                placeholder="Search by name, email, role..."
+                                className="create-project-modal-filter-input"
+                            />
+                        </Form.Group>
+
+                        <Form.Group controlId="create-project-member-role-filter">
+                            <Form.Label className="project-management-field-label">Role</Form.Label>
+                            <Form.Select
+                                value={memberRoleFilter}
+                                onChange={(event) => setMemberRoleFilter(event.target.value)}
+                                className="create-project-modal-filter-input"
+                            >
+                                <option value="">All roles</option>
+                                {memberRoleOptions.map((role) => (
+                                    <option key={role.id} value={role.id}>{role.roleName}</option>
+                                ))}
+                            </Form.Select>
+                        </Form.Group>
+
+                        <Form.Group controlId="create-project-member-status-filter">
+                            <Form.Label className="project-management-field-label">Status</Form.Label>
+                            <Form.Select
+                                value={memberStatusFilter}
+                                onChange={(event) => setMemberStatusFilter(event.target.value)}
+                                className="create-project-modal-filter-input"
+                            >
+                                <option value="">All statuses</option>
+                                {memberStatusOptions.map((status) => (
+                                    <option key={status} value={status}>{status}</option>
+                                ))}
+                            </Form.Select>
+                        </Form.Group>
+                    </div>
+
+                    <div className="create-project-modal-result-header">
+                        <span>{visibleAvailableEmployees.length} available users</span>
+                        <span>{pendingMemberIds.length} selected</span>
+                    </div>
+
+                    {availableEmployees.length === 0 ? (
+                        <div className="create-project-modal-empty">All users have already been added to this project.</div>
+                    ) : visibleAvailableEmployees.length === 0 ? (
+                        <div className="create-project-modal-empty">No users match the selected filters.</div>
+                    ) : (
+                        <div className="create-project-modal-user-list">
+                            {visibleAvailableEmployees.map((employee) => {
+                                const isSelected = pendingMemberIds.includes(employee.id);
+
+                                return (
+                                    <label
+                                        key={employee.id}
+                                        htmlFor={"create-project-add-member-" + employee.id}
+                                        className={isSelected
+                                            ? "create-project-modal-user selected"
+                                            : "create-project-modal-user"}
+                                    >
+                                        <Form.Check
+                                            type="checkbox"
+                                            id={"create-project-add-member-" + employee.id}
+                                            checked={isSelected}
+                                            onChange={() => togglePendingMember(employee.id)}
+                                            className="create-project-modal-user-check"
+                                        />
+                                        <span className="project-management-icon-circle create-project-modal-user-avatar">
+                                            <Icon name="users" size={19} />
+                                        </span>
+                                        <span className="create-project-modal-user-info">
+                                            <strong>{getEmployeeName(employee)}</strong>
+                                            <small>{employee.email || "No email"}</small>
+                                        </span>
+                                        <span className="create-project-modal-user-meta">
+                                            <small>{getEmployeeRoleNames(employee).join(", ") || "No assigned role"}</small>
+                                            <small>{employee.status || "Unknown"}</small>
+                                        </span>
+                                    </label>
+                                );
+                            })}
+                        </div>
+                    )}
+                </Modal.Body>
+
+                <Modal.Footer>
+                    <Button type="button" variant="light" className="create-project-modal-cancel-button" onClick={closeMemberModal}>
+                        Cancel
+                    </Button>
+                    <Button
+                        type="button"
+                        className="create-project-modal-add-button"
+                        disabled={pendingMemberIds.length === 0}
+                        onClick={addSelectedMembers}
+                    >
+                        <Icon name="plus" size={18} color="#fff" />
+                        Add Members ({pendingMemberIds.length})
+                    </Button>
+                </Modal.Footer>
+            </Modal>
         </PagePanel>
     );
 }
@@ -365,6 +611,46 @@ function getEmployeeRoleNames(employee) {
         .filter(Boolean);
 }
 
+function employeeHasRole(employee, roleId) {
+    if (!Array.isArray(employee.roles)) {
+        return false;
+    }
+
+    return employee.roles.some((role) => String(role.id) === String(roleId));
+}
+
+function getFilterOptions(employees, fieldName) {
+    return [...new Set(
+        employees
+            .map((employee) => employee[fieldName])
+            .filter(Boolean)
+    )].sort((firstValue, secondValue) => firstValue.localeCompare(secondValue));
+}
+
+function recalculatePhaseStarts(phases, projectStartDate) {
+    let expectedStartDate = projectStartDate;
+
+    return phases.map((phase) => {
+        const updatedPhase = { ...phase, startDate: expectedStartDate };
+        expectedStartDate = phase.endDate ? addOneDay(phase.endDate) : "";
+        return updatedPhase;
+    });
+}
+
+function addOneDay(dateValue) {
+    if (!dateValue) {
+        return "";
+    }
+
+    const date = new Date(dateValue + "T00:00:00Z");
+    if (Number.isNaN(date.getTime())) {
+        return "";
+    }
+
+    date.setUTCDate(date.getUTCDate() + 1);
+    return date.toISOString().slice(0, 10);
+}
+
 function getTodayValue() {
     const now = new Date();
     const localDate = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
@@ -372,18 +658,50 @@ function getTodayValue() {
 }
 
 function validateProject(project) {
+    if (!project.projectStartDate || !project.projectEndDate) {
+        return "Project start date and end date are required.";
+    }
+
     if (project.projectEndDate < project.projectStartDate) {
         return "Project end date must not be before its start date.";
     }
 
-    for (const phase of project.phases) {
+    if (project.phases.length === 0) {
+        return "Add at least one phase to cover the full project timeline.";
+    }
+
+    let expectedStartDate = project.projectStartDate;
+
+    for (let index = 0; index < project.phases.length; index += 1) {
+        const phase = project.phases[index];
+        const phaseNumber = index + 1;
+
+        if (!phase.startDate || !phase.endDate) {
+            return "Phase " + phaseNumber + " requires both a start date and an end date.";
+        }
+
         if (phase.endDate < phase.startDate) {
-            return "Each phase end date must not be before its start date.";
+            return "Phase " + phaseNumber + " end date must not be before its start date.";
         }
 
         if (phase.startDate < project.projectStartDate || phase.endDate > project.projectEndDate) {
-            return "Every phase must stay inside the project date range.";
+            return "Phase " + phaseNumber + " must stay inside the project date range.";
         }
+
+        if (phase.startDate !== expectedStartDate) {
+            if (phase.startDate < expectedStartDate) {
+                return "Phase " + phaseNumber + " overlaps the previous phase. It must start on " + expectedStartDate + ".";
+            }
+
+            return "There is a gap before Phase " + phaseNumber + ". It must start on " + expectedStartDate + ".";
+        }
+
+        expectedStartDate = addOneDay(phase.endDate);
+    }
+
+    const finalPhase = project.phases[project.phases.length - 1];
+    if (finalPhase.endDate !== project.projectEndDate) {
+        return "The final phase must end on the project end date " + project.projectEndDate + ".";
     }
 
     return "";
