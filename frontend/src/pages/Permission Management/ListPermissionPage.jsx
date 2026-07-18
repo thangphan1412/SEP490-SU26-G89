@@ -31,7 +31,6 @@ import {
   listPermissions,
 } from "../../config/permissionApi/permissionApi.js";
 import { PermissionPage, PermissionStatusBadge } from "./PermissionComponents.jsx";
-import { formatPermissionDate } from "./permissionUtils.js";
 import UpdatePermissionPage from "./UpdatePermissionPage.jsx";
 import ViewPermissionPage from "./ViewPermissionPage.jsx";
 
@@ -41,7 +40,6 @@ const sortableColumns = [
   ["Project", "projectName"],
   ["Role", "roleName"],
   ["Status", "status"],
-  ["Last updated", "updatedAt"],
 ];
 
 function createPageNumbers(currentPage, totalPages) {
@@ -333,13 +331,13 @@ function PermissionListContent() {
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={7} className="permission-list-state">
+                <td colSpan={6} className="permission-list-state">
                   <Spinner animation="border" size="sm" /> Loading permissions...
                 </td>
               </tr>
             ) : permissions.length === 0 ? (
               <tr>
-                <td colSpan={7} className="permission-list-state">
+                <td colSpan={6} className="permission-list-state">
                   <span className="permission-empty-icon"><IconShieldCheck size={28} /></span>
                   <strong>No permissions found</strong>
                   <span>Try changing the filters or create a new permission.</span>
@@ -371,7 +369,6 @@ function PermissionListContent() {
                   <td>{formatProjectValue(permission)}</td>
                   <td>{permission.roleName || "Unassigned"}</td>
                   <td><PermissionStatusBadge status={permission.status} /></td>
-                  <td>{formatPermissionDate(permission.updatedAt)}</td>
                   <td>
                     <Stack direction="horizontal" className="permission-row-actions">
                       <Button

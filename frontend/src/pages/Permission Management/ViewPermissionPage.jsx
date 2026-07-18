@@ -156,11 +156,10 @@ function ViewPermissionPage() {
             <Card as="section" className="permission-view-card">
               <div className="permission-view-card-title">
                 <span><IconClock size={20} /></span>
-                <div><h3>Audit information</h3><p>Times recorded automatically by the server.</p></div>
+                <div><h3>Audit information</h3><p>Creation time recorded automatically by the server.</p></div>
               </div>
               <div className="permission-view-audit-list">
                 <ViewPermissionInfo label="Created at" value={formatPermissionDate(permission.createdAt)} />
-                <ViewPermissionInfo label="Last updated" value={formatPermissionDate(permission.updatedAt)} />
               </div>
             </Card>
 

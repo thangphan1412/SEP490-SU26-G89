@@ -43,7 +43,5 @@ public class Permissions extends BaseEntity {
 
     @Column(name = "permission_created_at")
     private LocalDateTime createdAt;
-
-    @Column(name = "permission_updated_at")
-    private LocalDateTime updatedAt;
+    
 }

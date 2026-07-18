@@ -98,7 +98,7 @@ function ViewProject() {
 
     const handleDelete = async () => {
         const confirmed = window.confirm(
-            "Delete this project? A project with contracts or other linked data cannot be deleted."
+            "Delete this project? If it has contracts, it will be kept and its status will be changed to Cancelled. If it has no contracts, it will be permanently deleted."
         );
 
         if (!confirmed) {
@@ -108,7 +108,8 @@ function ViewProject() {
         try {
             setDeleting(true);
             setActionError("");
-            await deleteProject(projectId);
+            const response = await deleteProject(projectId);
+            window.alert(response?.data?.message || "Project delete request completed.");
             navigate("/project-management/list");
         } catch (apiError) {
             console.error("Unable to delete project:", apiError);

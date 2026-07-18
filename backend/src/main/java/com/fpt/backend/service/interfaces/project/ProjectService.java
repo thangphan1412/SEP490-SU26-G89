@@ -19,7 +19,7 @@ public interface ProjectService {
 
     ProjectDetailResponse updateProject(int id, ProjectUpdateRequest request);
 
-    void deleteProject(int id);
+    boolean deleteProject(int id);
 
     List<ProjectEmployeeResponse> getEmployeesForProjectSelection();
 

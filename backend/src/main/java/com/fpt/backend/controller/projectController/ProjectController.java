@@ -97,7 +97,11 @@ public class ProjectController {
 
     @DeleteMapping({"/{id}", "/delete/{id}"})
     public ResponseEntity<BaseResponse<Void>> deleteProject(@PathVariable int id) {
-        projectService.deleteProject(id);
-        return ResponseEntity.ok(new BaseResponse<>(HttpStatus.OK.value(), "Deleted", null));
+        boolean deletedFromDatabase = projectService.deleteProject(id);
+        String message = deletedFromDatabase
+                ? "Project deleted permanently"
+                : "Project has contracts, so its status was changed to Cancelled";
+
+        return ResponseEntity.ok(new BaseResponse<>(HttpStatus.OK.value(), message, null));
     }
 }

@@ -24,7 +24,6 @@ const initialPermission = {
   roleId: "",
   status: true,
   createdAt: null,
-  updatedAt: null,
 };
 
 function UpdatePermissionPage() {
@@ -75,7 +74,6 @@ function UpdatePermissionPage() {
             roleId: permissionPayload?.roleId ? String(permissionPayload.roleId) : "",
             status: permissionPayload?.status ?? true,
             createdAt: permissionPayload?.createdAt || null,
-            updatedAt: permissionPayload?.updatedAt || null,
           });
           setProjects(Array.isArray(projectPayload) ? projectPayload : []);
           setRoles(Array.isArray(rolePayload) ? rolePayload : []);
@@ -272,7 +270,7 @@ function UpdatePermissionPage() {
           <IconInfoCircle size={19} />
           <div>
             <strong>Audit information</strong>
-            <span><IconClock size={16} /> Created: {formatPermissionDate(permission.createdAt)} · Last updated: {formatPermissionDate(permission.updatedAt)}</span>
+            <span><IconClock size={16} /> Created: {formatPermissionDate(permission.createdAt)}</span>
           </div>
         </div>
 
