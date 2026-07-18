@@ -47,4 +47,11 @@ public interface ProjectRepository extends JpaRepository<Projects, Integer> {
             """)
     List<String> findDistinctProjectStatuses();
 
+    @Query("""
+            SELECT COUNT(contract)
+            FROM Contracts contract
+            WHERE contract.project.id = :projectId
+            """)
+    long countContractsByProjectId(@Param("projectId") int projectId);
+
 }

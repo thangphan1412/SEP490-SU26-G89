@@ -266,7 +266,7 @@ function CreatePermissionPage() {
 
         <div className="permission-audit-note">
           <IconInfoCircle size={19} />
-          <span><IconClock size={16} /> Created and updated times are recorded automatically by the server.</span>
+          <span><IconClock size={16} /> Creation time is recorded automatically by the server.</span>
         </div>
 
         <div className="permission-form-actions">

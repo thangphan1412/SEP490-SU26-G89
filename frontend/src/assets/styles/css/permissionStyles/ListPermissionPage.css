@@ -100,7 +100,7 @@
 
 .permission-list-table.table {
   width: 100%;
-  min-width: 1160px;
+  min-width: 1000px;
   border-collapse: collapse;
   --bs-table-bg: #ffffff;
   --bs-table-hover-bg: #f8faff;

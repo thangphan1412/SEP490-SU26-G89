@@ -14,7 +14,6 @@ public record PermissionListItemResponse(
         String projectName,
         Integer roleId,
         String roleName,
-        LocalDateTime createdAt,
-        LocalDateTime updatedAt
+        LocalDateTime createdAt
 ) {
 }

@@ -14,7 +14,6 @@ public record PermissionDetailResponse(
         String projectName,
         Integer roleId,
         String roleName,
-        LocalDateTime createdAt,
-        LocalDateTime updatedAt
+        LocalDateTime createdAt
 ) {
 }

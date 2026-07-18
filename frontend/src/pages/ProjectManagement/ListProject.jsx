@@ -62,7 +62,7 @@ function ListProject() {
         const debounceId = window.setTimeout(() => {
             setSearch(searchInput.trim());
             setPage(0);
-        }, 1000);
+        }, 500);
 
         return () => window.clearTimeout(debounceId);
     }, [searchInput]);

@@ -44,8 +44,7 @@ public class PermissionServiceImpl implements PermissionService {
             "status",
             "projectName",
             "roleName",
-            "createdAt",
-            "updatedAt"
+            "createdAt"
     );
 
     private final PermissionRepository permissionRepository;
@@ -158,11 +157,9 @@ public class PermissionServiceImpl implements PermissionService {
         permission.setProject(project);
         permission.setRole(role);
 
-        LocalDateTime now = LocalDateTime.now();
         if (permission.getCreatedAt() == null) {
-            permission.setCreatedAt(now);
+            permission.setCreatedAt(LocalDateTime.now());
         }
-        permission.setUpdatedAt(now);
     }
 
     private Permissions findPermission(int id) {
@@ -251,8 +248,7 @@ public class PermissionServiceImpl implements PermissionService {
                 project == null ? null : project.getProjectName(),
                 role == null ? null : role.getId(),
                 role == null ? null : role.getRoleName(),
-                permission.getCreatedAt(),
-                permission.getUpdatedAt()
+                permission.getCreatedAt()
         );
     }
 
@@ -272,8 +268,7 @@ public class PermissionServiceImpl implements PermissionService {
                 project == null ? null : project.getProjectName(),
                 role == null ? null : role.getId(),
                 role == null ? null : role.getRoleName(),
-                permission.getCreatedAt(),
-                permission.getUpdatedAt()
+                permission.getCreatedAt()
         );
     }
 }

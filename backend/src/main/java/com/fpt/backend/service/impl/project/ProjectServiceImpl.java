@@ -58,6 +58,7 @@ public class ProjectServiceImpl implements ProjectService {
     private static final String DEFAULT_CREATED_BY = "Admin";
     private static final String DEFAULT_PROJECT_STATUS = "Planning";
     private static final String DEFAULT_PHASE_STATUS = "Planning";
+    private static final String CANCELLED_PROJECT_STATUS = "Cancelled";
     private static final ZoneId DATABASE_TIME_ZONE = ZoneId.of("UTC");
     private static final ZoneId PROJECT_TIME_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
     private static final Set<String> SORT_FIELDS = Set.of(
@@ -167,38 +168,22 @@ public class ProjectServiceImpl implements ProjectService {
 
     @Override
     @Transactional
-    public void deleteProject(int id) {
+    public boolean deleteProject(int id) {
         Projects project = findProject(id);
 
-        if (hasProjectDependencies(id)) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Project cannot be deleted because it is being used by contracts, workflows, proposals, or activity logs"
-            );
+        if (projectRepository.countContractsByProjectId(id) > 0) {
+            project.setProjectStatus(CANCELLED_PROJECT_STATUS);
+            projectRepository.save(project);
+            projectRepository.flush();
+            return false;
         }
 
         try {
-            for (Timeline phase : findProjectPhases(id)) {
-                removePhase(phase);
-            }
-
-            for (UserPermission userPermission : findProjectUserPermissions(id)) {
-                entityManager.remove(userPermission);
-            }
-
-            for (ProjectMember member : findProjectMembers(id)) {
-                entityManager.remove(member);
-            }
-
-            entityManager.flush();
-
-            for (Permissions permission : findProjectPermissions(id)) {
-                entityManager.remove(permission);
-            }
-
+            deleteProjectRelatedData(id);
             entityManager.flush();
             projectRepository.delete(project);
             projectRepository.flush();
+            return true;
         } catch (ResponseStatusException exception) {
             throw exception;
         } catch (RuntimeException exception) {
@@ -208,6 +193,48 @@ public class ProjectServiceImpl implements ProjectService {
                     exception
             );
         }
+    }
+
+    private void deleteProjectRelatedData(int projectId) {
+        deleteByProject(
+                "DELETE FROM TimelineContract link WHERE link.timeline.id IN "
+                        + "(SELECT phase.id FROM Timeline phase WHERE phase.project.id = :projectId)",
+                projectId
+        );
+        deleteByProject(
+                "DELETE FROM TimelineTask task WHERE task.timeline.id IN "
+                        + "(SELECT phase.id FROM Timeline phase WHERE phase.project.id = :projectId)",
+                projectId
+        );
+        deleteByProject(
+                "DELETE FROM Deliverable deliverable WHERE deliverable.timeline.id IN "
+                        + "(SELECT phase.id FROM Timeline phase WHERE phase.project.id = :projectId)",
+                projectId
+        );
+        deleteByProject("DELETE FROM Timeline phase WHERE phase.project.id = :projectId", projectId);
+
+        deleteByProject(
+                "DELETE FROM UserPermission userPermission WHERE userPermission.permission.id IN "
+                        + "(SELECT permission.id FROM Permissions permission WHERE permission.project.id = :projectId)",
+                projectId
+        );
+        deleteByProject("DELETE FROM ProjectMember member WHERE member.project.id = :projectId", projectId);
+        deleteByProject("DELETE FROM Permissions permission WHERE permission.project.id = :projectId", projectId);
+
+        deleteByProject(
+                "DELETE FROM Approvals approval WHERE approval.proposal.id IN "
+                        + "(SELECT proposal.id FROM Proposals proposal WHERE proposal.project.id = :projectId)",
+                projectId
+        );
+        deleteByProject("DELETE FROM Proposals proposal WHERE proposal.project.id = :projectId", projectId);
+        deleteByProject("DELETE FROM ActivityLog log WHERE log.project.id = :projectId", projectId);
+        deleteByProject("DELETE FROM Workflow workflow WHERE workflow.project.id = :projectId", projectId);
+    }
+
+    private void deleteByProject(String query, int projectId) {
+        entityManager.createQuery(query)
+                .setParameter("projectId", projectId)
+                .executeUpdate();
     }
 
     @Override
@@ -815,19 +842,6 @@ public class ProjectServiceImpl implements ProjectService {
                 )
                 .setParameter("projectId", projectId)
                 .getResultList();
-    }
-
-    private boolean hasProjectDependencies(int projectId) {
-        return countByProject("SELECT COUNT(contract) FROM Contracts contract WHERE contract.project.id = :projectId", projectId) > 0
-                || countByProject("SELECT COUNT(log) FROM ActivityLog log WHERE log.project.id = :projectId", projectId) > 0
-                || countByProject("SELECT COUNT(workflow) FROM Workflow workflow WHERE workflow.project.id = :projectId", projectId) > 0
-                || countByProject("SELECT COUNT(proposal) FROM Proposals proposal WHERE proposal.project.id = :projectId", projectId) > 0;
-    }
-
-    private long countByProject(String query, int projectId) {
-        return entityManager.createQuery(query, Long.class)
-                .setParameter("projectId", projectId)
-                .getSingleResult();
     }
 
     private String getUserName(Users user) {
