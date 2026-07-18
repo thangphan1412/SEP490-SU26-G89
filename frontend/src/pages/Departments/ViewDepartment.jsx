@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Badge, Button, Nav, Table } from "react-bootstrap";
 import { IconBuildingSkyscraper, IconCalendar, IconCheck, IconDots, IconEdit, IconFileText, IconHash, IconHierarchy, IconListDetails, IconPlus, IconSettings, IconUser, IconUserPlus, IconUsers } from "@tabler/icons-react";
 import { useNavigate, useParams } from "react-router-dom";
-import { getDepartmentById } from "../../config/departmentApi/departmentApi.js";
+import departmentApi from "../../services/departmentService/departmentApi.js";
 import "../../assets/styles/css/departmentStyles/Departments.css";
 
 function ViewDepartment() {
@@ -15,7 +15,7 @@ function ViewDepartment() {
   useEffect(() => {
     const loadDepartment = async () => {
       try {
-        const response = await getDepartmentById(id);
+        const response = await departmentApi.getDepartmentById(id);
         setDepartment(response.data?.data || null);
       } catch (requestError) {
         setError(requestError.response?.data?.message || "Unable to load department.");

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Button, Form, Nav } from "react-bootstrap";
 import { IconHierarchy, IconListDetails, IconPlus, IconSettings, IconUsers } from "@tabler/icons-react";
 import { useNavigate } from "react-router-dom";
-import { createDepartment } from "../../config/departmentApi/departmentApi.js";
+import departmentApi from "../../services/departmentService/departmentApi.js";
 import "../../assets/styles/css/departmentStyles/Departments.css";
 
 function CreateDepartment() {
@@ -31,7 +31,7 @@ function CreateDepartment() {
     setError("");
 
     try {
-      await createDepartment({
+      await departmentApi.createDepartment({
         departmentName: form.departmentName,
         departmentCode: form.departmentCode,
         departmentStatus: form.active ? "Active" : "Inactive",

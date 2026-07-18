@@ -1,5 +1,6 @@
 package com.fpt.backend.controller.departmentController;
 
+import com.fpt.backend.constant.ApiConstant;
 import com.fpt.backend.dto.request.department.DepartmentRequestDTO;
 import com.fpt.backend.dto.response.department.DepartmentResponseDTO;
 import com.fpt.backend.service.interfaces.department.IDepartmentService;
@@ -12,7 +13,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/departments")
+@RequestMapping(ApiConstant.API + "/departments")
 public class DepartmentController {
 
     @Autowired
