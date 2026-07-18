@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Button, Form, Nav } from "react-bootstrap";
 import { IconHierarchy, IconListDetails, IconPlus, IconSettings, IconUsers } from "@tabler/icons-react";
 import { useNavigate, useParams } from "react-router-dom";
-import { getDepartmentById, updateDepartment } from "../../config/departmentApi/departmentApi.js";
+import departmentApi from "../../services/departmentService/departmentApi.js";
 import "../../assets/styles/css/departmentStyles/Departments.css";
 
 function UpdateDepartment() {
@@ -24,7 +24,7 @@ function UpdateDepartment() {
   useEffect(() => {
     const loadDepartment = async () => {
       try {
-        const response = await getDepartmentById(id);
+        const response = await departmentApi.getDepartmentById(id);
         const department = response.data?.data;
         setForm((current) => ({
           ...current,
@@ -56,7 +56,7 @@ function UpdateDepartment() {
     setError("");
 
     try {
-      await updateDepartment(id, {
+      await departmentApi.updateDepartment(id, {
         departmentName: form.departmentName,
         departmentCode: form.departmentCode,
         departmentCreateAt: form.departmentCreateAt || null,

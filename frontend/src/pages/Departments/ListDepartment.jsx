@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Badge, Button, Form, Nav, Table } from "react-bootstrap";
 import { IconBuildingSkyscraper, IconChevronLeft, IconChevronRight, IconDots, IconFilter, IconHierarchy, IconListDetails, IconPlus, IconRefresh, IconSearch, IconSelector, IconSettings, IconUsers } from "@tabler/icons-react";
 import { useNavigate } from "react-router-dom";
-import { getAllDepartments } from "../../config/departmentApi/departmentApi.js";
+import departmentApi from "../../services/departmentService/departmentApi.js";
 import "../../assets/styles/css/departmentStyles/Departments.css";
 
 function ListDepartment() {
@@ -18,7 +18,7 @@ function ListDepartment() {
     setError("");
 
     try {
-      const response = await getAllDepartments();
+      const response = await departmentApi.getAllDepartments();
       setDepartments(Array.isArray(response.data?.data) ? response.data.data : []);
     } catch (requestError) {
       setDepartments([]);
@@ -31,7 +31,7 @@ function ListDepartment() {
   useEffect(() => {
     let isMounted = true;
 
-    getAllDepartments()
+    departmentApi.getAllDepartments()
       .then((response) => {
         if (isMounted) {
           setDepartments(Array.isArray(response.data?.data) ? response.data.data : []);
