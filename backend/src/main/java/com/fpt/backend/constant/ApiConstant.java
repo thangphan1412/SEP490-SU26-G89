@@ -7,5 +7,7 @@
         }
         public static class Authentication{
             public static final String LOGIN ="/auth/login";
+            public static final String FORGOT ="/auth/forgot-password";
+            public static final String RESETPASSWORD ="/auth/reset-password";
         }
     }

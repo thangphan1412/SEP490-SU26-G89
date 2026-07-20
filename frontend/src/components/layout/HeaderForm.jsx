@@ -1,3 +1,4 @@
+import Container from 'react-bootstrap/Container';
 import Nav from 'react-bootstrap/Nav';
 import Navbar from 'react-bootstrap/Navbar';
 import NavDropdown from 'react-bootstrap/NavDropdown';
@@ -32,14 +33,14 @@ function HeaderForm(){
 
                 <Navbar.Collapse id="basic-navbar-nav">
                     <Nav className="nav-list">
-                        <Nav.Link href="#" className="nav-item"><IconLayoutDashboard stroke={2}/>Dashboard</Nav.Link>
-                        <Nav.Link href="#" className="nav-item"><IconContract stroke={2}/>Contract Management</Nav.Link>
-                        <Nav.Link href="#" className="nav-item"><IconCreditCard stroke={2} />Subscription Management</Nav.Link>
-                        <Nav.Link href="#" className="nav-item"><IconShieldCheck stroke={2} />Permission Management</Nav.Link>
-                        <Nav.Link href="/department-management/list" className="nav-item"><IconBuildingSkyscraper stroke={2} />Department Management</Nav.Link>
-                        <Nav.Link href="#" className="nav-item"><IconUserPlus stroke={2} />Employee Management</Nav.Link>
+                        <Nav.Link href="#" className="nav-item" ><IconLayoutDashboard stroke={2}/>Signature Management</Nav.Link>
+                        <Nav.Link href="/contract-management/list" className="nav-item"><IconContract stroke={2}/>Contract Management</Nav.Link>
+                        <Nav.Link href="/project-management/list" className="nav-item"><IconCreditCard stroke={2} />Project Management</Nav.Link>
+                        <Nav.Link href="/permission/list" className="nav-item"><IconShieldCheck stroke={2} />Permission Management</Nav.Link>
+                        <Nav.Link href="/user-management/list" className="nav-item"><IconBuildingSkyscraper stroke={2} />Department Management</Nav.Link>
+                        <Nav.Link href="/user-management/list" className="nav-item"><IconUserPlus stroke={2} />Employee Management</Nav.Link>
                         <Nav.Link href="#" className="nav-item"><IconReportAnalytics stroke={2} />Reports</Nav.Link>
-                        <Nav.Link href="#" className="nav-item"><IconSettings stroke={2} />Settings</Nav.Link>
+                        {/*<Nav.Link href="#" className="nav-item"><IconSettings stroke={2} />Settings</Nav.Link>*/}
 
                     </Nav>
                 </Navbar.Collapse>

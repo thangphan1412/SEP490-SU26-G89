@@ -1,4 +1,4 @@
-import { Navigate, Route, Routes } from "react-router-dom";
+import {Navigate, Route, Routes} from "react-router-dom";
 import LoginPage from "./pages/Authentication/LoginPage.jsx";
 import Homepage from "./pages/homePage/HomePage.jsx";
 import ViewProfile from "./pages/CompanyProfileManagement/ViewProfile.jsx";
@@ -30,35 +30,40 @@ import CreateDepartment from "./pages/Departments/CreateDepartment.jsx";
 import ViewDepartment from "./pages/Departments/ViewDepartment.jsx";
 import UpdateDepartment from "./pages/Departments/UpdateDepartment.jsx";
 import ProtectedRoute from "./components/common/ProtectedRouter.jsx";
+import HeaderForm from "./components/layout/HeaderForm.jsx";
 import MainLayout from "./components/layout/MainLayout.jsx";
+import ForgotPassword from "./pages/Authentication/ForgotPassword.jsx";
+import Resetpassword from "./pages/Authentication/Resetpassword.jsx";
 
 function AppRouter() {
     return (
         <Routes>
             <Route path="/"
-                element={<Navigate to="/login" replace />}
+                   element={<Navigate to="/login" replace />}
             />
             <Route
                 path="/login"
                 element={<LoginPage />}
             />
-            <Route element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
+             <Route
+                path="/forgot_password"
+                element={<ForgotPassword />}
+            />
+            <Route
+                path="/reset-password"
+                element={<Resetpassword/>}
+            />
+
+            <Route element={<ProtectedRoute><MainLayout/></ProtectedRoute>}>
                 <Route
                     path="/home_page"
                     element={<Homepage />}
+                    element={
+                        <ProtectedRoute>
+                            <Homepage/>
+                        </ProtectedRoute>
+                    }
                 />
-                {/* <Route
-                path="/register"
-                element={<RegisterPage/>}
-            /> */}
-                {/* <Route
-                path="/forgot_password"
-                element={<FogotPassword />}
-            />*/}
-                {/*<Route*/}
-                {/*    path="/home_page"*/}
-                {/*    element={<Homepage />}*/}
-                {/*/>*/}
                 <Route
                     path="/company-profile/view"
                     element={<ViewProfile />}
@@ -172,6 +177,7 @@ function AppRouter() {
                     element={<UpdateDepartment />}
                 />
             </Route>
+
 
         </Routes>
     )
