@@ -57,12 +57,12 @@ public class AuthenticateController {
 
     }
 
-    @PostMapping("/forgotPassword")
+    @PostMapping(ApiConstant.Authentication.FORGOT)
     public ResponseEntity<BaseResponse<?>> forGotPassword(@RequestBody ForgotPasswordRequest  forgotPasswordRequest)  {
         userServiceImpl.forgotPassword(forgotPasswordRequest.getEmail());
         return ResponseEntity.status(HttpStatus.CREATED).body(new BaseResponse<>());
     }
-    @PostMapping("/ResetPasswrod")
+    @PostMapping(ApiConstant.Authentication.RESETPASSWORD)
     public ResponseEntity<BaseResponse<?>> resetPasswrod(@RequestBody ResetPasswordRequest resetPasswordRequest)  {
         userServiceImpl.resetPassword(resetPasswordRequest);
         return ResponseEntity.status(HttpStatus.CREATED).body(new BaseResponse<>());

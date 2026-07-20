@@ -50,17 +50,18 @@ public class UserServiceImpl implements IUserService {
         ValidateEmail validateEmail = new ValidateEmail();
         String regexPattern = "^(.+)@(\\S+)$";
         List<Users> users = userRepository.findAll();
-//        if(users.isEmpty() || users.get(0).getEmail() == null || users.get(0).getPassword() == null || users.get(0).getPassword().isEmpty()){
-//            throw new RuntimeException("Email or password is empty");
-//        }
+
         if(userRepository.existsByEmail(registerRequest.getEmail())){
             throw new RuntimeException("Email already exists");
         }
         if(!ValidateEmail.validateEmail(registerRequest.getEmail(), regexPattern)){
             throw new RuntimeException("Invalid format email: abc@domain.com");
         }
-        if(registerRequest.getPassword().length() < 8){
-            throw new RuntimeException("Password too short, have to be at least 8 characters");
+        if(registerRequest.getPassword().length() < 8 || registerRequest.getPassword().length() > 12){
+            throw new RuntimeException("Password too short, have to be at least 8 characters and less than 12 characters");
+        }
+        if(registerRequest.getPassword().isEmpty()){
+            throw new RuntimeException("Password cannot be empty");
         }
         Users user = new Users();
         user.setFirstName(registerRequest.getFirstName());

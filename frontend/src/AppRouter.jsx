@@ -28,6 +28,8 @@ import UpdateContractType from "./pages/contractType/UpdateContractType.jsx";
 import ProtectedRoute from "./components/common/ProtectedRouter.jsx";
 import HeaderForm from "./components/layout/HeaderForm.jsx";
 import MainLayout from "./components/layout/MainLayout.jsx";
+import ForgotPassword from "./pages/Authentication/ForgotPassword.jsx";
+import Resetpassword from "./pages/Authentication/Resetpassword.jsx";
 
 function AppRouter() {
     return (
@@ -39,23 +41,24 @@ function AppRouter() {
                 path="/login"
                 element={<LoginPage />}
             />
-            <Route element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
+             <Route
+                path="/forgot_password"
+                element={<ForgotPassword />}
+            />
+            <Route
+                path="/reset-password"
+                element={<Resetpassword/>}
+            />
+
+            <Route element={<ProtectedRoute><MainLayout/></ProtectedRoute>}>
                 <Route
                     path="/home_page"
-                    element={<Homepage/>}
+                    element={
+                        <ProtectedRoute>
+                            <Homepage/>
+                        </ProtectedRoute>
+                    }
                 />
-                {/* <Route
-                path="/register"
-                element={<RegisterPage/>}
-            /> */}
-                {/* <Route
-                path="/forgot_password"
-                element={<FogotPassword />}
-            />*/}
-                {/*<Route*/}
-                {/*    path="/home_page"*/}
-                {/*    element={<Homepage />}*/}
-                {/*/>*/}
                 <Route
                     path="/company-profile/view"
                     element={<ViewProfile />}
@@ -153,6 +156,7 @@ function AppRouter() {
                     element={<UpdateContractType />}
                 />
             </Route>
+
 
         </Routes>
     )

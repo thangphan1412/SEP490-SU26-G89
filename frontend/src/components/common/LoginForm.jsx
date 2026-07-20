@@ -66,7 +66,7 @@ function LoginForm() {
           </div>
           Remember me
         </label>
-        <Link to="/forgot-password" className="forgot-link">Forgot password?</Link>
+        <Link to="/forgot_password" className="forgot-link">Forgot password?</Link>
       </div>
 
       <button className="btn-signin" type="button" onClick={handelLogin}>
