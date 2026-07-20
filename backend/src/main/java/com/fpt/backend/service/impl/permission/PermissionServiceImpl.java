@@ -33,7 +33,6 @@ import java.util.Set;
 @Transactional(readOnly = true)
 public class PermissionServiceImpl implements PermissionService {
     private static final int PAGE_SIZE = 7;
-    private static final String DATA_SOURCE = "DATABASE";
     private static final String DEFAULT_SORT_FIELD = "id";
     private static final Set<String> SORT_FIELDS = Set.of(
             "id",
@@ -70,7 +69,6 @@ public class PermissionServiceImpl implements PermissionService {
         );
 
         return new PermissionListResponse(
-                DATA_SOURCE,
                 permissions.map(this::toListItem).getContent(),
                 permissions.getNumber(),
                 permissions.getSize(),

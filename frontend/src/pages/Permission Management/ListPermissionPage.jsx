@@ -34,6 +34,7 @@ import { PermissionPage, PermissionStatusBadge } from "./PermissionComponents.js
 import UpdatePermissionPage from "./UpdatePermissionPage.jsx";
 import ViewPermissionPage from "./ViewPermissionPage.jsx";
 
+// Các cột có thể sắp xếp trong bảng
 const sortableColumns = [
   ["Permission", "permissionName"],
   ["Code / Module", "permissionCode"],
@@ -63,6 +64,8 @@ function createPageNumbers(currentPage, totalPages) {
   return pages;
 }
 
+
+// chuyển hướng sang trang xem hoặc chỉnh sửa nếu có tham số truy vấn
 function ListPermissionPage() {
   const [searchParams] = useSearchParams();
   const viewingPermissionId = searchParams.get("view");
