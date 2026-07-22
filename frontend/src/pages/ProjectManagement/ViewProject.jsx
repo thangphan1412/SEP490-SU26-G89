@@ -2,13 +2,11 @@ import { useEffect, useState } from "react";
 import { Alert, Button, Card, Form, ProgressBar, Stack, Table } from "react-bootstrap";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { deleteProject, viewProject } from "../../config/projectApi/projectApi.js";
-import {
-    DangerButton,
-    Icon,
-    PagePanel,
-    PrimaryButton,
-    StatusBadge,
-} from "./ProjectComponents.jsx";
+import DangerButton from "../../components/projectComponents/DangerButton.jsx";
+import Icon from "../../components/projectComponents/Icon.jsx";
+import PagePanel from "../../components/projectComponents/PagePanel.jsx";
+import PrimaryButton from "../../components/projectComponents/PrimaryButton.jsx";
+import StatusBadge from "../../components/projectComponents/StatusBadge.jsx";
 import "../../assets/styles/css/projectStyles/ViewProject.css";
 
 function showValue(value) {

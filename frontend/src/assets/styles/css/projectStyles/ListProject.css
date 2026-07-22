@@ -37,6 +37,13 @@
     box-shadow: none;
 }
 
+.list-project-search-input.form-control:focus,
+.list-project-search-input.form-control:focus-visible {
+    border-color: transparent;
+    outline: none;
+    box-shadow: none;
+}
+
 .list-project-clear-search.btn {
     width: 28px;
     height: 28px;
@@ -80,6 +87,13 @@
     background-image: none;
     color: #111827;
     font-size: 14px;
+    box-shadow: none;
+}
+
+.list-project-select.form-select:focus,
+.list-project-select.form-select:focus-visible {
+    border-color: transparent;
+    outline: none;
     box-shadow: none;
 }
 

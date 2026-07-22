@@ -43,8 +43,15 @@
 }
 
 .permission-list-search:focus-within {
-  border-color: #8da8ff;
-  box-shadow: 0 0 0 3px rgba(36, 80, 245, 0.1);
+  border-color: #d5deea;
+  box-shadow: none;
+}
+
+.permission-list-search .form-control:focus,
+.permission-list-search .btn:focus,
+.permission-list-search .btn:focus-visible {
+  outline: none;
+  box-shadow: none;
 }
 
 .permission-list-filter {
@@ -72,6 +79,13 @@
   color: #253550;
   background-color: transparent;
   font-size: 13px;
+  box-shadow: none;
+}
+
+.permission-list-filter .form-select:focus,
+.permission-list-filter .form-select:focus-visible {
+  border-color: transparent;
+  outline: none;
   box-shadow: none;
 }
 

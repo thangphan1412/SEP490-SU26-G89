@@ -30,7 +30,8 @@ import {
   listPermissionRoles,
   listPermissions,
 } from "../../config/permissionApi/permissionApi.js";
-import { PermissionPage, PermissionStatusBadge } from "./PermissionComponents.jsx";
+import PermissionPage from "../../components/permissionComponents/PermissionPage.jsx";
+import PermissionStatusBadge from "../../components/permissionComponents/PermissionStatusBadge.jsx";
 import UpdatePermissionPage from "./UpdatePermissionPage.jsx";
 import ViewPermissionPage from "./ViewPermissionPage.jsx";
 

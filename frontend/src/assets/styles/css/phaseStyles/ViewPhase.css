@@ -1,0 +1,214 @@
+.phase-view-content {
+  padding: 26px 30px 32px;
+  display: grid;
+  gap: 20px;
+  background: #fbfcff;
+}
+
+.phase-page-state {
+  min-height: 260px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: #5b6880;
+}
+
+.phase-page-message.alert {
+  margin: 28px;
+}
+
+.phase-hero.card {
+  padding: 24px;
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 18px;
+  border: 1px solid #bde0dc;
+  border-radius: 13px;
+  background: linear-gradient(135deg, #ffffff 0%, #edf9f7 100%);
+  box-shadow: 0 5px 18px rgba(8, 127, 117, 0.06);
+}
+
+.phase-hero-icon {
+  width: 72px;
+  height: 72px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 18px;
+  color: #ffffff;
+  background: #087f75;
+  box-shadow: 0 9px 20px rgba(8, 127, 117, 0.2);
+}
+
+.phase-hero-main {
+  min-width: 0;
+}
+
+.phase-title-line {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.phase-title-line h2 {
+  margin: 0;
+  color: #172641;
+  font-size: 23px;
+  font-weight: 800;
+}
+
+.phase-project-name {
+  margin: 7px 0 0;
+  color: #087f75;
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.phase-description {
+  max-width: 780px;
+  margin: 8px 0 0;
+  color: #68758c;
+  font-size: 13px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+
+.phase-id {
+  align-self: flex-start;
+  padding: 6px 9px;
+  border: 1px solid #d4ddea;
+  border-radius: 7px;
+  color: #68758d;
+  background: rgba(255, 255, 255, 0.8);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.phase-overview-card.card {
+  padding: 21px;
+  border: 1px solid #dce4f0;
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: 0 3px 12px rgba(32, 49, 84, 0.035);
+}
+
+.phase-overview-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 20px;
+}
+
+.phase-overall-progress {
+  margin-top: 22px;
+  padding-top: 19px;
+  border-top: 1px solid #e8edf4;
+}
+
+.phase-progress-label {
+  justify-content: space-between;
+  margin-bottom: 8px;
+  color: #4d5d77;
+  font-size: 12px;
+}
+
+.phase-progress-label strong {
+  color: #087f75;
+}
+
+.phase-overall-progress .progress,
+.phase-progress-cell .progress {
+  height: 8px;
+  border-radius: 999px;
+  background: #e8edf3;
+}
+
+.phase-overall-progress .progress-bar,
+.phase-progress-cell .progress-bar {
+  background: #0a9c8f;
+}
+
+.phase-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.phase-data-table {
+  min-width: 780px;
+  vertical-align: middle;
+}
+
+.phase-data-table thead th {
+  padding: 12px 15px;
+  border-bottom: 1px solid #dce4f0;
+  color: #66738a;
+  background: #f7f9fc;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.phase-data-table tbody td {
+  padding: 14px 15px;
+  border-color: #edf0f5;
+  color: #4b5b75;
+  font-size: 13px;
+}
+
+.phase-data-table tbody td strong {
+  color: #243552;
+  font-weight: 750;
+}
+
+.phase-description-cell {
+  min-width: 240px;
+  max-width: 380px;
+  white-space: normal;
+}
+
+.phase-progress-cell {
+  min-width: 135px;
+}
+
+.phase-progress-cell > span {
+  display: block;
+  margin-bottom: 5px;
+  color: #4b5b75;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+@media (max-width: 900px) {
+  .phase-overview-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .phase-view-content {
+    padding: 18px 16px 22px;
+  }
+
+  .phase-page-message.alert {
+    margin: 18px;
+  }
+
+  .phase-hero.card {
+    grid-template-columns: 1fr;
+  }
+
+  .phase-id {
+    position: absolute;
+    top: 18px;
+    right: 18px;
+  }
+
+  .phase-overview-grid {
+    grid-template-columns: 1fr;
+  }
+}
