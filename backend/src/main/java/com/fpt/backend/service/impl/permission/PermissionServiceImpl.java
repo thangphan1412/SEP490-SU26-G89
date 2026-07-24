@@ -88,6 +88,8 @@ public class PermissionServiceImpl implements PermissionService {
     @Transactional
     public PermissionDetailResponse createPermission(PermissionRequest request) {
         Permissions permission = new Permissions();
+        // Actions are configured later from the project's Permission Configure popup.
+        permission.setPermissionModule(null);
         applyRequest(permission, request, null);
         return toDetail(permissionRepository.save(permission));
     }
@@ -133,7 +135,6 @@ public class PermissionServiceImpl implements PermissionService {
 
         String permissionName = requireText(request.permissionName(), "Permission name is required", 50);
         String permissionCode = requireText(request.permissionCode(), "Permission code is required", 50);
-        String permissionModule = requireText(request.permissionModule(), "Permission module is required", 255);
         String permissionDescription = normalize(request.permissionDescription());
         validateMaxLength(permissionDescription, "Permission description", 255);
         Projects project = findProject(request.projectId());
@@ -149,7 +150,6 @@ public class PermissionServiceImpl implements PermissionService {
 
         permission.setPermissionName(permissionName);
         permission.setPermissionCode(permissionCode);
-        permission.setPermissionModule(permissionModule);
         permission.setPermissionDescription(permissionDescription);
         permission.setStatus(request.status() == null || request.status());
         permission.setProject(project);

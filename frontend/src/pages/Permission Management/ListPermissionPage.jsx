@@ -38,7 +38,7 @@ import ViewPermissionPage from "./ViewPermissionPage.jsx";
 // Các cột có thể sắp xếp trong bảng
 const sortableColumns = [
   ["Permission", "permissionName"],
-  ["Code / Module", "permissionCode"],
+  ["Permission Code", "permissionCode"],
   ["Project", "projectName"],
   ["Role", "roleName"],
   ["Status", "status"],
