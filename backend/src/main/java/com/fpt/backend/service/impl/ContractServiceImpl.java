@@ -21,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.Locale;
 import java.util.Set;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -67,7 +68,7 @@ public class ContractServiceImpl implements ContractService {
 
     @Override
     @Transactional(readOnly = true)
-    public ContractResponse getContractById(int id) {
+    public ContractResponse getContractById(UUID id) {
         return toResponse(findContract(id));
     }
 
@@ -85,7 +86,7 @@ public class ContractServiceImpl implements ContractService {
 
     @Override
     @Transactional
-    public ContractResponse updateContract(int id, ContractRequest request) {
+    public ContractResponse updateContract(UUID id, ContractRequest request) {
         Contracts contract = findContract(id);
         applyRequest(contract, request);
         if (request.contractCreatedAt() != null) {
@@ -97,7 +98,7 @@ public class ContractServiceImpl implements ContractService {
 
     @Override
     @Transactional
-    public void deleteContract(int id) {
+    public void deleteContract(UUID id) {
         Contracts contract = findContract(id);
         contractRepository.delete(contract);
     }
@@ -128,7 +129,7 @@ public class ContractServiceImpl implements ContractService {
         contract.setProject(resolveProject(request.projectId()));
     }
 
-    private Projects resolveProject(Integer projectId) {
+    private Projects resolveProject(UUID projectId) {
         if (projectId == null) {
             return null;
         }
@@ -137,7 +138,7 @@ public class ContractServiceImpl implements ContractService {
                 .orElseThrow(() -> new NotFoundException("Project not found with id: " + projectId));
     }
 
-    private Contracts findContract(int id) {
+    private Contracts findContract(UUID id) {
         return contractRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Contract not found with id: " + id));
     }

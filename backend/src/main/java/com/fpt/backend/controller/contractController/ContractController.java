@@ -21,6 +21,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.UUID;
+
 @RestController
 @RequestMapping({"/api/contracts", "/api/v1/contracts"})
 @CrossOrigin(originPatterns = "*")
@@ -45,7 +47,7 @@ public class ContractController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<BaseResponse<ContractResponse>> getContractById(@PathVariable int id) {
+    public ResponseEntity<BaseResponse<ContractResponse>> getContractById(@PathVariable UUID id) {
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.noStore())
                 .body(new BaseResponse<>(contractService.getContractById(id)));
@@ -65,13 +67,13 @@ public class ContractController {
 
     @PutMapping("/{id}")
     public ResponseEntity<BaseResponse<ContractResponse>> updateContract(
-            @PathVariable int id,
+            @PathVariable UUID id,
             @RequestBody ContractRequest request) {
         return ResponseEntity.ok(new BaseResponse<>(contractService.updateContract(id, request)));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<BaseResponse<Void>> deleteContract(@PathVariable int id) {
+    public ResponseEntity<BaseResponse<Void>> deleteContract(@PathVariable UUID id) {
         contractService.deleteContract(id);
         return ResponseEntity.ok(new BaseResponse<>(
                 HttpStatus.OK.value(),
