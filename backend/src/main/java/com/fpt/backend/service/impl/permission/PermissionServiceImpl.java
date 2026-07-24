@@ -27,6 +27,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -80,7 +81,7 @@ public class PermissionServiceImpl implements PermissionService {
     }
 
     @Override
-    public PermissionDetailResponse getPermissionById(int id) {
+    public PermissionDetailResponse getPermissionById(UUID id) {
         return toDetail(findPermission(id));
     }
 
@@ -96,7 +97,7 @@ public class PermissionServiceImpl implements PermissionService {
 
     @Override
     @Transactional
-    public PermissionDetailResponse updatePermission(int id, PermissionRequest request) {
+    public PermissionDetailResponse updatePermission(UUID id, PermissionRequest request) {
         Permissions permission = findPermission(id);
         applyRequest(permission, request, id);
         return toDetail(permissionRepository.save(permission));
@@ -104,7 +105,7 @@ public class PermissionServiceImpl implements PermissionService {
 
     @Override
     @Transactional
-    public void deletePermission(int id) {
+    public void deletePermission(UUID id) {
         permissionRepository.delete(findPermission(id));
     }
 
@@ -128,7 +129,7 @@ public class PermissionServiceImpl implements PermissionService {
                 .toList();
     }
 
-    private void applyRequest(Permissions permission, PermissionRequest request, Integer currentId) {
+    private void applyRequest(Permissions permission, PermissionRequest request, UUID currentId) {
         if (request == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Permission information is required");
         }
@@ -160,13 +161,13 @@ public class PermissionServiceImpl implements PermissionService {
         }
     }
 
-    private Permissions findPermission(int id) {
+    private Permissions findPermission(UUID id) {
         return permissionRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Permission not found"));
     }
 
-    private Projects findProject(Integer projectId) {
-        if (projectId == null || projectId <= 0) {
+    private Projects findProject(UUID projectId) {
+        if (projectId == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Project is required");
         }
 
@@ -174,8 +175,8 @@ public class PermissionServiceImpl implements PermissionService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Project not found"));
     }
 
-    private Role findRole(Integer roleId) {
-        if (roleId == null || roleId <= 0) {
+    private Role findRole(UUID roleId) {
+        if (roleId == null ) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Role is required");
         }
 

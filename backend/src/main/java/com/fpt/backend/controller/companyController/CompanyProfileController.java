@@ -9,6 +9,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.UUID;
+
 @RestController
 @RequestMapping("/api/company-profile")
 public class CompanyProfileController {
@@ -17,7 +19,7 @@ public class CompanyProfileController {
     private ICompanyService companyService;
 
     // Giả định hệ thống chỉ có 1 công ty quản lý hợp đồng chính, ID mặc định là 1 trong DB
-    private static final Integer DEFAULT_COMPANY_ID = 1;
+    private static final UUID DEFAULT_COMPANY_ID = null;
 
     // 1. Xem hồ sơ công ty
     @GetMapping

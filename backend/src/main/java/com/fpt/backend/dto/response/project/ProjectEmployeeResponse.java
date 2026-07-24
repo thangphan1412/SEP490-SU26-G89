@@ -1,9 +1,10 @@
 package com.fpt.backend.dto.response.project;
 
 import java.util.List;
+import java.util.UUID;
 
 public record ProjectEmployeeResponse(
-        int id,
+        UUID id,
         String email,
         String firstName,
         String lastName,

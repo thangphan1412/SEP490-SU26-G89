@@ -2,9 +2,10 @@ package com.fpt.backend.dto.request.contract;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 public record ContractRequest(
-        Integer projectId,
+        UUID projectId,
         String contractNumber,
         String contractTitle,
         String contractStatus,

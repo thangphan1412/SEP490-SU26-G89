@@ -11,18 +11,19 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @Repository
-public interface PermissionRepository extends JpaRepository<Permissions, Integer> {
+public interface PermissionRepository extends JpaRepository<Permissions, UUID> {
     boolean existsByPermissionCodeIgnoreCase(String permissionCode);
 
-    boolean existsByPermissionCodeIgnoreCaseAndIdNot(String permissionCode, int id);
+    boolean existsByPermissionCodeIgnoreCaseAndIdNot(String permissionCode, UUID id);
 
     @Query("SELECT role FROM Role role ORDER BY role.roleName ASC")
     List<Role> findRolesForPermissionSelection();
 
     @Query("SELECT role FROM Role role WHERE role.id = :roleId")
-    Optional<Role> findPermissionRoleById(@Param("roleId") int roleId);
+    Optional<Role> findPermissionRoleById(@Param("roleId") UUID roleId);
 
     @Query("""
             SELECT permission
@@ -44,8 +45,8 @@ public interface PermissionRepository extends JpaRepository<Permissions, Integer
             """)
     Page<Permissions> searchPermissions(
             @Param("search") String search,
-            @Param("projectId") Integer projectId,
-            @Param("roleId") Integer roleId,
+            @Param("projectId") UUID projectId,
+            @Param("roleId") UUID roleId,
             @Param("status") Boolean status,
             Pageable pageable
     );

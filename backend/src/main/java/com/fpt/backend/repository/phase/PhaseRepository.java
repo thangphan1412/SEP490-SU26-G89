@@ -8,9 +8,10 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @Repository
-public interface PhaseRepository extends JpaRepository<Timeline, Integer> {
+public interface PhaseRepository extends JpaRepository<Timeline, UUID> {
     @Query("""
             SELECT phase
             FROM Timeline phase
@@ -18,7 +19,7 @@ public interface PhaseRepository extends JpaRepository<Timeline, Integer> {
             WHERE project.id = :projectId
             ORDER BY phase.startDate, phase.id
             """)
-    List<Timeline> findByProjectId(@Param("projectId") int projectId);
+    List<Timeline> findByProjectId(@Param("projectId") UUID projectId);
 
     @Query("""
             SELECT phase
@@ -26,5 +27,5 @@ public interface PhaseRepository extends JpaRepository<Timeline, Integer> {
             JOIN FETCH phase.project project
             WHERE phase.id = :phaseId
             """)
-    Optional<Timeline> findDetailById(@Param("phaseId") int phaseId);
+    Optional<Timeline> findDetailById(@Param("phaseId") UUID phaseId);
 }

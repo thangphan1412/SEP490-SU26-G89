@@ -8,6 +8,8 @@ import com.fpt.backend.service.interfaces.company.ICompanyService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.util.UUID;
+
 @Service
 public class CompanyServiceImpl implements ICompanyService {
 
@@ -15,14 +17,14 @@ public class CompanyServiceImpl implements ICompanyService {
     private CompanyRepository companyRepository;
 
     @Override
-    public CompanyProfileResponseDTO getCompanyProfile(Integer id) {
+    public CompanyProfileResponseDTO getCompanyProfile(UUID id) {
         Company company = companyRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Company not found with id: " + id));
         return CompanyProfileResponseDTO.fromEntity(company);
     }
 
     @Override
-    public CompanyProfileResponseDTO updateCompanyProfile(Integer id, CompanyProfileRequestDTO request) {
+    public CompanyProfileResponseDTO updateCompanyProfile(UUID id, CompanyProfileRequestDTO request) {
         Company existingCompany = companyRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Company not found with id: " + id));
 

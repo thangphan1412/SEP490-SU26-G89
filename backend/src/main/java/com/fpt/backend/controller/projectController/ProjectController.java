@@ -27,6 +27,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/projects")
@@ -52,7 +53,7 @@ public class ProjectController {
     }
 
     @GetMapping("/view/{id}")
-    public ResponseEntity<BaseResponse<ProjectDetailResponse>> getProjectById(@PathVariable int id) {
+    public ResponseEntity<BaseResponse<ProjectDetailResponse>> getProjectById(@PathVariable UUID id) {
         ProjectDetailResponse project = projectService.getProjectById(id);
 
         return ResponseEntity.ok()
@@ -80,7 +81,7 @@ public class ProjectController {
 
     @GetMapping("/{projectId}/permission-configurations")
     public ResponseEntity<BaseResponse<List<ProjectPermissionConfigurationResponse>>>
-    getProjectPermissionConfigurations(@PathVariable int projectId) {
+    getProjectPermissionConfigurations(@PathVariable UUID projectId) {
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.noStore())
                 .body(new BaseResponse<>(
@@ -91,8 +92,8 @@ public class ProjectController {
     @PutMapping("/{projectId}/permissions/{permissionId}/configure")
     public ResponseEntity<BaseResponse<ProjectPermissionConfigurationResponse>>
     configureProjectPermission(
-            @PathVariable int projectId,
-            @PathVariable int permissionId,
+            @PathVariable UUID projectId,
+            @PathVariable UUID permissionId,
             @RequestBody ProjectPermissionConfigurationRequest request) {
         return ResponseEntity.ok(new BaseResponse<>(
                 projectService.configureProjectPermission(projectId, permissionId, request)
@@ -113,13 +114,13 @@ public class ProjectController {
 
     @PutMapping({"/{id}", "/update/{id}"})
     public ResponseEntity<BaseResponse<ProjectDetailResponse>> updateProject(
-            @PathVariable int id,
+            @PathVariable UUID id,
             @RequestBody ProjectUpdateRequest request) {
         return ResponseEntity.ok(new BaseResponse<>(projectService.updateProject(id, request)));
     }
 
     @DeleteMapping({"/{id}", "/delete/{id}"})
-    public ResponseEntity<BaseResponse<Void>> deleteProject(@PathVariable int id) {
+    public ResponseEntity<BaseResponse<Void>> deleteProject(@PathVariable UUID id) {
         boolean deletedFromDatabase = projectService.deleteProject(id);
         String message = deletedFromDatabase
                 ? "Project deleted permanently"
