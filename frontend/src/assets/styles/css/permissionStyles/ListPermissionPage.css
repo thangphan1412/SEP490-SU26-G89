@@ -234,15 +234,6 @@
   font-size: 13px;
 }
 
-.permission-name-text small {
-  max-width: 190px;
-  overflow: hidden;
-  color: #77839a;
-  font-size: 11px;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-
 .permission-code-badge {
   max-width: 100%;
   width: fit-content;
@@ -256,16 +247,6 @@
   font-weight: 800;
   white-space: nowrap;
   text-overflow: ellipsis;
-}
-
-.permission-module-text {
-  margin-top: 5px;
-  display: block;
-  color: #7b879b;
-  font-size: 11px;
-  line-height: 1.4;
-  overflow-wrap: anywhere;
-  white-space: normal;
 }
 
 .permission-project-cell,
