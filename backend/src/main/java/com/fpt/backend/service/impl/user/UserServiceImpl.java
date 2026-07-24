@@ -20,6 +20,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -84,9 +85,9 @@ public class UserServiceImpl implements IUserService {
 
     // 2. View User
     @Override
-    public UserResponseDTO getUserById(Integer id) {
+    public UserResponseDTO getUserById(UUID id) {
         Users user = userRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("User not found with id: " + id)); // Cân nhắc dùng custom exception của bạn
+                .orElseThrow(() -> new RuntimeException("User not found with id: " + id));
         return UserResponseDTO.fromEntity(user);
     }
 
@@ -130,7 +131,7 @@ public class UserServiceImpl implements IUserService {
 
     // 4. Update User
     @Override
-    public UserResponseDTO updateUser(Integer id, UserRequestDTO request) {
+    public UserResponseDTO updateUser(UUID id, UserRequestDTO request) {
         Users existingUser = userRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("User not found with id: " + id));
 
@@ -190,14 +191,14 @@ public class UserServiceImpl implements IUserService {
 
 
     @Override
-    public UserProfileResponseDTO getMyProfile(Integer userId) {
+    public UserProfileResponseDTO getMyProfile(UUID userId) {
         Users user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
         return UserProfileResponseDTO.fromEntity(user);
     }
 
     @Override
-    public UserProfileResponseDTO updateMyProfile(Integer userId, UserProfileRequestDTO request) {
+    public UserProfileResponseDTO updateMyProfile(UUID userId, UserProfileRequestDTO request) {
         Users existingUser = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 

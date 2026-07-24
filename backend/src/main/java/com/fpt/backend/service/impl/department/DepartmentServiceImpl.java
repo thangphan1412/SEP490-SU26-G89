@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Locale;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -28,7 +29,7 @@ public class DepartmentServiceImpl implements IDepartmentService {
     }
 
     @Override
-    public DepartmentResponseDTO getDepartmentById(Integer id) {
+    public DepartmentResponseDTO getDepartmentById(UUID id) {
         Departments department = departmentRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Department not found with id: " + id));
 
@@ -58,7 +59,7 @@ public class DepartmentServiceImpl implements IDepartmentService {
     }
 
     @Override
-    public DepartmentResponseDTO updateDepartment(Integer id, DepartmentRequestDTO request) {
+    public DepartmentResponseDTO updateDepartment(UUID id, DepartmentRequestDTO request) {
         validateRequest(request);
 
         Departments department = departmentRepository.findById(id)

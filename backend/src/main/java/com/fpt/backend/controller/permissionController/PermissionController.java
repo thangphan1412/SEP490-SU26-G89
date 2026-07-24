@@ -24,6 +24,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/permissions")
@@ -35,8 +36,8 @@ public class PermissionController {
     @GetMapping("/list")
     public ResponseEntity<BaseResponse<PermissionListResponse>> getPermissions(
             @RequestParam(defaultValue = "") String search,
-            @RequestParam(required = false) Integer projectId,
-            @RequestParam(required = false) Integer roleId,
+            @RequestParam(required = false) UUID projectId,
+            @RequestParam(required = false) UUID roleId,
             @RequestParam(required = false) Boolean status,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "id") String sortBy,
@@ -65,7 +66,7 @@ public class PermissionController {
     }
 
     @GetMapping({"/view/{id}", "/{id}"})
-    public ResponseEntity<BaseResponse<PermissionDetailResponse>> getPermissionById(@PathVariable int id) {
+    public ResponseEntity<BaseResponse<PermissionDetailResponse>> getPermissionById(@PathVariable UUID id) {
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.noStore())
                 .body(new BaseResponse<>(permissionService.getPermissionById(id)));
@@ -82,13 +83,13 @@ public class PermissionController {
 
     @PutMapping({"/{id}", "/update/{id}"})
     public ResponseEntity<BaseResponse<PermissionDetailResponse>> updatePermission(
-            @PathVariable int id,
+            @PathVariable UUID id,
             @RequestBody PermissionRequest request) {
         return ResponseEntity.ok(new BaseResponse<>(permissionService.updatePermission(id, request)));
     }
 
     @DeleteMapping({"/{id}", "/delete/{id}"})
-    public ResponseEntity<BaseResponse<Void>> deletePermission(@PathVariable int id) {
+    public ResponseEntity<BaseResponse<Void>> deletePermission(@PathVariable UUID id) {
         permissionService.deletePermission(id);
 
         return ResponseEntity.ok(new BaseResponse<>(HttpStatus.OK.value(), "Deleted", null));

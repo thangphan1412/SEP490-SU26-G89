@@ -2,9 +2,10 @@ package com.fpt.backend.dto.response.phase;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 public record PhaseContractResponse(
-        int id,
+        UUID id,
         String contractNumber,
         String contractTitle,
         String contractStatus,

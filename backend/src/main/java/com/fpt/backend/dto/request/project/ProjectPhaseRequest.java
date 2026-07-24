@@ -1,9 +1,10 @@
 package com.fpt.backend.dto.request.project;
 
 import java.time.LocalDate;
+import java.util.UUID;
 
 public record ProjectPhaseRequest(
-        Integer id,
+        UUID id,
         String title,
         String description,
         LocalDate startDate,

@@ -11,27 +11,28 @@ import com.fpt.backend.dto.response.project.ProjectPermissionConfigurationRespon
 import com.fpt.backend.dto.response.project.ProjectRoleResponse;
 
 import java.util.List;
+import java.util.UUID;
 
 public interface ProjectService {
     ProjectListResponse getProjects(ProjectListRequest request);
 
-    ProjectDetailResponse getProjectById(int id);
+    ProjectDetailResponse getProjectById(UUID id);
 
     ProjectDetailResponse createProject(ProjectCreateRequest request);
 
-    ProjectDetailResponse updateProject(int id, ProjectUpdateRequest request);
+    ProjectDetailResponse updateProject(UUID id, ProjectUpdateRequest request);
 
-    boolean deleteProject(int id);
+    boolean deleteProject(UUID id);
 
     List<ProjectEmployeeResponse> getEmployeesForProjectSelection();
 
     List<ProjectRoleResponse> getRolesForProjectMemberFilter();
 
-    List<ProjectPermissionConfigurationResponse> getProjectPermissionConfigurations(int projectId);
+    List<ProjectPermissionConfigurationResponse> getProjectPermissionConfigurations(UUID projectId);
 
     ProjectPermissionConfigurationResponse configureProjectPermission(
-            int projectId,
-            int permissionId,
+            UUID projectId,
+            UUID permissionId,
             ProjectPermissionConfigurationRequest request
     );
 }

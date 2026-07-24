@@ -25,6 +25,7 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.Date;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -39,8 +40,8 @@ public class PhaseServiceImpl implements PhaseService {
     private final ProjectRepository projectRepository;
 
     @Override
-    public List<PhaseListItemResponse> getPhasesByProjectId(int projectId) {
-        if (projectId <= 0 || !projectRepository.existsById(projectId)) {
+    public List<PhaseListItemResponse> getPhasesByProjectId(UUID projectId) {
+        if (projectId == null || !projectRepository.existsById(projectId)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Project not found");
         }
 
@@ -51,7 +52,7 @@ public class PhaseServiceImpl implements PhaseService {
     }
 
     @Override
-    public PhaseDetailResponse getPhaseById(int phaseId) {
+    public PhaseDetailResponse getPhaseById(UUID phaseId) {
         Timeline phase = phaseRepository.findDetailById(phaseId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Phase not found"));
         Projects project = phase.getProject();

@@ -9,12 +9,13 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.UUID;
 
 @Repository
-public interface ProjectRepository extends JpaRepository<Projects, Integer> {
+public interface ProjectRepository extends JpaRepository<Projects, UUID> {
     boolean existsByProjectCodeIgnoreCase(String projectCode);
 
-    boolean existsByProjectCodeIgnoreCaseAndIdNot(String projectCode, int id);
+    boolean existsByProjectCodeIgnoreCaseAndIdNot(String projectCode, UUID id);
 
     Page<Projects> findByProjectStatusIgnoreCase(String projectStatus, Pageable pageable);
 
@@ -52,6 +53,6 @@ public interface ProjectRepository extends JpaRepository<Projects, Integer> {
             FROM Contracts contract
             WHERE contract.project.id = :projectId
             """)
-    long countContractsByProjectId(@Param("projectId") int projectId);
+    long countContractsByProjectId(@Param("projectId") UUID projectId);
 
 }

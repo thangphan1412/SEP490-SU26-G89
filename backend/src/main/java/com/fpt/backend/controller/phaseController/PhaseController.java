@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/phases")
@@ -24,14 +25,14 @@ public class PhaseController {
 
     @GetMapping("/project/{projectId}")
     public ResponseEntity<BaseResponse<List<PhaseListItemResponse>>> getPhasesByProject(
-            @PathVariable int projectId) {
+            @PathVariable UUID projectId) {
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.noStore())
                 .body(new BaseResponse<>(phaseService.getPhasesByProjectId(projectId)));
     }
 
     @GetMapping({"/{phaseId}", "/view/{phaseId}"})
-    public ResponseEntity<BaseResponse<PhaseDetailResponse>> getPhaseById(@PathVariable int phaseId) {
+    public ResponseEntity<BaseResponse<PhaseDetailResponse>> getPhaseById(@PathVariable UUID phaseId) {
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.noStore())
                 .body(new BaseResponse<>(phaseService.getPhaseById(phaseId)));

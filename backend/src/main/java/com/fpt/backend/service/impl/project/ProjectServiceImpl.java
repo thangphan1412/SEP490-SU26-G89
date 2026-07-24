@@ -41,15 +41,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.Date;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -123,7 +115,7 @@ public class ProjectServiceImpl implements ProjectService {
     }
 
     @Override
-    public ProjectDetailResponse getProjectById(int id) {
+    public ProjectDetailResponse getProjectById(UUID id) {
         return toDetail(findProject(id));
     }
 
@@ -161,7 +153,7 @@ public class ProjectServiceImpl implements ProjectService {
 
     @Override
     @Transactional
-    public ProjectDetailResponse updateProject(int id, ProjectUpdateRequest request) {
+    public ProjectDetailResponse updateProject(UUID id, ProjectUpdateRequest request) {
         if (request == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Project information is required");
         }
@@ -188,7 +180,7 @@ public class ProjectServiceImpl implements ProjectService {
 
     @Override
     @Transactional
-    public boolean deleteProject(int id) {
+    public boolean deleteProject(UUID id) {
         Projects project = findProject(id);
 
         if (projectRepository.countContractsByProjectId(id) > 0) {
@@ -215,7 +207,7 @@ public class ProjectServiceImpl implements ProjectService {
         }
     }
 
-    private void deleteProjectRelatedData(int projectId) {
+    private void deleteProjectRelatedData(UUID projectId) {
         deleteByProject(
                 "DELETE FROM TimelineContract link WHERE link.timeline.id IN "
                         + "(SELECT phase.id FROM Timeline phase WHERE phase.project.id = :projectId)",
@@ -251,7 +243,7 @@ public class ProjectServiceImpl implements ProjectService {
         deleteByProject("DELETE FROM Workflow workflow WHERE workflow.project.id = :projectId", projectId);
     }
 
-    private void deleteByProject(String query, int projectId) {
+    private void deleteByProject(String query, UUID projectId) {
         entityManager.createQuery(query)
                 .setParameter("projectId", projectId)
                 .executeUpdate();
@@ -265,7 +257,7 @@ public class ProjectServiceImpl implements ProjectService {
                         Users.class
                 )
                 .getResultList();
-        Map<Integer, List<ProjectRoleResponse>> rolesByUserId = findRolesByUserId();
+        Map<UUID, List<ProjectRoleResponse>> rolesByUserId = findRolesByUserId();
 
         return users.stream()
                 .map(user -> new ProjectEmployeeResponse(
@@ -295,7 +287,7 @@ public class ProjectServiceImpl implements ProjectService {
     }
 
     @Override
-    public List<ProjectPermissionConfigurationResponse> getProjectPermissionConfigurations(int projectId) {
+    public List<ProjectPermissionConfigurationResponse> getProjectPermissionConfigurations(UUID projectId) {
         findProject(projectId);
 
         return findProjectPermissions(projectId)
@@ -307,8 +299,8 @@ public class ProjectServiceImpl implements ProjectService {
     @Override
     @Transactional
     public ProjectPermissionConfigurationResponse configureProjectPermission(
-            int projectId,
-            int permissionId,
+            UUID projectId,
+            UUID permissionId,
             ProjectPermissionConfigurationRequest request) {
         findProject(projectId);
         Permissions permission = entityManager.find(Permissions.class, permissionId);
@@ -328,7 +320,7 @@ public class ProjectServiceImpl implements ProjectService {
         return toPermissionConfiguration(permission);
     }
 
-    private Map<Integer, List<ProjectRoleResponse>> findRolesByUserId() {
+    private Map<UUID, List<ProjectRoleResponse>> findRolesByUserId() {
         List<UserRole> userRoles = entityManager.createQuery(
                         "SELECT userRole FROM UserRole userRole "
                                 + "JOIN FETCH userRole.user user "
@@ -337,10 +329,10 @@ public class ProjectServiceImpl implements ProjectService {
                         UserRole.class
                 )
                 .getResultList();
-        Map<Integer, List<ProjectRoleResponse>> rolesByUserId = new LinkedHashMap<>();
+        Map<UUID, List<ProjectRoleResponse>> rolesByUserId = new LinkedHashMap<>();
 
         for (UserRole userRole : userRoles) {
-            int userId = userRole.getUser().getId();
+            UUID userId = userRole.getUser().getId();
             Role role = userRole.getRole();
             List<ProjectRoleResponse> roles = rolesByUserId.computeIfAbsent(
                     userId,
@@ -435,7 +427,7 @@ public class ProjectServiceImpl implements ProjectService {
         );
     }
 
-    private Projects findProject(int id) {
+    private Projects findProject(UUID id) {
         return projectRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Project not found"));
     }
@@ -476,7 +468,7 @@ public class ProjectServiceImpl implements ProjectService {
             LocalDate endDate,
             String descriptionValue,
             String statusValue,
-            Integer currentProjectId) {
+            UUID currentProjectId) {
         String projectName = requireText(projectNameValue, "Project name is required", 50);
         String projectCode = requireText(projectCodeValue, "Project code is required", 50);
         String description = normalize(descriptionValue);
@@ -518,7 +510,7 @@ public class ProjectServiceImpl implements ProjectService {
             List<ProjectPhaseRequest> phaseRequests) {
         List<ProjectPhaseRequest> requests = phaseRequests == null ? List.of() : phaseRequests;
         validatePhaseSchedule(project, requests);
-        Map<Integer, Timeline> existingPhases = new LinkedHashMap<>();
+        Map<UUID, Timeline> existingPhases = new LinkedHashMap<>();
 
         for (Timeline phase : findProjectPhases(project.getId())) {
             existingPhases.put(phase.getId(), phase);
@@ -532,7 +524,7 @@ public class ProjectServiceImpl implements ProjectService {
             Timeline phase;
             boolean isNewPhase = false;
 
-            if (request.id() != null && request.id() > 0) {
+            if (request.id() != null ) {
                 phase = existingPhases.remove(request.id());
 
                 if (phase == null) {
@@ -707,7 +699,7 @@ public class ProjectServiceImpl implements ProjectService {
         entityManager.remove(phase);
     }
 
-    private long countByPhase(String query, int phaseId) {
+    private long countByPhase(String query, UUID phaseId) {
         return entityManager.createQuery(query, Long.class)
                 .setParameter("phaseId", phaseId)
                 .getSingleResult();
@@ -722,10 +714,10 @@ public class ProjectServiceImpl implements ProjectService {
         }
 
         List<ProjectMemberRequest> requests = memberRequests == null ? List.of() : memberRequests;
-        Map<Integer, ProjectMemberRequest> requestByUserId = new LinkedHashMap<>();
+        Map<UUID, ProjectMemberRequest> requestByUserId = new LinkedHashMap<>();
 
         for (ProjectMemberRequest request : requests) {
-            if (request == null || request.userId() == null || request.userId() <= 0) {
+            if (request == null || request.userId() == null ) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "A valid user is required");
             }
 
@@ -737,9 +729,9 @@ public class ProjectServiceImpl implements ProjectService {
             }
         }
 
-        Map<Integer, ProjectMember> existingMemberByUserId = new LinkedHashMap<>();
+        Map<UUID, ProjectMember> existingMemberByUserId = new LinkedHashMap<>();
         for (ProjectMember member : findProjectMembers(project.getId())) {
-            int userId = member.getUser().getId();
+            UUID userId = member.getUser().getId();
             ProjectMember duplicate = existingMemberByUserId.putIfAbsent(userId, member);
 
             if (duplicate != null) {
@@ -784,8 +776,8 @@ public class ProjectServiceImpl implements ProjectService {
         }
     }
 
-    private Permissions resolvePermission(Projects project, Integer permissionId) {
-        if (permissionId <= 0) {
+    private Permissions resolvePermission(Projects project, UUID permissionId) {
+        if (permissionId == null) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
                     "Selected permission is invalid"
@@ -838,7 +830,7 @@ public class ProjectServiceImpl implements ProjectService {
         );
     }
 
-    private List<ProjectPhaseResponse> toProjectPhases(int projectId) {
+    private List<ProjectPhaseResponse> toProjectPhases(UUID projectId) {
         return findProjectPhases(projectId)
                 .stream()
                 .map(phase -> new ProjectPhaseResponse(
@@ -853,10 +845,10 @@ public class ProjectServiceImpl implements ProjectService {
                 .toList();
     }
 
-    private List<ProjectUserResponse> toProjectUsers(int projectId) {
-        Map<Integer, ProjectMember> memberByUserId = new LinkedHashMap<>();
-        Map<Integer, Users> userById = new LinkedHashMap<>();
-        Map<Integer, Permissions> permissionByUserId = new LinkedHashMap<>();
+    private List<ProjectUserResponse> toProjectUsers(UUID projectId) {
+        Map<UUID, ProjectMember> memberByUserId = new LinkedHashMap<>();
+        Map<UUID, Users> userById = new LinkedHashMap<>();
+        Map<UUID, Permissions> permissionByUserId = new LinkedHashMap<>();
 
         for (ProjectMember member : findProjectMembers(projectId)) {
             Users user = member.getUser();
@@ -912,7 +904,7 @@ public class ProjectServiceImpl implements ProjectService {
                 .toList();
     }
 
-    private List<ProjectContractResponse> toProjectContracts(int projectId) {
+    private List<ProjectContractResponse> toProjectContracts(UUID projectId) {
         return entityManager.createQuery(
                         "SELECT contract FROM Contracts contract "
                                 + "WHERE contract.project.id = :projectId ORDER BY contract.id",
@@ -929,7 +921,7 @@ public class ProjectServiceImpl implements ProjectService {
                 .toList();
     }
 
-    private List<Timeline> findProjectPhases(int projectId) {
+    private List<Timeline> findProjectPhases(UUID projectId) {
         return entityManager.createQuery(
                         "SELECT phase FROM Timeline phase "
                                 + "WHERE phase.project.id = :projectId "
@@ -940,7 +932,7 @@ public class ProjectServiceImpl implements ProjectService {
                 .getResultList();
     }
 
-    private List<ProjectMember> findProjectMembers(int projectId) {
+    private List<ProjectMember> findProjectMembers(UUID projectId) {
         return entityManager.createQuery(
                         "SELECT member FROM ProjectMember member "
                                 + "JOIN FETCH member.user user "
@@ -952,7 +944,7 @@ public class ProjectServiceImpl implements ProjectService {
                 .getResultList();
     }
 
-    private List<UserPermission> findProjectUserPermissions(int projectId) {
+    private List<UserPermission> findProjectUserPermissions(UUID projectId) {
         return entityManager.createQuery(
                         "SELECT userPermission FROM UserPermission userPermission "
                                 + "JOIN FETCH userPermission.user user "
@@ -965,7 +957,7 @@ public class ProjectServiceImpl implements ProjectService {
                 .getResultList();
     }
 
-    private List<Permissions> findProjectPermissions(int projectId) {
+    private List<Permissions> findProjectPermissions(UUID projectId) {
         return entityManager.createQuery(
                         "SELECT permission FROM Permissions permission "
                                 + "WHERE permission.project.id = :projectId "

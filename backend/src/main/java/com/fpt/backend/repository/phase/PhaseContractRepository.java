@@ -7,9 +7,10 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.UUID;
 
 @Repository
-public interface PhaseContractRepository extends JpaRepository<TimelineContract, Integer> {
+public interface PhaseContractRepository extends JpaRepository<TimelineContract, UUID> {
     @Query("""
             SELECT phaseContract
             FROM TimelineContract phaseContract
@@ -17,5 +18,5 @@ public interface PhaseContractRepository extends JpaRepository<TimelineContract,
             WHERE phaseContract.timeline.id = :phaseId
             ORDER BY phaseContract.linkedAt, phaseContract.id
             """)
-    List<TimelineContract> findByPhaseId(@Param("phaseId") int phaseId);
+    List<TimelineContract> findByPhaseId(@Param("phaseId") UUID phaseId);
 }
