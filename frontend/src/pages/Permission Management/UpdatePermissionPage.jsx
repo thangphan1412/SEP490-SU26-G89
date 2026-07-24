@@ -8,7 +8,7 @@ import {
   listPermissionRoles,
   updatePermission,
   viewPermission,
-} from "../../config/permissionApi/permissionApi.js";
+} from "../../services/permissionService/permissionApi.js";
 import PermissionFormField from "../../components/permissionComponents/PermissionFormField.jsx";
 import PermissionPage from "../../components/permissionComponents/PermissionPage.jsx";
 import { formatPermissionDate } from "./permissionUtils.js";

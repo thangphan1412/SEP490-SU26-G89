@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Button, Form, InputGroup, Pagination, Table } from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
-import { listProjects } from "../../config/projectApi/projectApi.js";
+import { listProjects } from "../../services/projectService/projectApi.js";
 import Icon from "../../components/projectComponents/Icon.jsx";
 import PagePanel from "../../components/projectComponents/PagePanel.jsx";
 import PrimaryButton from "../../components/projectComponents/PrimaryButton.jsx";

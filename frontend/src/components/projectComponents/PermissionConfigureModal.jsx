@@ -3,7 +3,7 @@ import { Alert, Button, Modal, Spinner } from "react-bootstrap";
 import {
   configureProjectPermission,
   listProjectPermissionConfigurations,
-} from "../../config/projectApi/projectApi.js";
+} from "../../services/projectService/projectApi.js";
 import PermissionConfigureRow from "./PermissionConfigureRow.jsx";
 import "../../assets/styles/css/projectStyles/PermissionConfigureModal.css";
 

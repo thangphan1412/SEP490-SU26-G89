@@ -13,7 +13,7 @@ import {
   IconUserShield,
 } from "@tabler/icons-react";
 import "../../assets/styles/css/permissionStyles/ViewPermissionPage.css";
-import { deletePermission, viewPermission } from "../../config/permissionApi/permissionApi.js";
+import { deletePermission, viewPermission } from "../../services/permissionService/permissionApi.js";
 import PermissionPage from "../../components/permissionComponents/PermissionPage.jsx";
 import PermissionStatusBadge from "../../components/permissionComponents/PermissionStatusBadge.jsx";
 import ViewPermissionInfo from "../../components/permissionComponents/ViewPermissionInfo.jsx";

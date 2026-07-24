@@ -13,7 +13,7 @@ import PhaseInfoItem from "../../components/phaseComponents/PhaseInfoItem.jsx";
 import PhasePage from "../../components/phaseComponents/PhasePage.jsx";
 import PhaseStatusBadge from "../../components/phaseComponents/PhaseStatusBadge.jsx";
 import PhaseTableSection from "../../components/phaseComponents/PhaseTableSection.jsx";
-import { viewPhase } from "../../config/phaseApi/phaseApi.js";
+import { viewPhase } from "../../services/phaseService/phaseApi.js";
 import "../../assets/styles/css/phaseStyles/ViewPhase.css";
 
 function ViewPhase() {
