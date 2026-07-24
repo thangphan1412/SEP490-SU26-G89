@@ -114,7 +114,8 @@
 
 .permission-list-table.table {
   width: 100%;
-  min-width: 1000px;
+  min-width: 1180px;
+  table-layout: fixed;
   border-collapse: collapse;
   --bs-table-bg: #ffffff;
   --bs-table-hover-bg: #f8faff;
@@ -139,6 +140,30 @@
   color: #35445f;
   font-size: 13px;
   vertical-align: middle;
+}
+
+.permission-list-table th:nth-child(1) {
+  width: 260px;
+}
+
+.permission-list-table th:nth-child(2) {
+  width: 270px;
+}
+
+.permission-list-table th:nth-child(3) {
+  width: 210px;
+}
+
+.permission-list-table th:nth-child(4) {
+  width: 150px;
+}
+
+.permission-list-table th:nth-child(5) {
+  width: 105px;
+}
+
+.permission-list-table th:nth-child(6) {
+  width: 185px;
 }
 
 .permission-sort-button.btn {
@@ -178,13 +203,9 @@
   min-width: 255px;
 }
 
-.permission-name-cell,
-.permission-name-text {
-  align-items: center;
-}
-
-.permission-name-cell {
+.permission-name-content {
   display: flex;
+  align-items: center;
   gap: 11px;
 }
 
@@ -223,15 +244,18 @@
 }
 
 .permission-code-badge {
+  max-width: 100%;
   width: fit-content;
   padding: 5px 8px;
   display: block;
+  overflow: hidden;
   border-radius: 6px;
   color: #274062;
   background: #eef2f7;
   font-size: 11px;
   font-weight: 800;
   white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .permission-module-text {
@@ -239,6 +263,20 @@
   display: block;
   color: #7b879b;
   font-size: 11px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.permission-project-cell,
+.permission-role-cell {
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.permission-status-cell,
+.permission-actions-cell {
+  white-space: nowrap;
 }
 
 .permission-row-actions {

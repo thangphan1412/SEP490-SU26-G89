@@ -4,12 +4,14 @@ import com.fpt.backend.dto.request.project.ProjectCreateRequest;
 import com.fpt.backend.dto.request.project.ProjectListRequest;
 import com.fpt.backend.dto.request.project.ProjectMemberRequest;
 import com.fpt.backend.dto.request.project.ProjectPhaseRequest;
+import com.fpt.backend.dto.request.project.ProjectPermissionConfigurationRequest;
 import com.fpt.backend.dto.request.project.ProjectUpdateRequest;
 import com.fpt.backend.dto.response.project.ProjectContractResponse;
 import com.fpt.backend.dto.response.project.ProjectDetailResponse;
 import com.fpt.backend.dto.response.project.ProjectEmployeeResponse;
 import com.fpt.backend.dto.response.project.ProjectListItemResponse;
 import com.fpt.backend.dto.response.project.ProjectListResponse;
+import com.fpt.backend.dto.response.project.ProjectPermissionConfigurationResponse;
 import com.fpt.backend.dto.response.project.ProjectPermissionOptionResponse;
 import com.fpt.backend.dto.response.project.ProjectPhaseResponse;
 import com.fpt.backend.dto.response.project.ProjectRoleResponse;
@@ -43,6 +45,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -59,8 +62,25 @@ public class ProjectServiceImpl implements ProjectService {
     private static final String DEFAULT_PROJECT_STATUS = "Planning";
     private static final String DEFAULT_PHASE_STATUS = "Planning";
     private static final String CANCELLED_PROJECT_STATUS = "Cancelled";
+    private static final String WORK_SCOPE_OWN = "OWN";
+    private static final String WORK_SCOPE_FULL = "FULL";
+    private static final String WORK_SCOPE_OWN_TOKEN = "WORK_SCOPE_OWN";
+    private static final String WORK_SCOPE_FULL_TOKEN = "WORK_SCOPE_FULL";
     private static final ZoneId DATABASE_TIME_ZONE = ZoneId.of("UTC");
     private static final ZoneId PROJECT_TIME_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
+    private static final List<String> PERMISSION_ACTIONS = List.of(
+            "VIEW_TASKS",
+            "VIEW_DELIVERABLES",
+            "VIEW_CONTRACTS",
+            "CREATE_TASKS",
+            "EDIT_TASKS",
+            "DELETE_TASKS",
+            "CREATE_DELIVERABLES",
+            "EDIT_DELIVERABLES",
+            "DELETE_DELIVERABLES",
+            "EDIT_PHASE",
+            "MANAGE_MEMBERS"
+    );
     private static final Set<String> SORT_FIELDS = Set.of(
             "id",
             "projectCode",
@@ -274,6 +294,40 @@ public class ProjectServiceImpl implements ProjectService {
                 .toList();
     }
 
+    @Override
+    public List<ProjectPermissionConfigurationResponse> getProjectPermissionConfigurations(int projectId) {
+        findProject(projectId);
+
+        return findProjectPermissions(projectId)
+                .stream()
+                .map(this::toPermissionConfiguration)
+                .toList();
+    }
+
+    @Override
+    @Transactional
+    public ProjectPermissionConfigurationResponse configureProjectPermission(
+            int projectId,
+            int permissionId,
+            ProjectPermissionConfigurationRequest request) {
+        findProject(projectId);
+        Permissions permission = entityManager.find(Permissions.class, permissionId);
+
+        if (permission == null
+                || permission.getProject() == null
+                || permission.getProject().getId() != projectId) {
+            throw new ResponseStatusException(
+                    HttpStatus.NOT_FOUND,
+                    "Permission does not belong to this project"
+            );
+        }
+
+        permission.setPermissionModule(createPermissionModuleValue(request));
+        entityManager.flush();
+
+        return toPermissionConfiguration(permission);
+    }
+
     private Map<Integer, List<ProjectRoleResponse>> findRolesByUserId() {
         List<UserRole> userRoles = entityManager.createQuery(
                         "SELECT userRole FROM UserRole userRole "
@@ -301,6 +355,84 @@ public class ProjectServiceImpl implements ProjectService {
         }
 
         return rolesByUserId;
+    }
+
+    private String createPermissionModuleValue(ProjectPermissionConfigurationRequest request) {
+        if (request == null) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Permission configuration is required"
+            );
+        }
+
+        Set<String> requestedActions = new LinkedHashSet<>();
+        List<String> actions = request.allowedActions() == null
+                ? List.of()
+                : request.allowedActions();
+
+        for (String action : actions) {
+            String normalizedAction = normalize(action).toUpperCase(Locale.ROOT);
+
+            if (!PERMISSION_ACTIONS.contains(normalizedAction)) {
+                throw new ResponseStatusException(
+                        HttpStatus.BAD_REQUEST,
+                        "Unsupported permission action: " + action
+                );
+            }
+
+            requestedActions.add(normalizedAction);
+        }
+
+        String workScope = normalize(request.workScope()).toUpperCase(Locale.ROOT);
+        if (!WORK_SCOPE_OWN.equals(workScope) && !WORK_SCOPE_FULL.equals(workScope)) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Work scope must be OWN or FULL"
+            );
+        }
+
+        List<String> storedValues = new ArrayList<>();
+        for (String supportedAction : PERMISSION_ACTIONS) {
+            if (requestedActions.contains(supportedAction)) {
+                storedValues.add(supportedAction);
+            }
+        }
+        storedValues.add(WORK_SCOPE_OWN.equals(workScope)
+                ? WORK_SCOPE_OWN_TOKEN
+                : WORK_SCOPE_FULL_TOKEN);
+
+        return String.join(",", storedValues);
+    }
+
+    private ProjectPermissionConfigurationResponse toPermissionConfiguration(Permissions permission) {
+        Set<String> storedValues = new LinkedHashSet<>();
+        String permissionModule = normalize(permission.getPermissionModule());
+
+        if (!permissionModule.isBlank()) {
+            for (String value : permissionModule.split(",")) {
+                String normalizedValue = normalize(value).toUpperCase(Locale.ROOT);
+                if (!normalizedValue.isBlank()) {
+                    storedValues.add(normalizedValue);
+                }
+            }
+        }
+
+        List<String> allowedActions = PERMISSION_ACTIONS.stream()
+                .filter(storedValues::contains)
+                .toList();
+        String workScope = storedValues.contains(WORK_SCOPE_OWN_TOKEN)
+                ? WORK_SCOPE_OWN
+                : WORK_SCOPE_FULL;
+
+        return new ProjectPermissionConfigurationResponse(
+                permission.getId(),
+                getPermissionName(permission),
+                permission.getPermissionCode(),
+                permission.getPermissionDescription(),
+                permission.getStatus(),
+                allowedActions,
+                workScope
+        );
     }
 
     private Projects findProject(int id) {

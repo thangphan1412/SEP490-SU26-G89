@@ -7,6 +7,7 @@ import {
   IconFileText,
   IconTimelineEvent,
 } from "@tabler/icons-react";
+import { useNavigate, useParams } from "react-router-dom";
 import EmptyTableRow from "../../components/phaseComponents/EmptyTableRow.jsx";
 import PhaseInfoItem from "../../components/phaseComponents/PhaseInfoItem.jsx";
 import PhasePage from "../../components/phaseComponents/PhasePage.jsx";
@@ -15,7 +16,9 @@ import PhaseTableSection from "../../components/phaseComponents/PhaseTableSectio
 import { viewPhase } from "../../config/phaseApi/phaseApi.js";
 import "../../assets/styles/css/phaseStyles/ViewPhase.css";
 
-function ViewPhase({ phaseId, onBack }) {
+function ViewPhase() {
+  const navigate = useNavigate();
+  const { projectId, phaseId } = useParams();
   const [phase, setPhase] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -64,8 +67,16 @@ function ViewPhase({ phaseId, onBack }) {
   const contracts = Array.isArray(phase?.contracts) ? phase.contracts : [];
   const progress = normalizeProgress(phase?.progress);
   const backAction = (
-    <Button type="button" className="phase-back-button" onClick={onBack}>
-      <IconArrowLeft size={18} /> Back to permission
+    <Button
+      type="button"
+      className="phase-back-button"
+      onClick={() => navigate(
+        projectId
+          ? `/project-management/view?id=${projectId}`
+          : "/project-management/list"
+      )}
+    >
+      <IconArrowLeft size={18} /> Back to project
     </Button>
   );
 

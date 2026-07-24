@@ -358,22 +358,29 @@ function PermissionListContent() {
                   onKeyDown={(event) => handleRowKeyDown(event, permission.id)}
                 >
                   <td className="permission-name-cell">
-                    <span className="permission-row-icon"><IconShieldCheck size={20} /></span>
-                    <span className="permission-name-text">
-                      <strong>{permission.permissionName || "Unnamed permission"}</strong>
-                      <small title={permission.permissionDescription || ""}>
-                        {permission.permissionDescription || "No description"}
-                      </small>
-                    </span>
+                    <div className="permission-name-content">
+                      <span className="permission-row-icon"><IconShieldCheck size={20} /></span>
+                      <span className="permission-name-text">
+                        <strong>{permission.permissionName || "Unnamed permission"}</strong>
+                        <small title={permission.permissionDescription || ""}>
+                          {permission.permissionDescription || "No description"}
+                        </small>
+                      </span>
+                    </div>
                   </td>
-                  <td>
+                  <td className="permission-code-cell">
                     <span className="permission-code-badge">{permission.permissionCode || "-"}</span>
-                    <small className="permission-module-text">{permission.permissionModule || "-"}</small>
+                    <small
+                      className="permission-module-text"
+                      title={permission.permissionModule || ""}
+                    >
+                      {formatPermissionModule(permission.permissionModule)}
+                    </small>
                   </td>
-                  <td>{formatProjectValue(permission)}</td>
-                  <td>{permission.roleName || "Unassigned"}</td>
-                  <td><PermissionStatusBadge status={permission.status} /></td>
-                  <td>
+                  <td className="permission-project-cell">{formatProjectValue(permission)}</td>
+                  <td className="permission-role-cell">{permission.roleName || "Unassigned"}</td>
+                  <td className="permission-status-cell"><PermissionStatusBadge status={permission.status} /></td>
+                  <td className="permission-actions-cell">
                     <Stack direction="horizontal" className="permission-row-actions">
                       <Button
                         variant="light"
@@ -441,6 +448,14 @@ function formatProjectValue(permission) {
   }
 
   return [permission.projectCode, permission.projectName].filter(Boolean).join(" - ");
+}
+
+function formatPermissionModule(permissionModule) {
+  if (!permissionModule) {
+    return "-";
+  }
+
+  return permissionModule.split(",").join(", ");
 }
 
 function getErrorMessage(error) {

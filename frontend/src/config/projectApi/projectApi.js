@@ -38,3 +38,17 @@ export const updateProject = (projectId, project) => {
 export const deleteProject = (projectId) => {
   return axios.delete(`${PROJECT_API_BASE_URL}/delete/${projectId}`);
 };
+
+export const listProjectPermissionConfigurations = (projectId) => {
+  return axios.get(
+    `${PROJECT_API_BASE_URL}/${projectId}/permission-configurations`,
+    noCacheConfig
+  );
+};
+
+export const configureProjectPermission = (projectId, permissionId, configuration) => {
+  return axios.put(
+    `${PROJECT_API_BASE_URL}/${projectId}/permissions/${permissionId}/configure`,
+    configuration
+  );
+};

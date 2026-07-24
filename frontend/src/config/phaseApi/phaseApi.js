@@ -8,10 +8,6 @@ const noCacheConfig = {
   },
 };
 
-export const listProjectPhases = (projectId) => {
-  return axios.get(`${PHASE_API_BASE_URL}/project/${projectId}`, noCacheConfig);
-};
-
 export const viewPhase = (phaseId) => {
   return axios.get(`${PHASE_API_BASE_URL}/view/${phaseId}`, noCacheConfig);
 };
