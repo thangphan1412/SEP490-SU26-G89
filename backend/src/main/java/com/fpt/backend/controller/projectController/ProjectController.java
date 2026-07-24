@@ -2,10 +2,12 @@ package com.fpt.backend.controller.projectController;
 
 import com.fpt.backend.dto.request.project.ProjectCreateRequest;
 import com.fpt.backend.dto.request.project.ProjectListRequest;
+import com.fpt.backend.dto.request.project.ProjectPermissionConfigurationRequest;
 import com.fpt.backend.dto.request.project.ProjectUpdateRequest;
 import com.fpt.backend.dto.response.project.ProjectDetailResponse;
 import com.fpt.backend.dto.response.project.ProjectEmployeeResponse;
 import com.fpt.backend.dto.response.project.ProjectListResponse;
+import com.fpt.backend.dto.response.project.ProjectPermissionConfigurationResponse;
 import com.fpt.backend.dto.response.project.ProjectRoleResponse;
 import com.fpt.backend.service.interfaces.project.ProjectService;
 import com.fpt.backend.util.BaseResponse;
@@ -74,6 +76,27 @@ public class ProjectController {
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.noStore())
                 .body(new BaseResponse<>(roles));
+    }
+
+    @GetMapping("/{projectId}/permission-configurations")
+    public ResponseEntity<BaseResponse<List<ProjectPermissionConfigurationResponse>>>
+    getProjectPermissionConfigurations(@PathVariable int projectId) {
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .body(new BaseResponse<>(
+                        projectService.getProjectPermissionConfigurations(projectId)
+                ));
+    }
+
+    @PutMapping("/{projectId}/permissions/{permissionId}/configure")
+    public ResponseEntity<BaseResponse<ProjectPermissionConfigurationResponse>>
+    configureProjectPermission(
+            @PathVariable int projectId,
+            @PathVariable int permissionId,
+            @RequestBody ProjectPermissionConfigurationRequest request) {
+        return ResponseEntity.ok(new BaseResponse<>(
+                projectService.configureProjectPermission(projectId, permissionId, request)
+        ));
     }
 
     @PostMapping("/create")

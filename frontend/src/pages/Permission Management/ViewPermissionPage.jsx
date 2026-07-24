@@ -14,11 +14,9 @@ import {
 } from "@tabler/icons-react";
 import "../../assets/styles/css/permissionStyles/ViewPermissionPage.css";
 import { deletePermission, viewPermission } from "../../config/permissionApi/permissionApi.js";
-import {
-  PermissionPage,
-  PermissionStatusBadge,
-  ViewPermissionInfo,
-} from "./PermissionComponents.jsx";
+import PermissionPage from "../../components/permissionComponents/PermissionPage.jsx";
+import PermissionStatusBadge from "../../components/permissionComponents/PermissionStatusBadge.jsx";
+import ViewPermissionInfo from "../../components/permissionComponents/ViewPermissionInfo.jsx";
 import { formatPermissionDate } from "./permissionUtils.js";
 
 function ViewPermissionPage() {

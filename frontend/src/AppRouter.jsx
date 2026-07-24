@@ -1,4 +1,4 @@
-import {Navigate, Route, Routes} from "react-router-dom";
+import { Navigate, Route, Routes } from "react-router-dom";
 import LoginPage from "./pages/Authentication/LoginPage.jsx";
 import Homepage from "./pages/homePage/HomePage.jsx";
 import ViewProfile from "./pages/CompanyProfileManagement/ViewProfile.jsx";
@@ -34,33 +34,34 @@ import HeaderForm from "./components/layout/HeaderForm.jsx";
 import MainLayout from "./components/layout/MainLayout.jsx";
 import ForgotPassword from "./pages/Authentication/ForgotPassword.jsx";
 import Resetpassword from "./pages/Authentication/Resetpassword.jsx";
+import ViewPhase from "./pages/Phase Management/ViewPhase.jsx";
 
 function AppRouter() {
     return (
         <Routes>
             <Route path="/"
-                   element={<Navigate to="/login" replace />}
+                element={<Navigate to="/login" replace />}
             />
             <Route
                 path="/login"
                 element={<LoginPage />}
             />
-             <Route
+            <Route
                 path="/forgot_password"
                 element={<ForgotPassword />}
             />
             <Route
                 path="/reset-password"
-                element={<Resetpassword/>}
+                element={<Resetpassword />}
             />
 
-            <Route element={<ProtectedRoute><MainLayout/></ProtectedRoute>}>
+            <Route element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
                 <Route
                     path="/home_page"
                     element={<Homepage />}
                     element={
                         <ProtectedRoute>
-                            <Homepage/>
+                            <Homepage />
                         </ProtectedRoute>
                     }
                 />
@@ -111,6 +112,10 @@ function AppRouter() {
                 <Route
                     path="/project-management/update"
                     element={<UpdateProject />}
+                />
+                <Route
+                    path="/phase-management/view/:projectId/:phaseId"
+                    element={<ViewPhase />}
                 />
                 <Route
                     path="/contract-management/list"

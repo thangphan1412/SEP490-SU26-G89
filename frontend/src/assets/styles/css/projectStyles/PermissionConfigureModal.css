@@ -1,0 +1,227 @@
+.permission-configure-modal .modal-content {
+  border: 0;
+  border-radius: 14px;
+  box-shadow: 0 20px 55px rgba(31, 52, 92, 0.2);
+}
+
+.permission-configure-modal .modal-header {
+  padding: 22px 24px 18px;
+  border-bottom: 1px solid #e5eaf2;
+}
+
+.permission-configure-modal .modal-title {
+  color: #243452;
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.permission-configure-modal .modal-header p {
+  margin: 5px 0 0;
+  color: #66738c;
+  font-size: 13px;
+}
+
+.permission-configure-modal .modal-body {
+  padding: 20px 24px;
+  background: #f8faff;
+}
+
+.permission-configure-modal .modal-footer {
+  padding: 14px 24px;
+  border-top: 1px solid #e5eaf2;
+}
+
+.permission-configure-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.permission-configure-row {
+  border: 1px solid #dfe6f1;
+  border-radius: 10px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.permission-configure-row.is-open {
+  border-color: #9eb4ff;
+  box-shadow: 0 0 0 3px rgba(36, 80, 245, 0.08);
+}
+
+.permission-configure-row-summary {
+  padding: 16px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.permission-configure-row-information {
+  min-width: 0;
+}
+
+.permission-configure-name-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 9px;
+}
+
+.permission-configure-name-line strong {
+  color: #243452;
+  font-size: 15px;
+}
+
+.permission-configure-name-line span {
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.permission-configure-name-line .is-active {
+  background: #e8f8ee;
+  color: #18753c;
+}
+
+.permission-configure-name-line .is-inactive {
+  background: #f1f3f6;
+  color: #687386;
+}
+
+.permission-configure-row-information small {
+  margin-top: 4px;
+  display: block;
+  color: #2450f5;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.permission-configure-row-information p {
+  margin: 7px 0 0;
+  color: #66738c;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.permission-configure-open-button.btn {
+  min-width: 106px;
+  border-color: #9eb4ff;
+  color: #2450f5;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.permission-configure-editor {
+  padding: 18px;
+  border-top: 1px solid #e5eaf2;
+  background: #fbfcff;
+}
+
+.permission-configure-editor h4 {
+  margin: 0;
+  color: #243452;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.permission-configure-editor p {
+  margin: 4px 0 0;
+  color: #718096;
+  font-size: 12px;
+}
+
+.permission-configure-action-grid {
+  margin-top: 14px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 11px 18px;
+}
+
+.permission-configure-action-grid .form-check,
+.permission-configure-scope-options .form-check {
+  margin: 0;
+  min-height: 24px;
+}
+
+.permission-configure-action-grid .form-check-label,
+.permission-configure-scope-options .form-check-label {
+  color: #34425f;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.permission-configure-action-grid .form-check-input,
+.permission-configure-scope-options .form-check-input {
+  border-color: #aebbd0;
+  cursor: pointer;
+}
+
+.permission-configure-action-grid .form-check-input:checked,
+.permission-configure-scope-options .form-check-input:checked {
+  border-color: #2450f5;
+  background-color: #2450f5;
+}
+
+.permission-configure-scope {
+  margin-top: 20px;
+  padding-top: 17px;
+  border-top: 1px solid #e5eaf2;
+}
+
+.permission-configure-scope-options {
+  margin-top: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px 28px;
+}
+
+.permission-configure-save-row {
+  margin-top: 20px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.permission-configure-save-button.btn {
+  min-height: 40px;
+  padding: 0 18px;
+  border-color: #2450f5;
+  background: #2450f5;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.permission-configure-state {
+  min-height: 130px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  color: #66738c;
+  font-size: 14px;
+  text-align: center;
+}
+
+@media (max-width: 767px) {
+  .permission-configure-modal .modal-header,
+  .permission-configure-modal .modal-body,
+  .permission-configure-modal .modal-footer {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .permission-configure-row-summary {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .permission-configure-open-button.btn {
+    width: 100%;
+  }
+
+  .permission-configure-action-grid {
+    grid-template-columns: 1fr;
+  }
+}

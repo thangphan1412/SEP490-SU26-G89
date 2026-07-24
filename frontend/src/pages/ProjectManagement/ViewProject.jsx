@@ -2,13 +2,12 @@ import { useEffect, useState } from "react";
 import { Alert, Button, Card, Form, ProgressBar, Stack, Table } from "react-bootstrap";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { deleteProject, viewProject } from "../../config/projectApi/projectApi.js";
-import {
-    DangerButton,
-    Icon,
-    PagePanel,
-    PrimaryButton,
-    StatusBadge,
-} from "./ProjectComponents.jsx";
+import DangerButton from "../../components/projectComponents/DangerButton.jsx";
+import Icon from "../../components/projectComponents/Icon.jsx";
+import PagePanel from "../../components/projectComponents/PagePanel.jsx";
+import PermissionConfigureModal from "../../components/projectComponents/PermissionConfigureModal.jsx";
+import PrimaryButton from "../../components/projectComponents/PrimaryButton.jsx";
+import StatusBadge from "../../components/projectComponents/StatusBadge.jsx";
 import "../../assets/styles/css/projectStyles/ViewProject.css";
 
 function showValue(value) {
@@ -54,6 +53,7 @@ function ViewProject() {
     const [userSearch, setUserSearch] = useState("");
     const [contractSearch, setContractSearch] = useState("");
     const [contractStatus, setContractStatus] = useState("");
+    const [showPermissionConfigure, setShowPermissionConfigure] = useState(false);
 
     useEffect(() => {
         let isActive = true;
@@ -159,6 +159,15 @@ function ViewProject() {
 
             {project && (
                 <>
+                    <Button
+                        type="button"
+                        variant="outline-primary"
+                        className="view-project-permission-configure-button"
+                        onClick={() => setShowPermissionConfigure(true)}
+                    >
+                        <Icon name="shield" size={19} color="#2450f5" />
+                        Permission Configure
+                    </Button>
                     <DangerButton disabled={deleting} onClick={handleDelete}>
                         <Icon name="trash" size={18} color="#b42318" />
                         {deleting ? "Deleting..." : "Delete"}
@@ -242,7 +251,19 @@ function ViewProject() {
                                         <EmptyRow colSpan={5} message="No phases belong to this project." />
                                     ) : (
                                         projectPhases.map((phase) => (
-                                            <tr key={phase.id} className="view-project-row">
+                                            <tr
+                                                key={phase.id}
+                                                className="view-project-row view-project-phase-row"
+                                                role="button"
+                                                tabIndex={0}
+                                                onClick={() => navigate(`/phase-management/view/${projectId}/${phase.id}`)}
+                                                onKeyDown={(event) => {
+                                                    if (event.key === "Enter" || event.key === " ") {
+                                                        event.preventDefault();
+                                                        navigate(`/phase-management/view/${projectId}/${phase.id}`);
+                                                    }
+                                                }}
+                                            >
                                                 <td className="view-project-td view-project-phase-title">{showValue(phase.title)}</td>
                                                 <td className="view-project-td">
                                                     <span className="view-project-schedule">{showValue(phase.startDate)}</span>
@@ -404,6 +425,13 @@ function ViewProject() {
                     </Card>
                 </>
             )}
+
+            <PermissionConfigureModal
+                show={showPermissionConfigure}
+                projectId={projectId}
+                projectName={project?.projectName}
+                onHide={() => setShowPermissionConfigure(false)}
+            />
         </PagePanel>
     );
 }

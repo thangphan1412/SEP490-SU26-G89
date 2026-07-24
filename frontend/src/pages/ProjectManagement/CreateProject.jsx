@@ -6,7 +6,11 @@ import {
     listProjectEmployees,
     listProjectRoles,
 } from "../../config/projectApi/projectApi.js";
-import { CancelButton, Icon, InfoAlert, PagePanel, PrimaryButton } from "./ProjectComponents.jsx";
+import CancelButton from "../../components/projectComponents/CancelButton.jsx";
+import Icon from "../../components/projectComponents/Icon.jsx";
+import InfoAlert from "../../components/projectComponents/InfoAlert.jsx";
+import PagePanel from "../../components/projectComponents/PagePanel.jsx";
+import PrimaryButton from "../../components/projectComponents/PrimaryButton.jsx";
 import "../../assets/styles/css/projectStyles/CreateProject.css";
 
 const statusOptions = ["Planning", "Active", "On Hold", "Completed", "Cancelled"];

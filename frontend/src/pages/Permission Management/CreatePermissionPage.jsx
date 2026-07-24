@@ -13,7 +13,8 @@ import {
   listPermissionProjects,
   listPermissionRoles,
 } from "../../config/permissionApi/permissionApi.js";
-import { PermissionFormField, PermissionPage } from "./PermissionComponents.jsx";
+import PermissionFormField from "../../components/permissionComponents/PermissionFormField.jsx";
+import PermissionPage from "../../components/permissionComponents/PermissionPage.jsx";
 
 const initialPermission = {
   permissionName: "",
