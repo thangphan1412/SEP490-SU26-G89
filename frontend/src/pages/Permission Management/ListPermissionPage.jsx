@@ -29,7 +29,7 @@ import {
   listPermissionProjects,
   listPermissionRoles,
   listPermissions,
-} from "../../config/permissionApi/permissionApi.js";
+} from "../../services/permissionService/permissionApi.js";
 import PermissionPage from "../../components/permissionComponents/PermissionPage.jsx";
 import PermissionStatusBadge from "../../components/permissionComponents/PermissionStatusBadge.jsx";
 import UpdatePermissionPage from "./UpdatePermissionPage.jsx";

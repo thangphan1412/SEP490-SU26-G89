@@ -5,7 +5,7 @@ import {
     createProject,
     listProjectEmployees,
     listProjectRoles,
-} from "../../config/projectApi/projectApi.js";
+} from "../../services/projectService/projectApi.js";
 import CancelButton from "../../components/projectComponents/CancelButton.jsx";
 import Icon from "../../components/projectComponents/Icon.jsx";
 import InfoAlert from "../../components/projectComponents/InfoAlert.jsx";

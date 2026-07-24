@@ -12,7 +12,7 @@ import {
   createPermission,
   listPermissionProjects,
   listPermissionRoles,
-} from "../../config/permissionApi/permissionApi.js";
+} from "../../services/permissionService/permissionApi.js";
 import PermissionFormField from "../../components/permissionComponents/PermissionFormField.jsx";
 import PermissionPage from "../../components/permissionComponents/PermissionPage.jsx";
 
