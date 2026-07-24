@@ -38,7 +38,7 @@ import ViewPermissionPage from "./ViewPermissionPage.jsx";
 // Các cột có thể sắp xếp trong bảng
 const sortableColumns = [
   ["Permission", "permissionName"],
-  ["Code / Module", "permissionCode"],
+  ["Permission Code", "permissionCode"],
   ["Project", "projectName"],
   ["Role", "roleName"],
   ["Status", "status"],
@@ -362,20 +362,11 @@ function PermissionListContent() {
                       <span className="permission-row-icon"><IconShieldCheck size={20} /></span>
                       <span className="permission-name-text">
                         <strong>{permission.permissionName || "Unnamed permission"}</strong>
-                        <small title={permission.permissionDescription || ""}>
-                          {permission.permissionDescription || "No description"}
-                        </small>
                       </span>
                     </div>
                   </td>
                   <td className="permission-code-cell">
                     <span className="permission-code-badge">{permission.permissionCode || "-"}</span>
-                    <small
-                      className="permission-module-text"
-                      title={permission.permissionModule || ""}
-                    >
-                      {formatPermissionModule(permission.permissionModule)}
-                    </small>
                   </td>
                   <td className="permission-project-cell">{formatProjectValue(permission)}</td>
                   <td className="permission-role-cell">{permission.roleName || "Unassigned"}</td>
@@ -448,14 +439,6 @@ function formatProjectValue(permission) {
   }
 
   return [permission.projectCode, permission.projectName].filter(Boolean).join(" - ");
-}
-
-function formatPermissionModule(permissionModule) {
-  if (!permissionModule) {
-    return "-";
-  }
-
-  return permissionModule.split(",").join(", ");
 }
 
 function getErrorMessage(error) {

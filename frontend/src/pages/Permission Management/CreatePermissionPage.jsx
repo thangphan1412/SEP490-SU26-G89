@@ -19,7 +19,6 @@ import PermissionPage from "../../components/permissionComponents/PermissionPage
 const initialPermission = {
   permissionName: "",
   permissionCode: "",
-  permissionModule: "",
   permissionDescription: "",
   projectId: "",
   roleId: "",
@@ -87,7 +86,6 @@ function CreatePermissionPage() {
       const response = await createPermission({
         permissionName: permission.permissionName.trim(),
         permissionCode: permission.permissionCode.trim(),
-        permissionModule: permission.permissionModule.trim(),
         permissionDescription: permission.permissionDescription.trim(),
         projectId: Number(permission.projectId),
         roleId: Number(permission.roleId),
@@ -163,20 +161,6 @@ function CreatePermissionPage() {
                   onChange={handleChange}
                   placeholder="CONTRACT_VIEW"
                   maxLength={50}
-                  required
-                />
-              </PermissionFormField>
-            </Col>
-
-            <Col md={6}>
-              <PermissionFormField controlId="permission-module" label="Permission Module" required hint="The feature area protected by this permission.">
-                <Form.Control
-                  className="permission-input"
-                  name="permissionModule"
-                  value={permission.permissionModule}
-                  onChange={handleChange}
-                  placeholder="CONTRACT"
-                  maxLength={255}
                   required
                 />
               </PermissionFormField>
