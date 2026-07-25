@@ -3,9 +3,9 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { Container, Card, Row, Col, Form, Button, Table, Pagination, Stack } from "react-bootstrap";
 import { IconWorld, IconPlus, IconSearch, IconFilter, IconRefresh, IconArrowsSort, IconEdit, IconEye } from "@tabler/icons-react";
 
-import {getAllDepartments, getAllUsers} from "../../services/userService/userApi.js";
+import { getAllUsers } from "../../services/userService/userApi.js";
 // IMPORT THÊM HÀM LẤY DEPARTMENT TỪ API CỦA BẠN
-// import { getAllDepartments } from "../../config/departmentApi/departmentApi";
+import departmentApi from "../../services/departmentService/departmentApi";
 
 function ListUser() {
     const navigate = useNavigate();
@@ -38,9 +38,9 @@ function ListUser() {
     useEffect(() => {
         const fetchDepts = async () => {
             try {
-                // BỎ COMMENT GỌI API THẬT
-                const res = await getAllDepartments();
-                setDepartmentsDB(res.data?.data || []);
+                // Gọi qua departmentApi
+                const res = await departmentApi.getAllDepartments();
+                setDepartmentsDB(res.data?.data || res.data || []);
             } catch (error) {
                 console.error("Lỗi lấy danh sách department:", error);
             }
