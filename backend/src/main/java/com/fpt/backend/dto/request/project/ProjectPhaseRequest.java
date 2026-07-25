@@ -9,7 +9,6 @@ public record ProjectPhaseRequest(
         String description,
         LocalDate startDate,
         LocalDate endDate,
-        String status,
-        Double progress
+        String status
 ) {
 }

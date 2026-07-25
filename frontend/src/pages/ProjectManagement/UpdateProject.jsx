@@ -9,7 +9,6 @@ import {
 } from "../../services/projectService/projectApi.js";
 import CancelButton from "../../components/projectComponents/CancelButton.jsx";
 import Icon from "../../components/projectComponents/Icon.jsx";
-import InfoAlert from "../../components/projectComponents/InfoAlert.jsx";
 import PagePanel from "../../components/projectComponents/PagePanel.jsx";
 import PrimaryButton from "../../components/projectComponents/PrimaryButton.jsx";
 import "../../assets/styles/css/projectStyles/UpdateProject.css";
@@ -157,7 +156,6 @@ function UpdateProject({ onUpdateProject }) {
                     startDate: nextStartDate,
                     endDate: currentProject.projectEndDate,
                     status: "Planning",
-                    progress: 0,
                 },
             ],
         }));
@@ -169,7 +167,7 @@ function UpdateProject({ onUpdateProject }) {
         setProject((currentProject) => {
             let phases = currentProject.phases.map((phase) =>
                 phase.clientId === clientId
-                    ? { ...phase, [name]: name === "progress" ? Number(value) : value }
+                    ? { ...phase, [name]: value }
                     : phase
             );
 
@@ -281,7 +279,6 @@ function UpdateProject({ onUpdateProject }) {
                     startDate: phase.startDate,
                     endDate: phase.endDate,
                     status: phase.status,
-                    progress: Number(phase.progress),
                 })),
                 members: project.members,
             });
@@ -452,10 +449,6 @@ function UpdateProject({ onUpdateProject }) {
                                                     {phaseStatusOptions.map((status) => <option key={status}>{status}</option>)}
                                                 </Form.Select>
                                             </Col>
-                                            <Col md={8}>
-                                                <Form.Label className="project-management-field-label">Progress: {phase.progress}%</Form.Label>
-                                                <Form.Range name="progress" min="0" max="100" value={phase.progress} onChange={(event) => updatePhase(phase.clientId, event)} />
-                                            </Col>
                                             <Col xs={12}>
                                                 <Form.Label className="project-management-field-label">Description</Form.Label>
                                                 <Form.Control as="textarea" maxLength={500} name="description" value={phase.description} onChange={(event) => updatePhase(phase.clientId, event)} className="project-management-textarea update-project-phase-description" />
@@ -536,7 +529,6 @@ function UpdateProject({ onUpdateProject }) {
                         )}
                     </Card>
 
-                    <InfoAlert>Only permissions stored in the database for this project are available. Members may remain Not assigned.</InfoAlert>
                 </Form>
             )}
 
@@ -672,7 +664,6 @@ function mapPhases(phases) {
         startDate: phase.startDate || "",
         endDate: phase.endDate || "",
         status: phase.status || "Planning",
-        progress: Number(phase.progress || 0),
     }));
 }
 

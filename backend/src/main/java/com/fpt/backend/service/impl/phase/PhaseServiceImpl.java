@@ -14,6 +14,7 @@ import com.fpt.backend.repository.phase.PhaseDeliverableRepository;
 import com.fpt.backend.repository.phase.PhaseRepository;
 import com.fpt.backend.repository.phase.PhaseTaskRepository;
 import com.fpt.backend.repository.project.ProjectRepository;
+import com.fpt.backend.service.interfaces.phase.PhaseProgressService;
 import com.fpt.backend.service.interfaces.phase.PhaseService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -38,6 +39,7 @@ public class PhaseServiceImpl implements PhaseService {
     private final PhaseDeliverableRepository phaseDeliverableRepository;
     private final PhaseContractRepository phaseContractRepository;
     private final ProjectRepository projectRepository;
+    private final PhaseProgressService phaseProgressService;
 
     @Override
     public List<PhaseListItemResponse> getPhasesByProjectId(UUID projectId) {
@@ -109,7 +111,7 @@ public class PhaseServiceImpl implements PhaseService {
                 toLocalDate(phase.getStartDate()),
                 toLocalDate(phase.getEndDate()),
                 phase.getStatus(),
-                phase.getProgress(),
+                phaseProgressService.calculateProgress(phase.getId()),
                 project.getId(),
                 project.getProjectCode(),
                 project.getProjectName(),
@@ -129,7 +131,7 @@ public class PhaseServiceImpl implements PhaseService {
                 toLocalDate(phase.getStartDate()),
                 toLocalDate(phase.getEndDate()),
                 phase.getStatus(),
-                phase.getProgress(),
+                phaseProgressService.calculateProgress(phase.getId()),
                 project.getId(),
                 project.getProjectCode(),
                 project.getProjectName()
