@@ -13,5 +13,6 @@ public class AuthenticateResponse {
     private String token;
     private String role;
     private String fullName;
+    private String departmentName;
    
 }

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
-// THÊM useParams ĐỂ LẤY ID TỪ URL
-import { useNavigate, useParams } from "react-router-dom";
+// THÊM useLocation ĐỂ LẤY THAM SỐ TYPE TỪ URL
+import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { Container, Card, Row, Col, Button, NavDropdown, Spinner, Alert, Stack } from "react-bootstrap";
 import {
     IconWorld,
@@ -15,15 +15,21 @@ import {
     IconCalendar,
     IconClock,
     IconClipboardList,
-    IconInfoCircle
+    IconInfoCircle,
+    IconArrowLeft // Thêm icon nút Back (tùy chọn)
 } from "@tabler/icons-react";
 
 // IMPORT HÀM GỌI API
-import { getUserById } from "../../config/userApi/userApi";
+import { getUserById } from "../../services/userService/userApi.js";
 
 function ViewUser() {
     const navigate = useNavigate();
     const { id } = useParams(); // Lấy ID người dùng từ đường dẫn URL
+    const location = useLocation();
+
+    // Đọc URL xem đang ở luồng Employee hay Customer để giữ flow
+    const searchParams = new URLSearchParams(location.search);
+    const viewType = searchParams.get("type") || "employee";
 
     // State quản lý dữ liệu và trạng thái loading
     const [user, setUser] = useState(null);
@@ -38,7 +44,7 @@ function ViewUser() {
                 const response = await getUserById(id);
                 const data = response.data.data;
 
-                // Gán dữ liệu thật từ BE và Hardcode các trường không có
+                // Gán dữ liệu thật từ BE và Hardcode các trường chưa làm ở DB
                 setUser({
                     firstName: data.firstName || "",
                     lastName: data.lastName || "",
@@ -46,9 +52,11 @@ function ViewUser() {
                     phoneNumber: data.numberPhone || "",
                     role: data.role || "N/A",
                     status: data.status || "Inactive",
-                    // Hardcode các trường dưới đây
+                    // ĐÃ SỬA: Lấy Department thật từ Backend
+                    department: data.departmentName || "N/A",
+
+                    // Hardcode các trường dưới đây do DB chưa có
                     employeeId: "EMP-001248",
-                    department: "Legal Department",
                     position: "Senior Legal Counsel",
                     accessScope: "Department Level",
                     dateJoined: "Jan 15, 2024",
@@ -57,7 +65,8 @@ function ViewUser() {
             } catch (error) {
                 console.error("Lỗi khi lấy dữ liệu người dùng:", error);
                 alert("Không thể tải thông tin người dùng!");
-                navigate("/user-management/list");
+                // Giữ nguyên viewType khi có lỗi trả về trang list
+                navigate(`/user-management/list?type=${viewType}`);
             } finally {
                 setLoading(false);
             }
@@ -66,7 +75,7 @@ function ViewUser() {
         if (id) {
             fetchUserDetails();
         }
-    }, [id, navigate]);
+    }, [id, navigate, viewType]);
 
     return (
         <div className="bg-light min-vh-screen">
@@ -87,7 +96,7 @@ function ViewUser() {
 
             {/* --- MAIN CONTENT PANEL --- */}
             <Container fluid="lg" className="mb-5">
-                <section className="border shadow-sm rounded-4 overflow-hidden bg-white">
+                <section className="border shadow-sm rounded-4 overflow-hidden bg-white mt-4">
 
                     {/* Header Panel */}
                     <div className="d-flex justify-content-between align-items-center border-bottom p-4 bg-white">
@@ -95,14 +104,25 @@ function ViewUser() {
                             <h1 className="h3 fw-bold mb-1">User Details</h1>
                             <p className="text-muted mb-0">Review employee information, role permissions, and department assignment.</p>
                         </div>
-                        <Button
-                            variant="primary"
-                            className="fw-bold px-4 d-flex align-items-center gap-2"
-                            onClick={() => navigate(`/user-management/update/${id}`)} // Chuyển hướng kèm ID
-                            disabled={loading}
-                        >
-                            <IconEdit size={19} color="#ffffff" /> Edit User
-                        </Button>
+                        <div className="d-flex gap-2">
+                            {/* Nút Back giữ nguyên ngữ cảnh Type */}
+                            <Button
+                                variant="outline-secondary"
+                                className="fw-bold px-3 d-flex align-items-center gap-2"
+                                onClick={() => navigate(`/user-management/list?type=${viewType}`)}
+                            >
+                                <IconArrowLeft size={19} /> Back
+                            </Button>
+                            {/* Nút Edit kèm theo Type */}
+                            <Button
+                                variant="primary"
+                                className="fw-bold px-4 d-flex align-items-center gap-2"
+                                onClick={() => navigate(`/user-management/update/${id}?type=${viewType}`)}
+                                disabled={loading}
+                            >
+                                <IconEdit size={19} color="#ffffff" /> Edit User
+                            </Button>
+                        </div>
                     </div>
 
                     {/* Kiểm tra trạng thái loading */}
@@ -131,7 +151,7 @@ function ViewUser() {
                                         </div>
                                         {/* Ghép First Name và Last Name */}
                                         <h3 className="h6 fw-bold mb-2 text-dark">{user.firstName} {user.lastName}</h3>
-                                        <span className={`badge ${user.status === 'Active' ? 'bg-success bg-opacity-10 text-success' : 'bg-secondary bg-opacity-10 text-secondary'} px-3 py-2 rounded-pill fw-bold`}>
+                                        <span className={`badge ${user.status === 'Active' || user.status === 'ACTIVE' ? 'bg-success bg-opacity-10 text-success' : 'bg-secondary bg-opacity-10 text-secondary'} px-3 py-2 rounded-pill fw-bold`}>
                                             ● {user.status}
                                         </span>
                                     </Col>
@@ -299,7 +319,7 @@ function ViewUser() {
                             <Alert variant="info" className="mx-4 mb-4 d-flex align-items-center gap-2">
                                 <IconInfoCircle size={20} />
                                 <span>
-                                    To make changes to this user, click <strong className="text-primary" style={{ cursor: "pointer" }} onClick={() => navigate(`/user-management/update/${id}`)}>Edit User</strong>.
+                                    To make changes to this user, click <strong className="text-primary" style={{ cursor: "pointer" }} onClick={() => navigate(`/user-management/update/${id}?type=${viewType}`)}>Edit User</strong>.
                                 </span>
                             </Alert>
                         </>

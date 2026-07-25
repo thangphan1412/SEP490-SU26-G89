@@ -14,7 +14,7 @@ import {
 } from "@tabler/icons-react";
 
 // IMPORT HÀM GỌI API PROFILE
-import { getMyProfile } from "../../config/userApi/userApi";
+import { getMyProfile } from "../../services/userService/userApi.js";
 
 function ViewProfile() {
     const navigate = useNavigate();

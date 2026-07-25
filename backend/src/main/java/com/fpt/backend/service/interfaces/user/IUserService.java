@@ -22,6 +22,8 @@ public interface IUserService {
     UserResponseDTO createUser(UserRequestDTO request);
     UserResponseDTO updateUser(Integer id, UserRequestDTO request); // Sửa thành Integer
 
+    List<UserResponseDTO> getAllUsersFiltered(String type, String currentUsername, String keyword, String role, String department, String status);
+
     // Thêm 2 hàm cho Profile
     UserProfileResponseDTO getMyProfile(Integer userId);
     UserProfileResponseDTO updateMyProfile(Integer userId, UserProfileRequestDTO request);

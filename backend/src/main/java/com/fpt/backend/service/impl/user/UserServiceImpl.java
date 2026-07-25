@@ -7,9 +7,11 @@ import com.fpt.backend.dto.request.userProfile.UserProfileRequestDTO;
 import com.fpt.backend.dto.response.authentication.RegisterResponse;
 import com.fpt.backend.dto.response.user.UserResponseDTO;
 import com.fpt.backend.dto.response.userProfile.UserProfileResponseDTO;
+import com.fpt.backend.entity.Departments;
 import com.fpt.backend.entity.Users;
 import com.fpt.backend.mail.EmailService;
 import com.fpt.backend.mail.MessageInfor;
+import com.fpt.backend.repository.department.DepartmentRepository;
 import com.fpt.backend.repository.user.UserRepository;
 import com.fpt.backend.service.interfaces.user.IUserService;
 import com.fpt.backend.util.OTPGenerator;
@@ -35,6 +37,9 @@ public class UserServiceImpl implements IUserService {
     private RedisOtpService redisOtpService;
     @Autowired
     private EmailService emailService;
+    @Autowired
+    private DepartmentRepository departmentRepository;
+
     @Override
     public Boolean existsByEmail(String email) {
         return userRepository.existsByEmail(email);
@@ -107,6 +112,13 @@ public class UserServiceImpl implements IUserService {
                 .status(request.getStatus() != null ? request.getStatus() : "ACTIVE")
                 .build();
 
+        // THÊM ĐOẠN NÀY LÀM LOGIC LƯU DEPARTMENT
+        if (request.getDepartmentName() != null && !request.getDepartmentName().isEmpty()) {
+            Departments dept = departmentRepository.findByDepartmentName(request.getDepartmentName())
+                    .orElseThrow(() -> new RuntimeException("Department not found: " + request.getDepartmentName()));
+            newUser.setDepartment(dept);
+        }
+
         Users savedUser = userRepository.save(newUser);
 
         // THÊM DÒNG NÀY ĐỂ DEBUG:
@@ -139,6 +151,13 @@ public class UserServiceImpl implements IUserService {
         existingUser.setNumberPhone(request.getNumberPhone());
         existingUser.setRole(request.getRole());
         existingUser.setStatus(request.getStatus());
+
+        // THÊM ĐOẠN NÀY ĐỂ XỬ LÝ UPDATE PHÒNG BAN MỚI
+        if (request.getDepartmentName() != null && !request.getDepartmentName().isEmpty()) {
+            Departments dept = departmentRepository.findByDepartmentName(request.getDepartmentName())
+                    .orElseThrow(() -> new RuntimeException("Department not found: " + request.getDepartmentName()));
+            existingUser.setDepartment(dept);
+        }
 
         boolean isEmailChanged = false;
         // Kiểm tra logic nếu user đổi email
@@ -189,6 +208,70 @@ public class UserServiceImpl implements IUserService {
     }
 
 
+    // Thêm hàm này vào UserServiceImpl.java
+    @Override
+    public List<UserResponseDTO> getAllUsersFiltered(String type, String currentUsername, String keyword, String roleFilter, String departmentFilter, String statusFilter) {
+
+        Users currentUser = userRepository.findByEmail(currentUsername)
+                .orElseThrow(() -> new RuntimeException("Current user not found"));
+
+        String currentUserRole = currentUser.getRole();
+        if (currentUserRole == null) {
+            throw new RuntimeException("Access Denied: User role is missing.");
+        }
+
+        List<String> allowedRoles;
+
+        // 1. BẢO MẬT: Dùng equalsIgnoreCase để không sợ lỗi viết hoa/thường ở Database
+        if ("CEO".equalsIgnoreCase(currentUserRole) || "Admin".equalsIgnoreCase(currentUserRole)) {
+            if ("customer".equalsIgnoreCase(type)) {
+                allowedRoles = List.of("Customer");
+            } else {
+                // Sửa lại thành kiểm tra không phân biệt hoa thường (phòng khi DB viết hoa)
+                allowedRoles = List.of("Manager", "Employee", "MANAGER", "EMPLOYEE", "manager", "employee");
+            }
+        }
+        else if ("Manager".equalsIgnoreCase(currentUserRole)) {
+            if ("employee".equalsIgnoreCase(type)) {
+                allowedRoles = List.of("Employee", "EMPLOYEE", "employee");
+
+                // BẢO MẬT & CHỐNG LỖI 500: Kiểm tra Manager đã có phòng ban chưa
+                if (currentUser.getDepartment() != null && currentUser.getDepartment().getDepartmentName() != null) {
+                    departmentFilter = currentUser.getDepartment().getDepartmentName();
+                } else {
+                    // Nếu Manager bị lỗi chưa có phòng ban trong DB -> Chặn luôn để không văng lỗi hệ thống
+                    throw new RuntimeException("Access Denied: Tài khoản Manager này chưa được gán Phòng ban trong hệ thống!");
+                }
+            } else {
+                throw new RuntimeException("Access Denied: Managers cannot view customers.");
+            }
+        }
+        else {
+            throw new RuntimeException("Access Denied: You do not have permission.");
+        }
+
+        // 2. CHUẨN HÓA DỮ LIỆU TỪ FE (Đổi null hoặc "All" thành "" để tránh lỗi SQL)
+        if (roleFilter == null || "All".equalsIgnoreCase(roleFilter)) roleFilter = "";
+        if (departmentFilter == null || "All".equalsIgnoreCase(departmentFilter)) departmentFilter = "";
+        if (statusFilter == null || "All".equalsIgnoreCase(statusFilter)) statusFilter = "";
+        if (keyword == null) keyword = ""; else keyword = keyword.trim();
+
+        // 3. GỌI DATABASE THỰC THI QUERY
+        List<Users> resultList = userRepository.searchAndFilterUsers(
+                keyword,
+                roleFilter,
+                statusFilter,
+                departmentFilter,
+                allowedRoles
+        );
+
+        // 4. TRẢ VỀ DTO
+        return resultList.stream()
+                .map(UserResponseDTO::fromEntity)
+                .collect(Collectors.toList());
+    }
+
+
     @Override
     public UserProfileResponseDTO getMyProfile(Integer userId) {
         Users user = userRepository.findById(userId)
@@ -205,17 +288,44 @@ public class UserServiceImpl implements IUserService {
         existingUser.setLastName(request.getLastName());
         existingUser.setNumberPhone(request.getNumberPhone());
 
+        boolean isEmailChanged = false; // Biến cờ theo dõi xem user có đổi email không
+
         // Kiểm tra logic nếu user đổi email
         if (!existingUser.getEmail().equals(request.getEmail())) {
             if (userRepository.existsByEmail(request.getEmail())) {
                 throw new RuntimeException("Email is already in use by another account!");
             }
             existingUser.setEmail(request.getEmail());
+            isEmailChanged = true; // Ghi nhận là email đã bị thay đổi
         }
 
         // Lưu ý: Không cho phép tự ý đổi Role hoặc Status ở hàm Update Profile cá nhân
 
         Users updatedUser = userRepository.save(existingUser);
+
+        // --- BẮT ĐẦU ĐOẠN CODE GỬI EMAIL TỰ ĐỘNG ---
+        try {
+            MessageInfor messageInfor = new MessageInfor();
+            messageInfor.setEmail(updatedUser.getEmail()); // Sẽ gửi vào email mới nhất
+            messageInfor.setTitle("Security Alert: Your Profile Has Been Updated");
+
+            StringBuilder emailBody = new StringBuilder("Hello " + updatedUser.getFirstName() + ",\n\n");
+            emailBody.append("We are writing to let you know that your personal profile information has been successfully updated in the E-CONTRACT system.\n");
+
+            if (isEmailChanged) {
+                emailBody.append("\n- Your registered email address has been changed to this email.\n");
+            }
+
+            emailBody.append("\nIf you did not make these changes, please contact the system administrator immediately to secure your account.");
+
+            messageInfor.setText(emailBody.toString());
+            emailService.sendEmail(messageInfor);
+        } catch (Exception e) {
+            // Đặt trong khối try-catch để lỡ cấu hình mail lỗi, hệ thống vẫn lưu profile thành công và không văng lỗi 500 ra FE
+            System.err.println("Lỗi khi gửi email thông báo update profile: " + e.getMessage());
+        }
+        // --- KẾT THÚC ĐOẠN CODE GỬI EMAIL ---
+
         return UserProfileResponseDTO.fromEntity(updatedUser);
     }
 

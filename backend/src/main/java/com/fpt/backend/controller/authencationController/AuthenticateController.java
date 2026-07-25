@@ -45,6 +45,15 @@ public class AuthenticateController {
             authenticateResponse.setToken(token);
             authenticateResponse.setRole(users.getRole());
             authenticateResponse.setFullName(users.getFirstName()+" "+users.getLastName());
+
+            // --- THÊM ĐOẠN CODE NÀY ---
+            if (users.getDepartment() != null) {
+                authenticateResponse.setDepartmentName(users.getDepartment().getDepartmentName());
+            } else {
+                authenticateResponse.setDepartmentName(""); // Đề phòng user chưa có phòng ban
+            }
+            // ---------------------------------------
+
             BaseResponse<AuthenticateResponse> response = new BaseResponse<>(
                     HttpStatus.CREATED.value(),
                     "Login susscessed",

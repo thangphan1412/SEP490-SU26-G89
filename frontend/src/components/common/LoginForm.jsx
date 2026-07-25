@@ -20,14 +20,16 @@ function LoginForm() {
             localStorage.removeItem("token");
             localStorage.removeItem("role");
             localStorage.removeItem("fullName");
+            localStorage.removeItem("departmentName");
 
             const response = await authenService.login({ email, password });
             console.log("Response data:", response.data);
-            const { token, role, fullName } = response.data.data;
-            console.log("token:", token, "role:", role, "fullName:", fullName);
+            const { token, role, fullName, departmentName } = response.data.data;
+            console.log("token:", token, "role:", role, "fullName:", fullName, "department:", departmentName);
             localStorage.setItem("token", token);
             localStorage.setItem("role", role ?? "");
             localStorage.setItem("fullName", fullName ?? "");
+            localStorage.setItem("departmentName", departmentName ?? "");
 
             navigate("/home_page");
         } catch (error) {
