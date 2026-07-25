@@ -11,8 +11,8 @@ import {
     IconInfoCircle
 } from "@tabler/icons-react";
 // IMPORT FILE API VÀO ĐÂY
-import { createUser, getAllDepartments } from "../../services/userService/userApi.js";
-// import { getAllDepartments } from "../../services/departmentService/departmentApi";
+import { createUser } from "../../services/userService/userApi.js";
+import departmentApi from "../../services/departmentService/departmentApi";
 
 function CreateUser() {
     const navigate = useNavigate();
@@ -44,16 +44,15 @@ function CreateUser() {
     useEffect(() => {
         const fetchDepts = async () => {
             try {
-                // BỎ COMMENT GỌI API THẬT
-                const res = await getAllDepartments();
-                setDepartmentsDB(res.data?.data || []);
+                // Gọi qua departmentApi
+                const res = await departmentApi.getAllDepartments();
+                setDepartmentsDB(res.data?.data || res.data || []);
             } catch (error) {
                 console.error("Lỗi lấy danh sách department:", error);
             }
         };
         fetchDepts();
 
-        // NẾU LÀ MANAGER -> ÉP BUỘC CHỌN PHÒNG BAN CỦA MANAGER ĐÓ VÀ ROLE LÀ EMPLOYEE
         if (currentUserRole === 'Manager') {
             setUser(prev => ({ ...prev, department: currentUserDept, role: 'Employee' }));
         }

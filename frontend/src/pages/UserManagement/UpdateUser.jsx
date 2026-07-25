@@ -22,7 +22,7 @@ import {
 
 // IMPORT HÀM GỌI API
 import {getAllDepartments, getUserById, updateUser} from "../../services/userService/userApi.js";
-// import { getAllDepartments } from "../../config/departmentApi/departmentApi";
+import departmentApi from "../../services/departmentService/departmentApi";
 
 function UpdateUser({ onUpdateUser }) {
     const navigate = useNavigate();
@@ -63,9 +63,9 @@ function UpdateUser({ onUpdateUser }) {
     useEffect(() => {
         const fetchDepts = async () => {
             try {
-                // BỎ COMMENT GỌI API THẬT
-                const res = await getAllDepartments();
-                setDepartmentsDB(res.data?.data || []);
+                // Gọi qua departmentApi
+                const res = await departmentApi.getAllDepartments();
+                setDepartmentsDB(res.data?.data || res.data || []);
             } catch (error) {
                 console.error("Lỗi lấy danh sách department:", error);
             }

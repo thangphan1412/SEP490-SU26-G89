@@ -71,11 +71,3 @@ export const updateMyProfile = (profileData) => {
         },
     });
 };
-
-
-// Đừng quên import axios và có cái getAuthHeader() như bạn đã làm nhé
-export const getAllDepartments = () => {
-    return axios.get("http://localhost:8080/api/v1/departments", { // Chỉnh lại cho chuẩn URL của nhóm bạn
-        headers: { "Cache-Control": "no-cache", ...getAuthHeader() },
-    });
-};
