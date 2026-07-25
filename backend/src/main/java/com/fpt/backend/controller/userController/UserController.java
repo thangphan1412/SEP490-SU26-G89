@@ -57,7 +57,7 @@ public class UserController {
 
     // 2. GET USER BY ID (ViewUser)
     @GetMapping("/{id}")
-    public ResponseEntity<BaseResponse<UserResponseDTO>> getUserById(@PathVariable Integer id) {
+    public ResponseEntity<BaseResponse<UserResponseDTO>> getUserById(@PathVariable UUID id) {
         try {
             UserResponseDTO user = userService.getUserById(id);
             return ResponseEntity
@@ -106,7 +106,7 @@ public class UserController {
     // 4. UPDATE USER (UpdateUser)
     @PutMapping("/{id}")
     public ResponseEntity<BaseResponse<UserResponseDTO>> updateUser(
-            @PathVariable Integer id,
+            @PathVariable UUID id,
             @RequestBody UserRequestDTO request) {
         try {
             UserResponseDTO updatedUser = userService.updateUser(id, request);

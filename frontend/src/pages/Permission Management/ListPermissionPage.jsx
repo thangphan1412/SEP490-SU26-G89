@@ -29,15 +29,16 @@ import {
   listPermissionProjects,
   listPermissionRoles,
   listPermissions,
-} from "../../config/permissionApi/permissionApi.js";
-import { PermissionPage, PermissionStatusBadge } from "./PermissionComponents.jsx";
+} from "../../services/permissionService/permissionApi.js";
+import PermissionPage from "../../components/permissionComponents/PermissionPage.jsx";
+import PermissionStatusBadge from "../../components/permissionComponents/PermissionStatusBadge.jsx";
 import UpdatePermissionPage from "./UpdatePermissionPage.jsx";
 import ViewPermissionPage from "./ViewPermissionPage.jsx";
 
 // Các cột có thể sắp xếp trong bảng
 const sortableColumns = [
   ["Permission", "permissionName"],
-  ["Code / Module", "permissionCode"],
+  ["Permission Code", "permissionCode"],
   ["Project", "projectName"],
   ["Role", "roleName"],
   ["Status", "status"],
@@ -147,8 +148,8 @@ function PermissionListContent() {
         setError("");
         const response = await listPermissions({
           search,
-          projectId: projectId ? Number(projectId) : undefined,
-          roleId: roleId ? Number(roleId) : undefined,
+          projectId: projectId || undefined,
+          roleId: roleId || undefined,
           status: status === "" ? undefined : status === "true",
           page,
           sortBy,
@@ -357,22 +358,20 @@ function PermissionListContent() {
                   onKeyDown={(event) => handleRowKeyDown(event, permission.id)}
                 >
                   <td className="permission-name-cell">
-                    <span className="permission-row-icon"><IconShieldCheck size={20} /></span>
-                    <span className="permission-name-text">
-                      <strong>{permission.permissionName || "Unnamed permission"}</strong>
-                      <small title={permission.permissionDescription || ""}>
-                        {permission.permissionDescription || "No description"}
-                      </small>
-                    </span>
+                    <div className="permission-name-content">
+                      <span className="permission-row-icon"><IconShieldCheck size={20} /></span>
+                      <span className="permission-name-text">
+                        <strong>{permission.permissionName || "Unnamed permission"}</strong>
+                      </span>
+                    </div>
                   </td>
-                  <td>
+                  <td className="permission-code-cell">
                     <span className="permission-code-badge">{permission.permissionCode || "-"}</span>
-                    <small className="permission-module-text">{permission.permissionModule || "-"}</small>
                   </td>
-                  <td>{formatProjectValue(permission)}</td>
-                  <td>{permission.roleName || "Unassigned"}</td>
-                  <td><PermissionStatusBadge status={permission.status} /></td>
-                  <td>
+                  <td className="permission-project-cell">{formatProjectValue(permission)}</td>
+                  <td className="permission-role-cell">{permission.roleName || "Unassigned"}</td>
+                  <td className="permission-status-cell"><PermissionStatusBadge status={permission.status} /></td>
+                  <td className="permission-actions-cell">
                     <Stack direction="horizontal" className="permission-row-actions">
                       <Button
                         variant="light"

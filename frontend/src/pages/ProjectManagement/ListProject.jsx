@@ -1,8 +1,11 @@
 import { useEffect, useState } from "react";
 import { Button, Form, InputGroup, Pagination, Table } from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
-import { listProjects } from "../../config/projectApi/projectApi.js";
-import { Icon, PagePanel, PrimaryButton, StatusBadge } from "./ProjectComponents.jsx";
+import { listProjects } from "../../services/projectService/projectApi.js";
+import Icon from "../../components/projectComponents/Icon.jsx";
+import PagePanel from "../../components/projectComponents/PagePanel.jsx";
+import PrimaryButton from "../../components/projectComponents/PrimaryButton.jsx";
+import StatusBadge from "../../components/projectComponents/StatusBadge.jsx";
 import "../../assets/styles/css/projectStyles/ListProject.css";
 
 const sortableColumns = [
@@ -14,6 +17,8 @@ const sortableColumns = [
     ["Created By", "projectCreatedBy"],
     ["Created At", "projectCreatedAt"],
 ];
+
+const projectStatusOptions = ["Planning", "Active", "On Hold", "Completed", "Cancelled"];
 
 function createPageNumbers(currentPage, totalPages) {
     if (totalPages <= 5) {
@@ -51,7 +56,6 @@ function ListProject() {
     const [searchInput, setSearchInput] = useState("");
     const [search, setSearch] = useState("");
     const [status, setStatus] = useState("");
-    const [availableStatuses, setAvailableStatuses] = useState([]);
     const [page, setPage] = useState(0);
     const [totalElements, setTotalElements] = useState(0);
     const [totalPages, setTotalPages] = useState(0);
@@ -86,15 +90,10 @@ function ListProject() {
                     ? payload.items
                     : [];
 
-                const statusList = Array.isArray(payload?.availableStatuses)
-                    ? payload.availableStatuses
-                    : [];
-
                 const totalProjectCount = Number(payload?.totalElements) || 0;
                 const totalPageCount = Number(payload?.totalPages) || 0;
 
                 setProjects(projectList);
-                setAvailableStatuses(statusList);
                 setTotalElements(totalProjectCount);
                 setTotalPages(totalPageCount);
 
@@ -105,7 +104,6 @@ function ListProject() {
                 console.error("Unable to load projects:", error);
 
                 setProjects([]);
-                setAvailableStatuses([]);
                 setTotalElements(0);
                 setTotalPages(0);
             }
@@ -207,9 +205,9 @@ function ListProject() {
                     >
                         <option value="">All statuses</option>
 
-                        {availableStatuses.map((availableStatus) => (
-                            <option key={availableStatus} value={availableStatus}>
-                                {availableStatus}
+                        {projectStatusOptions.map((projectStatus) => (
+                            <option key={projectStatus} value={projectStatus}>
+                                {projectStatus}
                             </option>
                         ))}
                     </Form.Select>

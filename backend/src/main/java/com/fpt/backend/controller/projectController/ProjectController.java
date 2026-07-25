@@ -2,10 +2,12 @@ package com.fpt.backend.controller.projectController;
 
 import com.fpt.backend.dto.request.project.ProjectCreateRequest;
 import com.fpt.backend.dto.request.project.ProjectListRequest;
+import com.fpt.backend.dto.request.project.ProjectPermissionConfigurationRequest;
 import com.fpt.backend.dto.request.project.ProjectUpdateRequest;
 import com.fpt.backend.dto.response.project.ProjectDetailResponse;
 import com.fpt.backend.dto.response.project.ProjectEmployeeResponse;
 import com.fpt.backend.dto.response.project.ProjectListResponse;
+import com.fpt.backend.dto.response.project.ProjectPermissionConfigurationResponse;
 import com.fpt.backend.dto.response.project.ProjectRoleResponse;
 import com.fpt.backend.service.interfaces.project.ProjectService;
 import com.fpt.backend.util.BaseResponse;
@@ -25,6 +27,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/projects")
@@ -50,7 +53,7 @@ public class ProjectController {
     }
 
     @GetMapping("/view/{id}")
-    public ResponseEntity<BaseResponse<ProjectDetailResponse>> getProjectById(@PathVariable int id) {
+    public ResponseEntity<BaseResponse<ProjectDetailResponse>> getProjectById(@PathVariable UUID id) {
         ProjectDetailResponse project = projectService.getProjectById(id);
 
         return ResponseEntity.ok()
@@ -76,6 +79,27 @@ public class ProjectController {
                 .body(new BaseResponse<>(roles));
     }
 
+    @GetMapping("/{projectId}/permission-configurations")
+    public ResponseEntity<BaseResponse<List<ProjectPermissionConfigurationResponse>>>
+    getProjectPermissionConfigurations(@PathVariable UUID projectId) {
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .body(new BaseResponse<>(
+                        projectService.getProjectPermissionConfigurations(projectId)
+                ));
+    }
+
+    @PutMapping("/{projectId}/permissions/{permissionId}/configure")
+    public ResponseEntity<BaseResponse<ProjectPermissionConfigurationResponse>>
+    configureProjectPermission(
+            @PathVariable UUID projectId,
+            @PathVariable UUID permissionId,
+            @RequestBody ProjectPermissionConfigurationRequest request) {
+        return ResponseEntity.ok(new BaseResponse<>(
+                projectService.configureProjectPermission(projectId, permissionId, request)
+        ));
+    }
+
     @PostMapping("/create")
     public ResponseEntity<BaseResponse<ProjectDetailResponse>> createProject(@RequestBody ProjectCreateRequest request) {
         ProjectDetailResponse project = projectService.createProject(request);
@@ -90,13 +114,13 @@ public class ProjectController {
 
     @PutMapping({"/{id}", "/update/{id}"})
     public ResponseEntity<BaseResponse<ProjectDetailResponse>> updateProject(
-            @PathVariable int id,
+            @PathVariable UUID id,
             @RequestBody ProjectUpdateRequest request) {
         return ResponseEntity.ok(new BaseResponse<>(projectService.updateProject(id, request)));
     }
 
     @DeleteMapping({"/{id}", "/delete/{id}"})
-    public ResponseEntity<BaseResponse<Void>> deleteProject(@PathVariable int id) {
+    public ResponseEntity<BaseResponse<Void>> deleteProject(@PathVariable UUID id) {
         boolean deletedFromDatabase = projectService.deleteProject(id);
         String message = deletedFromDatabase
                 ? "Project deleted permanently"

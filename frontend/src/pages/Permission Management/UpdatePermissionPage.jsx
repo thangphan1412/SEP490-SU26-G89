@@ -8,17 +8,14 @@ import {
   listPermissionRoles,
   updatePermission,
   viewPermission,
-} from "../../config/permissionApi/permissionApi.js";
-import {
-  PermissionFormField,
-  PermissionPage,
-} from "./PermissionComponents.jsx";
+} from "../../services/permissionService/permissionApi.js";
+import PermissionFormField from "../../components/permissionComponents/PermissionFormField.jsx";
+import PermissionPage from "../../components/permissionComponents/PermissionPage.jsx";
 import { formatPermissionDate } from "./permissionUtils.js";
 
 const initialPermission = {
   permissionName: "",
   permissionCode: "",
-  permissionModule: "",
   permissionDescription: "",
   projectId: "",
   roleId: "",
@@ -68,7 +65,6 @@ function UpdatePermissionPage() {
           setPermission({
             permissionName: permissionPayload?.permissionName || "",
             permissionCode: permissionPayload?.permissionCode || "",
-            permissionModule: permissionPayload?.permissionModule || "",
             permissionDescription: permissionPayload?.permissionDescription || "",
             projectId: permissionPayload?.projectId ? String(permissionPayload.projectId) : "",
             roleId: permissionPayload?.roleId ? String(permissionPayload.roleId) : "",
@@ -119,10 +115,9 @@ function UpdatePermissionPage() {
       const response = await updatePermission(permissionId, {
         permissionName: permission.permissionName.trim(),
         permissionCode: permission.permissionCode.trim(),
-        permissionModule: permission.permissionModule.trim(),
         permissionDescription: permission.permissionDescription.trim(),
-        projectId: Number(permission.projectId),
-        roleId: Number(permission.roleId),
+        projectId: permission.projectId,
+        roleId: permission.roleId,
         status: permission.status,
       });
       const updatedPermission = response.data?.data ?? response.data;
@@ -179,7 +174,7 @@ function UpdatePermissionPage() {
             <span className="permission-section-number">1</span>
             <div>
               <h2>Permission information</h2>
-              <p>Keep the name, code, module, and description clear for other users.</p>
+              <p>Keep the name, code, and description clear for other users.</p>
             </div>
           </div>
 
@@ -192,11 +187,6 @@ function UpdatePermissionPage() {
             <Col md={6}>
               <PermissionFormField controlId="update-permission-code" label="Permission Code" required hint="The code must remain unique.">
                 <Form.Control className="permission-input" name="permissionCode" value={permission.permissionCode} onChange={handleChange} maxLength={50} required />
-              </PermissionFormField>
-            </Col>
-            <Col md={6}>
-              <PermissionFormField controlId="update-permission-module" label="Permission Module" required>
-                <Form.Control className="permission-input" name="permissionModule" value={permission.permissionModule} onChange={handleChange} maxLength={255} required />
               </PermissionFormField>
             </Col>
             <Col xs={12}>

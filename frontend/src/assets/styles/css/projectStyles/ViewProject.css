@@ -14,6 +14,27 @@
     font-weight: 700;
 }
 
+.view-project-permission-configure-button.btn {
+    min-height: 43px;
+    padding: 0 17px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    border-color: #9eb4ff;
+    border-radius: 7px;
+    background: #f8faff;
+    color: #2450f5;
+    font-size: 14px;
+    font-weight: 800;
+}
+
+.view-project-permission-configure-button.btn:hover,
+.view-project-permission-configure-button.btn:focus {
+    border-color: #2450f5;
+    background: #eef3ff;
+    color: #1d43d8;
+}
+
 .view-project-action-alert.alert {
     margin: 20px 28px 0;
     border-radius: 8px;
@@ -189,6 +210,19 @@
 
 .view-project-row:last-child {
     border-bottom: 0;
+}
+
+.view-project-phase-row {
+    cursor: pointer;
+}
+
+.view-project-phase-row:focus {
+    outline: 2px solid #8da8ff;
+    outline-offset: -2px;
+}
+
+.view-project-phase-row:focus > td {
+    background: #f8fbff;
 }
 
 .view-project-table .view-project-td {

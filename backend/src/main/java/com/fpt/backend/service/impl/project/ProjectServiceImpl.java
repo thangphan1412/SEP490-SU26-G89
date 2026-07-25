@@ -4,17 +4,18 @@ import com.fpt.backend.dto.request.project.ProjectCreateRequest;
 import com.fpt.backend.dto.request.project.ProjectListRequest;
 import com.fpt.backend.dto.request.project.ProjectMemberRequest;
 import com.fpt.backend.dto.request.project.ProjectPhaseRequest;
+import com.fpt.backend.dto.request.project.ProjectPermissionConfigurationRequest;
 import com.fpt.backend.dto.request.project.ProjectUpdateRequest;
 import com.fpt.backend.dto.response.project.ProjectContractResponse;
 import com.fpt.backend.dto.response.project.ProjectDetailResponse;
 import com.fpt.backend.dto.response.project.ProjectEmployeeResponse;
 import com.fpt.backend.dto.response.project.ProjectListItemResponse;
 import com.fpt.backend.dto.response.project.ProjectListResponse;
+import com.fpt.backend.dto.response.project.ProjectPermissionConfigurationResponse;
 import com.fpt.backend.dto.response.project.ProjectPermissionOptionResponse;
 import com.fpt.backend.dto.response.project.ProjectPhaseResponse;
 import com.fpt.backend.dto.response.project.ProjectRoleResponse;
 import com.fpt.backend.dto.response.project.ProjectUserResponse;
-import com.fpt.backend.entity.Contracts;
 import com.fpt.backend.entity.Permissions;
 import com.fpt.backend.entity.ProjectMember;
 import com.fpt.backend.entity.Projects;
@@ -23,9 +24,20 @@ import com.fpt.backend.entity.Timeline;
 import com.fpt.backend.entity.UserPermission;
 import com.fpt.backend.entity.UserRole;
 import com.fpt.backend.entity.Users;
+import com.fpt.backend.repository.permission.PermissionRepository;
+import com.fpt.backend.repository.permission.UserPermissionRepository;
+import com.fpt.backend.repository.phase.PhaseContractRepository;
+import com.fpt.backend.repository.phase.PhaseDeliverableRepository;
+import com.fpt.backend.repository.phase.PhaseRepository;
+import com.fpt.backend.repository.phase.PhaseTaskRepository;
+import com.fpt.backend.repository.project.ProjectCleanupRepository;
+import com.fpt.backend.repository.project.ProjectContractRepository;
+import com.fpt.backend.repository.project.ProjectMemberRepository;
 import com.fpt.backend.repository.project.ProjectRepository;
+import com.fpt.backend.repository.project.ProjectUserRoleRepository;
+import com.fpt.backend.repository.user.UserRepository;
+import com.fpt.backend.service.interfaces.phase.PhaseProgressService;
 import com.fpt.backend.service.interfaces.project.ProjectService;
-import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -39,14 +51,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.Date;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -59,8 +64,25 @@ public class ProjectServiceImpl implements ProjectService {
     private static final String DEFAULT_PROJECT_STATUS = "Planning";
     private static final String DEFAULT_PHASE_STATUS = "Planning";
     private static final String CANCELLED_PROJECT_STATUS = "Cancelled";
+    private static final String WORK_SCOPE_OWN = "OWN";
+    private static final String WORK_SCOPE_FULL = "FULL";
+    private static final String WORK_SCOPE_OWN_TOKEN = "WORK_SCOPE_OWN";
+    private static final String WORK_SCOPE_FULL_TOKEN = "WORK_SCOPE_FULL";
     private static final ZoneId DATABASE_TIME_ZONE = ZoneId.of("UTC");
     private static final ZoneId PROJECT_TIME_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
+    private static final List<String> PERMISSION_ACTIONS = List.of(
+            "VIEW_TASKS",
+            "VIEW_DELIVERABLES",
+            "VIEW_CONTRACTS",
+            "CREATE_TASKS",
+            "EDIT_TASKS",
+            "DELETE_TASKS",
+            "CREATE_DELIVERABLES",
+            "EDIT_DELIVERABLES",
+            "DELETE_DELIVERABLES",
+            "EDIT_PHASE",
+            "MANAGE_MEMBERS"
+    );
     private static final Set<String> SORT_FIELDS = Set.of(
             "id",
             "projectCode",
@@ -73,7 +95,18 @@ public class ProjectServiceImpl implements ProjectService {
     );
 
     private final ProjectRepository projectRepository;
-    private final EntityManager entityManager;
+    private final ProjectMemberRepository projectMemberRepository;
+    private final ProjectUserRoleRepository projectUserRoleRepository;
+    private final ProjectContractRepository projectContractRepository;
+    private final ProjectCleanupRepository projectCleanupRepository;
+    private final PermissionRepository permissionRepository;
+    private final UserPermissionRepository userPermissionRepository;
+    private final PhaseRepository phaseRepository;
+    private final PhaseTaskRepository phaseTaskRepository;
+    private final PhaseDeliverableRepository phaseDeliverableRepository;
+    private final PhaseContractRepository phaseContractRepository;
+    private final PhaseProgressService phaseProgressService;
+    private final UserRepository userRepository;
 
     @Override
     public ProjectListResponse getProjects(ProjectListRequest request) {
@@ -103,7 +136,7 @@ public class ProjectServiceImpl implements ProjectService {
     }
 
     @Override
-    public ProjectDetailResponse getProjectById(int id) {
+    public ProjectDetailResponse getProjectById(UUID id) {
         return toDetail(findProject(id));
     }
 
@@ -134,14 +167,14 @@ public class ProjectServiceImpl implements ProjectService {
         Projects savedProject = projectRepository.save(project);
         syncPhases(savedProject, request.phases());
         syncMembers(savedProject, request.members(), false);
-        entityManager.flush();
+        projectRepository.flush();
 
         return toDetail(savedProject);
     }
 
     @Override
     @Transactional
-    public ProjectDetailResponse updateProject(int id, ProjectUpdateRequest request) {
+    public ProjectDetailResponse updateProject(UUID id, ProjectUpdateRequest request) {
         if (request == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Project information is required");
         }
@@ -161,14 +194,14 @@ public class ProjectServiceImpl implements ProjectService {
 
         syncPhases(project, request.phases());
         syncMembers(project, request.members(), true);
-        entityManager.flush();
+        projectRepository.flush();
 
         return toDetail(project);
     }
 
     @Override
     @Transactional
-    public boolean deleteProject(int id) {
+    public boolean deleteProject(UUID id) {
         Projects project = findProject(id);
 
         if (projectRepository.countContractsByProjectId(id) > 0) {
@@ -180,7 +213,6 @@ public class ProjectServiceImpl implements ProjectService {
 
         try {
             deleteProjectRelatedData(id);
-            entityManager.flush();
             projectRepository.delete(project);
             projectRepository.flush();
             return true;
@@ -195,57 +227,23 @@ public class ProjectServiceImpl implements ProjectService {
         }
     }
 
-    private void deleteProjectRelatedData(int projectId) {
-        deleteByProject(
-                "DELETE FROM TimelineContract link WHERE link.timeline.id IN "
-                        + "(SELECT phase.id FROM Timeline phase WHERE phase.project.id = :projectId)",
-                projectId
-        );
-        deleteByProject(
-                "DELETE FROM TimelineTask task WHERE task.timeline.id IN "
-                        + "(SELECT phase.id FROM Timeline phase WHERE phase.project.id = :projectId)",
-                projectId
-        );
-        deleteByProject(
-                "DELETE FROM Deliverable deliverable WHERE deliverable.timeline.id IN "
-                        + "(SELECT phase.id FROM Timeline phase WHERE phase.project.id = :projectId)",
-                projectId
-        );
-        deleteByProject("DELETE FROM Timeline phase WHERE phase.project.id = :projectId", projectId);
-
-        deleteByProject(
-                "DELETE FROM UserPermission userPermission WHERE userPermission.permission.id IN "
-                        + "(SELECT permission.id FROM Permissions permission WHERE permission.project.id = :projectId)",
-                projectId
-        );
-        deleteByProject("DELETE FROM ProjectMember member WHERE member.project.id = :projectId", projectId);
-        deleteByProject("DELETE FROM Permissions permission WHERE permission.project.id = :projectId", projectId);
-
-        deleteByProject(
-                "DELETE FROM Approvals approval WHERE approval.proposal.id IN "
-                        + "(SELECT proposal.id FROM Proposals proposal WHERE proposal.project.id = :projectId)",
-                projectId
-        );
-        deleteByProject("DELETE FROM Proposals proposal WHERE proposal.project.id = :projectId", projectId);
-        deleteByProject("DELETE FROM ActivityLog log WHERE log.project.id = :projectId", projectId);
-        deleteByProject("DELETE FROM Workflow workflow WHERE workflow.project.id = :projectId", projectId);
-    }
-
-    private void deleteByProject(String query, int projectId) {
-        entityManager.createQuery(query)
-                .setParameter("projectId", projectId)
-                .executeUpdate();
+    private void deleteProjectRelatedData(UUID projectId) {
+        phaseContractRepository.deleteByProjectId(projectId);
+        phaseTaskRepository.deleteByProjectId(projectId);
+        phaseDeliverableRepository.deleteByProjectId(projectId);
+        phaseRepository.deleteByProjectId(projectId);
+        userPermissionRepository.deleteByProjectId(projectId);
+        projectMemberRepository.deleteByProjectId(projectId);
+        permissionRepository.deleteByProjectId(projectId);
+        projectCleanupRepository.deleteProjectRecords(projectId);
     }
 
     @Override
     public List<ProjectEmployeeResponse> getEmployeesForProjectSelection() {
-        List<Users> users = entityManager.createQuery(
-                        "SELECT user FROM Users user "
-                                + "ORDER BY user.firstName, user.lastName, user.email",
-                        Users.class
-                )
-                .getResultList();
-        Map<Integer, List<ProjectRoleResponse>> rolesByUserId = findRolesByUserId();
+        List<Users> users = userRepository.findAll(
+                Sort.by(Sort.Direction.ASC, "firstName", "lastName", "email")
+        );
+        Map<UUID, List<ProjectRoleResponse>> rolesByUserId = findRolesByUserId();
 
         return users.stream()
                 .map(user -> new ProjectEmployeeResponse(
@@ -261,39 +259,53 @@ public class ProjectServiceImpl implements ProjectService {
 
     @Override
     public List<ProjectRoleResponse> getRolesForProjectMemberFilter() {
-        return entityManager.createQuery(
-                        "SELECT role FROM Role role "
-                                + "WHERE role.roleName IS NOT NULL "
-                                + "AND TRIM(role.roleName) <> '' "
-                                + "ORDER BY role.roleName, role.id",
-                        Role.class
-                )
-                .getResultList()
+        return permissionRepository.findRolesForPermissionSelection()
                 .stream()
                 .map(role -> new ProjectRoleResponse(role.getId(), role.getRoleName()))
                 .toList();
     }
 
-    private Map<Integer, List<ProjectRoleResponse>> findRolesByUserId() {
-        List<UserRole> userRoles = entityManager.createQuery(
-                        "SELECT userRole FROM UserRole userRole "
-                                + "JOIN FETCH userRole.user user "
-                                + "JOIN FETCH userRole.role role "
-                                + "ORDER BY user.id, role.roleName, role.id",
-                        UserRole.class
-                )
-                .getResultList();
-        Map<Integer, List<ProjectRoleResponse>> rolesByUserId = new LinkedHashMap<>();
+    @Override
+    public List<ProjectPermissionConfigurationResponse> getProjectPermissionConfigurations(UUID projectId) {
+        findProject(projectId);
+
+        return findProjectPermissions(projectId)
+                .stream()
+                .map(this::toPermissionConfiguration)
+                .toList();
+    }
+
+    @Override
+    @Transactional
+    public ProjectPermissionConfigurationResponse configureProjectPermission(
+            UUID projectId,
+            UUID permissionId,
+            ProjectPermissionConfigurationRequest request) {
+        findProject(projectId);
+        Permissions permission = permissionRepository.findByIdAndProjectId(permissionId, projectId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Permission does not belong to this project"
+                ));
+
+        permission.setPermissionModule(createPermissionModuleValue(request));
+
+        return toPermissionConfiguration(permissionRepository.save(permission));
+    }
+
+    private Map<UUID, List<ProjectRoleResponse>> findRolesByUserId() {
+        List<UserRole> userRoles = projectUserRoleRepository.findAllWithUserAndRole();
+        Map<UUID, List<ProjectRoleResponse>> rolesByUserId = new LinkedHashMap<>();
 
         for (UserRole userRole : userRoles) {
-            int userId = userRole.getUser().getId();
+            UUID userId = userRole.getUser().getId();
             Role role = userRole.getRole();
             List<ProjectRoleResponse> roles = rolesByUserId.computeIfAbsent(
                     userId,
                     ignored -> new ArrayList<>()
             );
             boolean roleAlreadyAdded = roles.stream()
-                    .anyMatch(existingRole -> existingRole.id() == role.getId());
+                    .anyMatch(existingRole -> existingRole.id().equals(role.getId()));
 
             if (!roleAlreadyAdded) {
                 roles.add(new ProjectRoleResponse(role.getId(), role.getRoleName()));
@@ -303,7 +315,85 @@ public class ProjectServiceImpl implements ProjectService {
         return rolesByUserId;
     }
 
-    private Projects findProject(int id) {
+    private String createPermissionModuleValue(ProjectPermissionConfigurationRequest request) {
+        if (request == null) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Permission configuration is required"
+            );
+        }
+
+        Set<String> requestedActions = new LinkedHashSet<>();
+        List<String> actions = request.allowedActions() == null
+                ? List.of()
+                : request.allowedActions();
+
+        for (String action : actions) {
+            String normalizedAction = normalize(action).toUpperCase(Locale.ROOT);
+
+            if (!PERMISSION_ACTIONS.contains(normalizedAction)) {
+                throw new ResponseStatusException(
+                        HttpStatus.BAD_REQUEST,
+                        "Unsupported permission action: " + action
+                );
+            }
+
+            requestedActions.add(normalizedAction);
+        }
+
+        String workScope = normalize(request.workScope()).toUpperCase(Locale.ROOT);
+        if (!WORK_SCOPE_OWN.equals(workScope) && !WORK_SCOPE_FULL.equals(workScope)) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Work scope must be OWN or FULL"
+            );
+        }
+
+        List<String> storedValues = new ArrayList<>();
+        for (String supportedAction : PERMISSION_ACTIONS) {
+            if (requestedActions.contains(supportedAction)) {
+                storedValues.add(supportedAction);
+            }
+        }
+        storedValues.add(WORK_SCOPE_OWN.equals(workScope)
+                ? WORK_SCOPE_OWN_TOKEN
+                : WORK_SCOPE_FULL_TOKEN);
+
+        return String.join(",", storedValues);
+    }
+
+    private ProjectPermissionConfigurationResponse toPermissionConfiguration(Permissions permission) {
+        Set<String> storedValues = new LinkedHashSet<>();
+        String permissionModule = normalize(permission.getPermissionModule());
+
+        if (!permissionModule.isBlank()) {
+            for (String value : permissionModule.split(",")) {
+                String normalizedValue = normalize(value).toUpperCase(Locale.ROOT);
+                if (!normalizedValue.isBlank()) {
+                    storedValues.add(normalizedValue);
+                }
+            }
+        }
+
+        List<String> allowedActions = PERMISSION_ACTIONS.stream()
+                .filter(storedValues::contains)
+                .toList();
+        String workScope = storedValues.contains(WORK_SCOPE_OWN_TOKEN)
+                ? WORK_SCOPE_OWN
+                : WORK_SCOPE_FULL;
+
+        return new ProjectPermissionConfigurationResponse(
+                permission.getId(),
+                getPermissionName(permission),
+                permission.getPermissionCode(),
+                permission.getPermissionDescription(),
+                permission.getStatus(),
+                allowedActions,
+                workScope
+        );
+    }
+
+    private Projects findProject(UUID id) {
         return projectRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Project not found"));
     }
@@ -344,7 +434,7 @@ public class ProjectServiceImpl implements ProjectService {
             LocalDate endDate,
             String descriptionValue,
             String statusValue,
-            Integer currentProjectId) {
+            UUID currentProjectId) {
         String projectName = requireText(projectNameValue, "Project name is required", 50);
         String projectCode = requireText(projectCodeValue, "Project code is required", 50);
         String description = normalize(descriptionValue);
@@ -386,7 +476,7 @@ public class ProjectServiceImpl implements ProjectService {
             List<ProjectPhaseRequest> phaseRequests) {
         List<ProjectPhaseRequest> requests = phaseRequests == null ? List.of() : phaseRequests;
         validatePhaseSchedule(project, requests);
-        Map<Integer, Timeline> existingPhases = new LinkedHashMap<>();
+        Map<UUID, Timeline> existingPhases = new LinkedHashMap<>();
 
         for (Timeline phase : findProjectPhases(project.getId())) {
             existingPhases.put(phase.getId(), phase);
@@ -398,9 +488,8 @@ public class ProjectServiceImpl implements ProjectService {
             }
 
             Timeline phase;
-            boolean isNewPhase = false;
 
-            if (request.id() != null && request.id() > 0) {
+            if (request.id() != null) {
                 phase = existingPhases.remove(request.id());
 
                 if (phase == null) {
@@ -411,14 +500,10 @@ public class ProjectServiceImpl implements ProjectService {
                 }
             } else {
                 phase = new Timeline();
-                isNewPhase = true;
             }
 
             applyPhaseInformation(phase, request, project);
-
-            if (isNewPhase) {
-                entityManager.persist(phase);
-            }
+            phaseRepository.save(phase);
         }
 
         for (Timeline removedPhase : existingPhases.values()) {
@@ -515,7 +600,6 @@ public class ProjectServiceImpl implements ProjectService {
         String status = defaultIfBlank(request.status(), DEFAULT_PHASE_STATUS);
         LocalDate startDate = request.startDate();
         LocalDate endDate = request.endDate();
-        double progress = request.progress() == null ? 0 : request.progress();
 
         validateMaxLength(description, "Phase description", 500);
         validateMaxLength(status, "Phase status", 30);
@@ -542,28 +626,22 @@ public class ProjectServiceImpl implements ProjectService {
             );
         }
 
-        if (progress < 0 || progress > 100) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Phase progress must be between 0 and 100"
-            );
-        }
-
         phase.setTitle(title);
         phase.setDescription(description);
         phase.setStartDate(java.sql.Date.valueOf(startDate));
         phase.setEndDate(java.sql.Date.valueOf(endDate));
         phase.setStatus(status);
-        phase.setProgress(progress);
+
+        if (phase.getId() == null) {
+            phase.setProgress(0D);
+        }
+
         phase.setProject(project);
     }
 
     private void removePhase(Timeline phase) {
-        long taskCount = countByPhase("SELECT COUNT(task) FROM TimelineTask task WHERE task.timeline.id = :phaseId", phase.getId());
-        long deliverableCount = countByPhase(
-                "SELECT COUNT(deliverable) FROM Deliverable deliverable WHERE deliverable.timeline.id = :phaseId",
-                phase.getId()
-        );
+        long taskCount = phaseTaskRepository.countByPhaseId(phase.getId());
+        long deliverableCount = phaseDeliverableRepository.countByPhaseId(phase.getId());
 
         if (taskCount > 0 || deliverableCount > 0) {
             throw new ResponseStatusException(
@@ -572,13 +650,7 @@ public class ProjectServiceImpl implements ProjectService {
             );
         }
 
-        entityManager.remove(phase);
-    }
-
-    private long countByPhase(String query, int phaseId) {
-        return entityManager.createQuery(query, Long.class)
-                .setParameter("phaseId", phaseId)
-                .getSingleResult();
+        phaseRepository.delete(phase);
     }
 
     private void syncMembers(
@@ -590,10 +662,10 @@ public class ProjectServiceImpl implements ProjectService {
         }
 
         List<ProjectMemberRequest> requests = memberRequests == null ? List.of() : memberRequests;
-        Map<Integer, ProjectMemberRequest> requestByUserId = new LinkedHashMap<>();
+        Map<UUID, ProjectMemberRequest> requestByUserId = new LinkedHashMap<>();
 
         for (ProjectMemberRequest request : requests) {
-            if (request == null || request.userId() == null || request.userId() <= 0) {
+            if (request == null || request.userId() == null) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "A valid user is required");
             }
 
@@ -605,29 +677,24 @@ public class ProjectServiceImpl implements ProjectService {
             }
         }
 
-        Map<Integer, ProjectMember> existingMemberByUserId = new LinkedHashMap<>();
+        Map<UUID, ProjectMember> existingMemberByUserId = new LinkedHashMap<>();
         for (ProjectMember member : findProjectMembers(project.getId())) {
-            int userId = member.getUser().getId();
+            UUID userId = member.getUser().getId();
             ProjectMember duplicate = existingMemberByUserId.putIfAbsent(userId, member);
 
             if (duplicate != null) {
-                entityManager.remove(member);
+                projectMemberRepository.delete(member);
             }
         }
 
-        for (UserPermission userPermission : findProjectUserPermissions(project.getId())) {
-            entityManager.remove(userPermission);
-        }
+        userPermissionRepository.deleteByProjectId(project.getId());
 
         for (ProjectMemberRequest request : requestByUserId.values()) {
-            Users user = entityManager.find(Users.class, request.userId());
-
-            if (user == null) {
-                throw new ResponseStatusException(
-                        HttpStatus.NOT_FOUND,
-                        "User not found with id: " + request.userId()
-                );
-            }
+            Users user = userRepository.findById(request.userId())
+                    .orElseThrow(() -> new ResponseStatusException(
+                            HttpStatus.NOT_FOUND,
+                            "User not found with id: " + request.userId()
+                    ));
 
             ProjectMember member = existingMemberByUserId.remove(user.getId());
             if (member == null) {
@@ -635,7 +702,7 @@ public class ProjectServiceImpl implements ProjectService {
                 member.setProject(project);
                 member.setUser(user);
                 member.setJoinDate(getCurrentDatabaseDateTime());
-                entityManager.persist(member);
+                projectMemberRepository.save(member);
             }
 
             if (request.permissionId() != null) {
@@ -643,35 +710,28 @@ public class ProjectServiceImpl implements ProjectService {
                 UserPermission userPermission = new UserPermission();
                 userPermission.setUser(user);
                 userPermission.setPermission(permission);
-                entityManager.persist(userPermission);
+                userPermissionRepository.save(userPermission);
             }
         }
 
         for (ProjectMember removedMember : existingMemberByUserId.values()) {
-            entityManager.remove(removedMember);
+            projectMemberRepository.delete(removedMember);
         }
     }
 
-    private Permissions resolvePermission(Projects project, Integer permissionId) {
-        if (permissionId <= 0) {
+    private Permissions resolvePermission(Projects project, UUID permissionId) {
+        if (permissionId == null) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
                     "Selected permission is invalid"
             );
         }
 
-        Permissions permission = entityManager.find(Permissions.class, permissionId);
-
-        if (permission == null
-                || permission.getProject() == null
-                || permission.getProject().getId() != project.getId()) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Selected permission does not belong to this project"
-            );
-        }
-
-        return permission;
+        return permissionRepository.findByIdAndProjectId(permissionId, project.getId())
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.BAD_REQUEST,
+                        "Selected permission does not belong to this project"
+                ));
     }
 
     private ProjectListItemResponse toListItem(Projects project) {
@@ -706,7 +766,7 @@ public class ProjectServiceImpl implements ProjectService {
         );
     }
 
-    private List<ProjectPhaseResponse> toProjectPhases(int projectId) {
+    private List<ProjectPhaseResponse> toProjectPhases(UUID projectId) {
         return findProjectPhases(projectId)
                 .stream()
                 .map(phase -> new ProjectPhaseResponse(
@@ -716,15 +776,15 @@ public class ProjectServiceImpl implements ProjectService {
                         toLocalDate(phase.getStartDate()),
                         toLocalDate(phase.getEndDate()),
                         phase.getStatus(),
-                        phase.getProgress()
+                        phaseProgressService.calculateProgress(phase.getId())
                 ))
                 .toList();
     }
 
-    private List<ProjectUserResponse> toProjectUsers(int projectId) {
-        Map<Integer, ProjectMember> memberByUserId = new LinkedHashMap<>();
-        Map<Integer, Users> userById = new LinkedHashMap<>();
-        Map<Integer, Permissions> permissionByUserId = new LinkedHashMap<>();
+    private List<ProjectUserResponse> toProjectUsers(UUID projectId) {
+        Map<UUID, ProjectMember> memberByUserId = new LinkedHashMap<>();
+        Map<UUID, Users> userById = new LinkedHashMap<>();
+        Map<UUID, Permissions> permissionByUserId = new LinkedHashMap<>();
 
         for (ProjectMember member : findProjectMembers(projectId)) {
             Users user = member.getUser();
@@ -780,14 +840,8 @@ public class ProjectServiceImpl implements ProjectService {
                 .toList();
     }
 
-    private List<ProjectContractResponse> toProjectContracts(int projectId) {
-        return entityManager.createQuery(
-                        "SELECT contract FROM Contracts contract "
-                                + "WHERE contract.project.id = :projectId ORDER BY contract.id",
-                        Contracts.class
-                )
-                .setParameter("projectId", projectId)
-                .getResultList()
+    private List<ProjectContractResponse> toProjectContracts(UUID projectId) {
+        return projectContractRepository.findByProjectId(projectId)
                 .stream()
                 .map(contract -> new ProjectContractResponse(
                         contract.getContractTitle(),
@@ -797,51 +851,20 @@ public class ProjectServiceImpl implements ProjectService {
                 .toList();
     }
 
-    private List<Timeline> findProjectPhases(int projectId) {
-        return entityManager.createQuery(
-                        "SELECT phase FROM Timeline phase "
-                                + "WHERE phase.project.id = :projectId "
-                                + "ORDER BY phase.startDate, phase.id",
-                        Timeline.class
-                )
-                .setParameter("projectId", projectId)
-                .getResultList();
+    private List<Timeline> findProjectPhases(UUID projectId) {
+        return phaseRepository.findByProjectId(projectId);
     }
 
-    private List<ProjectMember> findProjectMembers(int projectId) {
-        return entityManager.createQuery(
-                        "SELECT member FROM ProjectMember member "
-                                + "JOIN FETCH member.user user "
-                                + "WHERE member.project.id = :projectId "
-                                + "ORDER BY user.firstName, user.lastName, user.email",
-                        ProjectMember.class
-                )
-                .setParameter("projectId", projectId)
-                .getResultList();
+    private List<ProjectMember> findProjectMembers(UUID projectId) {
+        return projectMemberRepository.findByProjectId(projectId);
     }
 
-    private List<UserPermission> findProjectUserPermissions(int projectId) {
-        return entityManager.createQuery(
-                        "SELECT userPermission FROM UserPermission userPermission "
-                                + "JOIN FETCH userPermission.user user "
-                                + "JOIN FETCH userPermission.permission permission "
-                                + "WHERE permission.project.id = :projectId "
-                                + "ORDER BY user.id, permission.id",
-                        UserPermission.class
-                )
-                .setParameter("projectId", projectId)
-                .getResultList();
+    private List<UserPermission> findProjectUserPermissions(UUID projectId) {
+        return userPermissionRepository.findByProjectId(projectId);
     }
 
-    private List<Permissions> findProjectPermissions(int projectId) {
-        return entityManager.createQuery(
-                        "SELECT permission FROM Permissions permission "
-                                + "WHERE permission.project.id = :projectId "
-                                + "ORDER BY permission.id",
-                        Permissions.class
-                )
-                .setParameter("projectId", projectId)
-                .getResultList();
+    private List<Permissions> findProjectPermissions(UUID projectId) {
+        return permissionRepository.findByProjectId(projectId);
     }
 
     private String getUserName(Users user) {

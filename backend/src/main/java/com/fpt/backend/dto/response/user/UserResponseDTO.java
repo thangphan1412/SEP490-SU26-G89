@@ -7,13 +7,15 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.util.UUID;
+
 @Getter
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
 public class UserResponseDTO {
-    private Integer id; // Sửa UUID thành Integer
+    private UUID id; // Sửa UUID thành Integer
     private String email;
     private String firstName;
     private String lastName;

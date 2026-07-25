@@ -1,7 +1,9 @@
 package com.fpt.backend.dto.request.project;
 
+import java.util.UUID;
+
 public record ProjectMemberRequest(
-        Integer userId,
-        Integer permissionId
+        UUID userId,
+        UUID permissionId
 ) {
 }

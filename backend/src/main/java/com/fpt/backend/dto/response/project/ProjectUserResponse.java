@@ -1,15 +1,16 @@
 package com.fpt.backend.dto.response.project;
 
 import java.time.LocalDate;
+import java.util.UUID;
 
 public record ProjectUserResponse(
-        int userId,
+        UUID userId,
         String email,
         String userName,
         String role,
         String userStatus,
         LocalDate joinDate,
-        Integer permissionId,
+        UUID permissionId,
         String permissionName,
         String permissionCode
 ) {

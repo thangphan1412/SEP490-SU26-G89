@@ -7,13 +7,15 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.util.UUID;
+
 @Getter
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
 public class CompanyProfileResponseDTO {
-    private Integer id;
+    private UUID id;
     private String companyName;
     private String businessRegistrationNumber; // Lấy từ companyCode
 
