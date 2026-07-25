@@ -1,67 +1,90 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { Container, Card, Row, Col, Form, Button, Table, Pagination, NavDropdown, Stack } from "react-bootstrap";
-// IMPORT THÊM IconEdit VÀ IconEye ĐỂ LÀM NÚT ACTION TẠI BẢNG
-import { IconWorld, IconPlus, IconSearch, IconFilter, IconRefresh, IconArrowsSort, IconDots, IconEdit, IconEye } from "@tabler/icons-react";
+import { useNavigate, useLocation } from "react-router-dom";
+import { Container, Card, Row, Col, Form, Button, Table, Pagination, Stack } from "react-bootstrap";
+import { IconWorld, IconPlus, IconSearch, IconFilter, IconRefresh, IconArrowsSort, IconEdit, IconEye } from "@tabler/icons-react";
 
-// IMPORT HÀM GỌI API
-import { getAllUsers } from "../../config/userApi/userApi";
+import {getAllDepartments, getAllUsers} from "../../services/userService/userApi.js";
+// IMPORT THÊM HÀM LẤY DEPARTMENT TỪ API CỦA BẠN
+// import { getAllDepartments } from "../../config/departmentApi/departmentApi";
 
 function ListUser() {
     const navigate = useNavigate();
+    const location = useLocation();
 
-    // 1. STATE & PAGINATION chuẩn thực tế
+    // Thông tin user đang đăng nhập
+    const currentUserRole = localStorage.getItem("role") || "";
+    const currentUserDept = localStorage.getItem("departmentName") || "";
+
+    const searchParams = new URLSearchParams(location.search);
+    const viewType = searchParams.get("type") || "employee";
+
     const [users, setUsers] = useState([]);
+    const [departmentsDB, setDepartmentsDB] = useState([]); // Lưu danh sách phòng ban từ DB
     const [loading, setLoading] = useState(true);
-    const [searchTerm, setSearchTerm] = useState("");
-    const [pagination, setPagination] = useState({
-        page: 0,
-        size: 10,
-        totalElements: 0
-    });
 
-    // 2. FETCH DATA FROM API
-    const fetchData = async (currPage, currKeyword) => {
+    // STATE CHO TÌM KIẾM VÀ FILTER
+    const [searchTerm, setSearchTerm] = useState("");
+    const [filterRole, setFilterRole] = useState("All");
+    const [filterDept, setFilterDept] = useState("All");
+    const [filterStatus, setFilterStatus] = useState("All");
+    const [pagination, setPagination] = useState({ page: 0, size: 10, totalElements: 0 });
+
+    // XÁC ĐỊNH DANH SÁCH ROLE ĐƯỢC PHÉP HIỂN THỊ TRONG FILTER DỰA VÀO ROLE NGƯỜI ĐĂNG NHẬP
+    const availableRoles = (currentUserRole === 'CEO' || currentUserRole === 'Admin')
+        ? (viewType === 'customer' ? ['Customer'] : ['Manager', 'Employee'])
+        : ['Employee']; // Manager chỉ thấy Employee
+
+    // Lấy danh sách department khi component mount
+    useEffect(() => {
+        const fetchDepts = async () => {
+            try {
+                // BỎ COMMENT GỌI API THẬT
+                const res = await getAllDepartments();
+                setDepartmentsDB(res.data?.data || []);
+            } catch (error) {
+                console.error("Lỗi lấy danh sách department:", error);
+            }
+        };
+        fetchDepts();
+    }, []);
+
+    const fetchData = async (currPage, currentKeyword, currentRole, currentDept, currentStatus) => {
         setLoading(true);
         try {
-            // Gọi API lấy danh sách user từ Backend Spring Boot
-            const response = await getAllUsers();
-
-            // Giả sử API BE trả về cấu trúc: { status: 200, message: "...", data: [...] }
+            // TRUYỀN TOÀN BỘ PARAM XUỐNG API ĐỂ BACKEND LÀM VIỆC
+            const response = await getAllUsers(viewType, currentKeyword, currentRole, currentDept, currentStatus);
             const data = response.data?.data || [];
 
-            // Lọc dữ liệu ngay trên Front-end (Vì Backend hiện tại của bạn dùng findAll() chưa có tìm kiếm)
-            const filteredData = data.filter(u => {
-                const fullName = `${u.firstName || ''} ${u.lastName || ''}`.toLowerCase();
-                const email = (u.email || '').toLowerCase();
-                const keyword = (currKeyword || '').toLowerCase();
-                return fullName.includes(keyword) || email.includes(keyword);
-            });
-
-            setUsers(filteredData);
-            setPagination(prev => ({ ...prev, page: currPage, totalElements: filteredData.length }));
+            // FRONTEND GIỜ CHỈ CẦN HIỂN THỊ, KHÔNG CẦN .filter() NỮA CHÚT NÀO HẾT
+            setUsers(data);
+            setPagination(prev => ({ ...prev, page: currPage, totalElements: data.length }));
 
         } catch (error) {
-            console.error("Lỗi khi tải danh sách người dùng:", error);
+            console.error("Lỗi khi tải danh sách:", error);
+            if (error.response?.status === 403) alert("Bạn không có quyền xem danh sách này!");
             setUsers([]);
         } finally {
             setLoading(false);
         }
     };
 
+    // Gọi lại API khi Đổi Menu (viewType) hoặc thay đổi Filter
     useEffect(() => {
-        fetchData(pagination.page, searchTerm);
-    }, [pagination.page]);
+        // Tự động reset filter khi chuyển view
+        setSearchTerm(""); setFilterRole("All"); setFilterStatus("All");
+        // Nếu là Manager, tự động ép filterDept thành phòng của họ. Nếu là CEO, để "All"
+        setFilterDept(currentUserRole === 'Manager' ? currentUserDept : "All");
 
-    const handleSearch = () => {
-        setPagination(prev => ({ ...prev, page: 0 }));
-        fetchData(0, searchTerm);
-    };
+        fetchData(0, "", "All", currentUserRole === 'Manager' ? currentUserDept : "All", "All");
+    }, [viewType]);
 
+    // Xử lý nút Search & Refresh
+    const handleSearch = () => fetchData(0, searchTerm, filterRole, filterDept, filterStatus);
     const handleRefresh = () => {
-        setSearchTerm("");
-        setPagination(prev => ({ ...prev, page: 0 }));
-        fetchData(0, "");
+        setSearchTerm(""); setFilterRole("All"); setFilterStatus("All");
+        const defaultDept = currentUserRole === 'Manager' ? currentUserDept : "All";
+        setFilterDept(defaultDept);
+        fetchData(0, "", "All", defaultDept, "All");
     };
 
     return (
@@ -92,7 +115,7 @@ function ListUser() {
                                 <h1 className="h3 fw-bold mb-1">Users</h1>
                                 <p className="text-muted mb-0">Manage employee accounts, roles, departments, and access status.</p>
                             </div>
-                            <Button variant="primary" className="fw-bold px-3 py-2 d-flex align-items-center gap-2" onClick={() => navigate("/user-management/create")}>
+                            <Button variant="primary" className="fw-bold px-3 py-2 d-flex align-items-center gap-2" onClick={() => navigate(`/user-management/create?type=${viewType}`)}>
                                 <IconPlus size={20} /> New User
                             </Button>
                         </Stack>
@@ -162,8 +185,8 @@ function ListUser() {
                                             {/* Dữ liệu thật từ DB */}
                                             <td>{u.email}</td>
 
-                                            {/* Dữ liệu Hardcode */}
-                                            <td>Legal</td>
+                                            {/* ĐÃ SỬA: Lấy Department từ DB */}
+                                            <td>{u.departmentName || "N/A"}</td>
 
                                             {/* Dữ liệu thật từ DB */}
                                             <td><span className="badge bg-light text-dark border">{u.role || "N/A"}</span></td>

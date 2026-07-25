@@ -22,6 +22,7 @@ public class UserResponseDTO {
     private String numberPhone;
     private String role;
     private String status;
+    private String departmentName;
 
     public static UserResponseDTO fromEntity(Users user) {
         return UserResponseDTO.builder()
@@ -32,6 +33,8 @@ public class UserResponseDTO {
                 .numberPhone(user.getNumberPhone())
                 .role(user.getRole())
                 .status(user.getStatus())
+                // Lấy tên department (nếu user có department)
+                .departmentName(user.getDepartment() != null ? user.getDepartment().getDepartmentName() : "N/A")
                 .build();
     }
 }

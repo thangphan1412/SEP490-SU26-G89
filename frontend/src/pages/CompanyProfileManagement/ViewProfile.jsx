@@ -15,7 +15,7 @@ import {
 } from "@tabler/icons-react";
 
 // IMPORT HÀM GỌI API
-import { getCompanyProfile } from "../../config/companyApi/companyApi";
+import { getCompanyProfile } from "../../services/companyService/companyApi";
 
 function ViewProfile({ onEditProfile }) {
     const navigate = useNavigate();

@@ -15,7 +15,7 @@ import {
 } from "@tabler/icons-react";
 
 // IMPORT HÀM GỌI API PROFILE
-import { getMyProfile, updateMyProfile } from "../../config/userApi/userApi";
+import { getMyProfile, updateMyProfile } from "../../services/userService/userApi.js";
 
 function UpdateProfile({ onSaveProfile }) {
     const navigate = useNavigate();

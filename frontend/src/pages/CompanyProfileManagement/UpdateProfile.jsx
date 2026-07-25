@@ -14,7 +14,7 @@ import {
 } from "@tabler/icons-react";
 
 // IMPORT HÀM GỌI API
-import { getCompanyProfile, updateCompanyProfile } from "../../config/companyApi/companyApi";
+import { getCompanyProfile, updateCompanyProfile } from "../../services/companyService/companyApi";
 
 const defaultCompanyProfile = {
     companyName: "",
