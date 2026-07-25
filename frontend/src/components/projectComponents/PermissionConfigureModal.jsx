@@ -4,22 +4,12 @@ import {
   configureProjectPermission,
   listProjectPermissionConfigurations,
 } from "../../services/projectService/projectApi.js";
+import {
+  permissionActionOptions,
+  permissionWorkScopeOptions,
+} from "../permissionComponents/permissionModuleOptions.js";
 import PermissionConfigureRow from "./PermissionConfigureRow.jsx";
 import "../../assets/styles/css/projectStyles/PermissionConfigureModal.css";
-
-const permissionActionOptions = [
-  { value: "VIEW_TASKS", label: "Allow View Tasks" },
-  { value: "VIEW_DELIVERABLES", label: "Allow View Deliverables" },
-  { value: "VIEW_CONTRACTS", label: "Allow View Contracts" },
-  { value: "CREATE_TASKS", label: "Allow Create Tasks" },
-  { value: "EDIT_TASKS", label: "Allow Edit Tasks" },
-  { value: "DELETE_TASKS", label: "Allow Delete Tasks" },
-  { value: "CREATE_DELIVERABLES", label: "Allow Create Deliverables" },
-  { value: "EDIT_DELIVERABLES", label: "Allow Edit Deliverables" },
-  { value: "DELETE_DELIVERABLES", label: "Allow Delete Deliverables" },
-  { value: "EDIT_PHASE", label: "Allow Edit Phase Information" },
-  { value: "MANAGE_MEMBERS", label: "Allow Manage Project Members" },
-];
 
 const emptyConfiguration = {
   allowedActions: [],
@@ -191,6 +181,7 @@ function PermissionConfigureModal({ show, projectId, projectName, onHide }) {
                 isOpen={selectedPermissionId === permission.permissionId}
                 configuration={configuration}
                 actionOptions={permissionActionOptions}
+                workScopeOptions={permissionWorkScopeOptions}
                 saving={saving}
                 onConfigure={openConfiguration}
                 onToggleAction={toggleAction}

@@ -148,8 +148,8 @@ function PermissionListContent() {
         setError("");
         const response = await listPermissions({
           search,
-          projectId: projectId ? Number(projectId) : undefined,
-          roleId: roleId ? Number(roleId) : undefined,
+          projectId: projectId || undefined,
+          roleId: roleId || undefined,
           status: status === "" ? undefined : status === "true",
           page,
           sortBy,

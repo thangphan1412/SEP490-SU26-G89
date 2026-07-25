@@ -245,7 +245,7 @@ function UpdateProject({ onUpdateProject }) {
     };
 
     const changeMemberPermission = (userId, selectedValue) => {
-        const permissionId = selectedValue ? Number(selectedValue) : null;
+        const permissionId = selectedValue || null;
 
         setProject((currentProject) => ({
             ...currentProject,

@@ -213,6 +213,7 @@
 
 .permission-info-value {
   margin: 0;
+  white-space: pre-line;
   overflow-wrap: anywhere;
   color: #1f2f4b;
   font-size: 14px;

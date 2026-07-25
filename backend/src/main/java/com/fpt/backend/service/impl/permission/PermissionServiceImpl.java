@@ -176,7 +176,7 @@ public class PermissionServiceImpl implements PermissionService {
     }
 
     private Role findRole(UUID roleId) {
-        if (roleId == null ) {
+        if (roleId == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Role is required");
         }
 
