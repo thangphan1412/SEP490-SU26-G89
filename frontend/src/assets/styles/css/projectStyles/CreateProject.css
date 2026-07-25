@@ -119,10 +119,6 @@
     text-decoration: underline;
 }
 
-.create-project-phase-card .form-range {
-    accent-color: #2450f5;
-}
-
 .create-project-phase-description.form-control {
     min-height: 68px;
 }

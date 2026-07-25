@@ -36,6 +36,7 @@ import com.fpt.backend.repository.project.ProjectMemberRepository;
 import com.fpt.backend.repository.project.ProjectRepository;
 import com.fpt.backend.repository.project.ProjectUserRoleRepository;
 import com.fpt.backend.repository.user.UserRepository;
+import com.fpt.backend.service.interfaces.phase.PhaseProgressService;
 import com.fpt.backend.service.interfaces.project.ProjectService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -104,6 +105,7 @@ public class ProjectServiceImpl implements ProjectService {
     private final PhaseTaskRepository phaseTaskRepository;
     private final PhaseDeliverableRepository phaseDeliverableRepository;
     private final PhaseContractRepository phaseContractRepository;
+    private final PhaseProgressService phaseProgressService;
     private final UserRepository userRepository;
 
     @Override
@@ -598,7 +600,6 @@ public class ProjectServiceImpl implements ProjectService {
         String status = defaultIfBlank(request.status(), DEFAULT_PHASE_STATUS);
         LocalDate startDate = request.startDate();
         LocalDate endDate = request.endDate();
-        double progress = request.progress() == null ? 0 : request.progress();
 
         validateMaxLength(description, "Phase description", 500);
         validateMaxLength(status, "Phase status", 30);
@@ -625,19 +626,16 @@ public class ProjectServiceImpl implements ProjectService {
             );
         }
 
-        if (progress < 0 || progress > 100) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Phase progress must be between 0 and 100"
-            );
-        }
-
         phase.setTitle(title);
         phase.setDescription(description);
         phase.setStartDate(java.sql.Date.valueOf(startDate));
         phase.setEndDate(java.sql.Date.valueOf(endDate));
         phase.setStatus(status);
-        phase.setProgress(progress);
+
+        if (phase.getId() == null) {
+            phase.setProgress(0D);
+        }
+
         phase.setProject(project);
     }
 
@@ -778,7 +776,7 @@ public class ProjectServiceImpl implements ProjectService {
                         toLocalDate(phase.getStartDate()),
                         toLocalDate(phase.getEndDate()),
                         phase.getStatus(),
-                        phase.getProgress()
+                        phaseProgressService.calculateProgress(phase.getId())
                 ))
                 .toList();
     }
