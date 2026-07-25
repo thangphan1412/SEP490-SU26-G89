@@ -21,7 +21,7 @@ import {
 } from "@tabler/icons-react";
 
 // IMPORT HÀM GỌI API
-import {getAllDepartments, getUserById, updateUser} from "../../services/userService/userApi.js";
+import { getUserById, updateUser } from "../../services/userService/userApi.js";
 import departmentApi from "../../services/departmentService/departmentApi";
 
 function UpdateUser({ onUpdateUser }) {

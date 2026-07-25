@@ -125,21 +125,72 @@ function ListUser() {
                             <Col lg={4} md={6}>
                                 <Form.Group className="position-relative">
                                     <IconSearch className="position-absolute start-0 top-50 translate-middle-y ms-3 text-muted" size={20} />
-                                    <Form.Control type="text" placeholder="Search users by name or email..." className="ps-5 py-2" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSearch()} />
+                                    <Form.Control
+                                        type="text"
+                                        placeholder="Search users by name or email..."
+                                        className="ps-5 py-2"
+                                        value={searchTerm}
+                                        onChange={(e) => setSearchTerm(e.target.value)}
+                                        onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                                    />
                                 </Form.Group>
                             </Col>
+
+                            {/* FILTER DEPARTMENT */}
                             <Col lg={2} md={6}>
                                 <Form.Label className="small fw-bold text-muted mb-1">Department</Form.Label>
-                                <Form.Select className="py-2"><option>All</option></Form.Select>
+                                <Form.Select
+                                    className="py-2"
+                                    value={filterDept}
+                                    onChange={(e) => setFilterDept(e.target.value)}
+                                    disabled={currentUserRole === 'Manager'} // Khóa cứng nếu là Manager
+                                >
+                                    {currentUserRole !== 'Manager' && <option value="All">All</option>}
+                                    {currentUserRole === 'Manager' ? (
+                                        <option value={currentUserDept}>{currentUserDept}</option>
+                                    ) : (
+                                        departmentsDB
+                                            // Lọc ra các phòng ban có trạng thái là Active (nếu DB có trường này)
+                                            .filter(d => d.departmentStatus === 'ACTIVE' || d.departmentStatus === 'Active' || !d.departmentStatus)
+                                            .map(d => (
+                                                <option key={d.departmentName} value={d.departmentName}>
+                                                    {d.departmentName}
+                                                </option>
+                                            ))
+                                    )}
+                                </Form.Select>
                             </Col>
+
+                            {/* FILTER ROLE */}
                             <Col lg={2} md={6}>
                                 <Form.Label className="small fw-bold text-muted mb-1">Role</Form.Label>
-                                <Form.Select className="py-2"><option>All</option></Form.Select>
+                                <Form.Select
+                                    className="py-2"
+                                    value={filterRole}
+                                    onChange={(e) => setFilterRole(e.target.value)}
+                                >
+                                    <option value="All">All</option>
+                                    {/* Lấy mảng availableRoles đã được tính toán rất chuẩn từ trên map vào */}
+                                    {availableRoles.map(r => (
+                                        <option key={r} value={r}>{r}</option>
+                                    ))}
+                                </Form.Select>
                             </Col>
+
+                            {/* FILTER STATUS */}
                             <Col lg={2} md={6}>
                                 <Form.Label className="small fw-bold text-muted mb-1">Status</Form.Label>
-                                <Form.Select className="py-2"><option>All</option></Form.Select>
+                                <Form.Select
+                                    className="py-2"
+                                    value={filterStatus}
+                                    onChange={(e) => setFilterStatus(e.target.value)}
+                                >
+                                    <option value="All">All</option>
+                                    <option value="ACTIVE">Active</option>
+                                    <option value="INACTIVE">Inactive</option>
+                                </Form.Select>
                             </Col>
+
                             <Col lg={2} md={12} className="d-flex gap-2">
                                 <Button variant="outline-secondary" className="w-100 py-2 d-flex align-items-center justify-content-center gap-1" onClick={handleSearch}>
                                     <IconFilter size={18} /> Filters
