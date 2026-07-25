@@ -17,6 +17,7 @@ import { deletePermission, viewPermission } from "../../services/permissionServi
 import PermissionPage from "../../components/permissionComponents/PermissionPage.jsx";
 import PermissionStatusBadge from "../../components/permissionComponents/PermissionStatusBadge.jsx";
 import ViewPermissionInfo from "../../components/permissionComponents/ViewPermissionInfo.jsx";
+import { formatPermissionModule } from "../../components/permissionComponents/permissionModuleOptions.js";
 import { formatPermissionDate } from "./permissionUtils.js";
 
 function ViewPermissionPage() {
@@ -143,7 +144,7 @@ function ViewPermissionPage() {
               <div className="permission-view-info-grid">
                 <ViewPermissionInfo label="Project" value={formatProjectValue(permission)} />
                 <ViewPermissionInfo label="Role" value={permission.roleName || "Unassigned"} />
-                <ViewPermissionInfo label="Module" value={permission.permissionModule} />
+                <ViewPermissionInfo label="Module" value={formatPermissionModule(permission.permissionModule)} />
                 <div className="permission-info-item">
                   <p className="permission-info-label">Status</p>
                   <PermissionStatusBadge status={permission.status} />
@@ -178,7 +179,7 @@ function ViewPermissionPage() {
               </div>
               <div className="permission-view-audit-list">
                 <ViewPermissionInfo label="Permission code" value={permission.permissionCode} />
-                <ViewPermissionInfo label="Module" value={permission.permissionModule} />
+                <ViewPermissionInfo label="Module" value={formatPermissionModule(permission.permissionModule)} />
               </div>
             </Card>
           </div>

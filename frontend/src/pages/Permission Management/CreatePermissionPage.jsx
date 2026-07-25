@@ -87,8 +87,8 @@ function CreatePermissionPage() {
         permissionName: permission.permissionName.trim(),
         permissionCode: permission.permissionCode.trim(),
         permissionDescription: permission.permissionDescription.trim(),
-        projectId: Number(permission.projectId),
-        roleId: Number(permission.roleId),
+        projectId: permission.projectId,
+        roleId: permission.roleId,
         status: permission.status,
       });
       const createdPermission = response.data?.data ?? response.data;

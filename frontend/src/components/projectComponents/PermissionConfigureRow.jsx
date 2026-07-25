@@ -5,6 +5,7 @@ function PermissionConfigureRow({
   isOpen,
   configuration,
   actionOptions,
+  workScopeOptions,
   saving,
   onConfigure,
   onToggleAction,
@@ -66,21 +67,16 @@ function PermissionConfigureRow({
             <p>Choose exactly one scope for tasks and deliverables.</p>
 
             <div className="permission-configure-scope-options">
-              <Form.Check
-                id={`permission-${permission.permissionId}-scope-own`}
-                type="checkbox"
-                label="View Own Works Only"
-                checked={configuration?.workScope === "OWN"}
-                onChange={() => onScopeChange("OWN")}
-              />
-
-              <Form.Check
-                id={`permission-${permission.permissionId}-scope-full`}
-                type="checkbox"
-                label="View Full Project Works"
-                checked={configuration?.workScope === "FULL"}
-                onChange={() => onScopeChange("FULL")}
-              />
+              {workScopeOptions.map((option) => (
+                <Form.Check
+                  key={option.value}
+                  id={`permission-${permission.permissionId}-scope-${option.value.toLowerCase()}`}
+                  type="checkbox"
+                  label={option.label}
+                  checked={configuration?.workScope === option.value}
+                  onChange={() => onScopeChange(option.value)}
+                />
+              ))}
             </div>
           </div>
 
