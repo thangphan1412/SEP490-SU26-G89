@@ -55,10 +55,11 @@ function ViewProject() {
     const [contractStatus, setContractStatus] = useState("");
     const [showPermissionConfigure, setShowPermissionConfigure] = useState(false);
 
-    useEffect(() => {
+    useEffect(function () {
         let isActive = true;
+        const requestController = new AbortController();
 
-        const loadProject = async () => {
+        async function loadProject() {
             if (!projectId) {
                 setProject(null);
                 setError("Project id is missing. Please choose a project from the list.");
@@ -69,34 +70,35 @@ function ViewProject() {
             try {
                 setLoading(true);
                 setError("");
-                const response = await viewProject(projectId);
-                const payload = response.data?.data ?? response.data;
+                const payload = await viewProject(projectId, requestController.signal);
 
                 if (isActive) {
                     setProject(payload);
                 }
             } catch (apiError) {
-                console.error("Unable to load project detail:", apiError);
-
-                if (isActive) {
-                    setProject(null);
-                    setError("Unable to load this project. Please try again later.");
+                if (!isActive) {
+                    return;
                 }
+
+                console.error("Unable to load project detail:", apiError);
+                setProject(null);
+                setError("Unable to load this project. Please try again later.");
             } finally {
                 if (isActive) {
                     setLoading(false);
                 }
             }
-        };
+        }
 
         loadProject();
 
-        return () => {
+        return function () {
             isActive = false;
+            requestController.abort();
         };
     }, [projectId]);
 
-    const handleDelete = async () => {
+    async function handleDelete() {
         const confirmed = window.confirm(
             "Delete this project? If it has contracts, it will be kept and its status will be changed to Cancelled. If it has no contracts, it will be permanently deleted."
         );
@@ -108,8 +110,8 @@ function ViewProject() {
         try {
             setDeleting(true);
             setActionError("");
-            const response = await deleteProject(projectId);
-            window.alert(response?.data?.message || "Project delete request completed.");
+            const message = await deleteProject(projectId);
+            window.alert(message || "Project delete request completed.");
             navigate("/project-management/list");
         } catch (apiError) {
             console.error("Unable to delete project:", apiError);
@@ -117,7 +119,23 @@ function ViewProject() {
         } finally {
             setDeleting(false);
         }
-    };
+    }
+
+    function openPhase(phaseId) {
+        navigate(`/phase-management/view/${projectId}/${phaseId}`);
+    }
+
+    function handlePhaseKeyDown(event, phaseId) {
+        if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            openPhase(phaseId);
+        }
+    }
+
+    function clearContractFilters() {
+        setContractSearch("");
+        setContractStatus("");
+    }
 
     const projectPhases = Array.isArray(project?.phases) ? project.phases : [];
     const projectUsers = Array.isArray(project?.users) ? project.users : [];
@@ -126,10 +144,26 @@ function ViewProject() {
     const contractSearchText = normalizeText(contractSearch);
     const contractStatusText = normalizeText(contractStatus);
 
-    const filteredUsers = projectUsers.filter((user) =>
-        [user.userName, user.email, user.role, user.userStatus, user.permissionName, user.permissionCode]
-            .some((value) => normalizeText(value).includes(userSearchText))
-    );
+    function userMatchesSearch(user) {
+        const values = [
+            user.userName,
+            user.email,
+            user.role,
+            user.userStatus,
+            user.permissionName,
+            user.permissionCode,
+        ];
+
+        for (const value of values) {
+            if (normalizeText(value).includes(userSearchText)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    const filteredUsers = projectUsers.filter(userMatchesSearch);
 
     const contractStatusOptions = [...new Set(
         projectContracts
@@ -137,14 +171,16 @@ function ViewProject() {
             .filter((status) => normalizeText(status))
     )].sort();
 
-    const filteredContracts = projectContracts.filter((contract) => {
+    function contractMatchesFilters(contract) {
         const matchesName = [contract.contractTitle, contract.contractNumber]
             .some((value) => normalizeText(value).includes(contractSearchText));
         const matchesStatus = !contractStatusText
             || normalizeText(contract.contractStatus) === contractStatusText;
 
         return matchesName && matchesStatus;
-    });
+    }
+
+    const filteredContracts = projectContracts.filter(contractMatchesFilters);
 
     const pageAction = (
         <Stack direction="horizontal" gap={2} className="view-project-actions">
@@ -256,13 +292,8 @@ function ViewProject() {
                                                 className="view-project-row view-project-phase-row"
                                                 role="button"
                                                 tabIndex={0}
-                                                onClick={() => navigate(`/phase-management/view/${projectId}/${phase.id}`)}
-                                                onKeyDown={(event) => {
-                                                    if (event.key === "Enter" || event.key === " ") {
-                                                        event.preventDefault();
-                                                        navigate(`/phase-management/view/${projectId}/${phase.id}`);
-                                                    }
-                                                }}
+                                                onClick={() => openPhase(phase.id)}
+                                                onKeyDown={(event) => handlePhaseKeyDown(event, phase.id)}
                                             >
                                                 <td className="view-project-td view-project-phase-title">{showValue(phase.title)}</td>
                                                 <td className="view-project-td">
@@ -386,10 +417,7 @@ function ViewProject() {
                                     type="button"
                                     variant="light"
                                     className="view-project-clear-button"
-                                    onClick={() => {
-                                        setContractSearch("");
-                                        setContractStatus("");
-                                    }}
+                                    onClick={clearContractFilters}
                                 >
                                     Clear
                                 </Button>
@@ -411,8 +439,11 @@ function ViewProject() {
                                     ) : filteredContracts.length === 0 ? (
                                         <EmptyRow colSpan={3} message="No contracts match your filters." />
                                     ) : (
-                                        filteredContracts.map((contract, index) => (
-                                            <tr key={(contract.contractNumber || "contract") + "-" + index} className="view-project-row">
+                                        filteredContracts.map((contract) => (
+                                            <tr
+                                                key={contract.id}
+                                                className="view-project-row"
+                                            >
                                                 <td className="view-project-td">{showValue(contract.contractTitle)}</td>
                                                 <td className="view-project-td">{showValue(contract.contractNumber)}</td>
                                                 <td className="view-project-td"><StatusBadge status={contract.contractStatus} /></td>

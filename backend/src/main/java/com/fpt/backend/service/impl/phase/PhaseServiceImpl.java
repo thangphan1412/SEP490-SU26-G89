@@ -6,9 +6,13 @@ import com.fpt.backend.dto.response.phase.PhaseDetailResponse;
 import com.fpt.backend.dto.response.phase.PhaseListItemResponse;
 import com.fpt.backend.dto.response.phase.PhaseTaskResponse;
 import com.fpt.backend.entity.Contracts;
+import com.fpt.backend.entity.Deliverable;
 import com.fpt.backend.entity.Projects;
 import com.fpt.backend.entity.Timeline;
+import com.fpt.backend.entity.TimelineContract;
+import com.fpt.backend.entity.TimelineTask;
 import com.fpt.backend.entity.Users;
+import com.fpt.backend.exception.NotFoundException;
 import com.fpt.backend.repository.phase.PhaseContractRepository;
 import com.fpt.backend.repository.phase.PhaseDeliverableRepository;
 import com.fpt.backend.repository.phase.PhaseRepository;
@@ -17,15 +21,15 @@ import com.fpt.backend.repository.project.ProjectRepository;
 import com.fpt.backend.service.interfaces.phase.PhaseProgressService;
 import com.fpt.backend.service.interfaces.phase.PhaseService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -44,65 +48,86 @@ public class PhaseServiceImpl implements PhaseService {
     @Override
     public List<PhaseListItemResponse> getPhasesByProjectId(UUID projectId) {
         if (projectId == null || !projectRepository.existsById(projectId)) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Project not found");
+            throw new NotFoundException("Project not found");
         }
 
-        return phaseRepository.findByProjectId(projectId)
-                .stream()
-                .map(this::toListItem)
-                .toList();
+        List<Timeline> phases = phaseRepository.findByProjectId(projectId);
+        List<PhaseListItemResponse> responses = new ArrayList<>();
+
+        for (Timeline phase : phases) {
+            responses.add(toListItem(phase));
+        }
+
+        return responses;
     }
 
     @Override
     public PhaseDetailResponse getPhaseById(UUID phaseId) {
-        Timeline phase = phaseRepository.findDetailById(phaseId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Phase not found"));
+        Optional<Timeline> optionalPhase = phaseRepository.findDetailById(phaseId);
+
+        if (optionalPhase.isEmpty()) {
+            throw new NotFoundException("Phase not found");
+        }
+
+        Timeline phase = optionalPhase.get();
         Projects project = phase.getProject();
 
-        List<PhaseTaskResponse> tasks = phaseTaskRepository.findByPhaseId(phaseId)
-                .stream()
-                .map(task -> {
-                    Users assignedUser = task.getAssignedTo();
-                    return new PhaseTaskResponse(
-                            task.getId(),
-                            task.getTitle(),
-                            task.getStatus(),
-                            toLocalDate(task.getStartDate()),
-                            toLocalDate(task.getEndDate()),
-                            task.getProgress(),
-                            assignedUser == null ? null : assignedUser.getId(),
-                            assignedUser == null ? null : getUserName(assignedUser),
-                            assignedUser == null ? null : assignedUser.getEmail()
-                    );
-                })
-                .toList();
+        List<TimelineTask> phaseTasks = phaseTaskRepository.findByPhaseId(phaseId);
+        List<PhaseTaskResponse> tasks = new ArrayList<>();
 
-        List<PhaseDeliverableResponse> deliverables = phaseDeliverableRepository.findByPhaseId(phaseId)
-                .stream()
-                .map(deliverable -> new PhaseDeliverableResponse(
-                        deliverable.getId(),
-                        deliverable.getTitle(),
-                        deliverable.getDescription(),
-                        toLocalDate(deliverable.getDueDate()),
-                        deliverable.getStatus()
-                ))
-                .toList();
+        for (TimelineTask task : phaseTasks) {
+            Users assignedUser = task.getAssignedTo();
+            UUID assignedUserId = null;
+            String assignedUserName = null;
+            String assignedUserEmail = null;
 
-        List<PhaseContractResponse> contracts = phaseContractRepository.findByPhaseId(phaseId)
-                .stream()
-                .map(phaseContract -> {
-                    Contracts contract = phaseContract.getContract();
-                    return new PhaseContractResponse(
-                            contract.getId(),
-                            contract.getContractNumber(),
-                            contract.getContractTitle(),
-                            contract.getContractStatus(),
-                            contract.getEffectiveDate(),
-                            contract.getExpirationDate(),
-                            phaseContract.getLinkedAt()
-                    );
-                })
-                .toList();
+            if (assignedUser != null) {
+                assignedUserId = assignedUser.getId();
+                assignedUserName = getUserName(assignedUser);
+                assignedUserEmail = assignedUser.getEmail();
+            }
+
+            tasks.add(new PhaseTaskResponse(
+                    task.getId(),
+                    task.getTitle(),
+                    task.getStatus(),
+                    toLocalDate(task.getStartDate()),
+                    toLocalDate(task.getEndDate()),
+                    task.getProgress(),
+                    assignedUserId,
+                    assignedUserName,
+                    assignedUserEmail
+            ));
+        }
+
+        List<Deliverable> phaseDeliverables = phaseDeliverableRepository.findByPhaseId(phaseId);
+        List<PhaseDeliverableResponse> deliverables = new ArrayList<>();
+
+        for (Deliverable deliverable : phaseDeliverables) {
+            deliverables.add(new PhaseDeliverableResponse(
+                    deliverable.getId(),
+                    deliverable.getTitle(),
+                    deliverable.getDescription(),
+                    toLocalDate(deliverable.getDueDate()),
+                    deliverable.getStatus()
+            ));
+        }
+
+        List<TimelineContract> phaseContracts = phaseContractRepository.findByPhaseId(phaseId);
+        List<PhaseContractResponse> contracts = new ArrayList<>();
+
+        for (TimelineContract phaseContract : phaseContracts) {
+            Contracts contract = phaseContract.getContract();
+            contracts.add(new PhaseContractResponse(
+                    contract.getId(),
+                    contract.getContractNumber(),
+                    contract.getContractTitle(),
+                    contract.getContractStatus(),
+                    contract.getEffectiveDate(),
+                    contract.getExpirationDate(),
+                    phaseContract.getLinkedAt()
+            ));
+        }
 
         return new PhaseDetailResponse(
                 phase.getId(),

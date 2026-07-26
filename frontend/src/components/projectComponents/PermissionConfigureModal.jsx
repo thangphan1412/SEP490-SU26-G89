@@ -25,14 +25,15 @@ function PermissionConfigureModal({ show, projectId, projectName, onHide }) {
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
 
-  useEffect(() => {
+  useEffect(function () {
     if (!show) {
       return undefined;
     }
 
     let isActive = true;
+    const requestController = new AbortController();
 
-    const loadPermissions = async () => {
+    async function loadPermissions() {
       if (!projectId) {
         setPermissions([]);
         setError("Project id is missing.");
@@ -44,34 +45,38 @@ function PermissionConfigureModal({ show, projectId, projectName, onHide }) {
         setError("");
         setSuccessMessage("");
         setSelectedPermissionId(null);
-        const response = await listProjectPermissionConfigurations(projectId);
-        const payload = response.data?.data ?? response.data;
+        const payload = await listProjectPermissionConfigurations(
+          projectId,
+          requestController.signal
+        );
 
         if (isActive) {
           setPermissions(Array.isArray(payload) ? payload : []);
         }
       } catch (requestError) {
-        console.error("Unable to load project permissions:", requestError);
-
-        if (isActive) {
-          setPermissions([]);
-          setError(getErrorMessage(requestError));
+        if (!isActive) {
+          return;
         }
+
+        console.error("Unable to load project permissions:", requestError);
+        setPermissions([]);
+        setError(getErrorMessage(requestError));
       } finally {
         if (isActive) {
           setLoading(false);
         }
       }
-    };
+    }
 
     loadPermissions();
 
-    return () => {
+    return function () {
       isActive = false;
+      requestController.abort();
     };
   }, [projectId, show]);
 
-  const openConfiguration = (permission) => {
+  function openConfiguration(permission) {
     setSelectedPermissionId(permission.permissionId);
     setConfiguration({
       allowedActions: Array.isArray(permission.allowedActions)
@@ -81,23 +86,25 @@ function PermissionConfigureModal({ show, projectId, projectName, onHide }) {
     });
     setError("");
     setSuccessMessage("");
-  };
+  }
 
-  const toggleAction = (action) => {
-    setConfiguration((currentConfiguration) => {
+  function toggleAction(action) {
+    setConfiguration(function (currentConfiguration) {
       const currentActions = currentConfiguration.allowedActions;
       const hasAction = currentActions.includes(action);
+      let allowedActions;
 
-      return {
-        ...currentConfiguration,
-        allowedActions: hasAction
-          ? currentActions.filter((currentAction) => currentAction !== action)
-          : [...currentActions, action],
-      };
+      if (hasAction) {
+        allowedActions = currentActions.filter((currentAction) => currentAction !== action);
+      } else {
+        allowedActions = [...currentActions, action];
+      }
+
+      return { ...currentConfiguration, allowedActions };
     });
-  };
+  }
 
-  const saveConfiguration = async () => {
+  async function saveConfiguration() {
     if (!selectedPermissionId) {
       return;
     }
@@ -106,20 +113,25 @@ function PermissionConfigureModal({ show, projectId, projectName, onHide }) {
       setSaving(true);
       setError("");
       setSuccessMessage("");
-      const response = await configureProjectPermission(
+      const updatedPermission = await configureProjectPermission(
         projectId,
         selectedPermissionId,
         configuration
       );
-      const updatedPermission = response.data?.data ?? response.data;
 
-      setPermissions((currentPermissions) =>
-        currentPermissions.map((permission) =>
-          permission.permissionId === selectedPermissionId
-            ? updatedPermission
-            : permission
-        )
-      );
+      setPermissions(function (currentPermissions) {
+        const updatedPermissions = [];
+
+        for (const permission of currentPermissions) {
+          if (permission.permissionId === selectedPermissionId) {
+            updatedPermissions.push(updatedPermission);
+          } else {
+            updatedPermissions.push(permission);
+          }
+        }
+
+        return updatedPermissions;
+      });
       setConfiguration({
         allowedActions: Array.isArray(updatedPermission?.allowedActions)
           ? [...updatedPermission.allowedActions]
@@ -135,16 +147,27 @@ function PermissionConfigureModal({ show, projectId, projectName, onHide }) {
     } finally {
       setSaving(false);
     }
-  };
+  }
+
+  function handleModalHide() {
+    if (!saving) {
+      onHide();
+    }
+  }
+
+  function changeWorkScope(workScope) {
+    setConfiguration(function (currentConfiguration) {
+      return {
+        ...currentConfiguration,
+        workScope,
+      };
+    });
+  }
 
   return (
     <Modal
       show={show}
-      onHide={() => {
-        if (!saving) {
-          onHide();
-        }
-      }}
+      onHide={handleModalHide}
       centered
       scrollable
       size="lg"
@@ -185,12 +208,7 @@ function PermissionConfigureModal({ show, projectId, projectName, onHide }) {
                 saving={saving}
                 onConfigure={openConfiguration}
                 onToggleAction={toggleAction}
-                onScopeChange={(workScope) =>
-                  setConfiguration((currentConfiguration) => ({
-                    ...currentConfiguration,
-                    workScope,
-                  }))
-                }
+                onScopeChange={changeWorkScope}
                 onSave={saveConfiguration}
               />
             ))}

@@ -22,7 +22,7 @@ public interface ProjectService {
 
     ProjectDetailResponse updateProject(UUID id, ProjectUpdateRequest request);
 
-    boolean deleteProject(UUID id);
+    ProjectDeleteResult deleteProject(UUID id);
 
     List<ProjectEmployeeResponse> getEmployeesForProjectSelection();
 

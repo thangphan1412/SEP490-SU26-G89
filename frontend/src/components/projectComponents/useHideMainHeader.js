@@ -1,7 +1,7 @@
 import { useLayoutEffect } from "react";
 
 function useHideMainHeader() {
-  useLayoutEffect(() => {
+  useLayoutEffect(function () {
     const header = document.querySelector(".header-container-fluid");
 
     if (!header) {
@@ -11,7 +11,7 @@ function useHideMainHeader() {
     const wasHidden = header.hidden;
     header.hidden = true;
 
-    return () => {
+    return function () {
       header.hidden = wasHidden;
     };
   }, []);
