@@ -1,5 +1,6 @@
 package com.fpt.backend.service.impl.user;
 
+import com.fpt.backend.dto.request.authentication.ChangePasswordRequest;
 import com.fpt.backend.dto.request.authentication.RegisterRequest;
 import com.fpt.backend.dto.request.authentication.ResetPasswordRequest;
 import com.fpt.backend.dto.request.user.UserRequestDTO;
@@ -12,10 +13,13 @@ import com.fpt.backend.mail.EmailService;
 import com.fpt.backend.mail.MessageInfor;
 import com.fpt.backend.repository.user.UserRepository;
 import com.fpt.backend.service.interfaces.user.IUserService;
+import com.fpt.backend.util.CurrentUser;
 import com.fpt.backend.util.OTPGenerator;
 import com.fpt.backend.util.ValidateEmail;
 import org.apache.catalina.User;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -260,5 +264,27 @@ public class UserServiceImpl implements IUserService {
         users.setPassword(passwordEncoder.encode(resetPasswordRequest.getNewPassword()));
         userRepository.save(users);
         redisOtpService.deleteOTP(resetPasswordRequest.getEmail());
+    }
+
+    public void changePassword(ChangePasswordRequest changePasswordRequest) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String email = authentication.getName();
+        Users users = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found with email: " + email));
+
+        CurrentUser currentUser = new CurrentUser();
+        currentUser.getCurrentUser().setEmail(email);
+        if(!passwordEncoder.matches(changePasswordRequest.getOldPassword(), users.getPassword())){
+            throw new RuntimeException("Old password do not match");
+        }
+        if(!passwordEncoder.matches(changePasswordRequest.getNewPassword(), changePasswordRequest.getOldPassword())){
+            throw new RuntimeException("New password do not match with old password");
+        }
+        if(!passwordEncoder.matches(changePasswordRequest.getNewPasswordConfirm(), changePasswordRequest.getNewPasswordConfirm())){
+            throw new RuntimeException("New password confirm do not match with old password");
+        }
+        users.setPassword(passwordEncoder.encode(changePasswordRequest.getNewPassword()));
+        userRepository.save(users);
+
     }
 }
