@@ -1,10 +1,7 @@
 import { Card, Container } from "react-bootstrap";
-import useHideMainHeader from "./useHideMainHeader.js";
 import "../../assets/styles/css/projectStyles/ProjectComponents.css";
 
 function PagePanel({ title, description, action, children }) {
-  useHideMainHeader();
-
   return (
     <Container fluid as="main" className="project-management-page">
       <Card as="section" className="project-management-panel">

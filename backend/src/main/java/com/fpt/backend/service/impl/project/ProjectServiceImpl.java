@@ -13,6 +13,7 @@ import com.fpt.backend.dto.response.project.ProjectPermissionConfigurationRespon
 import com.fpt.backend.dto.response.project.ProjectRoleResponse;
 import com.fpt.backend.entity.Contracts;
 import com.fpt.backend.entity.Projects;
+import com.fpt.backend.entity.Users;
 import com.fpt.backend.exception.BadHttpException;
 import com.fpt.backend.exception.NotFoundException;
 import com.fpt.backend.repository.project.ProjectCleanupRepository;
@@ -23,6 +24,7 @@ import com.fpt.backend.service.interfaces.project.ProjectMemberService;
 import com.fpt.backend.service.interfaces.project.ProjectPermissionService;
 import com.fpt.backend.service.interfaces.project.ProjectPhaseService;
 import com.fpt.backend.service.interfaces.project.ProjectService;
+import com.fpt.backend.util.CurrentUser;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
@@ -48,7 +50,6 @@ public class ProjectServiceImpl implements ProjectService {
     private static final int PAGE_SIZE = 7;
     private static final String DATA_SOURCE = "DATABASE";
     private static final String DEFAULT_SORT_FIELD = "id";
-    private static final String DEFAULT_CREATED_BY = "Admin";
     private static final String DEFAULT_PROJECT_STATUS = "Planning";
     private static final String CANCELLED_PROJECT_STATUS = "Cancelled";
     private static final ZoneId PROJECT_TIME_ZONE =
@@ -70,6 +71,7 @@ public class ProjectServiceImpl implements ProjectService {
     private final ProjectPhaseService projectPhaseService;
     private final ProjectMemberService projectMemberService;
     private final ProjectPermissionService projectPermissionService;
+    private final CurrentUser currentUserUtil;
 
     @Override
     public ProjectListResponse getProjects(ProjectListRequest request) {
@@ -130,7 +132,7 @@ public class ProjectServiceImpl implements ProjectService {
                 request.projectStatus(),
                 null
         );
-        project.setProjectCreatedBy(DEFAULT_CREATED_BY);
+        project.setProjectCreatedBy(getCurrentUserName());
         project.setProjectCreatedAt(defaultIfBlank(
                 request.projectCreatedAt(),
                 LocalDate.now(PROJECT_TIME_ZONE).toString()
@@ -407,6 +409,29 @@ public class ProjectServiceImpl implements ProjectService {
         }
 
         return responses;
+    }
+
+    private String getCurrentUserName() {
+        Users currentUser = currentUserUtil.getCurrentUser();
+        String firstName = normalize(currentUser.getFirstName());
+        String lastName = normalize(currentUser.getLastName());
+        String fullName = (firstName + " " + lastName).trim();
+
+        if (!fullName.isBlank()) {
+            validateMaxLength(fullName, "Project creator", 50);
+            return fullName;
+        }
+
+        String email = normalize(currentUser.getEmail());
+
+        if (email.isBlank()) {
+            throw new BadHttpException(
+                    "Authenticated user information is missing"
+            );
+        }
+
+        validateMaxLength(email, "Project creator", 50);
+        return email;
     }
 
     private String requireText(
