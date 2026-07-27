@@ -30,6 +30,11 @@ public class SecurityConfig {
                 .authorizeHttpRequests(
                         authorizeRequests -> authorizeRequests
                                 .anyRequest().permitAll())
+                .logout(logout -> {
+                        logout.logoutUrl("/logout");
+                        logout.logoutSuccessUrl("/login");
+                        logout.deleteCookies("JSESSIONID");
+                })
                 .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 //                .formLogin(Customizer.withDefaults())
 //                .httpBasic(Customizer.withDefaults())

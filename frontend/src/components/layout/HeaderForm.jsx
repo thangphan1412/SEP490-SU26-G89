@@ -16,7 +16,7 @@ import {    IconContract,
         } from '@tabler/icons-react';
 function HeaderForm(){
     const fullName = localStorage.getItem("fullName") || "Alex Morgan";
-    const role = localStorage.getItem("role") || "Employee";
+    const role = localStorage.getItem("role") || "Admin";
 
     return(
 
@@ -49,7 +49,7 @@ function HeaderForm(){
                         )}
 
                         {/* Chỉ CEO mới thấy Customer Management */}
-                        {['CEO', 'Admin'].includes(role) && (
+                        {['CEO', ].includes(role) && (
                             <Nav.Link href="/user-management/list?type=customer" className="nav-item">
                                 <IconUserPlus stroke={2} />Customer Management
                             </Nav.Link>
@@ -75,14 +75,14 @@ function HeaderForm(){
                         </span>
                      }  id="basic-nav-dropdown">
 
-                        <NavDropdown.Item href="#action/3.1">Action</NavDropdown.Item>
-                        <NavDropdown.Item href="#action/3.2">
-                            Another action
+                        <NavDropdown.Item href="/user-profile/view">Dashboard</NavDropdown.Item>
+                        <NavDropdown.Item href="/company-profile/view">
+                            Company profile
                         </NavDropdown.Item>
-                        <NavDropdown.Item href="#action/3.3">Something</NavDropdown.Item>
+                        <NavDropdown.Item href="#action/3.3">Setting</NavDropdown.Item>
                         <NavDropdown.Divider />
-                        <NavDropdown.Item href="#action/3.4">
-                            Separated link
+                        <NavDropdown.Item href="/login">
+                            Logout
                         </NavDropdown.Item>
                     </NavDropdown>
 

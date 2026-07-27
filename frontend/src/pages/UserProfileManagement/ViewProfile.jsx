@@ -327,6 +327,7 @@ function ViewProfile() {
                                 <span>
                                     To update your personal information, click <strong>Edit Profile</strong>.
                                 </span>
+
                             </Alert>
                         </>
                     ) : (
