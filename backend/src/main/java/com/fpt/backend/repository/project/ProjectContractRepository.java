@@ -16,4 +16,11 @@ public interface ProjectContractRepository extends Repository<Contracts, UUID> {
             ORDER BY contract.id
             """)
     List<Contracts> findByProjectId(@Param("projectId") UUID projectId);
+
+    @Query("""
+            SELECT COUNT(contract)
+            FROM Contracts contract
+            WHERE contract.project.id = :projectId
+            """)
+    long countByProjectId(@Param("projectId") UUID projectId);
 }

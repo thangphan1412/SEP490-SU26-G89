@@ -23,10 +23,11 @@ function ViewPhase() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  useEffect(() => {
+  useEffect(function () {
     let isActive = true;
+    const requestController = new AbortController();
 
-    const loadPhase = async () => {
+    async function loadPhase() {
       if (!phaseId) {
         setError("Phase id is missing.");
         setLoading(false);
@@ -36,29 +37,31 @@ function ViewPhase() {
       try {
         setLoading(true);
         setError("");
-        const response = await viewPhase(phaseId);
-        const payload = response.data?.data ?? response.data;
+        const payload = await viewPhase(phaseId, requestController.signal);
 
         if (isActive) {
           setPhase(payload || null);
         }
       } catch (requestError) {
-        console.error("Unable to load phase:", requestError);
-        if (isActive) {
-          setPhase(null);
-          setError(getErrorMessage(requestError));
+        if (!isActive) {
+          return;
         }
+
+        console.error("Unable to load phase:", requestError);
+        setPhase(null);
+        setError(getErrorMessage(requestError));
       } finally {
         if (isActive) {
           setLoading(false);
         }
       }
-    };
+    }
 
     loadPhase();
 
-    return () => {
+    return function () {
       isActive = false;
+      requestController.abort();
     };
   }, [phaseId]);
 
@@ -66,6 +69,24 @@ function ViewPhase() {
   const deliverables = Array.isArray(phase?.deliverables) ? phase.deliverables : [];
   const contracts = Array.isArray(phase?.contracts) ? phase.contracts : [];
   const progress = normalizeProgress(phase?.progress);
+
+  function renderTask(task) {
+    const taskProgress = normalizeProgress(task.progress);
+
+    return (
+      <tr key={task.id}>
+        <td><strong>{task.title || `Task #${task.id}`}</strong></td>
+        <td>{formatAssignee(task)}</td>
+        <td>{formatDateRange(task.startDate, task.endDate)}</td>
+        <td className="phase-progress-cell">
+          <span>{taskProgress}%</span>
+          <ProgressBar now={taskProgress} />
+        </td>
+        <td><PhaseStatusBadge status={task.status} /></td>
+      </tr>
+    );
+  }
+
   const backAction = (
     <Button
       type="button"
@@ -137,21 +158,7 @@ function ViewPhase() {
                 <tbody>
                   {tasks.length === 0 ? (
                     <EmptyTableRow colSpan={5} message="No tasks have been added to this phase." />
-                  ) : tasks.map((task) => {
-                    const taskProgress = normalizeProgress(task.progress);
-                    return (
-                      <tr key={task.id}>
-                        <td><strong>{task.title || `Task #${task.id}`}</strong></td>
-                        <td>{formatAssignee(task)}</td>
-                        <td>{formatDateRange(task.startDate, task.endDate)}</td>
-                        <td className="phase-progress-cell">
-                          <span>{taskProgress}%</span>
-                          <ProgressBar now={taskProgress} />
-                        </td>
-                        <td><PhaseStatusBadge status={task.status} /></td>
-                      </tr>
-                    );
-                  })}
+                  ) : tasks.map(renderTask)}
                 </tbody>
               </Table>
             </div>

@@ -11,7 +11,11 @@ import {
 } from "../../services/permissionService/permissionApi.js";
 import PermissionFormField from "../../components/permissionComponents/PermissionFormField.jsx";
 import PermissionPage from "../../components/permissionComponents/PermissionPage.jsx";
-import { formatPermissionDate } from "./permissionUtils.js";
+import {
+  formatPermissionDate,
+  formatPermissionProjectName,
+  getPermissionErrorMessage,
+} from "./permissionUtils.js";
 
 const initialPermission = {
   permissionName: "",
@@ -35,10 +39,11 @@ function UpdatePermissionPage() {
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
+  useEffect(function () {
     let isActive = true;
+    const requestController = new AbortController();
 
-    const loadPage = async () => {
+    async function loadPage() {
       if (!permissionId) {
         if (isActive) {
           setError("Permission id is missing. Please choose a permission from the list.");
@@ -52,14 +57,11 @@ function UpdatePermissionPage() {
         setLoading(true);
         setError("");
         setLoadFailed(false);
-        const [permissionResponse, projectResponse, roleResponse] = await Promise.all([
-          viewPermission(permissionId),
-          listPermissionProjects(),
-          listPermissionRoles(),
+        const [permissionPayload, projectPayload, rolePayload] = await Promise.all([
+          viewPermission(permissionId, requestController.signal),
+          listPermissionProjects(requestController.signal),
+          listPermissionRoles(requestController.signal),
         ]);
-        const permissionPayload = permissionResponse.data?.data ?? permissionResponse.data;
-        const projectPayload = projectResponse.data?.data ?? projectResponse.data;
-        const rolePayload = roleResponse.data?.data ?? roleResponse.data;
 
         if (isActive) {
           setPermission({
@@ -75,34 +77,40 @@ function UpdatePermissionPage() {
           setRoles(Array.isArray(rolePayload) ? rolePayload : []);
         }
       } catch (requestError) {
-        console.error("Unable to load permission for update:", requestError);
-        if (isActive) {
-          setError(getErrorMessage(requestError));
-          setLoadFailed(true);
+        if (!isActive) {
+          return;
         }
+
+        console.error("Unable to load permission for update:", requestError);
+        setError(getPermissionErrorMessage(
+          requestError,
+          "Unable to load permission. Please try again later."
+        ));
+        setLoadFailed(true);
       } finally {
         if (isActive) {
           setLoading(false);
         }
       }
-    };
+    }
 
     loadPage();
 
-    return () => {
+    return function () {
       isActive = false;
+      requestController.abort();
     };
   }, [permissionId]);
 
-  const handleChange = (event) => {
+  function handleChange(event) {
     const { name, value } = event.target;
     setPermission((currentPermission) => ({
       ...currentPermission,
       [name]: value,
     }));
-  };
+  }
 
-  const handleSubmit = async (event) => {
+  async function handleSubmit(event) {
     event.preventDefault();
 
     if (!permissionId) {
@@ -112,7 +120,7 @@ function UpdatePermissionPage() {
     try {
       setSaving(true);
       setError("");
-      const response = await updatePermission(permissionId, {
+      const updatedPermission = await updatePermission(permissionId, {
         permissionName: permission.permissionName.trim(),
         permissionCode: permission.permissionCode.trim(),
         permissionDescription: permission.permissionDescription.trim(),
@@ -120,19 +128,21 @@ function UpdatePermissionPage() {
         roleId: permission.roleId,
         status: permission.status,
       });
-      const updatedPermission = response.data?.data ?? response.data;
       navigate(`/permission/list?view=${updatedPermission?.id || permissionId}`);
     } catch (requestError) {
       console.error("Unable to update permission:", requestError);
-      setError(getErrorMessage(requestError));
+      setError(getPermissionErrorMessage(
+        requestError,
+        "Unable to update permission. Please try again later."
+      ));
     } finally {
       setSaving(false);
     }
-  };
+  }
 
-  const goBack = () => {
+  function goBack() {
     navigate(permissionId ? `/permission/list?view=${permissionId}` : "/permission/list");
-  };
+  }
   const backAction = (
     <Button className="permission-secondary-button" onClick={goBack}>
       <IconArrowLeft size={18} /> Back
@@ -223,7 +233,9 @@ function UpdatePermissionPage() {
                 <Form.Select className="permission-input" name="projectId" value={permission.projectId} onChange={handleChange} disabled={projects.length === 0} required>
                   <option value="" disabled>Select project</option>
                   {projects.map((project) => (
-                    <option key={project.id} value={project.id}>{formatProjectName(project)}</option>
+                    <option key={project.id} value={project.id}>
+                      {formatPermissionProjectName(project)}
+                    </option>
                   ))}
                 </Form.Select>
               </PermissionFormField>
@@ -274,18 +286,6 @@ function UpdatePermissionPage() {
       </Form>
     </PermissionPage>
   );
-}
-
-function formatProjectName(project) {
-  const projectCode = project.projectCode ? `${project.projectCode} - ` : "";
-  return `${projectCode}${project.projectName || `Project #${project.id}`}`;
-}
-
-function getErrorMessage(error) {
-  return error.response?.data?.message
-    || error.response?.data?.detail
-    || error.response?.data?.error
-    || "Unable to load or update permission. Please try again later.";
 }
 
 export default UpdatePermissionPage;

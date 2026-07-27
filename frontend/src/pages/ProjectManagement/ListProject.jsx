@@ -1,11 +1,23 @@
 import { useEffect, useState } from "react";
-import { Button, Form, InputGroup, Pagination, Table } from "react-bootstrap";
+import {
+    Alert,
+    Button,
+    Form,
+    InputGroup,
+    Pagination,
+    Spinner,
+    Table,
+} from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
 import { listProjects } from "../../services/projectService/projectApi.js";
 import Icon from "../../components/projectComponents/Icon.jsx";
 import PagePanel from "../../components/projectComponents/PagePanel.jsx";
 import PrimaryButton from "../../components/projectComponents/PrimaryButton.jsx";
 import StatusBadge from "../../components/projectComponents/StatusBadge.jsx";
+import {
+    getApiErrorMessage,
+    PROJECT_STATUS_OPTIONS,
+} from "../../components/projectComponents/projectFormUtils.js";
 import "../../assets/styles/css/projectStyles/ListProject.css";
 
 const sortableColumns = [
@@ -17,8 +29,6 @@ const sortableColumns = [
     ["Created By", "projectCreatedBy"],
     ["Created At", "projectCreatedAt"],
 ];
-
-const projectStatusOptions = ["Planning", "Active", "On Hold", "Completed", "Cancelled"];
 
 function createPageNumbers(currentPage, totalPages) {
     if (totalPages <= 5) {
@@ -39,13 +49,15 @@ function createPageNumbers(currentPage, totalPages) {
 
     const pages = [];
 
-    visiblePages.forEach((pageNumber, index) => {
+    for (let index = 0; index < visiblePages.length; index += 1) {
+        const pageNumber = visiblePages[index];
+
         if (index > 0 && pageNumber - visiblePages[index - 1] > 1) {
             pages.push(`ellipsis-${pageNumber}`);
         }
 
         pages.push(pageNumber);
-    });
+    }
 
     return pages;
 }
@@ -61,18 +73,28 @@ function ListProject() {
     const [totalPages, setTotalPages] = useState(0);
     const [sortBy, setSortBy] = useState("id");
     const [sortDirection, setSortDirection] = useState("desc");
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState("");
+    const [projectStatusOptions, setProjectStatusOptions] = useState(
+        PROJECT_STATUS_OPTIONS
+    );
 
-    useEffect(() => {
-        const debounceId = window.setTimeout(() => {
+    useEffect(function () {
+        const debounceId = window.setTimeout(function () {
             setSearch(searchInput.trim());
             setPage(0);
         }, 500);
 
-        return () => window.clearTimeout(debounceId);
+        return function () {
+            window.clearTimeout(debounceId);
+        };
     }, [searchInput]);
 
-    useEffect(() => {
-        const loadProjects = async () => {
+    useEffect(function () {
+        let isActive = true;
+        const requestController = new AbortController();
+
+        async function loadProjects() {
             const requestParams = {
                 search: search,
                 status: status,
@@ -82,9 +104,12 @@ function ListProject() {
             };
 
             try {
-                const response = await listProjects(requestParams);
-
-                const payload = response.data?.data ?? response.data;
+                setLoading(true);
+                setError("");
+                const payload = await listProjects(
+                    requestParams,
+                    requestController.signal
+                );
 
                 const projectList = Array.isArray(payload?.items)
                     ? payload.items
@@ -92,68 +117,105 @@ function ListProject() {
 
                 const totalProjectCount = Number(payload?.totalElements) || 0;
                 const totalPageCount = Number(payload?.totalPages) || 0;
+                const responseStatuses = Array.isArray(payload?.availableStatuses)
+                    ? payload.availableStatuses
+                    : [];
+                const statusOptions = [...PROJECT_STATUS_OPTIONS];
+
+                for (const responseStatus of responseStatuses) {
+                    if (responseStatus && !statusOptions.includes(responseStatus)) {
+                        statusOptions.push(responseStatus);
+                    }
+                }
+
+                if (!isActive) {
+                    return;
+                }
 
                 setProjects(projectList);
                 setTotalElements(totalProjectCount);
                 setTotalPages(totalPageCount);
+                setProjectStatusOptions(statusOptions);
 
                 if (totalPageCount > 0 && page >= totalPageCount) {
                     setPage(totalPageCount - 1);
                 }
             } catch (error) {
+                if (!isActive) {
+                    return;
+                }
+
                 console.error("Unable to load projects:", error);
 
                 setProjects([]);
                 setTotalElements(0);
                 setTotalPages(0);
+                setProjectStatusOptions(PROJECT_STATUS_OPTIONS);
+                setError(getApiErrorMessage(
+                    error,
+                    "Unable to load projects. Please try again later."
+                ));
+            } finally {
+                if (isActive) {
+                    setLoading(false);
+                }
             }
-        };
+        }
 
         loadProjects();
+
+        return function () {
+            isActive = false;
+            requestController.abort();
+        };
     }, [page, search, status, sortBy, sortDirection]);
 
     const pageNumbers = createPageNumbers(page, totalPages);
 
-    const handleSort = (field) => {
+    function handleSort(field) {
         setPage(0);
 
         if (sortBy === field) {
-            setSortDirection((currentDirection) =>
-                currentDirection === "asc" ? "desc" : "asc"
-            );
+            setSortDirection(function (currentDirection) {
+                if (currentDirection === "asc") {
+                    return "desc";
+                }
+
+                return "asc";
+            });
             return;
         }
 
         setSortBy(field);
         setSortDirection("asc");
-    };
+    }
 
-    const handleStatusChange = (event) => {
+    function handleStatusChange(event) {
         setStatus(event.target.value);
         setPage(0);
-    };
+    }
 
-    const clearFilters = () => {
+    function clearFilters() {
         setSearchInput("");
         setSearch("");
         setStatus("");
         setPage(0);
-    };
+    }
 
-    const openProjectDetail = (projectId) => {
+    function openProjectDetail(projectId) {
         if (!projectId) {
             return;
         }
 
         navigate(`/project-management/view?id=${projectId}`);
-    };
+    }
 
-    const handleProjectRowKeyDown = (event, projectId) => {
+    function handleProjectRowKeyDown(event, projectId) {
         if (event.key === "Enter" || event.key === " ") {
             event.preventDefault();
             openProjectDetail(projectId);
         }
-    };
+    }
 
     const pageAction = (
         <PrimaryButton onClick={() => navigate("/project-management/create")}>
@@ -168,6 +230,8 @@ function ListProject() {
             description="View and find projects, timelines, ownership, and current status."
             action={pageAction}
         >
+            {error && <Alert variant="danger" className="mb-3">{error}</Alert>}
+
             <div className="list-project-toolbar">
                 <InputGroup className="list-project-search-box">
                     <InputGroup.Text className="list-project-search-icon">
@@ -259,7 +323,19 @@ function ListProject() {
                     </thead>
 
                     <tbody>
-                        {projects.length === 0 ? (
+                        {loading ? (
+                            <tr>
+                                <td
+                                    colSpan={sortableColumns.length}
+                                    className="list-project-state-cell"
+                                >
+                                    <Spinner animation="border" size="sm" />
+                                    <strong className="list-project-state-title">
+                                        Loading projects...
+                                    </strong>
+                                </td>
+                            </tr>
+                        ) : projects.length === 0 ? (
                             <tr>
                                 <td
                                     colSpan={sortableColumns.length}
@@ -351,7 +427,7 @@ function ListProject() {
                         onClick={() =>
                             setPage((currentPage) => Math.max(0, currentPage - 1))
                         }
-                        disabled={page === 0}
+                        disabled={loading || page === 0}
                     >
                         <Icon name="arrowLeft" size={18} color="#243452" />
                     </Pagination.Prev>
@@ -363,6 +439,7 @@ function ListProject() {
                                 className="list-project-page-item"
                                 active={pageNumber === page}
                                 onClick={() => setPage(pageNumber)}
+                                disabled={loading}
                             >
                                 {pageNumber + 1}
                             </Pagination.Item>
@@ -383,7 +460,7 @@ function ListProject() {
                                 Math.min(totalPages - 1, currentPage + 1)
                             )
                         }
-                        disabled={totalPages === 0 || page >= totalPages - 1}
+                        disabled={loading || totalPages === 0 || page >= totalPages - 1}
                     >
                         <Icon name="arrowRight" size={18} color="#243452" />
                     </Pagination.Next>

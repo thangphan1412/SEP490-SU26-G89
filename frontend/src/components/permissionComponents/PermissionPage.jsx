@@ -1,11 +1,8 @@
 import { Card, Container } from "react-bootstrap";
 import { IconShieldCheck } from "@tabler/icons-react";
-import useHideMainHeader from "./useHideMainHeader.js";
 import "../../assets/styles/css/permissionStyles/PermissionComponents.css";
 
 function PermissionPage({ title, description, action, children }) {
-  useHideMainHeader();
-
   return (
     <Container fluid as="main" className="permission-page">
       <Card as="section" className="permission-panel">

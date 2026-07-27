@@ -1,40 +1,78 @@
-import axios from "axios";
+import axiosClient from "../../config/api/axiosClient.js";
 
-const PERMISSION_API_BASE_URL = "http://localhost:8080/api/permissions";
+const API_BASE_URL = String(
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:8080/api"
+).replace(/\/+$/, "");
+const PERMISSION_API_BASE_URL = `${API_BASE_URL}/permissions`;
 
-const noCacheConfig = {
-  headers: {
-    "Cache-Control": "no-cache",
-  },
+const noCacheHeaders = {
+  "Cache-Control": "no-cache",
 };
 
-export const listPermissions = (params) => {
-  return axios.get(`${PERMISSION_API_BASE_URL}/list`, {
-    ...noCacheConfig,
+function getResponseData(response) {
+  return response.data?.data ?? response.data;
+}
+
+
+
+export async function listPermissions(params, signal) {
+  console.log("listPermissions params:", params);
+  const response = await axiosClient.get(PERMISSION_API_BASE_URL + "/list", {
+    headers: noCacheHeaders,
     params,
+    signal,
   });
-};
+  console.log("listPermissions response:", response);
+  return getResponseData(response);
+}
 
-export const viewPermission = (permissionId) => {
-  return axios.get(`${PERMISSION_API_BASE_URL}/view/${permissionId}`, noCacheConfig);
-};
+export async function viewPermission(permissionId, signal) {
 
-export const listPermissionProjects = () => {
-  return axios.get(`${PERMISSION_API_BASE_URL}/projects`, noCacheConfig);
-};
+  const response = await axiosClient.get(
+    `${PERMISSION_API_BASE_URL}/${permissionId}`,
+    { headers: noCacheHeaders, signal }
+  );
 
-export const listPermissionRoles = () => {
-  return axios.get(`${PERMISSION_API_BASE_URL}/roles`, noCacheConfig);
-};
+  return getResponseData(response);
+}
 
-export const createPermission = (permission) => {
-  return axios.post(`${PERMISSION_API_BASE_URL}/create`, permission);
-};
+export async function listPermissionProjects(signal) {
 
-export const updatePermission = (permissionId, permission) => {
-  return axios.put(`${PERMISSION_API_BASE_URL}/update/${permissionId}`, permission);
-};
+  const response = await axiosClient.get(
+    `${PERMISSION_API_BASE_URL}/projects`,
+    { headers: noCacheHeaders, signal }
+  );
 
-export const deletePermission = (permissionId) => {
-  return axios.delete(`${PERMISSION_API_BASE_URL}/delete/${permissionId}`);
-};
+  return getResponseData(response);
+}
+
+export async function listPermissionRoles(signal) {
+
+  const response = await axiosClient.get(
+    `${PERMISSION_API_BASE_URL}/roles`,
+    { headers: noCacheHeaders, signal }
+  );
+
+  return getResponseData(response);
+}
+
+export async function createPermission(permission) {
+
+  const response = await axiosClient.post(PERMISSION_API_BASE_URL, permission);
+  return getResponseData(response);
+}
+
+export async function updatePermission(permissionId, permission) {
+
+  const response = await axiosClient.put(
+    `${PERMISSION_API_BASE_URL}/${permissionId}`,
+    permission
+  );
+
+  return getResponseData(response);
+}
+
+export async function deletePermission(permissionId) {
+
+  await axiosClient.delete(`${PERMISSION_API_BASE_URL}/${permissionId}`);
+}
