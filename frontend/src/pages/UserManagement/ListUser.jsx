@@ -242,8 +242,8 @@ function ListUser() {
                                             {/* Dữ liệu thật từ DB */}
                                             <td><span className="badge bg-light text-dark border">{u.role || "N/A"}</span></td>
                                             <td>
-                                                <span className={`badge ${u.status === 'Active' ? 'bg-success bg-opacity-10 text-success' : 'bg-secondary bg-opacity-10 text-secondary'}`}>
-                                                    ● {u.status || "Inactive"}
+                                                <span className={`badge ${u.status === 'Active' || u.status === 'ACTIVE' ? 'bg-success bg-opacity-10 text-success' : 'bg-secondary bg-opacity-10 text-secondary'} px-3 py-2 rounded-pill fw-bold`}>
+                                                ● {u.status || "INACTIVE"}
                                                 </span>
                                             </td>
 
