@@ -1,4 +1,4 @@
-import LoginForm from "../../components/common/LoginForm.jsx";
+import LoginForm from "../../components/layout/LoginForm.jsx";
 import "../../assets/styles/css/authenticationStyles/LoginPage.css";
 import { Link } from "react-router-dom";
 import {IconWorld} from '@tabler/icons-react'
