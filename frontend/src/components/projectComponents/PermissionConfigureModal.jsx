@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Alert, Button, Modal, Spinner } from "react-bootstrap";
+import { useNavigate } from "react-router-dom";
 import {
   configureProjectPermission,
   listProjectPermissionConfigurations,
@@ -8,6 +9,7 @@ import {
   permissionActionOptions,
   permissionWorkScopeOptions,
 } from "../permissionComponents/permissionModuleOptions.js";
+import Icon from "./Icon.jsx";
 import PermissionConfigureRow from "./PermissionConfigureRow.jsx";
 import "../../assets/styles/css/projectStyles/PermissionConfigureModal.css";
 
@@ -17,6 +19,7 @@ const emptyConfiguration = {
 };
 
 function PermissionConfigureModal({ show, projectId, projectName, onHide }) {
+  const navigate = useNavigate();
   const [permissions, setPermissions] = useState([]);
   const [selectedPermissionId, setSelectedPermissionId] = useState(null);
   const [configuration, setConfiguration] = useState(emptyConfiguration);
@@ -164,6 +167,17 @@ function PermissionConfigureModal({ show, projectId, projectName, onHide }) {
     });
   }
 
+  function openCreatePermission() {
+    if (!projectId || saving) {
+      return;
+    }
+
+    onHide();
+    navigate(
+      `/permission/create?projectId=${encodeURIComponent(projectId)}`
+    );
+  }
+
   return (
     <Modal
       show={show}
@@ -219,6 +233,15 @@ function PermissionConfigureModal({ show, projectId, projectName, onHide }) {
       <Modal.Footer>
         <Button type="button" variant="light" disabled={saving} onClick={onHide}>
           Close
+        </Button>
+        <Button
+          type="button"
+          disabled={saving || !projectId}
+          className="permission-configure-add-button"
+          onClick={openCreatePermission}
+        >
+          <Icon name="plus" size={18} color="#fff" />
+          Add Permission
         </Button>
       </Modal.Footer>
     </Modal>

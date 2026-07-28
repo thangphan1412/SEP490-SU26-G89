@@ -7,7 +7,6 @@ public record ProjectPhaseRequest(
         UUID id,
         String title,
         String description,
-        LocalDate startDate,
         LocalDate endDate,
         String status
 ) {

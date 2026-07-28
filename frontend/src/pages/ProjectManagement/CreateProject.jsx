@@ -12,6 +12,7 @@ import PagePanel from "../../components/projectComponents/PagePanel.jsx";
 import PrimaryButton from "../../components/projectComponents/PrimaryButton.jsx";
 import {
     addOneDay,
+    calculatePhaseStartDatesForDisplay,
     createClientId,
     employeeHasRole,
     getApiErrorMessage,
@@ -20,10 +21,8 @@ import {
     getEmployeeRoleNames,
     getEmployeeSearchText,
     getFilterOptions,
+    CREATE_PROJECT_STATUS_OPTIONS as statusOptions,
     PHASE_STATUS_OPTIONS as phaseStatusOptions,
-    PROJECT_STATUS_OPTIONS as statusOptions,
-    recalculatePhaseStarts,
-    validateProject,
 } from "../../components/projectComponents/projectFormUtils.js";
 import "../../assets/styles/css/projectStyles/CreateProject.css";
 
@@ -32,7 +31,6 @@ const initialProject = {
     projectCode: "",
     projectStartDate: "",
     projectEndDate: "",
-    projectCreatedAt: getTodayValue(),
     projectDescription: "",
     projectStatus: "Planning",
     phases: [],
@@ -99,7 +97,7 @@ function CreateProject({ onCreateProject }) {
             let phases = currentProject.phases;
 
             if (name === "projectStartDate" && phases.length > 0) {
-                phases = recalculatePhaseStarts(phases, value);
+                phases = calculatePhaseStartDatesForDisplay(phases, value);
             }
 
             if (name === "projectEndDate" && phases.length > 0) {
@@ -161,7 +159,10 @@ function CreateProject({ onCreateProject }) {
             );
 
             if (name === "endDate") {
-                phases = recalculatePhaseStarts(phases, currentProject.projectStartDate);
+                phases = calculatePhaseStartDatesForDisplay(
+                    phases,
+                    currentProject.projectStartDate
+                );
             }
 
             return { ...currentProject, phases };
@@ -178,7 +179,10 @@ function CreateProject({ onCreateProject }) {
                         ? { ...phase, endDate: currentProject.projectEndDate }
                         : phase
                 );
-                phases = recalculatePhaseStarts(phases, currentProject.projectStartDate);
+                phases = calculatePhaseStartDatesForDisplay(
+                    phases,
+                    currentProject.projectStartDate
+                );
             }
 
             return { ...currentProject, phases };
@@ -233,12 +237,6 @@ function CreateProject({ onCreateProject }) {
 
     async function handleSubmit(event) {
         event.preventDefault();
-        const validationMessage = validateProject(project);
-
-        if (validationMessage) {
-            setSubmitError(validationMessage);
-            return;
-        }
 
         try {
             setSaving(true);
@@ -248,14 +246,12 @@ function CreateProject({ onCreateProject }) {
                 projectCode: project.projectCode.trim(),
                 projectStartDate: project.projectStartDate,
                 projectEndDate: project.projectEndDate,
-                projectCreatedAt: project.projectCreatedAt,
                 projectDescription: project.projectDescription.trim(),
                 projectStatus: project.projectStatus,
                 phases: project.phases.map((phase) => ({
                     id: null,
                     title: phase.title.trim(),
                     description: phase.description.trim(),
-                    startDate: phase.startDate,
                     endDate: phase.endDate,
                     status: phase.status,
                 })),
@@ -383,10 +379,6 @@ function CreateProject({ onCreateProject }) {
                             </Form.Select>
                         </Form.Group>
 
-                        <Form.Group as={Col} md={6} controlId="projectCreatedAt">
-                            <Form.Label className="project-management-field-label">Created At</Form.Label>
-                            <Form.Control disabled type="date" value={project.projectCreatedAt} className="project-management-input create-project-readonly-input" />
-                        </Form.Group>
                     </Row>
 
                     <Form.Group className="create-project-full-width" controlId="projectDescription">
@@ -425,7 +417,9 @@ function CreateProject({ onCreateProject }) {
                                         <Col md={3}>
                                             <Form.Label className="project-management-field-label">Start Date</Form.Label>
                                             <Form.Control readOnly required type="date" name="startDate" value={phase.startDate} className="project-management-input create-project-phase-start-input" />
-                                            <Form.Text className="create-project-phase-date-note">Calculated from the project or previous phase.</Form.Text>
+                                            <Form.Text className="create-project-phase-date-note">
+                                                Preview only. The server calculates this date when saving.
+                                            </Form.Text>
                                         </Col>
                                         <Col md={3}>
                                             <Form.Label className="project-management-field-label">End Date</Form.Label>
@@ -592,12 +586,6 @@ function CreateProject({ onCreateProject }) {
             </Modal>
         </PagePanel>
     );
-}
-
-function getTodayValue() {
-    const now = new Date();
-    const localDate = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
-    return localDate.toISOString().slice(0, 10);
 }
 
 export default CreateProject;

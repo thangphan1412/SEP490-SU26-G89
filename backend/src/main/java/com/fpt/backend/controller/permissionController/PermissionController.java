@@ -38,7 +38,7 @@ public class PermissionController {
             @RequestParam(required = false) UUID roleId,
             @RequestParam(required = false) Boolean status,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "id") String sortBy,
+            @RequestParam(defaultValue = "createdAt") String sortBy,
             @RequestParam(defaultValue = "desc") String sortDirection) {
         PermissionListResponse permissions = permissionService.getPermissions(
                 new PermissionListRequest(search, projectId, roleId, status, page, sortBy, sortDirection)

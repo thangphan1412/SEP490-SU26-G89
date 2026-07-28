@@ -50,6 +50,8 @@ public class ProjectPhaseServiceImpl implements ProjectPhaseService {
             existingPhases.put(phase.getId(), phase);
         }
 
+        LocalDate nextStartDate = project.getProjectStartDate();
+
         for (ProjectPhaseRequest request : requests) {
             if (request == null) {
                 throw new BadHttpException("Phase information is required");
@@ -69,8 +71,14 @@ public class ProjectPhaseServiceImpl implements ProjectPhaseService {
                 }
             }
 
-            applyPhaseInformation(phase, request, project);
+            applyPhaseInformation(
+                    phase,
+                    request,
+                    project,
+                    nextStartDate
+            );
             phaseRepository.save(phase);
+            nextStartDate = request.endDate().plusDays(1);
         }
 
         for (Timeline removedPhase : existingPhases.values()) {
@@ -127,38 +135,36 @@ public class ProjectPhaseServiceImpl implements ProjectPhaseService {
                 );
             }
 
-            LocalDate startDate = request.startDate();
             LocalDate endDate = request.endDate();
 
-            if (startDate == null || endDate == null) {
+            if (endDate == null) {
                 throw new BadHttpException(
                         "Phase " + phaseNumber
-                                + " start date and end date are required"
+                                + " end date is required"
                 );
             }
 
-            if (endDate.isBefore(startDate)) {
+            if (expectedStartDate.isAfter(project.getProjectEndDate())) {
                 throw new BadHttpException(
                         "Phase " + phaseNumber
-                                + " end date must not be before its start date"
+                                + " starts after the project end date"
                 );
             }
 
-            if (startDate.isBefore(project.getProjectStartDate())
-                    || endDate.isAfter(project.getProjectEndDate())) {
+            if (endDate.isBefore(expectedStartDate)) {
                 throw new BadHttpException(
                         "Phase " + phaseNumber
-                                + " must stay inside the project date range"
+                                + " end date must not be before its "
+                                + "calculated start date "
+                                + expectedStartDate
                 );
             }
 
-            if (!startDate.equals(expectedStartDate)) {
-                validateExpectedStartDate(
-                        index,
-                        phaseNumber,
-                        startDate,
-                        expectedStartDate,
-                        project.getProjectStartDate()
+            if (endDate.isAfter(project.getProjectEndDate())) {
+                throw new BadHttpException(
+                        "Phase " + phaseNumber
+                                + " end date must not be after the "
+                                + "project end date"
                 );
             }
 
@@ -175,37 +181,11 @@ public class ProjectPhaseServiceImpl implements ProjectPhaseService {
         }
     }
 
-    private void validateExpectedStartDate(
-            int phaseIndex,
-            int phaseNumber,
-            LocalDate startDate,
-            LocalDate expectedStartDate,
-            LocalDate projectStartDate) {
-        if (phaseIndex == 0) {
-            throw new BadHttpException(
-                    "Phase 1 must start on the project start date "
-                            + projectStartDate
-            );
-        }
-
-        String problem;
-
-        if (startDate.isBefore(expectedStartDate)) {
-            problem = " overlaps the previous phase";
-        } else {
-            problem = " leaves a gap after the previous phase";
-        }
-
-        throw new BadHttpException(
-                "Phase " + phaseNumber + problem
-                        + " and must start on " + expectedStartDate
-        );
-    }
-
     private void applyPhaseInformation(
             Timeline phase,
             ProjectPhaseRequest request,
-            Projects project) {
+            Projects project,
+            LocalDate startDate) {
         String title = requireText(
                 request.title(),
                 "Phase title is required",
@@ -216,30 +196,10 @@ public class ProjectPhaseServiceImpl implements ProjectPhaseService {
                 request.status(),
                 DEFAULT_PHASE_STATUS
         );
-        LocalDate startDate = request.startDate();
         LocalDate endDate = request.endDate();
 
         validateMaxLength(description, "Phase description", 500);
         validateMaxLength(status, "Phase status", 30);
-
-        if (startDate == null || endDate == null) {
-            throw new BadHttpException(
-                    "Phase start date and end date are required"
-            );
-        }
-
-        if (endDate.isBefore(startDate)) {
-            throw new BadHttpException(
-                    "Phase end date must not be before phase start date"
-            );
-        }
-
-        if (startDate.isBefore(project.getProjectStartDate())
-                || endDate.isAfter(project.getProjectEndDate())) {
-            throw new BadHttpException(
-                    "Phase dates must be inside the project date range"
-            );
-        }
 
         phase.setTitle(title);
         phase.setDescription(description);

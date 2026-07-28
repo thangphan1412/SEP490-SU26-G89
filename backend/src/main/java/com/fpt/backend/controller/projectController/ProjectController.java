@@ -40,7 +40,7 @@ public class ProjectController {
             @RequestParam(defaultValue = "") String search,
             @RequestParam(defaultValue = "") String status,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "id") String sortBy,
+            @RequestParam(defaultValue = "projectCreatedAt") String sortBy,
             @RequestParam(defaultValue = "desc") String sortDirection) {
         ProjectListResponse projects = projectService.getProjects(
                 new ProjectListRequest(search, status, page, sortBy, sortDirection)

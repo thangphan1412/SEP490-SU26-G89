@@ -37,7 +37,7 @@ import java.util.UUID;
 @Transactional(readOnly = true)
 public class PermissionServiceImpl implements PermissionService {
     private static final int PAGE_SIZE = 7;
-    private static final String DEFAULT_SORT_FIELD = "id";
+    private static final String DEFAULT_SORT_FIELD = "createdAt";
     private static final Set<String> SORT_FIELDS = Set.of(
             "id",
             "permissionName",

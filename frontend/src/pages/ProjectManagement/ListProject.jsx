@@ -71,7 +71,7 @@ function ListProject() {
     const [page, setPage] = useState(0);
     const [totalElements, setTotalElements] = useState(0);
     const [totalPages, setTotalPages] = useState(0);
-    const [sortBy, setSortBy] = useState("id");
+    const [sortBy, setSortBy] = useState("projectCreatedAt");
     const [sortDirection, setSortDirection] = useState("desc");
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");

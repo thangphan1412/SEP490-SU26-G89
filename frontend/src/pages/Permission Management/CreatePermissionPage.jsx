@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Alert, Button, Card, Col, Form, Row, Spinner } from "react-bootstrap";
 import {
   IconArrowLeft,
@@ -31,7 +31,12 @@ const initialPermission = {
 
 function CreatePermissionPage() {
   const navigate = useNavigate();
-  const [permission, setPermission] = useState(initialPermission);
+  const [searchParams] = useSearchParams();
+  const requestedProjectId = searchParams.get("projectId") || "";
+  const [permission, setPermission] = useState({
+    ...initialPermission,
+    projectId: requestedProjectId,
+  });
   const [projects, setProjects] = useState([]);
   const [roles, setRoles] = useState([]);
   const [loadingOptions, setLoadingOptions] = useState(true);

@@ -8,6 +8,7 @@ import PagePanel from "../../components/projectComponents/PagePanel.jsx";
 import PermissionConfigureModal from "../../components/projectComponents/PermissionConfigureModal.jsx";
 import PrimaryButton from "../../components/projectComponents/PrimaryButton.jsx";
 import StatusBadge from "../../components/projectComponents/StatusBadge.jsx";
+import { isCompletedProjectStatus } from "../../components/projectComponents/projectFormUtils.js";
 import "../../assets/styles/css/projectStyles/ViewProject.css";
 
 function showValue(value) {
@@ -181,6 +182,9 @@ function ViewProject() {
     }
 
     const filteredContracts = projectContracts.filter(contractMatchesFilters);
+    const completedProject = isCompletedProjectStatus(
+        project?.projectStatus
+    );
 
     const pageAction = (
         <Stack direction="horizontal" gap={2} className="view-project-actions">
@@ -204,11 +208,17 @@ function ViewProject() {
                         <Icon name="shield" size={19} color="#2450f5" />
                         Permission Configure
                     </Button>
-                    <DangerButton disabled={deleting} onClick={handleDelete}>
+                    <DangerButton
+                        disabled={deleting || completedProject}
+                        onClick={handleDelete}
+                    >
                         <Icon name="trash" size={18} color="#b42318" />
                         {deleting ? "Deleting..." : "Delete"}
                     </DangerButton>
-                    <PrimaryButton onClick={() => navigate("/project-management/update?id=" + projectId)}>
+                    <PrimaryButton
+                        disabled={completedProject}
+                        onClick={() => navigate("/project-management/update?id=" + projectId)}
+                    >
                         <Icon name="edit" size={20} color="#ffffff" />
                         Edit Project
                     </PrimaryButton>
@@ -238,6 +248,12 @@ function ViewProject() {
                     {actionError && (
                         <Alert variant="danger" className="view-project-action-alert">
                             {actionError}
+                        </Alert>
+                    )}
+
+                    {completedProject && (
+                        <Alert variant="warning" className="view-project-action-alert">
+                            Completed projects cannot be updated or deleted.
                         </Alert>
                     )}
 

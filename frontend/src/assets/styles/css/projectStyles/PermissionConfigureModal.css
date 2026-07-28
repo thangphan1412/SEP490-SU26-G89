@@ -31,6 +31,23 @@
   border-top: 1px solid #e5eaf2;
 }
 
+.permission-configure-add-button.btn {
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border-color: #2450f5;
+  background: #2450f5;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.permission-configure-add-button.btn:hover,
+.permission-configure-add-button.btn:focus {
+  border-color: #173bc5;
+  background: #173bc5;
+}
+
 .permission-configure-list {
   display: flex;
   flex-direction: column;
