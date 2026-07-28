@@ -44,6 +44,8 @@ public class UserServiceImpl implements IUserService {
     private EmailService emailService;
     @Autowired
     private DepartmentRepository departmentRepository;
+    @Autowired
+    private CurrentUser currentUser;
 
     @Override
     public Boolean existsByEmail(String email) {
@@ -377,22 +379,18 @@ public class UserServiceImpl implements IUserService {
     }
 
     public void changePassword(ChangePasswordRequest changePasswordRequest) {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        String email = authentication.getName();
+//        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+//        String email = authentication.getName();
+
+
+        String email =currentUser.getCurrentUser().getEmail();
+        System.out.println(email);
         Users users = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found with email: " + email));
-
-        CurrentUser currentUser = new CurrentUser();
-        currentUser.getCurrentUser().setEmail(email);
         if(!passwordEncoder.matches(changePasswordRequest.getOldPassword(), users.getPassword())){
             throw new RuntimeException("Old password do not match");
         }
-        if(!passwordEncoder.matches(changePasswordRequest.getNewPassword(), changePasswordRequest.getOldPassword())){
-            throw new RuntimeException("New password do not match with old password");
-        }
-        if(!passwordEncoder.matches(changePasswordRequest.getNewPasswordConfirm(), changePasswordRequest.getNewPasswordConfirm())){
-            throw new RuntimeException("New password confirm do not match with old password");
-        }
+
         users.setPassword(passwordEncoder.encode(changePasswordRequest.getNewPassword()));
         userRepository.save(users);
 
