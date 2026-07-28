@@ -1,4 +1,4 @@
-import Container from 'react-bootstrap/Container';
+import { NavLink } from "react-router-dom"
 import Nav from 'react-bootstrap/Nav';
 import Navbar from 'react-bootstrap/Navbar';
 import NavDropdown from 'react-bootstrap/NavDropdown';
@@ -27,35 +27,35 @@ function HeaderForm(){
                         <IconContract stroke={2} />
                     </div>
                     <div className="brand-text">
-                        <Navbar.Brand href="home" className="brand-name">E-CONTRACT</Navbar.Brand>
+                        <Navbar.Brand as={NavLink} to="/home_page" className="brand-name">E-CONTRACT</Navbar.Brand>
                         <span className="brand-sub">Management System</span>
                     </div>
                 </div>
 
                 <Navbar.Collapse id="basic-navbar-nav">
                     <Nav className="nav-list">
-                        <Nav.Link href="#" className="nav-item" ><IconLayoutDashboard stroke={2}/>Signature Management</Nav.Link>
-                        <Nav.Link href="/contract-management/list" className="nav-item"><IconContract stroke={2}/>Contract Management</Nav.Link>
-                        <Nav.Link href="/project-management/list" className="nav-item"><IconCreditCard stroke={2} />Project Management</Nav.Link>
-                        <Nav.Link href="/permission/list" className="nav-item"><IconShieldCheck stroke={2} />Permission Management</Nav.Link>
-                        <Nav.Link href="/department-management/list" className="nav-item"><IconBuildingSkyscraper stroke={2} />Department Management</Nav.Link>
+                        <Nav.Link as={NavLink} to="#" className="nav-item" ><IconLayoutDashboard stroke={2}/>Signature Management</Nav.Link>
+                        <Nav.Link as={NavLink} to="/contract-management/list" className="nav-item"><IconContract stroke={2}/>Contract Management</Nav.Link>
+                        <Nav.Link as={NavLink} to="/project-management/list" className="nav-item"><IconCreditCard stroke={2} />Project Management</Nav.Link>
+                        <Nav.Link as={NavLink} to="/permission/list" className="nav-item"><IconShieldCheck stroke={2} />Permission Management</Nav.Link>
+                        <Nav.Link as={NavLink} to="/department-management/list" className="nav-item"><IconBuildingSkyscraper stroke={2} />Department Management</Nav.Link>
 
                         {/* HIỂN THỊ DỰA TRÊN ROLE */}
                         {/* Chỉ CEO và Manager mới thấy Employee Management */}
                         {['CEO', 'Manager', 'Admin'].includes(role) && (
-                            <Nav.Link href="/user-management/list?type=employee" className="nav-item">
+                            <Nav.Link as={NavLink} to="/user-management/list?type=employee" className="nav-item">
                                 <IconUserPlus stroke={2} />Employee Management
                             </Nav.Link>
                         )}
 
                         {/* Chỉ CEO mới thấy Customer Management */}
                         {['CEO', ].includes(role) && (
-                            <Nav.Link href="/user-management/list?type=customer" className="nav-item">
+                            <Nav.Link as={NavLink} to="/user-management/list?type=customer" className="nav-item">
                                 <IconUserPlus stroke={2} />Customer Management
                             </Nav.Link>
                         )}
 
-                        <Nav.Link href="#" className="nav-item"><IconReportAnalytics stroke={2} />Reports</Nav.Link>
+                        <Nav.Link as={NavLink} to="#" className="nav-item"><IconReportAnalytics stroke={2} />Reports</Nav.Link>
                         {/*<Nav.Link href="#" className="nav-item"><IconSettings stroke={2} />Settings</Nav.Link>*/}
 
                     </Nav>
@@ -75,13 +75,13 @@ function HeaderForm(){
                         </span>
                      }  id="basic-nav-dropdown">
 
-                        <NavDropdown.Item href="/user-profile/view">Dashboard</NavDropdown.Item>
-                        <NavDropdown.Item href="/company-profile/view">
+                        <NavDropdown.Item as={NavLink} to="/user-profile/view">Dashboard</NavDropdown.Item>
+                        <NavDropdown.Item as={NavLink} to="/company-profile/view">
                             Company profile
                         </NavDropdown.Item>
-                        <NavDropdown.Item href="#action/3.3">Setting</NavDropdown.Item>
+                        <NavDropdown.Item as={NavLink} to="#action/3.3">Setting</NavDropdown.Item>
                         <NavDropdown.Divider />
-                        <NavDropdown.Item href="/login">
+                        <NavDropdown.Item as={NavLink} to="/login">
                             Logout
                         </NavDropdown.Item>
                     </NavDropdown>

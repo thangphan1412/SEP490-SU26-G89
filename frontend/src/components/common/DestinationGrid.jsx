@@ -10,18 +10,19 @@ import {
 import DestinationCard from "./DestinationCard.jsx";
 
 
+
 const destinations = [
     {
         icon: IconFolder,
         title: "View Your Projects",
         description: "Track project progress, phases, and deadlines.",
-        href: "/projects",
+        href: "/project-management/list",
     },
     {
         icon: IconFileText,
         title: "View Your Contracts",
         description: "Review agreements and monitor contract status.",
-        href: "/contracts",
+        href: "/contract-management/list",
     },
     {
         icon: IconSignature,
@@ -33,13 +34,13 @@ const destinations = [
         icon: IconUser,
         title: "View Your Profile",
         description: "Review your account and contact information.",
-        href: "/profile",
+        href: "/user-profile/view",
     },
     {
         icon: IconBuilding,
         title: "View Company Information",
         description: "See organization and department details.",
-        href: "/company",
+        href: "/company-profile/view",
     },
     {
         icon: IconHelpCircle,
