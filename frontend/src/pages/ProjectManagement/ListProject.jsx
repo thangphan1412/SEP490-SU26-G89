@@ -20,6 +20,9 @@ import {
 } from "../../components/projectComponents/projectFormUtils.js";
 import "../../assets/styles/css/projectStyles/ListProject.css";
 
+const PROJECT_ACCESS_DENIED_MESSAGE =
+    "Bạn không được quyền xem project này!";
+
 const sortableColumns = [
     ["Project", "projectName"],
     ["Code", "projectCode"],
@@ -202,18 +205,23 @@ function ListProject() {
         setPage(0);
     }
 
-    function openProjectDetail(projectId) {
-        if (!projectId) {
+    function openProjectDetail(project) {
+        if (!project?.id) {
             return;
         }
 
-        navigate(`/project-management/view?id=${projectId}`);
+        if (project.canView === false) {
+            window.alert(PROJECT_ACCESS_DENIED_MESSAGE);
+            return;
+        }
+
+        navigate(`/project-management/view?id=${project.id}`);
     }
 
-    function handleProjectRowKeyDown(event, projectId) {
+    function handleProjectRowKeyDown(event, project) {
         if (event.key === "Enter" || event.key === " ") {
             event.preventDefault();
-            openProjectDetail(projectId);
+            openProjectDetail(project);
         }
     }
 
@@ -361,9 +369,9 @@ function ListProject() {
                                     className="list-project-row"
                                     tabIndex={0}
                                     role="button"
-                                    onClick={() => openProjectDetail(project.id)}
+                                    onClick={() => openProjectDetail(project)}
                                     onKeyDown={(event) =>
-                                        handleProjectRowKeyDown(event, project.id)
+                                        handleProjectRowKeyDown(event, project)
                                     }
                                 >
                                     <td className="list-project-project-cell">

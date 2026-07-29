@@ -18,6 +18,7 @@ import com.fpt.backend.exception.BadHttpException;
 import com.fpt.backend.exception.NotFoundException;
 import com.fpt.backend.repository.project.ProjectCleanupRepository;
 import com.fpt.backend.repository.project.ProjectContractRepository;
+import com.fpt.backend.repository.project.ProjectMemberRepository;
 import com.fpt.backend.repository.project.ProjectRepository;
 import com.fpt.backend.service.interfaces.project.ProjectDeleteResult;
 import com.fpt.backend.service.interfaces.project.ProjectMemberService;
@@ -31,8 +32,10 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -53,6 +56,8 @@ public class ProjectServiceImpl implements ProjectService {
     private static final String DEFAULT_PROJECT_STATUS = "Planning";
     private static final String CANCELLED_PROJECT_STATUS = "Cancelled";
     private static final String COMPLETED_PROJECT_STATUS = "Completed";
+    private static final String PROJECT_ACCESS_DENIED_MESSAGE =
+            "Bạn không được quyền xem project này!";
     private static final List<String> CREATE_PROJECT_STATUSES = List.of(
             "Planning",
             "Active",
@@ -73,6 +78,7 @@ public class ProjectServiceImpl implements ProjectService {
 
     private final ProjectRepository projectRepository;
     private final ProjectContractRepository projectContractRepository;
+    private final ProjectMemberRepository projectMemberRepository;
     private final ProjectCleanupRepository projectCleanupRepository;
     private final ProjectPhaseService projectPhaseService;
     private final ProjectMemberService projectMemberService;
@@ -101,10 +107,12 @@ public class ProjectServiceImpl implements ProjectService {
                 validRequest.sortDirection()
         );
         Page<Projects> projects = findProjects(search, status, pageable);
+        Users currentUser = currentUserUtil.getCurrentUser();
 
         return new ProjectListResponse(
                 DATA_SOURCE,
-                projects.map(this::toListItem).getContent(),
+                projects.map(project -> toListItem(project, currentUser))
+                        .getContent(),
                 projects.getNumber(),
                 projects.getSize(),
                 projects.getTotalElements(),
@@ -117,7 +125,24 @@ public class ProjectServiceImpl implements ProjectService {
 
     @Override
     public ProjectDetailResponse getProjectById(UUID id) {
-        return toDetail(findProject(id));
+        Projects project = findProject(id);
+        Users currentUser = currentUserUtil.getCurrentUser();
+        boolean currentUserIsCreator =
+                isProjectCreator(project, currentUser);
+        boolean currentUserIsMember =
+                projectMemberRepository.countByProjectIdAndUserId(
+                        project.getId(),
+                        currentUser.getId()
+                ) > 0;
+
+        if (!currentUserIsCreator && !currentUserIsMember) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    PROJECT_ACCESS_DENIED_MESSAGE
+            );
+        }
+
+        return toDetail(project, currentUserIsCreator);
     }
 
     @Override
@@ -127,6 +152,7 @@ public class ProjectServiceImpl implements ProjectService {
             throw new BadHttpException("Project information is required");
         }
 
+        Users currentUser = currentUserUtil.getCurrentUser();
         Projects project = new Projects();
         applyProjectInformation(
                 project,
@@ -138,7 +164,7 @@ public class ProjectServiceImpl implements ProjectService {
                 request.projectStatus(),
                 null
         );
-        project.setProjectCreatedBy(getCurrentUserName());
+        project.setProjectCreatedBy(currentUser);
         project.setProjectCreatedAt(
                 LocalDate.now(PROJECT_TIME_ZONE).toString()
         );
@@ -152,7 +178,7 @@ public class ProjectServiceImpl implements ProjectService {
         );
         projectRepository.flush();
 
-        return toDetail(savedProject);
+        return toDetail(savedProject, true);
     }
 
     @Override
@@ -188,7 +214,10 @@ public class ProjectServiceImpl implements ProjectService {
         projectMemberService.syncMembers(project, request.members(), true);
         projectRepository.flush();
 
-        return toDetail(project);
+        return toDetail(
+                project,
+                isProjectCreator(project, currentUserUtil.getCurrentUser())
+        );
     }
 
     @Override
@@ -304,11 +333,17 @@ public class ProjectServiceImpl implements ProjectService {
             direction = Sort.Direction.ASC;
         }
 
-        return PageRequest.of(
-                validPage,
-                PAGE_SIZE,
-                Sort.by(direction, sortField)
-        );
+        Sort sort = Sort.by(direction, sortField);
+
+        if ("projectCreatedBy".equals(sortField)) {
+            sort = Sort.by(direction, "projectCreatedBy.firstName")
+                    .and(Sort.by(
+                            direction,
+                            "projectCreatedBy.lastName"
+                    ));
+        }
+
+        return PageRequest.of(validPage, PAGE_SIZE, sort);
     }
 
     private void applyProjectInformation(
@@ -400,7 +435,15 @@ public class ProjectServiceImpl implements ProjectService {
         return COMPLETED_PROJECT_STATUS.equalsIgnoreCase(status);
     }
 
-    private ProjectListItemResponse toListItem(Projects project) {
+    private ProjectListItemResponse toListItem(
+            Projects project,
+            Users currentUser) {
+        boolean canView = isProjectCreator(project, currentUser)
+                || projectMemberRepository.countByProjectIdAndUserId(
+                        project.getId(),
+                        currentUser.getId()
+                ) > 0;
+
         return new ProjectListItemResponse(
                 project.getId(),
                 project.getProjectCode(),
@@ -409,12 +452,15 @@ public class ProjectServiceImpl implements ProjectService {
                 project.getProjectStatus(),
                 project.getProjectStartDate(),
                 project.getProjectEndDate(),
-                project.getProjectCreatedBy(),
-                project.getProjectCreatedAt()
+                getUserName(project.getProjectCreatedBy()),
+                project.getProjectCreatedAt(),
+                canView
         );
     }
 
-    private ProjectDetailResponse toDetail(Projects project) {
+    private ProjectDetailResponse toDetail(
+            Projects project,
+            boolean currentUserIsCreator) {
         UUID projectId = project.getId();
 
         return new ProjectDetailResponse(
@@ -425,12 +471,13 @@ public class ProjectServiceImpl implements ProjectService {
                 project.getProjectStatus(),
                 project.getProjectStartDate(),
                 project.getProjectEndDate(),
-                project.getProjectCreatedBy(),
+                getUserName(project.getProjectCreatedBy()),
                 project.getProjectCreatedAt(),
                 projectPhaseService.getProjectPhases(projectId),
                 projectMemberService.getProjectUsers(projectId),
                 projectPermissionService.getOptions(projectId),
-                toProjectContracts(projectId)
+                toProjectContracts(projectId),
+                currentUserIsCreator
         );
     }
 
@@ -451,8 +498,16 @@ public class ProjectServiceImpl implements ProjectService {
         return responses;
     }
 
-    private String getCurrentUserName() {
-        Users currentUser = currentUserUtil.getCurrentUser();
+    private boolean isProjectCreator(
+            Projects project,
+            Users currentUser) {
+        Users projectCreator = project.getProjectCreatedBy();
+
+        return projectCreator != null
+                && projectCreator.getId().equals(currentUser.getId());
+    }
+
+    private String getUserName(Users currentUser) {
         String firstName = normalize(currentUser.getFirstName());
         String lastName = normalize(currentUser.getLastName());
         String fullName = (firstName + " " + lastName).trim();

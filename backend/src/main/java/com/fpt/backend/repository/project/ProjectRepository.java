@@ -22,11 +22,22 @@ public interface ProjectRepository extends JpaRepository<Projects, UUID> {
     @Query("""
             SELECT project
             FROM Projects project
+            JOIN project.projectCreatedBy creator
             WHERE (
                 LOWER(COALESCE(project.projectCode, '')) LIKE CONCAT('%', CONCAT(:search, '%'))
                 OR LOWER(COALESCE(project.projectName, '')) LIKE CONCAT('%', CONCAT(:search, '%'))
                 OR LOWER(COALESCE(project.projectDescription, '')) LIKE CONCAT('%', CONCAT(:search, '%'))
-                OR LOWER(COALESCE(project.projectCreatedBy, '')) LIKE CONCAT('%', CONCAT(:search, '%'))
+                OR LOWER(COALESCE(creator.firstName, '')) LIKE CONCAT('%', CONCAT(:search, '%'))
+                OR LOWER(COALESCE(creator.lastName, '')) LIKE CONCAT('%', CONCAT(:search, '%'))
+                OR LOWER(COALESCE(creator.email, '')) LIKE CONCAT('%', CONCAT(:search, '%'))
+                OR LOWER(
+                    TRIM(
+                        CONCAT(
+                            COALESCE(creator.firstName, ''),
+                            CONCAT(' ', COALESCE(creator.lastName, ''))
+                        )
+                    )
+                ) LIKE CONCAT('%', CONCAT(:search, '%'))
             )
             AND (
                 :status = ''
