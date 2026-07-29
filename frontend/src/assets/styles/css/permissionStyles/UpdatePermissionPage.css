@@ -2,6 +2,67 @@
   margin: 28px;
 }
 
+.permission-update-configuration-section {
+  margin-top: 22px;
+}
+
+.permission-update-configuration-heading h3 {
+  margin: 0;
+  color: #243452;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.permission-update-configuration-heading p {
+  margin: 5px 0 0;
+  color: #66738c;
+  font-size: 13px;
+}
+
+.permission-update-action-grid {
+  margin-top: 16px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 20px;
+}
+
+.permission-update-action-grid .form-check,
+.permission-update-scope-options .form-check {
+  min-height: 24px;
+  margin: 0;
+}
+
+.permission-update-action-grid .form-check-label,
+.permission-update-scope-options .form-check-label {
+  color: #34425f;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.permission-update-action-grid .form-check-input,
+.permission-update-scope-options .form-check-input {
+  border-color: #aebbd0;
+  cursor: pointer;
+}
+
+.permission-update-action-grid .form-check-input:checked,
+.permission-update-scope-options .form-check-input:checked {
+  border-color: #2450f5;
+  background-color: #2450f5;
+}
+
+.permission-update-work-scope {
+  padding-top: 20px;
+  border-top: 1px solid #e5eaf2;
+}
+
+.permission-update-scope-options {
+  margin-top: 14px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px 30px;
+}
+
 .permission-update-audit {
   min-height: 62px;
   padding: 13px 16px;
@@ -39,5 +100,14 @@
 
   .permission-update-audit span {
     align-items: flex-start;
+  }
+
+  .permission-update-action-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .permission-update-scope-options {
+    flex-direction: column;
+    gap: 12px;
   }
 }

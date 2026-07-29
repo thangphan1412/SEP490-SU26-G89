@@ -61,11 +61,6 @@
   overflow: hidden;
 }
 
-.permission-configure-row.is-open {
-  border-color: #9eb4ff;
-  box-shadow: 0 0 0 3px rgba(36, 80, 245, 0.08);
-}
-
 .permission-configure-row-summary {
   padding: 16px 18px;
   display: flex;
@@ -131,85 +126,6 @@
   font-weight: 700;
 }
 
-.permission-configure-editor {
-  padding: 18px;
-  border-top: 1px solid #e5eaf2;
-  background: #fbfcff;
-}
-
-.permission-configure-editor h4 {
-  margin: 0;
-  color: #243452;
-  font-size: 14px;
-  font-weight: 800;
-}
-
-.permission-configure-editor p {
-  margin: 4px 0 0;
-  color: #718096;
-  font-size: 12px;
-}
-
-.permission-configure-action-grid {
-  margin-top: 14px;
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 11px 18px;
-}
-
-.permission-configure-action-grid .form-check,
-.permission-configure-scope-options .form-check {
-  margin: 0;
-  min-height: 24px;
-}
-
-.permission-configure-action-grid .form-check-label,
-.permission-configure-scope-options .form-check-label {
-  color: #34425f;
-  font-size: 13px;
-  font-weight: 600;
-}
-
-.permission-configure-action-grid .form-check-input,
-.permission-configure-scope-options .form-check-input {
-  border-color: #aebbd0;
-  cursor: pointer;
-}
-
-.permission-configure-action-grid .form-check-input:checked,
-.permission-configure-scope-options .form-check-input:checked {
-  border-color: #2450f5;
-  background-color: #2450f5;
-}
-
-.permission-configure-scope {
-  margin-top: 20px;
-  padding-top: 17px;
-  border-top: 1px solid #e5eaf2;
-}
-
-.permission-configure-scope-options {
-  margin-top: 12px;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 14px 28px;
-}
-
-.permission-configure-save-row {
-  margin-top: 20px;
-  display: flex;
-  justify-content: flex-end;
-}
-
-.permission-configure-save-button.btn {
-  min-height: 40px;
-  padding: 0 18px;
-  border-color: #2450f5;
-  background: #2450f5;
-  font-size: 13px;
-  font-weight: 800;
-}
-
 .permission-configure-state {
   min-height: 130px;
   display: flex;
@@ -238,7 +154,4 @@
     width: 100%;
   }
 
-  .permission-configure-action-grid {
-    grid-template-columns: 1fr;
-  }
 }

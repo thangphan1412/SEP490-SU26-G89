@@ -15,6 +15,7 @@ import com.fpt.backend.exception.NotFoundException;
 import com.fpt.backend.repository.permission.PermissionRepository;
 import com.fpt.backend.repository.permission.RoleRepository;
 import com.fpt.backend.repository.project.ProjectRepository;
+import com.fpt.backend.service.interfaces.permission.PermissionModuleService;
 import com.fpt.backend.service.interfaces.permission.PermissionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -53,6 +54,7 @@ public class PermissionServiceImpl implements PermissionService {
     private final PermissionRepository permissionRepository;
     private final RoleRepository roleRepository;
     private final ProjectRepository projectRepository;
+    private final PermissionModuleService permissionModuleService;
 
     @Override
     public PermissionListResponse getPermissions(PermissionListRequest request) {
@@ -93,7 +95,7 @@ public class PermissionServiceImpl implements PermissionService {
     @Transactional
     public PermissionDetailResponse createPermission(PermissionRequest request) {
         Permissions permission = new Permissions();
-        // Actions are configured later from the project's Permission Configure popup.
+        // Actions are configured later from Update Permission.
         permission.setPermissionModule(null);
         applyRequest(permission, request, null);
         return toDetail(permissionRepository.save(permission));
@@ -169,6 +171,17 @@ public class PermissionServiceImpl implements PermissionService {
         permission.setStatus(request.status() == null || request.status());
         permission.setProject(project);
         permission.setRole(role);
+
+        if (currentId != null
+                && (request.allowedActions() != null
+                || request.workScope() != null)) {
+            permission.setPermissionModule(
+                    permissionModuleService.createModuleValue(
+                            request.allowedActions(),
+                            request.workScope()
+                    )
+            );
+        }
 
         if (permission.getCreatedAt() == null) {
             permission.setCreatedAt(LocalDateTime.now());
@@ -287,6 +300,12 @@ public class PermissionServiceImpl implements PermissionService {
                 permission.getPermissionName(),
                 permission.getPermissionCode(),
                 permission.getPermissionModule(),
+                permissionModuleService.getAllowedActions(
+                        permission.getPermissionModule()
+                ),
+                permissionModuleService.getWorkScope(
+                        permission.getPermissionModule()
+                ),
                 permission.getPermissionDescription(),
                 permission.getStatus(),
                 project == null ? null : project.getId(),

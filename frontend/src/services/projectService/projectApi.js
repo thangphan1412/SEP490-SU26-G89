@@ -72,16 +72,3 @@ export async function listProjectPermissionConfigurations(projectId, signal) {
 
   return getResponseData(response);
 }
-
-export async function configureProjectPermission(
-  projectId,
-  permissionId,
-  configuration
-) {
-  const response = await axiosClient.put(
-    `${PROJECT_API_BASE_URL}/${projectId}/permissions/${permissionId}`,
-    configuration
-  );
-
-  return getResponseData(response);
-}
