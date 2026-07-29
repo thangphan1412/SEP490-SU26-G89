@@ -1,7 +1,7 @@
 import {IconMail, IconWorld} from "@tabler/icons-react";
 import NavDropdown from "react-bootstrap/NavDropdown";
 import IconBackground from "../../components/common/IconBackground.jsx";
-import ResetPasswordForm from "../../components/common/ResetPasswordForm.jsx";
+import ResetPasswordForm from "../../components/layout/ResetPasswordForm.jsx";
 
 function Resetpassword(){
     return(
