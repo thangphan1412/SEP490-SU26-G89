@@ -49,9 +49,15 @@ import java.util.UUID;
 public class ProjectServiceImpl implements ProjectService {
     private static final int PAGE_SIZE = 7;
     private static final String DATA_SOURCE = "DATABASE";
-    private static final String DEFAULT_SORT_FIELD = "id";
+    private static final String DEFAULT_SORT_FIELD = "projectCreatedAt";
     private static final String DEFAULT_PROJECT_STATUS = "Planning";
     private static final String CANCELLED_PROJECT_STATUS = "Cancelled";
+    private static final String COMPLETED_PROJECT_STATUS = "Completed";
+    private static final List<String> CREATE_PROJECT_STATUSES = List.of(
+            "Planning",
+            "Active",
+            "On Hold"
+    );
     private static final ZoneId PROJECT_TIME_ZONE =
             ZoneId.of("Asia/Ho_Chi_Minh");
     private static final Set<String> SORT_FIELDS = Set.of(
@@ -133,10 +139,9 @@ public class ProjectServiceImpl implements ProjectService {
                 null
         );
         project.setProjectCreatedBy(getCurrentUserName());
-        project.setProjectCreatedAt(defaultIfBlank(
-                request.projectCreatedAt(),
+        project.setProjectCreatedAt(
                 LocalDate.now(PROJECT_TIME_ZONE).toString()
-        ));
+        );
 
         Projects savedProject = projectRepository.save(project);
         projectPhaseService.syncPhases(savedProject, request.phases());
@@ -160,6 +165,13 @@ public class ProjectServiceImpl implements ProjectService {
         }
 
         Projects project = findProject(id);
+
+        if (isCompletedProject(project)) {
+            throw new BadHttpException(
+                    "Completed projects cannot be updated"
+            );
+        }
+
         applyProjectInformation(
                 project,
                 request.projectName(),
@@ -183,6 +195,12 @@ public class ProjectServiceImpl implements ProjectService {
     @Transactional
     public ProjectDeleteResult deleteProject(UUID id) {
         Projects project = findProject(id);
+
+        if (isCompletedProject(project)) {
+            throw new BadHttpException(
+                    "Completed projects cannot be deleted"
+            );
+        }
 
         if (projectContractRepository.countByProjectId(id) > 0) {
             project.setProjectStatus(CANCELLED_PROJECT_STATUS);
@@ -318,6 +336,10 @@ public class ProjectServiceImpl implements ProjectService {
                 DEFAULT_PROJECT_STATUS
         );
 
+        if (currentProjectId == null) {
+            status = getCreateProjectStatus(status);
+        }
+
         validateMaxLength(description, "Project description", 255);
         validateMaxLength(status, "Project status", 50);
 
@@ -358,6 +380,24 @@ public class ProjectServiceImpl implements ProjectService {
         project.setProjectEndDate(endDate);
         project.setProjectDescription(description);
         project.setProjectStatus(status);
+    }
+
+    private String getCreateProjectStatus(String status) {
+        for (String allowedStatus : CREATE_PROJECT_STATUSES) {
+            if (allowedStatus.equalsIgnoreCase(status)) {
+                return allowedStatus;
+            }
+        }
+
+        throw new BadHttpException(
+                "Project status must be Planning, Active, or On Hold "
+                        + "when creating a project"
+        );
+    }
+
+    private boolean isCompletedProject(Projects project) {
+        String status = normalize(project.getProjectStatus());
+        return COMPLETED_PROJECT_STATUS.equalsIgnoreCase(status);
     }
 
     private ProjectListItemResponse toListItem(Projects project) {

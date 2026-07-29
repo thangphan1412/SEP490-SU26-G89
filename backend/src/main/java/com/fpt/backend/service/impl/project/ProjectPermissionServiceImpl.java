@@ -8,42 +8,23 @@ import com.fpt.backend.entity.Projects;
 import com.fpt.backend.exception.BadHttpException;
 import com.fpt.backend.exception.NotFoundException;
 import com.fpt.backend.repository.permission.PermissionRepository;
+import com.fpt.backend.service.interfaces.permission.PermissionModuleService;
 import com.fpt.backend.service.interfaces.project.ProjectPermissionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 public class ProjectPermissionServiceImpl
         implements ProjectPermissionService {
-    private static final String WORK_SCOPE_OWN = "OWN";
-    private static final String WORK_SCOPE_FULL = "FULL";
-    private static final String WORK_SCOPE_OWN_TOKEN = "WORK_SCOPE_OWN";
-    private static final String WORK_SCOPE_FULL_TOKEN = "WORK_SCOPE_FULL";
-    private static final List<String> PERMISSION_ACTIONS = List.of(
-            "VIEW_TASKS",
-            "VIEW_DELIVERABLES",
-            "VIEW_CONTRACTS",
-            "CREATE_TASKS",
-            "EDIT_TASKS",
-            "DELETE_TASKS",
-            "CREATE_DELIVERABLES",
-            "EDIT_DELIVERABLES",
-            "DELETE_DELIVERABLES",
-            "EDIT_PHASE",
-            "MANAGE_MEMBERS"
-    );
-
     private final PermissionRepository permissionRepository;
+    private final PermissionModuleService permissionModuleService;
 
     @Override
     public List<ProjectPermissionConfigurationResponse> getConfigurations(
@@ -65,6 +46,8 @@ public class ProjectPermissionServiceImpl
             Projects project,
             UUID permissionId,
             ProjectPermissionConfigurationRequest request) {
+        validateConfigurationRequest(request);
+
         Optional<Permissions> optionalPermission =
                 permissionRepository.findByIdAndProjectId(
                         permissionId,
@@ -78,7 +61,12 @@ public class ProjectPermissionServiceImpl
         }
 
         Permissions permission = optionalPermission.get();
-        permission.setPermissionModule(createModuleValue(request));
+        permission.setPermissionModule(
+                permissionModuleService.createModuleValue(
+                        request.allowedActions(),
+                        request.workScope()
+                )
+        );
 
         return toConfiguration(permissionRepository.save(permission));
     }
@@ -113,107 +101,30 @@ public class ProjectPermissionServiceImpl
         permissionRepository.deleteByProjectId(projectId);
     }
 
-    private String createModuleValue(
+    private void validateConfigurationRequest(
             ProjectPermissionConfigurationRequest request) {
         if (request == null) {
             throw new BadHttpException(
                     "Permission configuration is required"
             );
         }
-
-        Set<String> requestedActions = new LinkedHashSet<>();
-        List<String> actions = request.allowedActions() == null
-                ? List.of()
-                : request.allowedActions();
-
-        for (String action : actions) {
-            String normalizedAction =
-                    normalize(action).toUpperCase(Locale.ROOT);
-
-            if (!PERMISSION_ACTIONS.contains(normalizedAction)) {
-                throw new BadHttpException(
-                        "Unsupported permission action: " + action
-                );
-            }
-
-            requestedActions.add(normalizedAction);
-        }
-
-        String workScope =
-                normalize(request.workScope()).toUpperCase(Locale.ROOT);
-
-        if (!WORK_SCOPE_OWN.equals(workScope)
-                && !WORK_SCOPE_FULL.equals(workScope)) {
-            throw new BadHttpException(
-                    "Work scope must be OWN or FULL"
-            );
-        }
-
-        List<String> storedValues = new ArrayList<>();
-
-        for (String supportedAction : PERMISSION_ACTIONS) {
-            if (requestedActions.contains(supportedAction)) {
-                storedValues.add(supportedAction);
-            }
-        }
-
-        if (WORK_SCOPE_OWN.equals(workScope)) {
-            storedValues.add(WORK_SCOPE_OWN_TOKEN);
-        } else {
-            storedValues.add(WORK_SCOPE_FULL_TOKEN);
-        }
-
-        return String.join(",", storedValues);
     }
 
     private ProjectPermissionConfigurationResponse toConfiguration(
             Permissions permission) {
-        Set<String> storedValues = getStoredModuleValues(permission);
-        List<String> allowedActions = new ArrayList<>();
-
-        for (String action : PERMISSION_ACTIONS) {
-            if (storedValues.contains(action)) {
-                allowedActions.add(action);
-            }
-        }
-
-        String workScope;
-
-        if (storedValues.contains(WORK_SCOPE_OWN_TOKEN)) {
-            workScope = WORK_SCOPE_OWN;
-        } else {
-            workScope = WORK_SCOPE_FULL;
-        }
-
         return new ProjectPermissionConfigurationResponse(
                 permission.getId(),
                 getPermissionName(permission),
                 permission.getPermissionCode(),
                 permission.getPermissionDescription(),
                 permission.getStatus(),
-                allowedActions,
-                workScope
+                permissionModuleService.getAllowedActions(
+                        permission.getPermissionModule()
+                ),
+                permissionModuleService.getWorkScope(
+                        permission.getPermissionModule()
+                )
         );
-    }
-
-    private Set<String> getStoredModuleValues(Permissions permission) {
-        Set<String> storedValues = new LinkedHashSet<>();
-        String permissionModule = normalize(permission.getPermissionModule());
-
-        if (permissionModule.isBlank()) {
-            return storedValues;
-        }
-
-        for (String value : permissionModule.split(",")) {
-            String normalizedValue =
-                    normalize(value).toUpperCase(Locale.ROOT);
-
-            if (!normalizedValue.isBlank()) {
-                storedValues.add(normalizedValue);
-            }
-        }
-
-        return storedValues;
     }
 
     private String getPermissionName(Permissions permission) {

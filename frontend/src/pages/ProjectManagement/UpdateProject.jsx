@@ -13,6 +13,7 @@ import PagePanel from "../../components/projectComponents/PagePanel.jsx";
 import PrimaryButton from "../../components/projectComponents/PrimaryButton.jsx";
 import {
     addOneDay,
+    calculatePhaseStartDatesForDisplay,
     createClientId,
     employeeHasRole,
     getApiErrorMessage,
@@ -21,10 +22,9 @@ import {
     getEmployeeRoleNames,
     getEmployeeSearchText,
     getFilterOptions,
+    isCompletedProjectStatus,
     PHASE_STATUS_OPTIONS as phaseStatusOptions,
     PROJECT_STATUS_OPTIONS as projectStatusOptions,
-    recalculatePhaseStarts,
-    validateProject,
 } from "../../components/projectComponents/projectFormUtils.js";
 import "../../assets/styles/css/projectStyles/UpdateProject.css";
 
@@ -65,6 +65,12 @@ function UpdateProject({ onUpdateProject }) {
                 ]);
 
                 if (!isActive) {
+                    return;
+                }
+
+                if (isCompletedProjectStatus(projectData?.projectStatus)) {
+                    setProject(null);
+                    setLoadError("Completed projects cannot be updated.");
                     return;
                 }
 
@@ -121,7 +127,7 @@ function UpdateProject({ onUpdateProject }) {
             let phases = currentProject.phases;
 
             if (name === "projectStartDate" && phases.length > 0) {
-                phases = recalculatePhaseStarts(phases, value);
+                phases = calculatePhaseStartDatesForDisplay(phases, value);
             }
 
             if (name === "projectEndDate" && phases.length > 0) {
@@ -184,7 +190,10 @@ function UpdateProject({ onUpdateProject }) {
             );
 
             if (name === "endDate") {
-                phases = recalculatePhaseStarts(phases, currentProject.projectStartDate);
+                phases = calculatePhaseStartDatesForDisplay(
+                    phases,
+                    currentProject.projectStartDate
+                );
             }
 
             return { ...currentProject, phases };
@@ -201,7 +210,10 @@ function UpdateProject({ onUpdateProject }) {
                         ? { ...phase, endDate: currentProject.projectEndDate }
                         : phase
                 );
-                phases = recalculatePhaseStarts(phases, currentProject.projectStartDate);
+                phases = calculatePhaseStartDatesForDisplay(
+                    phases,
+                    currentProject.projectStartDate
+                );
             }
 
             return { ...currentProject, phases };
@@ -267,12 +279,6 @@ function UpdateProject({ onUpdateProject }) {
 
     async function handleSubmit(event) {
         event.preventDefault();
-        const validationMessage = validateProject(project);
-
-        if (validationMessage) {
-            setSubmitError(validationMessage);
-            return;
-        }
 
         try {
             setSaving(true);
@@ -288,7 +294,6 @@ function UpdateProject({ onUpdateProject }) {
                     id: phase.id,
                     title: phase.title.trim(),
                     description: phase.description.trim(),
-                    startDate: phase.startDate,
                     endDate: phase.endDate,
                     status: phase.status,
                 })),
@@ -487,7 +492,9 @@ function UpdateProject({ onUpdateProject }) {
                                             <Col md={3}>
                                                 <Form.Label className="project-management-field-label">Start Date</Form.Label>
                                                 <Form.Control readOnly required type="date" name="startDate" value={phase.startDate} className="project-management-input update-project-phase-start-input" />
-                                                <Form.Text className="update-project-phase-date-note">Calculated from the project or previous phase.</Form.Text>
+                                                <Form.Text className="update-project-phase-date-note">
+                                                    Preview only. The server calculates this date when saving.
+                                                </Form.Text>
                                             </Col>
                                             <Col md={3}>
                                                 <Form.Label className="project-management-field-label">End Date</Form.Label>

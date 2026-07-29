@@ -1,29 +1,16 @@
 import { useEffect, useState } from "react";
 import { Alert, Button, Modal, Spinner } from "react-bootstrap";
-import {
-  configureProjectPermission,
-  listProjectPermissionConfigurations,
-} from "../../services/projectService/projectApi.js";
-import {
-  permissionActionOptions,
-  permissionWorkScopeOptions,
-} from "../permissionComponents/permissionModuleOptions.js";
+import { useNavigate } from "react-router-dom";
+import { listProjectPermissionConfigurations } from "../../services/projectService/projectApi.js";
+import Icon from "./Icon.jsx";
 import PermissionConfigureRow from "./PermissionConfigureRow.jsx";
 import "../../assets/styles/css/projectStyles/PermissionConfigureModal.css";
 
-const emptyConfiguration = {
-  allowedActions: [],
-  workScope: "FULL",
-};
-
 function PermissionConfigureModal({ show, projectId, projectName, onHide }) {
+  const navigate = useNavigate();
   const [permissions, setPermissions] = useState([]);
-  const [selectedPermissionId, setSelectedPermissionId] = useState(null);
-  const [configuration, setConfiguration] = useState(emptyConfiguration);
   const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const [successMessage, setSuccessMessage] = useState("");
 
   useEffect(function () {
     if (!show) {
@@ -43,8 +30,6 @@ function PermissionConfigureModal({ show, projectId, projectName, onHide }) {
       try {
         setLoading(true);
         setError("");
-        setSuccessMessage("");
-        setSelectedPermissionId(null);
         const payload = await listProjectPermissionConfigurations(
           projectId,
           requestController.signal
@@ -76,104 +61,39 @@ function PermissionConfigureModal({ show, projectId, projectName, onHide }) {
     };
   }, [projectId, show]);
 
-  function openConfiguration(permission) {
-    setSelectedPermissionId(permission.permissionId);
-    setConfiguration({
-      allowedActions: Array.isArray(permission.allowedActions)
-        ? [...permission.allowedActions]
-        : [],
-      workScope: permission.workScope === "OWN" ? "OWN" : "FULL",
-    });
-    setError("");
-    setSuccessMessage("");
-  }
-
-  function toggleAction(action) {
-    setConfiguration(function (currentConfiguration) {
-      const currentActions = currentConfiguration.allowedActions;
-      const hasAction = currentActions.includes(action);
-      let allowedActions;
-
-      if (hasAction) {
-        allowedActions = currentActions.filter((currentAction) => currentAction !== action);
-      } else {
-        allowedActions = [...currentActions, action];
-      }
-
-      return { ...currentConfiguration, allowedActions };
-    });
-  }
-
-  async function saveConfiguration() {
-    if (!selectedPermissionId) {
+  function openPermissionUpdate(permission) {
+    if (!permission?.permissionId) {
       return;
     }
 
-    try {
-      setSaving(true);
-      setError("");
-      setSuccessMessage("");
-      const updatedPermission = await configureProjectPermission(
-        projectId,
-        selectedPermissionId,
-        configuration
-      );
-
-      setPermissions(function (currentPermissions) {
-        const updatedPermissions = [];
-
-        for (const permission of currentPermissions) {
-          if (permission.permissionId === selectedPermissionId) {
-            updatedPermissions.push(updatedPermission);
-          } else {
-            updatedPermissions.push(permission);
-          }
-        }
-
-        return updatedPermissions;
-      });
-      setConfiguration({
-        allowedActions: Array.isArray(updatedPermission?.allowedActions)
-          ? [...updatedPermission.allowedActions]
-          : [],
-        workScope: updatedPermission?.workScope === "OWN" ? "OWN" : "FULL",
-      });
-      setSuccessMessage(
-        `Configuration for "${updatedPermission?.permissionName || "permission"}" was saved.`
-      );
-    } catch (requestError) {
-      console.error("Unable to save permission configuration:", requestError);
-      setError(getErrorMessage(requestError));
-    } finally {
-      setSaving(false);
-    }
+    onHide();
+    navigate(
+      `/permission/update?edit=${encodeURIComponent(permission.permissionId)}`
+        + `&returnProjectId=${encodeURIComponent(projectId)}`
+    );
   }
 
-  function handleModalHide() {
-    if (!saving) {
-      onHide();
+  function openCreatePermission() {
+    if (!projectId) {
+      return;
     }
-  }
 
-  function changeWorkScope(workScope) {
-    setConfiguration(function (currentConfiguration) {
-      return {
-        ...currentConfiguration,
-        workScope,
-      };
-    });
+    onHide();
+    navigate(
+      `/permission/create?projectId=${encodeURIComponent(projectId)}`
+    );
   }
 
   return (
     <Modal
       show={show}
-      onHide={handleModalHide}
+      onHide={onHide}
       centered
       scrollable
       size="lg"
       className="permission-configure-modal"
     >
-      <Modal.Header closeButton={!saving}>
+      <Modal.Header closeButton>
         <div>
           <Modal.Title>Permission Configure</Modal.Title>
           <p>
@@ -184,7 +104,6 @@ function PermissionConfigureModal({ show, projectId, projectName, onHide }) {
 
       <Modal.Body>
         {error && <Alert variant="danger">{error}</Alert>}
-        {successMessage && <Alert variant="success">{successMessage}</Alert>}
 
         {loading ? (
           <div className="permission-configure-state">
@@ -201,15 +120,7 @@ function PermissionConfigureModal({ show, projectId, projectName, onHide }) {
               <PermissionConfigureRow
                 key={permission.permissionId}
                 permission={permission}
-                isOpen={selectedPermissionId === permission.permissionId}
-                configuration={configuration}
-                actionOptions={permissionActionOptions}
-                workScopeOptions={permissionWorkScopeOptions}
-                saving={saving}
-                onConfigure={openConfiguration}
-                onToggleAction={toggleAction}
-                onScopeChange={changeWorkScope}
-                onSave={saveConfiguration}
+                onConfigure={openPermissionUpdate}
               />
             ))}
           </div>
@@ -217,8 +128,17 @@ function PermissionConfigureModal({ show, projectId, projectName, onHide }) {
       </Modal.Body>
 
       <Modal.Footer>
-        <Button type="button" variant="light" disabled={saving} onClick={onHide}>
+        <Button type="button" variant="light" onClick={onHide}>
           Close
+        </Button>
+        <Button
+          type="button"
+          disabled={!projectId}
+          className="permission-configure-add-button"
+          onClick={openCreatePermission}
+        >
+          <Icon name="plus" size={18} color="#fff" />
+          Add Permission
         </Button>
       </Modal.Footer>
     </Modal>

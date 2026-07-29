@@ -6,6 +6,12 @@ export const PROJECT_STATUS_OPTIONS = [
   "Cancelled",
 ];
 
+export const CREATE_PROJECT_STATUS_OPTIONS = [
+  "Planning",
+  "Active",
+  "On Hold",
+];
+
 export const PHASE_STATUS_OPTIONS = [
   "Planning",
   "In Progress",
@@ -101,7 +107,10 @@ export function getFilterOptions(employees, fieldName) {
   return options;
 }
 
-export function recalculatePhaseStarts(phases, projectStartDate) {
+export function calculatePhaseStartDatesForDisplay(
+  phases,
+  projectStartDate
+) {
   let expectedStartDate = projectStartDate;
   const updatedPhases = [];
 
@@ -116,65 +125,8 @@ export function recalculatePhaseStarts(phases, projectStartDate) {
   return updatedPhases;
 }
 
-export function validateProject(project) {
-  if (!project.projectStartDate || !project.projectEndDate) {
-    return "Project start date and end date are required.";
-  }
-
-  if (project.projectEndDate < project.projectStartDate) {
-    return "Project end date must not be before its start date.";
-  }
-
-  if (project.phases.length === 0) {
-    return "Add at least one phase to cover the full project timeline.";
-  }
-
-  let expectedStartDate = project.projectStartDate;
-
-  for (let index = 0; index < project.phases.length; index += 1) {
-    const phase = project.phases[index];
-    const phaseNumber = index + 1;
-
-    if (!phase.startDate || !phase.endDate) {
-      return "Phase " + phaseNumber
-        + " requires both a start date and an end date.";
-    }
-
-    if (phase.endDate < phase.startDate) {
-      return "Phase " + phaseNumber
-        + " end date must not be before its start date.";
-    }
-
-    if (
-      phase.startDate < project.projectStartDate
-      || phase.endDate > project.projectEndDate
-    ) {
-      return "Phase " + phaseNumber
-        + " must stay inside the project date range.";
-    }
-
-    if (phase.startDate !== expectedStartDate) {
-      if (phase.startDate < expectedStartDate) {
-        return "Phase " + phaseNumber
-          + " overlaps the previous phase. It must start on "
-          + expectedStartDate + ".";
-      }
-
-      return "There is a gap before Phase " + phaseNumber
-        + ". It must start on " + expectedStartDate + ".";
-    }
-
-    expectedStartDate = addOneDay(phase.endDate);
-  }
-
-  const finalPhase = project.phases[project.phases.length - 1];
-
-  if (finalPhase.endDate !== project.projectEndDate) {
-    return "The final phase must end on the project end date "
-      + project.projectEndDate + ".";
-  }
-
-  return "";
+export function isCompletedProjectStatus(status) {
+  return String(status || "").trim().toLowerCase() === "completed";
 }
 
 export function getApiErrorMessage(error, fallbackMessage) {

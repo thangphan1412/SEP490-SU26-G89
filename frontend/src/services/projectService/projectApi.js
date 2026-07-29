@@ -5,17 +5,12 @@ const API_BASE_URL = String(
 ).replace(/\/+$/, "");
 const PROJECT_API_BASE_URL = `${API_BASE_URL}/projects`;
 
-const noCacheHeaders = {
-  "Cache-Control": "no-cache",
-};
-
 function getResponseData(response) {
   return response.data?.data ?? response.data;
 }
 
 export async function listProjects(params, signal) {
   const response = await axiosClient.get(PROJECT_API_BASE_URL, {
-    headers: noCacheHeaders,
     params,
     signal,
   });
@@ -26,7 +21,7 @@ export async function listProjects(params, signal) {
 export async function viewProject(projectId, signal) {
   const response = await axiosClient.get(
     `${PROJECT_API_BASE_URL}/${projectId}`,
-    { headers: noCacheHeaders, signal }
+    { signal }
   );
 
   return getResponseData(response);
@@ -35,7 +30,7 @@ export async function viewProject(projectId, signal) {
 export async function listProjectEmployees(signal) {
   const response = await axiosClient.get(
     `${PROJECT_API_BASE_URL}/employees`,
-    { headers: noCacheHeaders, signal }
+    { signal }
   );
 
   return getResponseData(response);
@@ -44,7 +39,7 @@ export async function listProjectEmployees(signal) {
 export async function listProjectRoles(signal) {
   const response = await axiosClient.get(
     `${PROJECT_API_BASE_URL}/roles`,
-    { headers: noCacheHeaders, signal }
+    { signal }
   );
 
   return getResponseData(response);
@@ -72,20 +67,7 @@ export async function deleteProject(projectId) {
 export async function listProjectPermissionConfigurations(projectId, signal) {
   const response = await axiosClient.get(
     `${PROJECT_API_BASE_URL}/${projectId}/permission-configurations`,
-    { headers: noCacheHeaders, signal }
-  );
-
-  return getResponseData(response);
-}
-
-export async function configureProjectPermission(
-  projectId,
-  permissionId,
-  configuration
-) {
-  const response = await axiosClient.put(
-    `${PROJECT_API_BASE_URL}/${projectId}/permissions/${permissionId}`,
-    configuration
+    { signal }
   );
 
   return getResponseData(response);

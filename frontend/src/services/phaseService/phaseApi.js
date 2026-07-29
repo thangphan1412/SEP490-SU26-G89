@@ -5,10 +5,6 @@ const API_BASE_URL = String(
 ).replace(/\/+$/, "");
 const PHASE_API_BASE_URL = `${API_BASE_URL}/phases`;
 
-const noCacheHeaders = {
-  "Cache-Control": "no-cache",
-};
-
 function getResponseData(response) {
   return response.data?.data ?? response.data;
 }
@@ -16,7 +12,7 @@ function getResponseData(response) {
 export async function viewPhase(phaseId, signal) {
   const response = await axiosClient.get(
     `${PHASE_API_BASE_URL}/${phaseId}`,
-    { headers: noCacheHeaders, signal }
+    { signal }
   );
 
   return getResponseData(response);
