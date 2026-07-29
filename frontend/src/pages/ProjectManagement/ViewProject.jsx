@@ -11,6 +11,9 @@ import StatusBadge from "../../components/projectComponents/StatusBadge.jsx";
 import { isCompletedProjectStatus } from "../../components/projectComponents/projectFormUtils.js";
 import "../../assets/styles/css/projectStyles/ViewProject.css";
 
+const PROJECT_ACCESS_DENIED_MESSAGE =
+    "Bạn không được quyền xem project này!";
+
 function showValue(value) {
     return value === null || value === undefined || value === "" ? "-" : value;
 }
@@ -83,7 +86,12 @@ function ViewProject() {
 
                 console.error("Unable to load project detail:", apiError);
                 setProject(null);
-                setError("Unable to load this project. Please try again later.");
+
+                if (apiError.response?.status === 403) {
+                    setError(PROJECT_ACCESS_DENIED_MESSAGE);
+                } else {
+                    setError("Unable to load this project. Please try again later.");
+                }
             } finally {
                 if (isActive) {
                     setLoading(false);
@@ -199,15 +207,17 @@ function ViewProject() {
 
             {project && (
                 <>
-                    <Button
-                        type="button"
-                        variant="outline-primary"
-                        className="view-project-permission-configure-button"
-                        onClick={() => setShowPermissionConfigure(true)}
-                    >
-                        <Icon name="shield" size={19} color="#2450f5" />
-                        Permission Configure
-                    </Button>
+                    {project.currentUserIsCreator && (
+                        <Button
+                            type="button"
+                            variant="outline-primary"
+                            className="view-project-permission-configure-button"
+                            onClick={() => setShowPermissionConfigure(true)}
+                        >
+                            <Icon name="shield" size={19} color="#2450f5" />
+                            Permission Configure
+                        </Button>
+                    )}
                     <DangerButton
                         disabled={deleting || completedProject}
                         onClick={handleDelete}
@@ -473,12 +483,14 @@ function ViewProject() {
                 </>
             )}
 
-            <PermissionConfigureModal
-                show={showPermissionConfigure}
-                projectId={projectId}
-                projectName={project?.projectName}
-                onHide={() => setShowPermissionConfigure(false)}
-            />
+            {project?.currentUserIsCreator && (
+                <PermissionConfigureModal
+                    show={showPermissionConfigure}
+                    projectId={projectId}
+                    projectName={project.projectName}
+                    onHide={() => setShowPermissionConfigure(false)}
+                />
+            )}
         </PagePanel>
     );
 }

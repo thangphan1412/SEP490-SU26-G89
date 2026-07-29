@@ -13,6 +13,17 @@ import java.util.UUID;
 @Repository
 public interface ProjectMemberRepository extends JpaRepository<ProjectMember, UUID> {
     @Query("""
+            SELECT COUNT(member)
+            FROM ProjectMember member
+            WHERE member.project.id = :projectId
+                AND member.user.id = :userId
+            """)
+    long countByProjectIdAndUserId(
+            @Param("projectId") UUID projectId,
+            @Param("userId") UUID userId
+    );
+
+    @Query("""
             SELECT member
             FROM ProjectMember member
             JOIN FETCH member.user user

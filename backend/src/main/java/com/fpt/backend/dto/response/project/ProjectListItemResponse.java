@@ -12,6 +12,7 @@ public record ProjectListItemResponse(
         LocalDate projectStartDate,
         LocalDate projectEndDate,
         String projectCreatedBy,
-        String projectCreatedAt
+        String projectCreatedAt,
+        boolean canView
 ) {
 }

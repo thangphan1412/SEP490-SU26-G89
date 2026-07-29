@@ -26,8 +26,13 @@ public class Projects extends BaseEntity {
     private LocalDate projectStartDate;
     @Column(name = "project_end_date")
     private LocalDate projectEndDate;
-    @Column(name = "project_creat-by", columnDefinition = "nvarchar(50)")
-    private String projectCreatedBy;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(
+            name = "project_created_by_user_id",
+            nullable = false,
+            foreignKey = @ForeignKey(name = "FK_projects_created_by_user")
+    )
+    private Users projectCreatedBy;
     @Column(name = "project_created_at", columnDefinition = "nvarchar(50)")
     private String projectCreatedAt;
 
