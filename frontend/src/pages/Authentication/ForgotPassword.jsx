@@ -2,7 +2,7 @@ import ForgotPasswordFrom from "../../components/common/ForgotPasswordForm.jsx";
 import NavDropdown from "react-bootstrap/NavDropdown";
 import {IconWorld} from "@tabler/icons-react";
 import IconBackground from "../../components/common/IconBackground.jsx";
-import LoginForm from "../../components/common/LoginForm.jsx";
+import LoginForm from "../../components/layout/LoginForm.jsx";
 
 function ForgotPassword(){
     return (

@@ -11,7 +11,15 @@ import {
 } from "../../services/permissionService/permissionApi.js";
 import PermissionFormField from "../../components/permissionComponents/PermissionFormField.jsx";
 import PermissionPage from "../../components/permissionComponents/PermissionPage.jsx";
-import { formatPermissionDate } from "./permissionUtils.js";
+import {
+  permissionActionOptions,
+  permissionWorkScopeOptions,
+} from "../../components/permissionComponents/permissionModuleOptions.js";
+import {
+  formatPermissionDate,
+  formatPermissionProjectName,
+  getPermissionErrorMessage,
+} from "./permissionUtils.js";
 
 const initialPermission = {
   permissionName: "",
@@ -20,6 +28,8 @@ const initialPermission = {
   projectId: "",
   roleId: "",
   status: true,
+  allowedActions: [],
+  workScope: "FULL",
   createdAt: null,
 };
 
@@ -27,6 +37,7 @@ function UpdatePermissionPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const permissionId = searchParams.get("edit");
+  const returnProjectId = searchParams.get("returnProjectId");
   const [permission, setPermission] = useState(initialPermission);
   const [projects, setProjects] = useState([]);
   const [roles, setRoles] = useState([]);
@@ -35,10 +46,11 @@ function UpdatePermissionPage() {
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
+  useEffect(function () {
     let isActive = true;
+    const requestController = new AbortController();
 
-    const loadPage = async () => {
+    async function loadPage() {
       if (!permissionId) {
         if (isActive) {
           setError("Permission id is missing. Please choose a permission from the list.");
@@ -52,14 +64,11 @@ function UpdatePermissionPage() {
         setLoading(true);
         setError("");
         setLoadFailed(false);
-        const [permissionResponse, projectResponse, roleResponse] = await Promise.all([
-          viewPermission(permissionId),
-          listPermissionProjects(),
-          listPermissionRoles(),
+        const [permissionPayload, projectPayload, rolePayload] = await Promise.all([
+          viewPermission(permissionId, requestController.signal),
+          listPermissionProjects(requestController.signal),
+          listPermissionRoles(requestController.signal),
         ]);
-        const permissionPayload = permissionResponse.data?.data ?? permissionResponse.data;
-        const projectPayload = projectResponse.data?.data ?? projectResponse.data;
-        const rolePayload = roleResponse.data?.data ?? roleResponse.data;
 
         if (isActive) {
           setPermission({
@@ -69,40 +78,81 @@ function UpdatePermissionPage() {
             projectId: permissionPayload?.projectId ? String(permissionPayload.projectId) : "",
             roleId: permissionPayload?.roleId ? String(permissionPayload.roleId) : "",
             status: permissionPayload?.status ?? true,
+            allowedActions: Array.isArray(permissionPayload?.allowedActions)
+              ? permissionPayload.allowedActions
+              : [],
+            workScope: permissionPayload?.workScope === "OWN" ? "OWN" : "FULL",
             createdAt: permissionPayload?.createdAt || null,
           });
           setProjects(Array.isArray(projectPayload) ? projectPayload : []);
           setRoles(Array.isArray(rolePayload) ? rolePayload : []);
         }
       } catch (requestError) {
-        console.error("Unable to load permission for update:", requestError);
-        if (isActive) {
-          setError(getErrorMessage(requestError));
-          setLoadFailed(true);
+        if (!isActive) {
+          return;
         }
+
+        console.error("Unable to load permission for update:", requestError);
+        setError(getPermissionErrorMessage(
+          requestError,
+          "Unable to load permission. Please try again later."
+        ));
+        setLoadFailed(true);
       } finally {
         if (isActive) {
           setLoading(false);
         }
       }
-    };
+    }
 
     loadPage();
 
-    return () => {
+    return function () {
       isActive = false;
+      requestController.abort();
     };
   }, [permissionId]);
 
-  const handleChange = (event) => {
+  function handleChange(event) {
     const { name, value } = event.target;
     setPermission((currentPermission) => ({
       ...currentPermission,
       [name]: value,
     }));
-  };
+  }
 
-  const handleSubmit = async (event) => {
+  function toggleAllowedAction(action) {
+    setPermission(function (currentPermission) {
+      const currentActions = currentPermission.allowedActions;
+      let allowedActions;
+
+      if (currentActions.includes(action)) {
+        allowedActions = currentActions.filter(function (currentAction) {
+          return currentAction !== action;
+        });
+      } else {
+        allowedActions = [...currentActions, action];
+      }
+
+      return {
+        ...currentPermission,
+        allowedActions,
+      };
+    });
+  }
+
+  function handleWorkScopeChange(event) {
+    const workScope = event.target.value;
+
+    setPermission(function (currentPermission) {
+      return {
+        ...currentPermission,
+        workScope,
+      };
+    });
+  }
+
+  async function handleSubmit(event) {
     event.preventDefault();
 
     if (!permissionId) {
@@ -112,27 +162,43 @@ function UpdatePermissionPage() {
     try {
       setSaving(true);
       setError("");
-      const response = await updatePermission(permissionId, {
+      const updatedPermission = await updatePermission(permissionId, {
         permissionName: permission.permissionName.trim(),
         permissionCode: permission.permissionCode.trim(),
         permissionDescription: permission.permissionDescription.trim(),
         projectId: permission.projectId,
         roleId: permission.roleId,
         status: permission.status,
+        allowedActions: permission.allowedActions,
+        workScope: permission.workScope,
       });
-      const updatedPermission = response.data?.data ?? response.data;
-      navigate(`/permission/list?view=${updatedPermission?.id || permissionId}`);
+      navigate(getReturnPath(updatedPermission?.id || permissionId));
     } catch (requestError) {
       console.error("Unable to update permission:", requestError);
-      setError(getErrorMessage(requestError));
+      setError(getPermissionErrorMessage(
+        requestError,
+        "Unable to update permission. Please try again later."
+      ));
     } finally {
       setSaving(false);
     }
-  };
+  }
 
-  const goBack = () => {
-    navigate(permissionId ? `/permission/list?view=${permissionId}` : "/permission/list");
-  };
+  function getReturnPath(currentPermissionId = permissionId) {
+    if (returnProjectId) {
+      return `/project-management/view?id=${encodeURIComponent(returnProjectId)}`;
+    }
+
+    if (currentPermissionId) {
+      return `/permission/list?view=${encodeURIComponent(currentPermissionId)}`;
+    }
+
+    return "/permission/list";
+  }
+
+  function goBack() {
+    navigate(getReturnPath());
+  }
   const backAction = (
     <Button className="permission-secondary-button" onClick={goBack}>
       <IconArrowLeft size={18} /> Back
@@ -223,7 +289,9 @@ function UpdatePermissionPage() {
                 <Form.Select className="permission-input" name="projectId" value={permission.projectId} onChange={handleChange} disabled={projects.length === 0} required>
                   <option value="" disabled>Select project</option>
                   {projects.map((project) => (
-                    <option key={project.id} value={project.id}>{formatProjectName(project)}</option>
+                    <option key={project.id} value={project.id}>
+                      {formatPermissionProjectName(project)}
+                    </option>
                   ))}
                 </Form.Select>
               </PermissionFormField>
@@ -256,6 +324,58 @@ function UpdatePermissionPage() {
           </Row>
         </Card>
 
+        <Card as="section" className="permission-form-card">
+          <div className="permission-section-heading">
+            <span className="permission-section-number">3</span>
+            <div>
+              <h2>Access configuration</h2>
+              <p>Choose what this permission can do and which project work it can see.</p>
+            </div>
+          </div>
+
+          <div className="permission-update-configuration-section">
+            <div className="permission-update-configuration-heading">
+              <h3>Allowed actions</h3>
+              <p>Select all actions that users with this permission can perform.</p>
+            </div>
+
+            <div className="permission-update-action-grid">
+              {permissionActionOptions.map((option) => (
+                <Form.Check
+                  key={option.value}
+                  id={`update-permission-action-${option.value.toLowerCase()}`}
+                  type="checkbox"
+                  label={option.label}
+                  checked={permission.allowedActions.includes(option.value)}
+                  onChange={() => toggleAllowedAction(option.value)}
+                />
+              ))}
+            </div>
+          </div>
+
+          <div className="permission-update-configuration-section permission-update-work-scope">
+            <div className="permission-update-configuration-heading">
+              <h3>Work visibility</h3>
+              <p>Choose one visibility level for tasks and deliverables.</p>
+            </div>
+
+            <div className="permission-update-scope-options">
+              {permissionWorkScopeOptions.map((option) => (
+                <Form.Check
+                  key={option.value}
+                  id={`update-permission-scope-${option.value.toLowerCase()}`}
+                  type="radio"
+                  name="workScope"
+                  value={option.value}
+                  label={option.label}
+                  checked={permission.workScope === option.value}
+                  onChange={handleWorkScopeChange}
+                />
+              ))}
+            </div>
+          </div>
+        </Card>
+
         <div className="permission-update-audit">
           <IconInfoCircle size={19} />
           <div>
@@ -274,18 +394,6 @@ function UpdatePermissionPage() {
       </Form>
     </PermissionPage>
   );
-}
-
-function formatProjectName(project) {
-  const projectCode = project.projectCode ? `${project.projectCode} - ` : "";
-  return `${projectCode}${project.projectName || `Project #${project.id}`}`;
-}
-
-function getErrorMessage(error) {
-  return error.response?.data?.message
-    || error.response?.data?.detail
-    || error.response?.data?.error
-    || "Unable to load or update permission. Please try again later.";
 }
 
 export default UpdatePermissionPage;

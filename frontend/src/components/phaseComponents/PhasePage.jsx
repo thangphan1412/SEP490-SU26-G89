@@ -1,11 +1,8 @@
 import { Card, Container } from "react-bootstrap";
 import { IconTimelineEvent } from "@tabler/icons-react";
-import useHideMainHeader from "./useHideMainHeader.js";
 import "../../assets/styles/css/phaseStyles/PhaseComponents.css";
 
 function PhasePage({ title, description, action, children }) {
-  useHideMainHeader();
-
   return (
     <Container fluid as="main" className="phase-page">
       <Card as="section" className="phase-panel">

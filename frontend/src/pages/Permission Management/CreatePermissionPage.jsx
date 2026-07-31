@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Alert, Button, Card, Col, Form, Row, Spinner } from "react-bootstrap";
 import {
   IconArrowLeft,
@@ -15,6 +15,10 @@ import {
 } from "../../services/permissionService/permissionApi.js";
 import PermissionFormField from "../../components/permissionComponents/PermissionFormField.jsx";
 import PermissionPage from "../../components/permissionComponents/PermissionPage.jsx";
+import {
+  formatPermissionProjectName,
+  getPermissionErrorMessage,
+} from "./permissionUtils.js";
 
 const initialPermission = {
   permissionName: "",
@@ -27,63 +31,70 @@ const initialPermission = {
 
 function CreatePermissionPage() {
   const navigate = useNavigate();
-  const [permission, setPermission] = useState(initialPermission);
+  const [searchParams] = useSearchParams();
+  const requestedProjectId = searchParams.get("projectId") || "";
+  const [permission, setPermission] = useState({
+    ...initialPermission,
+    projectId: requestedProjectId,
+  });
   const [projects, setProjects] = useState([]);
   const [roles, setRoles] = useState([]);
   const [loadingOptions, setLoadingOptions] = useState(true);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
+  useEffect(function () {
     let isActive = true;
+    const requestController = new AbortController();
 
-    const loadOptions = async () => {
+    async function loadOptions() {
       try {
-        const [projectResponse, roleResponse] = await Promise.all([
-          listPermissionProjects(),
-          listPermissionRoles(),
+        const [projectPayload, rolePayload] = await Promise.all([
+          listPermissionProjects(requestController.signal),
+          listPermissionRoles(requestController.signal),
         ]);
-        const projectPayload = projectResponse.data?.data ?? projectResponse.data;
-        const rolePayload = roleResponse.data?.data ?? roleResponse.data;
 
         if (isActive) {
           setProjects(Array.isArray(projectPayload) ? projectPayload : []);
           setRoles(Array.isArray(rolePayload) ? rolePayload : []);
         }
       } catch (requestError) {
-        console.error("Unable to load permission options:", requestError);
-        if (isActive) {
-          setError("Unable to load projects or roles. Please try again later.");
+        if (!isActive) {
+          return;
         }
+
+        console.error("Unable to load permission options:", requestError);
+        setError("Unable to load projects or roles. Please try again later.");
       } finally {
         if (isActive) {
           setLoadingOptions(false);
         }
       }
-    };
+    }
 
     loadOptions();
 
-    return () => {
+    return function () {
       isActive = false;
+      requestController.abort();
     };
   }, []);
 
-  const handleChange = (event) => {
+  function handleChange(event) {
     const { name, value } = event.target;
     setPermission((currentPermission) => ({
       ...currentPermission,
       [name]: value,
     }));
-  };
+  }
 
-  const handleSubmit = async (event) => {
+  async function handleSubmit(event) {
     event.preventDefault();
     setError("");
 
     try {
       setSaving(true);
-      const response = await createPermission({
+      const createdPermission = await createPermission({
         permissionName: permission.permissionName.trim(),
         permissionCode: permission.permissionCode.trim(),
         permissionDescription: permission.permissionDescription.trim(),
@@ -91,7 +102,6 @@ function CreatePermissionPage() {
         roleId: permission.roleId,
         status: permission.status,
       });
-      const createdPermission = response.data?.data ?? response.data;
 
       if (createdPermission?.id) {
         navigate(`/permission/list?view=${createdPermission.id}`);
@@ -101,11 +111,14 @@ function CreatePermissionPage() {
       navigate("/permission/list");
     } catch (requestError) {
       console.error("Unable to create permission:", requestError);
-      setError(getErrorMessage(requestError));
+      setError(getPermissionErrorMessage(
+        requestError,
+        "Unable to save permission. Please check the information and try again."
+      ));
     } finally {
       setSaving(false);
     }
-  };
+  }
 
   const backAction = (
     <Button className="permission-secondary-button" onClick={() => navigate("/permission/list")}>
@@ -207,7 +220,9 @@ function CreatePermissionPage() {
                 >
                   <option value="" disabled>{loadingOptions ? "Loading projects..." : "Select project"}</option>
                   {projects.map((project) => (
-                    <option key={project.id} value={project.id}>{formatProjectName(project)}</option>
+                    <option key={project.id} value={project.id}>
+                      {formatPermissionProjectName(project)}
+                    </option>
                   ))}
                 </Form.Select>
               </PermissionFormField>
@@ -266,18 +281,6 @@ function CreatePermissionPage() {
       </Form>
     </PermissionPage>
   );
-}
-
-function formatProjectName(project) {
-  const projectCode = project.projectCode ? `${project.projectCode} - ` : "";
-  return `${projectCode}${project.projectName || `Project #${project.id}`}`;
-}
-
-function getErrorMessage(error) {
-  return error.response?.data?.message
-    || error.response?.data?.detail
-    || error.response?.data?.error
-    || "Unable to save permission. Please check the information and try again.";
 }
 
 export default CreatePermissionPage;

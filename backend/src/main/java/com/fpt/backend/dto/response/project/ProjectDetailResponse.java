@@ -17,6 +17,7 @@ public record ProjectDetailResponse(
         List<ProjectPhaseResponse> phases,
         List<ProjectUserResponse> users,
         List<ProjectPermissionOptionResponse> availablePermissions,
-        List<ProjectContractResponse> contracts
+        List<ProjectContractResponse> contracts,
+        boolean currentUserIsCreator
 ) {
 }

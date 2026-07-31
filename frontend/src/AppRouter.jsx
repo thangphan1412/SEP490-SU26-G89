@@ -35,6 +35,10 @@ import MainLayout from "./components/layout/MainLayout.jsx";
 import ForgotPassword from "./pages/Authentication/ForgotPassword.jsx";
 import Resetpassword from "./pages/Authentication/Resetpassword.jsx";
 import ViewPhase from "./pages/Phase Management/ViewPhase.jsx";
+import AgreementStatistics from "./pages/Dashboard/AgreementStatistics.jsx";
+import TotalAgreements from "./pages/Dashboard/TotalAgreements.jsx";
+import PendingSignatureAgreements from "./pages/Dashboard/PendingSignatureAgreements.jsx";
+import ContractStatisticalReports from "./pages/Dashboard/ContractStatisticalReports.jsx";
 
 function AppRouter() {
     return (
@@ -180,6 +184,22 @@ function AppRouter() {
                 <Route
                     path="/department-management/update/:id"
                     element={<UpdateDepartment />}
+                />
+                <Route
+                    path="/dashboard/agreement-statistics"
+                    element={<AgreementStatistics />}
+                />
+                <Route
+                    path="/dashboard/total-agreements"
+                    element={<TotalAgreements />}
+                />
+                <Route
+                    path="/dashboard/pending-signature-agreements"
+                    element={<PendingSignatureAgreements />}
+                />
+                <Route
+                    path="/dashboard/contract-statistical-reports"
+                    element={<ContractStatisticalReports />}
                 />
             </Route>
 

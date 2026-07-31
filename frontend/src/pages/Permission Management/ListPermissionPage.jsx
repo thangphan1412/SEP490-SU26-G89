@@ -34,6 +34,11 @@ import PermissionPage from "../../components/permissionComponents/PermissionPage
 import PermissionStatusBadge from "../../components/permissionComponents/PermissionStatusBadge.jsx";
 import UpdatePermissionPage from "./UpdatePermissionPage.jsx";
 import ViewPermissionPage from "./ViewPermissionPage.jsx";
+import {
+  formatPermissionProjectName,
+  formatPermissionProjectValue,
+  getPermissionErrorMessage,
+} from "./permissionUtils.js";
 
 // Các cột có thể sắp xếp trong bảng
 const sortableColumns = [
@@ -55,12 +60,14 @@ function createPageNumbers(currentPage, totalPages) {
     .sort((first, second) => first - second);
   const pages = [];
 
-  visiblePages.forEach((pageNumber, index) => {
+  for (let index = 0; index < visiblePages.length; index += 1) {
+    const pageNumber = visiblePages[index];
+
     if (index > 0 && pageNumber - visiblePages[index - 1] > 1) {
       pages.push(`ellipsis-${pageNumber}`);
     }
     pages.push(pageNumber);
-  });
+  }
 
   return pages;
 }
@@ -95,67 +102,74 @@ function PermissionListContent() {
   const [status, setStatus] = useState("");
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
-  const [sortBy, setSortBy] = useState("id");
+  const [sortBy, setSortBy] = useState("createdAt");
   const [sortDirection, setSortDirection] = useState("desc");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [deletingId, setDeletingId] = useState(null);
   const [deleteVersion, setDeleteVersion] = useState(0);
 
-  useEffect(() => {
-    const debounceId = window.setTimeout(() => {
+  useEffect(function () {
+    const debounceId = window.setTimeout(function () {
       setSearch(searchInput.trim());
       setPage(0);
     }, 500);
 
-    return () => window.clearTimeout(debounceId);
+    return function () {
+      window.clearTimeout(debounceId);
+    };
   }, [searchInput]);
 
-  useEffect(() => {
+  useEffect(function () {
     let isActive = true;
+    const requestController = new AbortController();
 
-    const loadFilterOptions = async () => {
+    async function loadFilterOptions() {
       try {
-        const [projectResponse, roleResponse] = await Promise.all([
-          listPermissionProjects(),
-          listPermissionRoles(),
+        const [projectPayload, rolePayload] = await Promise.all([
+          listPermissionProjects(requestController.signal),
+          listPermissionRoles(requestController.signal),
         ]);
-        const projectPayload = projectResponse.data?.data ?? projectResponse.data;
-        const rolePayload = roleResponse.data?.data ?? roleResponse.data;
 
         if (isActive) {
           setProjects(Array.isArray(projectPayload) ? projectPayload : []);
           setRoles(Array.isArray(rolePayload) ? rolePayload : []);
         }
       } catch (requestError) {
-        console.error("Unable to load permission filters:", requestError);
+        if (isActive) {
+          console.error("Unable to load permission filters:", requestError);
+        }
       }
-    };
+    }
 
     loadFilterOptions();
 
-    return () => {
+    return function () {
       isActive = false;
+      requestController.abort();
     };
   }, []);
 
-  useEffect(() => {
+  useEffect(function () {
     let isActive = true;
+    const requestController = new AbortController();
 
-    const loadPermissions = async () => {
+    async function loadPermissions() {
       try {
         setLoading(true);
         setError("");
-        const response = await listPermissions({
-          search,
-          projectId: projectId || undefined,
-          roleId: roleId || undefined,
-          status: status === "" ? undefined : status === "true",
-          page,
-          sortBy,
-          sortDirection,
-        });
-        const payload = response.data?.data ?? response.data;
+        const payload = await listPermissions(
+          {
+            search,
+            projectId: projectId || undefined,
+            roleId: roleId || undefined,
+            status: status === "" ? undefined : status === "true",
+            page,
+            sortBy,
+            sortDirection,
+          },
+          requestController.signal
+        );
         const items = Array.isArray(payload?.items) ? payload.items : [];
         const responseTotalPages = Number(payload?.totalPages) || 0;
 
@@ -170,60 +184,71 @@ function PermissionListContent() {
           setPage(responseTotalPages - 1);
         }
       } catch (requestError) {
-        console.error("Unable to load permissions:", requestError);
-
-        if (isActive) {
-          setPermissions([]);
-          setTotalPages(0);
-          setError(getErrorMessage(requestError));
+        if (!isActive) {
+          return;
         }
+
+        console.error("Unable to load permissions:", requestError);
+        setPermissions([]);
+        setTotalPages(0);
+        setError(getPermissionErrorMessage(
+          requestError,
+          "Unable to load permissions. Please try again later."
+        ));
       } finally {
         if (isActive) {
           setLoading(false);
         }
       }
-    };
+    }
 
     loadPermissions();
 
-    return () => {
+    return function () {
       isActive = false;
+      requestController.abort();
     };
   }, [deleteVersion, page, projectId, roleId, search, sortBy, sortDirection, status]);
 
-  const handleSort = (field) => {
+  function handleSort(field) {
     setPage(0);
 
     if (sortBy === field) {
-      setSortDirection((currentDirection) => currentDirection === "asc" ? "desc" : "asc");
+      setSortDirection(function (currentDirection) {
+        if (currentDirection === "asc") {
+          return "desc";
+        }
+
+        return "asc";
+      });
       return;
     }
 
     setSortBy(field);
     setSortDirection("asc");
-  };
+  }
 
-  const clearFilters = () => {
+  function clearFilters() {
     setSearchInput("");
     setSearch("");
     setProjectId("");
     setRoleId("");
     setStatus("");
     setPage(0);
-  };
+  }
 
-  const openPermissionDetail = (permissionId) => {
+  function openPermissionDetail(permissionId) {
     navigate(`/permission/list?view=${permissionId}`);
-  };
+  }
 
-  const handleRowKeyDown = (event, permissionId) => {
+  function handleRowKeyDown(event, permissionId) {
     if (event.key === "Enter" || event.key === " ") {
       event.preventDefault();
       openPermissionDetail(permissionId);
     }
-  };
+  }
 
-  const handleDelete = async (event, permission) => {
+  async function handleDelete(event, permission) {
     event.stopPropagation();
 
     if (!window.confirm(`Delete permission "${permission.permissionName}"?`)) {
@@ -237,11 +262,34 @@ function PermissionListContent() {
       setDeleteVersion((currentVersion) => currentVersion + 1);
     } catch (requestError) {
       console.error("Unable to delete permission:", requestError);
-      setError(getErrorMessage(requestError));
+      setError(getPermissionErrorMessage(
+        requestError,
+        "Unable to delete permission. Please try again later."
+      ));
     } finally {
       setDeletingId(null);
     }
-  };
+  }
+
+  function handleProjectFilterChange(event) {
+    setProjectId(event.target.value);
+    setPage(0);
+  }
+
+  function handleRoleFilterChange(event) {
+    setRoleId(event.target.value);
+    setPage(0);
+  }
+
+  function handleStatusFilterChange(event) {
+    setStatus(event.target.value);
+    setPage(0);
+  }
+
+  function openPermissionEdit(event, permissionId) {
+    event.stopPropagation();
+    navigate(`/permission/list?edit=${permissionId}`);
+  }
 
   const pageNumbers = createPageNumbers(page, totalPages);
   const filtersAreActive = Boolean(searchInput || projectId || roleId || status);
@@ -276,17 +324,19 @@ function PermissionListContent() {
 
         <Form.Group className="permission-list-filter">
           <Form.Label>Project</Form.Label>
-          <Form.Select value={projectId} onChange={(event) => { setProjectId(event.target.value); setPage(0); }}>
+          <Form.Select value={projectId} onChange={handleProjectFilterChange}>
             <option value="">All projects</option>
             {projects.map((project) => (
-              <option key={project.id} value={project.id}>{formatProjectName(project)}</option>
+              <option key={project.id} value={project.id}>
+                {formatPermissionProjectName(project)}
+              </option>
             ))}
           </Form.Select>
         </Form.Group>
 
         <Form.Group className="permission-list-filter">
           <Form.Label>Role</Form.Label>
-          <Form.Select value={roleId} onChange={(event) => { setRoleId(event.target.value); setPage(0); }}>
+          <Form.Select value={roleId} onChange={handleRoleFilterChange}>
             <option value="">All roles</option>
             {roles.map((role) => (
               <option key={role.id} value={role.id}>{role.roleName || `Role #${role.id}`}</option>
@@ -296,7 +346,7 @@ function PermissionListContent() {
 
         <Form.Group className="permission-list-filter">
           <Form.Label>Status</Form.Label>
-          <Form.Select value={status} onChange={(event) => { setStatus(event.target.value); setPage(0); }}>
+          <Form.Select value={status} onChange={handleStatusFilterChange}>
             <option value="">All statuses</option>
             <option value="true">Active</option>
             <option value="false">Inactive</option>
@@ -368,7 +418,9 @@ function PermissionListContent() {
                   <td className="permission-code-cell">
                     <span className="permission-code-badge">{permission.permissionCode || "-"}</span>
                   </td>
-                  <td className="permission-project-cell">{formatProjectValue(permission)}</td>
+                  <td className="permission-project-cell">
+                    {formatPermissionProjectValue(permission)}
+                  </td>
                   <td className="permission-role-cell">{permission.roleName || "Unassigned"}</td>
                   <td className="permission-status-cell"><PermissionStatusBadge status={permission.status} /></td>
                   <td className="permission-actions-cell">
@@ -376,10 +428,7 @@ function PermissionListContent() {
                       <Button
                         variant="light"
                         className="permission-table-action"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          navigate(`/permission/list?edit=${permission.id}`);
-                        }}
+                        onClick={(event) => openPermissionEdit(event, permission.id)}
                       >
                         <IconEdit size={17} /> Edit
                       </Button>
@@ -426,26 +475,6 @@ function SortIcon({ field, sortBy, sortDirection }) {
   }
 
   return sortDirection === "asc" ? <IconArrowUp size={14} /> : <IconArrowDown size={14} />;
-}
-
-function formatProjectName(project) {
-  const projectCode = project.projectCode ? `${project.projectCode} - ` : "";
-  return `${projectCode}${project.projectName || `Project #${project.id}`}`;
-}
-
-function formatProjectValue(permission) {
-  if (!permission.projectName && !permission.projectCode) {
-    return "Unassigned";
-  }
-
-  return [permission.projectCode, permission.projectName].filter(Boolean).join(" - ");
-}
-
-function getErrorMessage(error) {
-  return error.response?.data?.message
-    || error.response?.data?.detail
-    || error.response?.data?.error
-    || "Unable to process the permission request. Please try again later.";
 }
 
 export default ListPermissionPage;

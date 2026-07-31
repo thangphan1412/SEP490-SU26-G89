@@ -1,7 +1,6 @@
 package com.fpt.backend.repository.permission;
 
 import com.fpt.backend.entity.Permissions;
-import com.fpt.backend.entity.Role;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -19,18 +18,6 @@ public interface PermissionRepository extends JpaRepository<Permissions, UUID> {
     boolean existsByPermissionCodeIgnoreCase(String permissionCode);
 
     boolean existsByPermissionCodeIgnoreCaseAndIdNot(String permissionCode, UUID id);
-
-    @Query("""
-            SELECT role
-            FROM Role role
-            WHERE role.roleName IS NOT NULL
-                AND TRIM(role.roleName) <> ''
-            ORDER BY role.roleName, role.id
-            """)
-    List<Role> findRolesForPermissionSelection();
-
-    @Query("SELECT role FROM Role role WHERE role.id = :roleId")
-    Optional<Role> findPermissionRoleById(@Param("roleId") UUID roleId);
 
     @Query("""
             SELECT permission

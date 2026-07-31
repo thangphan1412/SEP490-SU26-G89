@@ -1,5 +1,6 @@
 package com.fpt.backend.service.impl.user;
 
+import com.fpt.backend.dto.request.authentication.ChangePasswordRequest;
 import com.fpt.backend.dto.request.authentication.RegisterRequest;
 import com.fpt.backend.dto.request.authentication.ResetPasswordRequest;
 import com.fpt.backend.dto.request.user.UserRequestDTO;
@@ -14,10 +15,13 @@ import com.fpt.backend.mail.MessageInfor;
 import com.fpt.backend.repository.department.DepartmentRepository;
 import com.fpt.backend.repository.user.UserRepository;
 import com.fpt.backend.service.interfaces.user.IUserService;
+import com.fpt.backend.util.CurrentUser;
 import com.fpt.backend.util.OTPGenerator;
 import com.fpt.backend.util.ValidateEmail;
 import org.apache.catalina.User;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -40,6 +44,8 @@ public class UserServiceImpl implements IUserService {
     private EmailService emailService;
     @Autowired
     private DepartmentRepository departmentRepository;
+    @Autowired
+    private CurrentUser currentUser;
 
     @Override
     public Boolean existsByEmail(String email) {
@@ -370,5 +376,23 @@ public class UserServiceImpl implements IUserService {
         users.setPassword(passwordEncoder.encode(resetPasswordRequest.getNewPassword()));
         userRepository.save(users);
         redisOtpService.deleteOTP(resetPasswordRequest.getEmail());
+    }
+
+    public void changePassword(ChangePasswordRequest changePasswordRequest) {
+//        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+//        String email = authentication.getName();
+
+
+        String email =currentUser.getCurrentUser().getEmail();
+        System.out.println(email);
+        Users users = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found with email: " + email));
+        if(!passwordEncoder.matches(changePasswordRequest.getOldPassword(), users.getPassword())){
+            throw new RuntimeException("Old password do not match");
+        }
+
+        users.setPassword(passwordEncoder.encode(changePasswordRequest.getNewPassword()));
+        userRepository.save(users);
+
     }
 }

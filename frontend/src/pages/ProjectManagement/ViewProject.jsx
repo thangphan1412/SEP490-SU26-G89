@@ -8,7 +8,11 @@ import PagePanel from "../../components/projectComponents/PagePanel.jsx";
 import PermissionConfigureModal from "../../components/projectComponents/PermissionConfigureModal.jsx";
 import PrimaryButton from "../../components/projectComponents/PrimaryButton.jsx";
 import StatusBadge from "../../components/projectComponents/StatusBadge.jsx";
+import { isCompletedProjectStatus } from "../../components/projectComponents/projectFormUtils.js";
 import "../../assets/styles/css/projectStyles/ViewProject.css";
+
+const PROJECT_ACCESS_DENIED_MESSAGE =
+    "Bạn không được quyền xem project này!";
 
 function showValue(value) {
     return value === null || value === undefined || value === "" ? "-" : value;
@@ -55,10 +59,11 @@ function ViewProject() {
     const [contractStatus, setContractStatus] = useState("");
     const [showPermissionConfigure, setShowPermissionConfigure] = useState(false);
 
-    useEffect(() => {
+    useEffect(function () {
         let isActive = true;
+        const requestController = new AbortController();
 
-        const loadProject = async () => {
+        async function loadProject() {
             if (!projectId) {
                 setProject(null);
                 setError("Project id is missing. Please choose a project from the list.");
@@ -69,17 +74,22 @@ function ViewProject() {
             try {
                 setLoading(true);
                 setError("");
-                const response = await viewProject(projectId);
-                const payload = response.data?.data ?? response.data;
+                const payload = await viewProject(projectId, requestController.signal);
 
                 if (isActive) {
                     setProject(payload);
                 }
             } catch (apiError) {
-                console.error("Unable to load project detail:", apiError);
+                if (!isActive) {
+                    return;
+                }
 
-                if (isActive) {
-                    setProject(null);
+                console.error("Unable to load project detail:", apiError);
+                setProject(null);
+
+                if (apiError.response?.status === 403) {
+                    setError(PROJECT_ACCESS_DENIED_MESSAGE);
+                } else {
                     setError("Unable to load this project. Please try again later.");
                 }
             } finally {
@@ -87,16 +97,17 @@ function ViewProject() {
                     setLoading(false);
                 }
             }
-        };
+        }
 
         loadProject();
 
-        return () => {
+        return function () {
             isActive = false;
+            requestController.abort();
         };
     }, [projectId]);
 
-    const handleDelete = async () => {
+    async function handleDelete() {
         const confirmed = window.confirm(
             "Delete this project? If it has contracts, it will be kept and its status will be changed to Cancelled. If it has no contracts, it will be permanently deleted."
         );
@@ -108,8 +119,8 @@ function ViewProject() {
         try {
             setDeleting(true);
             setActionError("");
-            const response = await deleteProject(projectId);
-            window.alert(response?.data?.message || "Project delete request completed.");
+            const message = await deleteProject(projectId);
+            window.alert(message || "Project delete request completed.");
             navigate("/project-management/list");
         } catch (apiError) {
             console.error("Unable to delete project:", apiError);
@@ -117,7 +128,23 @@ function ViewProject() {
         } finally {
             setDeleting(false);
         }
-    };
+    }
+
+    function openPhase(phaseId) {
+        navigate(`/phase-management/view/${projectId}/${phaseId}`);
+    }
+
+    function handlePhaseKeyDown(event, phaseId) {
+        if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            openPhase(phaseId);
+        }
+    }
+
+    function clearContractFilters() {
+        setContractSearch("");
+        setContractStatus("");
+    }
 
     const projectPhases = Array.isArray(project?.phases) ? project.phases : [];
     const projectUsers = Array.isArray(project?.users) ? project.users : [];
@@ -126,10 +153,26 @@ function ViewProject() {
     const contractSearchText = normalizeText(contractSearch);
     const contractStatusText = normalizeText(contractStatus);
 
-    const filteredUsers = projectUsers.filter((user) =>
-        [user.userName, user.email, user.role, user.userStatus, user.permissionName, user.permissionCode]
-            .some((value) => normalizeText(value).includes(userSearchText))
-    );
+    function userMatchesSearch(user) {
+        const values = [
+            user.userName,
+            user.email,
+            user.role,
+            user.userStatus,
+            user.permissionName,
+            user.permissionCode,
+        ];
+
+        for (const value of values) {
+            if (normalizeText(value).includes(userSearchText)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    const filteredUsers = projectUsers.filter(userMatchesSearch);
 
     const contractStatusOptions = [...new Set(
         projectContracts
@@ -137,14 +180,19 @@ function ViewProject() {
             .filter((status) => normalizeText(status))
     )].sort();
 
-    const filteredContracts = projectContracts.filter((contract) => {
+    function contractMatchesFilters(contract) {
         const matchesName = [contract.contractTitle, contract.contractNumber]
             .some((value) => normalizeText(value).includes(contractSearchText));
         const matchesStatus = !contractStatusText
             || normalizeText(contract.contractStatus) === contractStatusText;
 
         return matchesName && matchesStatus;
-    });
+    }
+
+    const filteredContracts = projectContracts.filter(contractMatchesFilters);
+    const completedProject = isCompletedProjectStatus(
+        project?.projectStatus
+    );
 
     const pageAction = (
         <Stack direction="horizontal" gap={2} className="view-project-actions">
@@ -159,20 +207,28 @@ function ViewProject() {
 
             {project && (
                 <>
-                    <Button
-                        type="button"
-                        variant="outline-primary"
-                        className="view-project-permission-configure-button"
-                        onClick={() => setShowPermissionConfigure(true)}
+                    {project.currentUserIsCreator && (
+                        <Button
+                            type="button"
+                            variant="outline-primary"
+                            className="view-project-permission-configure-button"
+                            onClick={() => setShowPermissionConfigure(true)}
+                        >
+                            <Icon name="shield" size={19} color="#2450f5" />
+                            Permission Configure
+                        </Button>
+                    )}
+                    <DangerButton
+                        disabled={deleting || completedProject}
+                        onClick={handleDelete}
                     >
-                        <Icon name="shield" size={19} color="#2450f5" />
-                        Permission Configure
-                    </Button>
-                    <DangerButton disabled={deleting} onClick={handleDelete}>
                         <Icon name="trash" size={18} color="#b42318" />
                         {deleting ? "Deleting..." : "Delete"}
                     </DangerButton>
-                    <PrimaryButton onClick={() => navigate("/project-management/update?id=" + projectId)}>
+                    <PrimaryButton
+                        disabled={completedProject}
+                        onClick={() => navigate("/project-management/update?id=" + projectId)}
+                    >
                         <Icon name="edit" size={20} color="#ffffff" />
                         Edit Project
                     </PrimaryButton>
@@ -202,6 +258,12 @@ function ViewProject() {
                     {actionError && (
                         <Alert variant="danger" className="view-project-action-alert">
                             {actionError}
+                        </Alert>
+                    )}
+
+                    {completedProject && (
+                        <Alert variant="warning" className="view-project-action-alert">
+                            Completed projects cannot be updated or deleted.
                         </Alert>
                     )}
 
@@ -256,13 +318,8 @@ function ViewProject() {
                                                 className="view-project-row view-project-phase-row"
                                                 role="button"
                                                 tabIndex={0}
-                                                onClick={() => navigate(`/phase-management/view/${projectId}/${phase.id}`)}
-                                                onKeyDown={(event) => {
-                                                    if (event.key === "Enter" || event.key === " ") {
-                                                        event.preventDefault();
-                                                        navigate(`/phase-management/view/${projectId}/${phase.id}`);
-                                                    }
-                                                }}
+                                                onClick={() => openPhase(phase.id)}
+                                                onKeyDown={(event) => handlePhaseKeyDown(event, phase.id)}
                                             >
                                                 <td className="view-project-td view-project-phase-title">{showValue(phase.title)}</td>
                                                 <td className="view-project-td">
@@ -386,10 +443,7 @@ function ViewProject() {
                                     type="button"
                                     variant="light"
                                     className="view-project-clear-button"
-                                    onClick={() => {
-                                        setContractSearch("");
-                                        setContractStatus("");
-                                    }}
+                                    onClick={clearContractFilters}
                                 >
                                     Clear
                                 </Button>
@@ -411,8 +465,11 @@ function ViewProject() {
                                     ) : filteredContracts.length === 0 ? (
                                         <EmptyRow colSpan={3} message="No contracts match your filters." />
                                     ) : (
-                                        filteredContracts.map((contract, index) => (
-                                            <tr key={(contract.contractNumber || "contract") + "-" + index} className="view-project-row">
+                                        filteredContracts.map((contract) => (
+                                            <tr
+                                                key={contract.id}
+                                                className="view-project-row"
+                                            >
                                                 <td className="view-project-td">{showValue(contract.contractTitle)}</td>
                                                 <td className="view-project-td">{showValue(contract.contractNumber)}</td>
                                                 <td className="view-project-td"><StatusBadge status={contract.contractStatus} /></td>
@@ -426,12 +483,14 @@ function ViewProject() {
                 </>
             )}
 
-            <PermissionConfigureModal
-                show={showPermissionConfigure}
-                projectId={projectId}
-                projectName={project?.projectName}
-                onHide={() => setShowPermissionConfigure(false)}
-            />
+            {project?.currentUserIsCreator && (
+                <PermissionConfigureModal
+                    show={showPermissionConfigure}
+                    projectId={projectId}
+                    projectName={project.projectName}
+                    onHide={() => setShowPermissionConfigure(false)}
+                />
+            )}
         </PagePanel>
     );
 }

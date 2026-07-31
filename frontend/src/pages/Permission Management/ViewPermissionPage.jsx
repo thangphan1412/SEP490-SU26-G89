@@ -18,7 +18,11 @@ import PermissionPage from "../../components/permissionComponents/PermissionPage
 import PermissionStatusBadge from "../../components/permissionComponents/PermissionStatusBadge.jsx";
 import ViewPermissionInfo from "../../components/permissionComponents/ViewPermissionInfo.jsx";
 import { formatPermissionModule } from "../../components/permissionComponents/permissionModuleOptions.js";
-import { formatPermissionDate } from "./permissionUtils.js";
+import {
+  formatPermissionDate,
+  formatPermissionProjectValue,
+  getPermissionErrorMessage,
+} from "./permissionUtils.js";
 
 function ViewPermissionPage() {
   const navigate = useNavigate();
@@ -29,10 +33,11 @@ function ViewPermissionPage() {
   const [error, setError] = useState("");
   const [deleting, setDeleting] = useState(false);
 
-  useEffect(() => {
+  useEffect(function () {
     let isActive = true;
+    const requestController = new AbortController();
 
-    const loadPermission = async () => {
+    async function loadPermission() {
       if (!permissionId) {
         if (isActive) {
           setError("Permission id is missing. Please choose a permission from the list.");
@@ -44,33 +49,38 @@ function ViewPermissionPage() {
       try {
         setLoading(true);
         setError("");
-        const response = await viewPermission(permissionId);
-        const payload = response.data?.data ?? response.data;
+        const payload = await viewPermission(permissionId, requestController.signal);
 
         if (isActive) {
           setPermission(payload || null);
         }
       } catch (requestError) {
-        console.error("Unable to load permission:", requestError);
-        if (isActive) {
-          setPermission(null);
-          setError(getErrorMessage(requestError));
+        if (!isActive) {
+          return;
         }
+
+        console.error("Unable to load permission:", requestError);
+        setPermission(null);
+        setError(getPermissionErrorMessage(
+          requestError,
+          "Unable to load permission. Please try again later."
+        ));
       } finally {
         if (isActive) {
           setLoading(false);
         }
       }
-    };
+    }
 
     loadPermission();
 
-    return () => {
+    return function () {
       isActive = false;
+      requestController.abort();
     };
   }, [permissionId]);
 
-  const handleDelete = async () => {
+  async function handleDelete() {
     if (!permission?.id || !window.confirm(`Delete permission "${permission.permissionName}"?`)) {
       return;
     }
@@ -82,11 +92,14 @@ function ViewPermissionPage() {
       navigate("/permission/list");
     } catch (requestError) {
       console.error("Unable to delete permission:", requestError);
-      setError(getErrorMessage(requestError));
+      setError(getPermissionErrorMessage(
+        requestError,
+        "Unable to delete permission. Please try again later."
+      ));
     } finally {
       setDeleting(false);
     }
-  };
+  }
 
   const pageActions = (
     <Stack direction="horizontal" className="permission-view-actions">
@@ -142,7 +155,10 @@ function ViewPermissionPage() {
                 <div><h3>Access assignment</h3><p>Where this permission applies and which role receives it.</p></div>
               </div>
               <div className="permission-view-info-grid">
-                <ViewPermissionInfo label="Project" value={formatProjectValue(permission)} />
+                <ViewPermissionInfo
+                  label="Project"
+                  value={formatPermissionProjectValue(permission)}
+                />
                 <ViewPermissionInfo label="Role" value={permission.roleName || "Unassigned"} />
                 <ViewPermissionInfo label="Module" value={formatPermissionModule(permission.permissionModule)} />
                 <div className="permission-info-item">
@@ -187,21 +203,6 @@ function ViewPermissionPage() {
       )}
     </PermissionPage>
   );
-}
-
-function formatProjectValue(permission) {
-  if (!permission.projectName && !permission.projectCode) {
-    return "Unassigned";
-  }
-
-  return [permission.projectCode, permission.projectName].filter(Boolean).join(" - ");
-}
-
-function getErrorMessage(error) {
-  return error.response?.data?.message
-    || error.response?.data?.detail
-    || error.response?.data?.error
-    || "Unable to load permission. Please try again later.";
 }
 
 export default ViewPermissionPage;

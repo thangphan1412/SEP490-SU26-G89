@@ -2,8 +2,6 @@ package com.fpt.backend.service.impl.project;
 
 import com.fpt.backend.dto.request.project.ProjectCreateRequest;
 import com.fpt.backend.dto.request.project.ProjectListRequest;
-import com.fpt.backend.dto.request.project.ProjectMemberRequest;
-import com.fpt.backend.dto.request.project.ProjectPhaseRequest;
 import com.fpt.backend.dto.request.project.ProjectPermissionConfigurationRequest;
 import com.fpt.backend.dto.request.project.ProjectUpdateRequest;
 import com.fpt.backend.dto.response.project.ProjectContractResponse;
@@ -12,33 +10,24 @@ import com.fpt.backend.dto.response.project.ProjectEmployeeResponse;
 import com.fpt.backend.dto.response.project.ProjectListItemResponse;
 import com.fpt.backend.dto.response.project.ProjectListResponse;
 import com.fpt.backend.dto.response.project.ProjectPermissionConfigurationResponse;
-import com.fpt.backend.dto.response.project.ProjectPermissionOptionResponse;
-import com.fpt.backend.dto.response.project.ProjectPhaseResponse;
 import com.fpt.backend.dto.response.project.ProjectRoleResponse;
-import com.fpt.backend.dto.response.project.ProjectUserResponse;
-import com.fpt.backend.entity.Permissions;
-import com.fpt.backend.entity.ProjectMember;
+import com.fpt.backend.entity.Contracts;
 import com.fpt.backend.entity.Projects;
-import com.fpt.backend.entity.Role;
-import com.fpt.backend.entity.Timeline;
-import com.fpt.backend.entity.UserPermission;
-import com.fpt.backend.entity.UserRole;
 import com.fpt.backend.entity.Users;
-import com.fpt.backend.repository.permission.PermissionRepository;
-import com.fpt.backend.repository.permission.UserPermissionRepository;
-import com.fpt.backend.repository.phase.PhaseContractRepository;
-import com.fpt.backend.repository.phase.PhaseDeliverableRepository;
-import com.fpt.backend.repository.phase.PhaseRepository;
-import com.fpt.backend.repository.phase.PhaseTaskRepository;
+import com.fpt.backend.exception.BadHttpException;
+import com.fpt.backend.exception.NotFoundException;
 import com.fpt.backend.repository.project.ProjectCleanupRepository;
 import com.fpt.backend.repository.project.ProjectContractRepository;
 import com.fpt.backend.repository.project.ProjectMemberRepository;
 import com.fpt.backend.repository.project.ProjectRepository;
-import com.fpt.backend.repository.project.ProjectUserRoleRepository;
-import com.fpt.backend.repository.user.UserRepository;
-import com.fpt.backend.service.interfaces.phase.PhaseProgressService;
+import com.fpt.backend.service.interfaces.project.ProjectDeleteResult;
+import com.fpt.backend.service.interfaces.project.ProjectMemberService;
+import com.fpt.backend.service.interfaces.project.ProjectPermissionService;
+import com.fpt.backend.service.interfaces.project.ProjectPhaseService;
 import com.fpt.backend.service.interfaces.project.ProjectService;
+import com.fpt.backend.util.CurrentUser;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -49,9 +38,13 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
+import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -59,30 +52,19 @@ import java.util.*;
 public class ProjectServiceImpl implements ProjectService {
     private static final int PAGE_SIZE = 7;
     private static final String DATA_SOURCE = "DATABASE";
-    private static final String DEFAULT_SORT_FIELD = "id";
-    private static final String DEFAULT_CREATED_BY = "Admin";
+    private static final String DEFAULT_SORT_FIELD = "projectCreatedAt";
     private static final String DEFAULT_PROJECT_STATUS = "Planning";
-    private static final String DEFAULT_PHASE_STATUS = "Planning";
     private static final String CANCELLED_PROJECT_STATUS = "Cancelled";
-    private static final String WORK_SCOPE_OWN = "OWN";
-    private static final String WORK_SCOPE_FULL = "FULL";
-    private static final String WORK_SCOPE_OWN_TOKEN = "WORK_SCOPE_OWN";
-    private static final String WORK_SCOPE_FULL_TOKEN = "WORK_SCOPE_FULL";
-    private static final ZoneId DATABASE_TIME_ZONE = ZoneId.of("UTC");
-    private static final ZoneId PROJECT_TIME_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
-    private static final List<String> PERMISSION_ACTIONS = List.of(
-            "VIEW_TASKS",
-            "VIEW_DELIVERABLES",
-            "VIEW_CONTRACTS",
-            "CREATE_TASKS",
-            "EDIT_TASKS",
-            "DELETE_TASKS",
-            "CREATE_DELIVERABLES",
-            "EDIT_DELIVERABLES",
-            "DELETE_DELIVERABLES",
-            "EDIT_PHASE",
-            "MANAGE_MEMBERS"
+    private static final String COMPLETED_PROJECT_STATUS = "Completed";
+    private static final String PROJECT_ACCESS_DENIED_MESSAGE =
+            "Bạn không được quyền xem project này!";
+    private static final List<String> CREATE_PROJECT_STATUSES = List.of(
+            "Planning",
+            "Active",
+            "On Hold"
     );
+    private static final ZoneId PROJECT_TIME_ZONE =
+            ZoneId.of("Asia/Ho_Chi_Minh");
     private static final Set<String> SORT_FIELDS = Set.of(
             "id",
             "projectCode",
@@ -95,24 +77,28 @@ public class ProjectServiceImpl implements ProjectService {
     );
 
     private final ProjectRepository projectRepository;
-    private final ProjectMemberRepository projectMemberRepository;
-    private final ProjectUserRoleRepository projectUserRoleRepository;
     private final ProjectContractRepository projectContractRepository;
+    private final ProjectMemberRepository projectMemberRepository;
     private final ProjectCleanupRepository projectCleanupRepository;
-    private final PermissionRepository permissionRepository;
-    private final UserPermissionRepository userPermissionRepository;
-    private final PhaseRepository phaseRepository;
-    private final PhaseTaskRepository phaseTaskRepository;
-    private final PhaseDeliverableRepository phaseDeliverableRepository;
-    private final PhaseContractRepository phaseContractRepository;
-    private final PhaseProgressService phaseProgressService;
-    private final UserRepository userRepository;
+    private final ProjectPhaseService projectPhaseService;
+    private final ProjectMemberService projectMemberService;
+    private final ProjectPermissionService projectPermissionService;
+    private final CurrentUser currentUserUtil;
 
     @Override
     public ProjectListResponse getProjects(ProjectListRequest request) {
-        ProjectListRequest validRequest = request == null
-                ? new ProjectListRequest("", "", 0, DEFAULT_SORT_FIELD, "desc")
-                : request;
+        ProjectListRequest validRequest = request;
+
+        if (validRequest == null) {
+            validRequest = new ProjectListRequest(
+                    "",
+                    "",
+                    0,
+                    DEFAULT_SORT_FIELD,
+                    "desc"
+            );
+        }
+
         String search = normalize(validRequest.search());
         String status = normalize(validRequest.status());
         Pageable pageable = createPageable(
@@ -121,10 +107,12 @@ public class ProjectServiceImpl implements ProjectService {
                 validRequest.sortDirection()
         );
         Page<Projects> projects = findProjects(search, status, pageable);
+        Users currentUser = currentUserUtil.getCurrentUser();
 
         return new ProjectListResponse(
                 DATA_SOURCE,
-                projects.map(this::toListItem).getContent(),
+                projects.map(project -> toListItem(project, currentUser))
+                        .getContent(),
                 projects.getNumber(),
                 projects.getSize(),
                 projects.getTotalElements(),
@@ -137,16 +125,34 @@ public class ProjectServiceImpl implements ProjectService {
 
     @Override
     public ProjectDetailResponse getProjectById(UUID id) {
-        return toDetail(findProject(id));
+        Projects project = findProject(id);
+        Users currentUser = currentUserUtil.getCurrentUser();
+        boolean currentUserIsCreator =
+                isProjectCreator(project, currentUser);
+        boolean currentUserIsMember =
+                projectMemberRepository.countByProjectIdAndUserId(
+                        project.getId(),
+                        currentUser.getId()
+                ) > 0;
+
+        if (!currentUserIsCreator && !currentUserIsMember) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    PROJECT_ACCESS_DENIED_MESSAGE
+            );
+        }
+
+        return toDetail(project, currentUserIsCreator);
     }
 
     @Override
     @Transactional
     public ProjectDetailResponse createProject(ProjectCreateRequest request) {
         if (request == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Project information is required");
+            throw new BadHttpException("Project information is required");
         }
 
+        Users currentUser = currentUserUtil.getCurrentUser();
         Projects project = new Projects();
         applyProjectInformation(
                 project,
@@ -158,28 +164,40 @@ public class ProjectServiceImpl implements ProjectService {
                 request.projectStatus(),
                 null
         );
-        project.setProjectCreatedBy(DEFAULT_CREATED_BY);
-        project.setProjectCreatedAt(defaultIfBlank(
-                request.projectCreatedAt(),
+        project.setProjectCreatedBy(currentUser);
+        project.setProjectCreatedAt(
                 LocalDate.now(PROJECT_TIME_ZONE).toString()
-        ));
+        );
 
         Projects savedProject = projectRepository.save(project);
-        syncPhases(savedProject, request.phases());
-        syncMembers(savedProject, request.members(), false);
+        projectPhaseService.syncPhases(savedProject, request.phases());
+        projectMemberService.syncMembers(
+                savedProject,
+                request.members(),
+                false
+        );
         projectRepository.flush();
 
-        return toDetail(savedProject);
+        return toDetail(savedProject, true);
     }
 
     @Override
     @Transactional
-    public ProjectDetailResponse updateProject(UUID id, ProjectUpdateRequest request) {
+    public ProjectDetailResponse updateProject(
+            UUID id,
+            ProjectUpdateRequest request) {
         if (request == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Project information is required");
+            throw new BadHttpException("Project information is required");
         }
 
         Projects project = findProject(id);
+
+        if (isCompletedProject(project)) {
+            throw new BadHttpException(
+                    "Completed projects cannot be updated"
+            );
+        }
+
         applyProjectInformation(
                 project,
                 request.projectName(),
@@ -192,87 +210,64 @@ public class ProjectServiceImpl implements ProjectService {
         );
         projectRepository.save(project);
 
-        syncPhases(project, request.phases());
-        syncMembers(project, request.members(), true);
+        projectPhaseService.syncPhases(project, request.phases());
+        projectMemberService.syncMembers(project, request.members(), true);
         projectRepository.flush();
 
-        return toDetail(project);
+        return toDetail(
+                project,
+                isProjectCreator(project, currentUserUtil.getCurrentUser())
+        );
     }
 
     @Override
     @Transactional
-    public boolean deleteProject(UUID id) {
+    public ProjectDeleteResult deleteProject(UUID id) {
         Projects project = findProject(id);
 
-        if (projectRepository.countContractsByProjectId(id) > 0) {
+        if (isCompletedProject(project)) {
+            throw new BadHttpException(
+                    "Completed projects cannot be deleted"
+            );
+        }
+
+        if (projectContractRepository.countByProjectId(id) > 0) {
             project.setProjectStatus(CANCELLED_PROJECT_STATUS);
             projectRepository.save(project);
             projectRepository.flush();
-            return false;
+            return ProjectDeleteResult.STATUS_CHANGED_TO_CANCELLED;
         }
 
         try {
-            deleteProjectRelatedData(id);
+            projectPhaseService.deleteProjectData(id);
+            projectMemberService.deleteProjectData(id);
+            projectPermissionService.deleteProjectData(id);
+            projectCleanupRepository.deleteProjectRecords(id);
             projectRepository.delete(project);
             projectRepository.flush();
-            return true;
-        } catch (ResponseStatusException exception) {
-            throw exception;
-        } catch (RuntimeException exception) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Project cannot be deleted because related data still exists",
-                    exception
+            return ProjectDeleteResult.DELETED_PERMANENTLY;
+        } catch (DataIntegrityViolationException exception) {
+            throw new BadHttpException(
+                    "Project cannot be deleted because related data still exists"
             );
         }
     }
 
-    private void deleteProjectRelatedData(UUID projectId) {
-        phaseContractRepository.deleteByProjectId(projectId);
-        phaseTaskRepository.deleteByProjectId(projectId);
-        phaseDeliverableRepository.deleteByProjectId(projectId);
-        phaseRepository.deleteByProjectId(projectId);
-        userPermissionRepository.deleteByProjectId(projectId);
-        projectMemberRepository.deleteByProjectId(projectId);
-        permissionRepository.deleteByProjectId(projectId);
-        projectCleanupRepository.deleteProjectRecords(projectId);
-    }
-
     @Override
     public List<ProjectEmployeeResponse> getEmployeesForProjectSelection() {
-        List<Users> users = userRepository.findAll(
-                Sort.by(Sort.Direction.ASC, "firstName", "lastName", "email")
-        );
-        Map<UUID, List<ProjectRoleResponse>> rolesByUserId = findRolesByUserId();
-
-        return users.stream()
-                .map(user -> new ProjectEmployeeResponse(
-                        user.getId(),
-                        user.getEmail(),
-                        user.getFirstName(),
-                        user.getLastName(),
-                        rolesByUserId.getOrDefault(user.getId(), List.of()),
-                        user.getStatus()
-                ))
-                .toList();
+        return projectMemberService.getEmployeesForSelection();
     }
 
     @Override
     public List<ProjectRoleResponse> getRolesForProjectMemberFilter() {
-        return permissionRepository.findRolesForPermissionSelection()
-                .stream()
-                .map(role -> new ProjectRoleResponse(role.getId(), role.getRoleName()))
-                .toList();
+        return projectMemberService.getRolesForFilter();
     }
 
     @Override
-    public List<ProjectPermissionConfigurationResponse> getProjectPermissionConfigurations(UUID projectId) {
+    public List<ProjectPermissionConfigurationResponse>
+    getProjectPermissionConfigurations(UUID projectId) {
         findProject(projectId);
-
-        return findProjectPermissions(projectId)
-                .stream()
-                .map(this::toPermissionConfiguration)
-                .toList();
+        return projectPermissionService.getConfigurations(projectId);
     }
 
     @Override
@@ -281,130 +276,37 @@ public class ProjectServiceImpl implements ProjectService {
             UUID projectId,
             UUID permissionId,
             ProjectPermissionConfigurationRequest request) {
-        findProject(projectId);
-        Permissions permission = permissionRepository.findByIdAndProjectId(permissionId, projectId)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND,
-                        "Permission does not belong to this project"
-                ));
-
-        permission.setPermissionModule(createPermissionModuleValue(request));
-
-        return toPermissionConfiguration(permissionRepository.save(permission));
-    }
-
-    private Map<UUID, List<ProjectRoleResponse>> findRolesByUserId() {
-        List<UserRole> userRoles = projectUserRoleRepository.findAllWithUserAndRole();
-        Map<UUID, List<ProjectRoleResponse>> rolesByUserId = new LinkedHashMap<>();
-
-        for (UserRole userRole : userRoles) {
-            UUID userId = userRole.getUser().getId();
-            Role role = userRole.getRole();
-            List<ProjectRoleResponse> roles = rolesByUserId.computeIfAbsent(
-                    userId,
-                    ignored -> new ArrayList<>()
-            );
-            boolean roleAlreadyAdded = roles.stream()
-                    .anyMatch(existingRole -> existingRole.id().equals(role.getId()));
-
-            if (!roleAlreadyAdded) {
-                roles.add(new ProjectRoleResponse(role.getId(), role.getRoleName()));
-            }
-        }
-
-        return rolesByUserId;
-    }
-
-    private String createPermissionModuleValue(ProjectPermissionConfigurationRequest request) {
-        if (request == null) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Permission configuration is required"
-            );
-        }
-
-        Set<String> requestedActions = new LinkedHashSet<>();
-        List<String> actions = request.allowedActions() == null
-                ? List.of()
-                : request.allowedActions();
-
-        for (String action : actions) {
-            String normalizedAction = normalize(action).toUpperCase(Locale.ROOT);
-
-            if (!PERMISSION_ACTIONS.contains(normalizedAction)) {
-                throw new ResponseStatusException(
-                        HttpStatus.BAD_REQUEST,
-                        "Unsupported permission action: " + action
-                );
-            }
-
-            requestedActions.add(normalizedAction);
-        }
-
-        String workScope = normalize(request.workScope()).toUpperCase(Locale.ROOT);
-        if (!WORK_SCOPE_OWN.equals(workScope) && !WORK_SCOPE_FULL.equals(workScope)) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Work scope must be OWN or FULL"
-            );
-        }
-
-        List<String> storedValues = new ArrayList<>();
-        for (String supportedAction : PERMISSION_ACTIONS) {
-            if (requestedActions.contains(supportedAction)) {
-                storedValues.add(supportedAction);
-            }
-        }
-        storedValues.add(WORK_SCOPE_OWN.equals(workScope)
-                ? WORK_SCOPE_OWN_TOKEN
-                : WORK_SCOPE_FULL_TOKEN);
-
-        return String.join(",", storedValues);
-    }
-
-    private ProjectPermissionConfigurationResponse toPermissionConfiguration(Permissions permission) {
-        Set<String> storedValues = new LinkedHashSet<>();
-        String permissionModule = normalize(permission.getPermissionModule());
-
-        if (!permissionModule.isBlank()) {
-            for (String value : permissionModule.split(",")) {
-                String normalizedValue = normalize(value).toUpperCase(Locale.ROOT);
-                if (!normalizedValue.isBlank()) {
-                    storedValues.add(normalizedValue);
-                }
-            }
-        }
-
-        List<String> allowedActions = PERMISSION_ACTIONS.stream()
-                .filter(storedValues::contains)
-                .toList();
-        String workScope = storedValues.contains(WORK_SCOPE_OWN_TOKEN)
-                ? WORK_SCOPE_OWN
-                : WORK_SCOPE_FULL;
-
-        return new ProjectPermissionConfigurationResponse(
-                permission.getId(),
-                getPermissionName(permission),
-                permission.getPermissionCode(),
-                permission.getPermissionDescription(),
-                permission.getStatus(),
-                allowedActions,
-                workScope
+        Projects project = findProject(projectId);
+        return projectPermissionService.configure(
+                project,
+                permissionId,
+                request
         );
     }
 
     private Projects findProject(UUID id) {
-        return projectRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Project not found"));
+        Optional<Projects> project = projectRepository.findById(id);
+
+        if (project.isEmpty()) {
+            throw new NotFoundException("Project not found");
+        }
+
+        return project.get();
     }
 
-    private Page<Projects> findProjects(String search, String status, Pageable pageable) {
+    private Page<Projects> findProjects(
+            String search,
+            String status,
+            Pageable pageable) {
         if (search.isBlank() && status.isBlank()) {
             return projectRepository.findAll(pageable);
         }
 
         if (search.isBlank()) {
-            return projectRepository.findByProjectStatusIgnoreCase(status, pageable);
+            return projectRepository.findByProjectStatusIgnoreCase(
+                    status,
+                    pageable
+            );
         }
 
         return projectRepository.searchProjects(
@@ -414,16 +316,34 @@ public class ProjectServiceImpl implements ProjectService {
         );
     }
 
-    private Pageable createPageable(int page, String sortBy, String sortDirection) {
+    private Pageable createPageable(
+            int page,
+            String sortBy,
+            String sortDirection) {
         int validPage = Math.max(page, 0);
-        String sortField = sortBy != null && SORT_FIELDS.contains(sortBy)
-                ? sortBy
-                : DEFAULT_SORT_FIELD;
-        Sort.Direction direction = "asc".equalsIgnoreCase(sortDirection)
-                ? Sort.Direction.ASC
-                : Sort.Direction.DESC;
+        String sortField = DEFAULT_SORT_FIELD;
 
-        return PageRequest.of(validPage, PAGE_SIZE, Sort.by(direction, sortField));
+        if (sortBy != null && SORT_FIELDS.contains(sortBy)) {
+            sortField = sortBy;
+        }
+
+        Sort.Direction direction = Sort.Direction.DESC;
+
+        if ("asc".equalsIgnoreCase(sortDirection)) {
+            direction = Sort.Direction.ASC;
+        }
+
+        Sort sort = Sort.by(direction, sortField);
+
+        if ("projectCreatedBy".equals(sortField)) {
+            sort = Sort.by(direction, "projectCreatedBy.firstName")
+                    .and(Sort.by(
+                            direction,
+                            "projectCreatedBy.lastName"
+                    ));
+        }
+
+        return PageRequest.of(validPage, PAGE_SIZE, sort);
     }
 
     private void applyProjectInformation(
@@ -435,32 +355,58 @@ public class ProjectServiceImpl implements ProjectService {
             String descriptionValue,
             String statusValue,
             UUID currentProjectId) {
-        String projectName = requireText(projectNameValue, "Project name is required", 50);
-        String projectCode = requireText(projectCodeValue, "Project code is required", 50);
+        String projectName = requireText(
+                projectNameValue,
+                "Project name is required",
+                50
+        );
+        String projectCode = requireText(
+                projectCodeValue,
+                "Project code is required",
+                50
+        );
         String description = normalize(descriptionValue);
-        String status = defaultIfBlank(statusValue, DEFAULT_PROJECT_STATUS);
+        String status = defaultIfBlank(
+                statusValue,
+                DEFAULT_PROJECT_STATUS
+        );
+
+        if (currentProjectId == null) {
+            status = getCreateProjectStatus(status);
+        }
 
         validateMaxLength(description, "Project description", 255);
         validateMaxLength(status, "Project status", 50);
 
         if (startDate == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Start date is required");
+            throw new BadHttpException("Start date is required");
         }
 
         if (endDate == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "End date is required");
+            throw new BadHttpException("End date is required");
         }
 
         if (endDate.isBefore(startDate)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "End date must not be before start date");
+            throw new BadHttpException(
+                    "End date must not be before start date"
+            );
         }
 
-        boolean duplicateCode = currentProjectId == null
-                ? projectRepository.existsByProjectCodeIgnoreCase(projectCode)
-                : projectRepository.existsByProjectCodeIgnoreCaseAndIdNot(projectCode, currentProjectId);
+        boolean duplicateCode;
+
+        if (currentProjectId == null) {
+            duplicateCode = projectRepository
+                    .existsByProjectCodeIgnoreCase(projectCode);
+        } else {
+            duplicateCode = projectRepository
+                    .existsByProjectCodeIgnoreCaseAndIdNot(
+                            projectCode,
+                            currentProjectId
+                    );
+        }
 
         if (duplicateCode) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Project code already exists");
+            throw new BadHttpException("Project code already exists");
         }
 
         project.setProjectName(projectName);
@@ -471,270 +417,33 @@ public class ProjectServiceImpl implements ProjectService {
         project.setProjectStatus(status);
     }
 
-    private void syncPhases(
+    private String getCreateProjectStatus(String status) {
+        for (String allowedStatus : CREATE_PROJECT_STATUSES) {
+            if (allowedStatus.equalsIgnoreCase(status)) {
+                return allowedStatus;
+            }
+        }
+
+        throw new BadHttpException(
+                "Project status must be Planning, Active, or On Hold "
+                        + "when creating a project"
+        );
+    }
+
+    private boolean isCompletedProject(Projects project) {
+        String status = normalize(project.getProjectStatus());
+        return COMPLETED_PROJECT_STATUS.equalsIgnoreCase(status);
+    }
+
+    private ProjectListItemResponse toListItem(
             Projects project,
-            List<ProjectPhaseRequest> phaseRequests) {
-        List<ProjectPhaseRequest> requests = phaseRequests == null ? List.of() : phaseRequests;
-        validatePhaseSchedule(project, requests);
-        Map<UUID, Timeline> existingPhases = new LinkedHashMap<>();
+            Users currentUser) {
+        boolean canView = isProjectCreator(project, currentUser)
+                || projectMemberRepository.countByProjectIdAndUserId(
+                        project.getId(),
+                        currentUser.getId()
+                ) > 0;
 
-        for (Timeline phase : findProjectPhases(project.getId())) {
-            existingPhases.put(phase.getId(), phase);
-        }
-
-        for (ProjectPhaseRequest request : requests) {
-            if (request == null) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Phase information is required");
-            }
-
-            Timeline phase;
-
-            if (request.id() != null) {
-                phase = existingPhases.remove(request.id());
-
-                if (phase == null) {
-                    throw new ResponseStatusException(
-                            HttpStatus.BAD_REQUEST,
-                            "Phase does not belong to this project"
-                    );
-                }
-            } else {
-                phase = new Timeline();
-            }
-
-            applyPhaseInformation(phase, request, project);
-            phaseRepository.save(phase);
-        }
-
-        for (Timeline removedPhase : existingPhases.values()) {
-            removePhase(removedPhase);
-        }
-    }
-
-    private void validatePhaseSchedule(
-            Projects project,
-            List<ProjectPhaseRequest> requests) {
-        if (requests.isEmpty()) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "At least one phase is required to cover the full project timeline"
-            );
-        }
-
-        LocalDate expectedStartDate = project.getProjectStartDate();
-
-        for (int index = 0; index < requests.size(); index++) {
-            ProjectPhaseRequest request = requests.get(index);
-            int phaseNumber = index + 1;
-
-            if (request == null) {
-                throw new ResponseStatusException(
-                        HttpStatus.BAD_REQUEST,
-                        "Phase " + phaseNumber + " information is required"
-                );
-            }
-
-            LocalDate startDate = request.startDate();
-            LocalDate endDate = request.endDate();
-
-            if (startDate == null || endDate == null) {
-                throw new ResponseStatusException(
-                        HttpStatus.BAD_REQUEST,
-                        "Phase " + phaseNumber + " start date and end date are required"
-                );
-            }
-
-            if (endDate.isBefore(startDate)) {
-                throw new ResponseStatusException(
-                        HttpStatus.BAD_REQUEST,
-                        "Phase " + phaseNumber + " end date must not be before its start date"
-                );
-            }
-
-            if (startDate.isBefore(project.getProjectStartDate())
-                    || endDate.isAfter(project.getProjectEndDate())) {
-                throw new ResponseStatusException(
-                        HttpStatus.BAD_REQUEST,
-                        "Phase " + phaseNumber + " must stay inside the project date range"
-                );
-            }
-
-            if (!startDate.equals(expectedStartDate)) {
-                if (index == 0) {
-                    throw new ResponseStatusException(
-                            HttpStatus.BAD_REQUEST,
-                            "Phase 1 must start on the project start date "
-                                    + project.getProjectStartDate()
-                    );
-                }
-
-                String problem = startDate.isBefore(expectedStartDate)
-                        ? " overlaps the previous phase"
-                        : " leaves a gap after the previous phase";
-                throw new ResponseStatusException(
-                        HttpStatus.BAD_REQUEST,
-                        "Phase " + phaseNumber + problem
-                                + " and must start on " + expectedStartDate
-                );
-            }
-
-            expectedStartDate = endDate.plusDays(1);
-        }
-
-        ProjectPhaseRequest finalPhase = requests.get(requests.size() - 1);
-        if (!finalPhase.endDate().equals(project.getProjectEndDate())) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "The final phase must end on the project end date "
-                            + project.getProjectEndDate()
-            );
-        }
-    }
-
-    private void applyPhaseInformation(
-            Timeline phase,
-            ProjectPhaseRequest request,
-            Projects project) {
-        String title = requireText(request.title(), "Phase title is required", 150);
-        String description = normalize(request.description());
-        String status = defaultIfBlank(request.status(), DEFAULT_PHASE_STATUS);
-        LocalDate startDate = request.startDate();
-        LocalDate endDate = request.endDate();
-
-        validateMaxLength(description, "Phase description", 500);
-        validateMaxLength(status, "Phase status", 30);
-
-        if (startDate == null || endDate == null) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Phase start date and end date are required"
-            );
-        }
-
-        if (endDate.isBefore(startDate)) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Phase end date must not be before phase start date"
-            );
-        }
-
-        if (startDate.isBefore(project.getProjectStartDate())
-                || endDate.isAfter(project.getProjectEndDate())) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Phase dates must be inside the project date range"
-            );
-        }
-
-        phase.setTitle(title);
-        phase.setDescription(description);
-        phase.setStartDate(java.sql.Date.valueOf(startDate));
-        phase.setEndDate(java.sql.Date.valueOf(endDate));
-        phase.setStatus(status);
-
-        if (phase.getId() == null) {
-            phase.setProgress(0D);
-        }
-
-        phase.setProject(project);
-    }
-
-    private void removePhase(Timeline phase) {
-        long taskCount = phaseTaskRepository.countByPhaseId(phase.getId());
-        long deliverableCount = phaseDeliverableRepository.countByPhaseId(phase.getId());
-
-        if (taskCount > 0 || deliverableCount > 0) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Phase cannot be removed because it has tasks or deliverables"
-            );
-        }
-
-        phaseRepository.delete(phase);
-    }
-
-    private void syncMembers(
-            Projects project,
-            List<ProjectMemberRequest> memberRequests,
-            boolean keepExistingWhenMissing) {
-        if (memberRequests == null && keepExistingWhenMissing) {
-            return;
-        }
-
-        List<ProjectMemberRequest> requests = memberRequests == null ? List.of() : memberRequests;
-        Map<UUID, ProjectMemberRequest> requestByUserId = new LinkedHashMap<>();
-
-        for (ProjectMemberRequest request : requests) {
-            if (request == null || request.userId() == null) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "A valid user is required");
-            }
-
-            if (requestByUserId.putIfAbsent(request.userId(), request) != null) {
-                throw new ResponseStatusException(
-                        HttpStatus.BAD_REQUEST,
-                        "A user cannot be added to the same project more than once"
-                );
-            }
-        }
-
-        Map<UUID, ProjectMember> existingMemberByUserId = new LinkedHashMap<>();
-        for (ProjectMember member : findProjectMembers(project.getId())) {
-            UUID userId = member.getUser().getId();
-            ProjectMember duplicate = existingMemberByUserId.putIfAbsent(userId, member);
-
-            if (duplicate != null) {
-                projectMemberRepository.delete(member);
-            }
-        }
-
-        userPermissionRepository.deleteByProjectId(project.getId());
-
-        for (ProjectMemberRequest request : requestByUserId.values()) {
-            Users user = userRepository.findById(request.userId())
-                    .orElseThrow(() -> new ResponseStatusException(
-                            HttpStatus.NOT_FOUND,
-                            "User not found with id: " + request.userId()
-                    ));
-
-            ProjectMember member = existingMemberByUserId.remove(user.getId());
-            if (member == null) {
-                member = new ProjectMember();
-                member.setProject(project);
-                member.setUser(user);
-                member.setJoinDate(getCurrentDatabaseDateTime());
-                projectMemberRepository.save(member);
-            }
-
-            if (request.permissionId() != null) {
-                Permissions permission = resolvePermission(project, request.permissionId());
-                UserPermission userPermission = new UserPermission();
-                userPermission.setUser(user);
-                userPermission.setPermission(permission);
-                userPermissionRepository.save(userPermission);
-            }
-        }
-
-        for (ProjectMember removedMember : existingMemberByUserId.values()) {
-            projectMemberRepository.delete(removedMember);
-        }
-    }
-
-    private Permissions resolvePermission(Projects project, UUID permissionId) {
-        if (permissionId == null) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Selected permission is invalid"
-            );
-        }
-
-        return permissionRepository.findByIdAndProjectId(permissionId, project.getId())
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.BAD_REQUEST,
-                        "Selected permission does not belong to this project"
-                ));
-    }
-
-    private ProjectListItemResponse toListItem(Projects project) {
         return new ProjectListItemResponse(
                 project.getId(),
                 project.getProjectCode(),
@@ -743,212 +452,121 @@ public class ProjectServiceImpl implements ProjectService {
                 project.getProjectStatus(),
                 project.getProjectStartDate(),
                 project.getProjectEndDate(),
-                project.getProjectCreatedBy(),
-                project.getProjectCreatedAt()
+                getUserName(project.getProjectCreatedBy()),
+                project.getProjectCreatedAt(),
+                canView
         );
     }
 
-    private ProjectDetailResponse toDetail(Projects project) {
+    private ProjectDetailResponse toDetail(
+            Projects project,
+            boolean currentUserIsCreator) {
+        UUID projectId = project.getId();
+
         return new ProjectDetailResponse(
-                project.getId(),
+                projectId,
                 project.getProjectCode(),
                 project.getProjectName(),
                 project.getProjectDescription(),
                 project.getProjectStatus(),
                 project.getProjectStartDate(),
                 project.getProjectEndDate(),
-                project.getProjectCreatedBy(),
+                getUserName(project.getProjectCreatedBy()),
                 project.getProjectCreatedAt(),
-                toProjectPhases(project.getId()),
-                toProjectUsers(project.getId()),
-                toPermissionOptions(project),
-                toProjectContracts(project.getId())
+                projectPhaseService.getProjectPhases(projectId),
+                projectMemberService.getProjectUsers(projectId),
+                projectPermissionService.getOptions(projectId),
+                toProjectContracts(projectId),
+                currentUserIsCreator
         );
     }
 
-    private List<ProjectPhaseResponse> toProjectPhases(UUID projectId) {
-        return findProjectPhases(projectId)
-                .stream()
-                .map(phase -> new ProjectPhaseResponse(
-                        phase.getId(),
-                        phase.getTitle(),
-                        phase.getDescription(),
-                        toLocalDate(phase.getStartDate()),
-                        toLocalDate(phase.getEndDate()),
-                        phase.getStatus(),
-                        phaseProgressService.calculateProgress(phase.getId())
-                ))
-                .toList();
-    }
+    private List<ProjectContractResponse> toProjectContracts(UUID projectId) {
+        List<Contracts> contracts =
+                projectContractRepository.findByProjectId(projectId);
+        List<ProjectContractResponse> responses = new ArrayList<>();
 
-    private List<ProjectUserResponse> toProjectUsers(UUID projectId) {
-        Map<UUID, ProjectMember> memberByUserId = new LinkedHashMap<>();
-        Map<UUID, Users> userById = new LinkedHashMap<>();
-        Map<UUID, Permissions> permissionByUserId = new LinkedHashMap<>();
-
-        for (ProjectMember member : findProjectMembers(projectId)) {
-            Users user = member.getUser();
-            memberByUserId.putIfAbsent(user.getId(), member);
-            userById.putIfAbsent(user.getId(), user);
-        }
-
-        for (UserPermission userPermission : findProjectUserPermissions(projectId)) {
-            Users user = userPermission.getUser();
-            userById.putIfAbsent(user.getId(), user);
-            permissionByUserId.putIfAbsent(user.getId(), userPermission.getPermission());
-        }
-
-        List<ProjectUserResponse> users = new ArrayList<>();
-
-        for (Users user : userById.values()) {
-            ProjectMember member = memberByUserId.get(user.getId());
-            Permissions permission = permissionByUserId.get(user.getId());
-            users.add(new ProjectUserResponse(
-                    user.getId(),
-                    user.getEmail(),
-                    getUserName(user),
-                    user.getRole(),
-                    user.getStatus(),
-                    member == null ? null : toProjectJoinDate(member.getJoinDate()),
-                    permission == null ? null : permission.getId(),
-                    permission == null ? "Not assigned" : getPermissionName(permission),
-                    permission == null ? null : permission.getPermissionCode()
+        for (Contracts contract : contracts) {
+            responses.add(new ProjectContractResponse(
+                    contract.getId(),
+                    contract.getContractTitle(),
+                    contract.getContractNumber(),
+                    contract.getContractStatus()
             ));
         }
 
-        users.sort(Comparator.comparing(
-                ProjectUserResponse::userName,
-                Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER)
-        ));
-        return users;
+        return responses;
     }
 
-    private List<ProjectPermissionOptionResponse> toPermissionOptions(Projects project) {
-        return findProjectPermissions(project.getId())
-                .stream()
-                .sorted(Comparator.comparing(
-                        this::getPermissionName,
-                        String.CASE_INSENSITIVE_ORDER
-                ))
-                .map(permission -> new ProjectPermissionOptionResponse(
-                        permission.getId(),
-                        getPermissionName(permission),
-                        permission.getPermissionCode(),
-                        permission.getPermissionDescription(),
-                        permission.getStatus()
-                ))
-                .toList();
+    private boolean isProjectCreator(
+            Projects project,
+            Users currentUser) {
+        Users projectCreator = project.getProjectCreatedBy();
+
+        return projectCreator != null
+                && projectCreator.getId().equals(currentUser.getId());
     }
 
-    private List<ProjectContractResponse> toProjectContracts(UUID projectId) {
-        return projectContractRepository.findByProjectId(projectId)
-                .stream()
-                .map(contract -> new ProjectContractResponse(
-                        contract.getContractTitle(),
-                        contract.getContractNumber(),
-                        contract.getContractStatus()
-                ))
-                .toList();
-    }
-
-    private List<Timeline> findProjectPhases(UUID projectId) {
-        return phaseRepository.findByProjectId(projectId);
-    }
-
-    private List<ProjectMember> findProjectMembers(UUID projectId) {
-        return projectMemberRepository.findByProjectId(projectId);
-    }
-
-    private List<UserPermission> findProjectUserPermissions(UUID projectId) {
-        return userPermissionRepository.findByProjectId(projectId);
-    }
-
-    private List<Permissions> findProjectPermissions(UUID projectId) {
-        return permissionRepository.findByProjectId(projectId);
-    }
-
-    private String getUserName(Users user) {
-        String fullName = (normalize(user.getFirstName()) + " " + normalize(user.getLastName())).trim();
+    private String getUserName(Users currentUser) {
+        String firstName = normalize(currentUser.getFirstName());
+        String lastName = normalize(currentUser.getLastName());
+        String fullName = (firstName + " " + lastName).trim();
 
         if (!fullName.isBlank()) {
+            validateMaxLength(fullName, "Project creator", 50);
             return fullName;
         }
 
-        String email = normalize(user.getEmail());
-        return email.isBlank() ? "User #" + user.getId() : email;
-    }
+        String email = normalize(currentUser.getEmail());
 
-    private String getPermissionName(Permissions permission) {
-        String name = normalize(permission.getPermissionName());
-
-        if (!name.isBlank()) {
-            return name;
+        if (email.isBlank()) {
+            throw new BadHttpException(
+                    "Authenticated user information is missing"
+            );
         }
 
-        String code = normalize(permission.getPermissionCode());
-        return code.isBlank() ? "Permission #" + permission.getId() : code;
+        validateMaxLength(email, "Project creator", 50);
+        return email;
     }
 
-    private LocalDate toLocalDate(Date value) {
-        if (value == null) {
-            return null;
-        }
-
-        if (value instanceof java.sql.Date sqlDate) {
-            return sqlDate.toLocalDate();
-        }
-
-        return value.toInstant()
-                .atZone(PROJECT_TIME_ZONE)
-                .toLocalDate();
-    }
-
-    private Date getCurrentDatabaseDateTime() {
-        LocalDateTime utcDateTime = LocalDateTime.now(DATABASE_TIME_ZONE);
-        return java.sql.Timestamp.valueOf(utcDateTime);
-    }
-
-    private LocalDate toProjectJoinDate(Date value) {
-        if (value == null) {
-            return null;
-        }
-
-        LocalDateTime databaseDateTime;
-        if (value instanceof java.sql.Timestamp timestamp) {
-            databaseDateTime = timestamp.toLocalDateTime();
-        } else {
-            databaseDateTime = LocalDateTime.ofInstant(value.toInstant(), ZoneId.systemDefault());
-        }
-
-        return databaseDateTime
-                .atZone(DATABASE_TIME_ZONE)
-                .withZoneSameInstant(PROJECT_TIME_ZONE)
-                .toLocalDate();
-    }
-
-    private String requireText(String value, String message, int maxLength) {
+    private String requireText(
+            String value,
+            String message,
+            int maxLength) {
         String normalizedValue = normalize(value);
 
         if (normalizedValue.isBlank()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, message);
+            throw new BadHttpException(message);
         }
 
-        validateMaxLength(normalizedValue, message.replace(" is required", ""), maxLength);
+        validateMaxLength(
+                normalizedValue,
+                message.replace(" is required", ""),
+                maxLength
+        );
         return normalizedValue;
     }
 
-    private void validateMaxLength(String value, String fieldName, int maxLength) {
+    private void validateMaxLength(
+            String value,
+            String fieldName,
+            int maxLength) {
         if (value.length() > maxLength) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    fieldName + " must not be longer than " + maxLength + " characters"
+            throw new BadHttpException(
+                    fieldName + " must not be longer than "
+                            + maxLength + " characters"
             );
         }
     }
 
     private String defaultIfBlank(String value, String defaultValue) {
         String normalizedValue = normalize(value);
-        return normalizedValue.isBlank() ? defaultValue : normalizedValue;
+
+        if (normalizedValue.isBlank()) {
+            return defaultValue;
+        }
+
+        return normalizedValue;
     }
 
     private String normalize(String value) {

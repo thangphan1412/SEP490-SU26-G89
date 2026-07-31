@@ -10,22 +10,26 @@ import com.fpt.backend.dto.response.permission.PermissionRoleResponse;
 import com.fpt.backend.entity.Permissions;
 import com.fpt.backend.entity.Projects;
 import com.fpt.backend.entity.Role;
+import com.fpt.backend.exception.BadHttpException;
+import com.fpt.backend.exception.NotFoundException;
 import com.fpt.backend.repository.permission.PermissionRepository;
+import com.fpt.backend.repository.permission.RoleRepository;
 import com.fpt.backend.repository.project.ProjectRepository;
+import com.fpt.backend.service.interfaces.permission.PermissionModuleService;
 import com.fpt.backend.service.interfaces.permission.PermissionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
@@ -34,7 +38,7 @@ import java.util.UUID;
 @Transactional(readOnly = true)
 public class PermissionServiceImpl implements PermissionService {
     private static final int PAGE_SIZE = 7;
-    private static final String DEFAULT_SORT_FIELD = "id";
+    private static final String DEFAULT_SORT_FIELD = "createdAt";
     private static final Set<String> SORT_FIELDS = Set.of(
             "id",
             "permissionName",
@@ -48,7 +52,9 @@ public class PermissionServiceImpl implements PermissionService {
     );
 
     private final PermissionRepository permissionRepository;
+    private final RoleRepository roleRepository;
     private final ProjectRepository projectRepository;
+    private final PermissionModuleService permissionModuleService;
 
     @Override
     public PermissionListResponse getPermissions(PermissionListRequest request) {
@@ -89,7 +95,7 @@ public class PermissionServiceImpl implements PermissionService {
     @Transactional
     public PermissionDetailResponse createPermission(PermissionRequest request) {
         Permissions permission = new Permissions();
-        // Actions are configured later from the project's Permission Configure popup.
+        // Actions are configured later from Update Permission.
         permission.setPermissionModule(null);
         applyRequest(permission, request, null);
         return toDetail(permissionRepository.save(permission));
@@ -111,27 +117,37 @@ public class PermissionServiceImpl implements PermissionService {
 
     @Override
     public List<PermissionProjectResponse> getProjectsForPermissionSelection() {
-        return projectRepository.findAll(Sort.by(Sort.Direction.ASC, "projectName"))
-                .stream()
-                .map(project -> new PermissionProjectResponse(
-                        project.getId(),
-                        project.getProjectCode(),
-                        project.getProjectName()
-                ))
-                .toList();
+        List<Projects> projects = projectRepository.findAll(
+                Sort.by(Sort.Direction.ASC, "projectName")
+        );
+        List<PermissionProjectResponse> responses = new ArrayList<>();
+
+        for (Projects project : projects) {
+            responses.add(new PermissionProjectResponse(
+                    project.getId(),
+                    project.getProjectCode(),
+                    project.getProjectName()
+            ));
+        }
+
+        return responses;
     }
 
     @Override
     public List<PermissionRoleResponse> getRolesForPermissionSelection() {
-        return permissionRepository.findRolesForPermissionSelection()
-                .stream()
-                .map(role -> new PermissionRoleResponse(role.getId(), role.getRoleName()))
-                .toList();
+        List<Role> roles = roleRepository.findAllForSelection();
+        List<PermissionRoleResponse> responses = new ArrayList<>();
+
+        for (Role role : roles) {
+            responses.add(new PermissionRoleResponse(role.getId(), role.getRoleName()));
+        }
+
+        return responses;
     }
 
     private void applyRequest(Permissions permission, PermissionRequest request, UUID currentId) {
         if (request == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Permission information is required");
+            throw new BadHttpException("Permission information is required");
         }
 
         String permissionName = requireText(request.permissionName(), "Permission name is required", 50);
@@ -146,7 +162,7 @@ public class PermissionServiceImpl implements PermissionService {
                 : permissionRepository.existsByPermissionCodeIgnoreCaseAndIdNot(permissionCode, currentId);
 
         if (duplicateCode) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Permission code already exists");
+            throw new BadHttpException("Permission code already exists");
         }
 
         permission.setPermissionName(permissionName);
@@ -156,32 +172,58 @@ public class PermissionServiceImpl implements PermissionService {
         permission.setProject(project);
         permission.setRole(role);
 
+        if (currentId != null
+                && (request.allowedActions() != null
+                || request.workScope() != null)) {
+            permission.setPermissionModule(
+                    permissionModuleService.createModuleValue(
+                            request.allowedActions(),
+                            request.workScope()
+                    )
+            );
+        }
+
         if (permission.getCreatedAt() == null) {
             permission.setCreatedAt(LocalDateTime.now());
         }
     }
 
     private Permissions findPermission(UUID id) {
-        return permissionRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Permission not found"));
+        Optional<Permissions> permission = permissionRepository.findById(id);
+
+        if (permission.isEmpty()) {
+            throw new NotFoundException("Permission not found");
+        }
+
+        return permission.get();
     }
 
     private Projects findProject(UUID projectId) {
         if (projectId == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Project is required");
+            throw new BadHttpException("Project is required");
         }
 
-        return projectRepository.findById(projectId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Project not found"));
+        Optional<Projects> project = projectRepository.findById(projectId);
+
+        if (project.isEmpty()) {
+            throw new NotFoundException("Project not found");
+        }
+
+        return project.get();
     }
 
     private Role findRole(UUID roleId) {
         if (roleId == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Role is required");
+            throw new BadHttpException("Role is required");
         }
 
-        return permissionRepository.findPermissionRoleById(roleId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Role not found"));
+        Optional<Role> role = roleRepository.findById(roleId);
+
+        if (role.isEmpty()) {
+            throw new NotFoundException("Role not found");
+        }
+
+        return role.get();
     }
 
     private Pageable createPageable(int page, String sortBy, String sortDirection) {
@@ -205,12 +247,11 @@ public class PermissionServiceImpl implements PermissionService {
         String normalizedValue = normalize(value);
 
         if (normalizedValue.isBlank()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, missingMessage);
+            throw new BadHttpException(missingMessage);
         }
 
         if (normalizedValue.length() > maxLength) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
+            throw new BadHttpException(
                     "Value must not be longer than " + maxLength + " characters"
             );
         }
@@ -220,8 +261,7 @@ public class PermissionServiceImpl implements PermissionService {
 
     private void validateMaxLength(String value, String fieldName, int maxLength) {
         if (value.length() > maxLength) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
+            throw new BadHttpException(
                     fieldName + " must not be longer than " + maxLength + " characters"
             );
         }
@@ -260,6 +300,12 @@ public class PermissionServiceImpl implements PermissionService {
                 permission.getPermissionName(),
                 permission.getPermissionCode(),
                 permission.getPermissionModule(),
+                permissionModuleService.getAllowedActions(
+                        permission.getPermissionModule()
+                ),
+                permissionModuleService.getWorkScope(
+                        permission.getPermissionModule()
+                ),
                 permission.getPermissionDescription(),
                 permission.getStatus(),
                 project == null ? null : project.getId(),

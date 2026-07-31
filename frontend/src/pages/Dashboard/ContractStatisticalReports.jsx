@@ -1,0 +1,286 @@
+import React, { useState, useEffect, useMemo } from "react";
+import { Button, Card, Col, Form, Row, Table } from "react-bootstrap";
+import {
+    IconArrowLeft,
+    IconArrowRight,
+    IconCalendar,
+    IconChartBar,
+    IconFileInvoice,
+    IconRefresh,
+    IconTrendingUp,
+    IconUpload,
+} from "@tabler/icons-react";
+
+// --- CONSTANTS ---
+const BLUE = "#1f5eff";
+const NAVY = "#101a3e";
+const MUTED = "#687694";
+const BORDER = "#e7ebf3";
+
+const MOCK_TYPES = [
+    { label: "Service", value: 456, percent: "36.6%", color: "#2361ed" },
+    { label: "License", value: 350, percent: "28.0%", color: "#ff8909" },
+    { label: "NDA", value: 196, percent: "15.7%", color: "#fa4455" },
+    { label: "Vendor", value: 108, percent: "8.7%", color: "#2ab784" },
+    { label: "Employment", value: 88, percent: "7.1%", color: "#7c68bf" },
+    { label: "Other", value: 50, percent: "4.0%", color: "#4d5c74" }
+];
+
+const MOCK_STATUSES = [
+    { label: "Active", value: 856, percent: "68.8%", color: "#2361ed" },
+    { label: "Pending", value: 128, percent: "10.3%", color: "#ff8909" },
+    { label: "Expired", value: 24, percent: "1.9%", color: "#fa4455" },
+    { label: "Draft", value: 160, percent: "12.8%", color: "#9eabc0" },
+    { label: "Canceled", value: 80, percent: "6.4%", color: "#4d5c74" }
+];
+
+const MOCK_TOP_EXPIRING = [
+    { name: "Master Services Agreement", party: "Acme Corporation", date: "Jun 05, 2025", days: "12", value: "$125,000" },
+    { name: "Software License Agreement", party: "Tech Solutions Inc.", date: "Jun 08, 2025", days: "13", value: "$45,000" },
+    { name: "Maintenance Agreement", party: "Global Services LLC", date: "Jun 20, 2025", days: "27", value: "$75,000" }
+];
+
+const MOCK_VALUE_BY_TYPE = [
+    { name: "Service", value: "$1.30M", percent: 100 },
+    { name: "License", value: "$630K", percent: 67 },
+    { name: "Vendor", value: "$320K", percent: 40 },
+    { name: "NDA", value: "$110K", percent: 20 },
+    { name: "Employment", value: "$60K", percent: 12 },
+    { name: "Other", value: "$50K", percent: 10 }
+];
+
+// --- MAIN COMPONENT ---
+function ContractStatisticalReports() {
+    // TODO: Liên kết API
+    const [typesData, setTypesData] = useState(MOCK_TYPES);
+    const [statusesData, setStatusesData] = useState(MOCK_STATUSES);
+    const [expiringData, setExpiringData] = useState(MOCK_TOP_EXPIRING);
+    const [valueData, setValueData] = useState(MOCK_VALUE_BY_TYPE);
+
+    return (
+        <div className="bg-white" style={{ color: NAVY, fontFamily: "Inter, system-ui, sans-serif" }}>
+            <div className="mb-4">
+                <h1 className="fw-bold mb-1" style={{ fontSize: 25 }}>Contract Statistical Reports</h1>
+                <p className="mb-0" style={{ color: MUTED }}>In-depth insights and analytics on your contract lifecycle.</p>
+            </div>
+
+            {/* Filters */}
+            <div className="d-flex flex-wrap align-items-center gap-3 mb-4">
+                <SelectField icon={IconCalendar} value="May 1 – May 24, 2025" style={{ minWidth: 270 }} />
+                <SelectField value="All Types" style={{ minWidth: 200 }} />
+                <Button className="ms-lg-auto d-flex align-items-center gap-2 px-3" style={{ minHeight: 41, background: BLUE, borderColor: BLUE }}>
+                    <IconUpload size={18} />Export Report
+                </Button>
+            </div>
+
+            {/* Metrics */}
+            <Row className="g-3 mb-3">
+                <Col xl={3} md={6}><MetricCard label="Total Agreements" value="1,248" change="12.5%" icon={IconFileInvoice} tone="blue" /></Col>
+                <Col xl={3} md={6}><MetricCard label="Total Value" value="$2.45M" change="15.3%" icon={IconFileInvoice} tone="green" /></Col>
+                <Col xl={3} md={6}><MetricCard label="Avg. Contract Value" value="$1,961" change="4.8%" icon={IconChartBar} tone="orange" /></Col>
+                <Col xl={3} md={6}><MetricCard label="Renewal Rate" value="78.6%" change="6.1%" icon={IconRefresh} tone="red" /></Col>
+            </Row>
+
+            {/* Charts */}
+            <Row className="g-3 mb-3">
+                <Col xl={4}>
+                    <ChartCard title="Agreements by Type" description="Distribution by contract type">
+                        <DonutChart data={typesData} />
+                    </ChartCard>
+                </Col>
+                <Col xl={4}>
+                    <ChartCard title="Agreements Over Time" description="Monthly trend of agreements">
+                        <BarChart />
+                    </ChartCard>
+                </Col>
+                <Col xl={4}>
+                    <ChartCard title="Contracts by Status" description="Distribution by current status">
+                        <DonutChart data={statusesData} />
+                    </ChartCard>
+                </Col>
+            </Row>
+
+            {/* Tables / Lists */}
+            <Row className="g-3">
+                <Col lg={7}><TopExpiringTable data={expiringData} /></Col>
+                <Col lg={5}><ValueByType data={valueData} /></Col>
+            </Row>
+        </div>
+    );
+}
+
+// --- SUB COMPONENTS ---
+function SelectField({ value, icon: Icon, style }) {
+    return (
+        <div className="position-relative" style={style}>
+            {Icon && <Icon className="position-absolute top-50 translate-middle-y" style={{ left: 16, color: "#3d4b68", zIndex: 1 }} size={18} />}
+            <Form.Select value={value} className={`fw-medium ${Icon ? "ps-5" : "ps-3"}`} style={{ height: 42, borderColor: "#dce3ee", color: "#2d3c5d", fontSize: 13 }} readOnly>
+                <option>{value}</option>
+            </Form.Select>
+        </div>
+    );
+}
+
+function MetricCard({ label, value, change, icon: Icon, tone }) {
+    const tones = {
+        blue: ["#eaf0ff", BLUE],
+        green: ["#e5f8ef", "#08b875"],
+        orange: ["#fff3e4", "#ff8500"],
+        red: ["#ffebed", "#f3273b"]
+    };
+    const [background, color] = tones[tone];
+    return (
+        <Card className="h-100 border shadow-sm" style={{ borderColor: BORDER, borderRadius: 10 }}>
+            <Card.Body className="p-4">
+                <div className="d-flex justify-content-between align-items-start mb-2">
+                    <span style={{ color: "#52617e" }}>{label}</span>
+                    <span className="rounded-3 d-flex justify-content-center align-items-center" style={{ width: 54, height: 54, background, color }}>
+                        <Icon size={27} />
+                    </span>
+                </div>
+                <div className="d-flex align-items-center gap-3">
+                    <span className="fw-bold" style={{ fontSize: 27 }}>{value}</span>
+                    <span className="fw-semibold d-flex align-items-center gap-1" style={{ color: "#08ac68" }}>
+                        <IconTrendingUp size={17} />{change}
+                    </span>
+                </div>
+                <div className="mt-2" style={{ color: MUTED, fontSize: 13 }}>vs Apr 1 – Apr 30, 2025</div>
+            </Card.Body>
+        </Card>
+    );
+}
+
+function ChartCard({ title, description, children }) {
+    return (
+        <Card className="h-100 border shadow-sm" style={{ minHeight: 300, borderColor: BORDER, borderRadius: 10 }}>
+            <Card.Body className="p-4">
+                <h2 className="h6 fw-bold mb-1">{title}</h2>
+                <p className="mb-3" style={{ color: MUTED, fontSize: 13 }}>{description}</p>
+                {children}
+            </Card.Body>
+        </Card>
+    );
+}
+
+function DonutChart({ data }) {
+    const gradient = useMemo(() => {
+        const total = data.reduce((sum, item) => sum + item.value, 0);
+        return `conic-gradient(${data.map((item, index) => {
+            const start = data.slice(0, index).reduce((sum, previous) => sum + (previous.value / total) * 100, 0);
+            const end = start + (item.value / total) * 100;
+            return `${item.color} ${start.toFixed(2)}% ${(end - .7).toFixed(2)}%`;
+        }).join(", ")})`;
+    }, [data]);
+
+    return (
+        <div className="d-flex flex-column flex-sm-row align-items-center justify-content-center gap-3 mt-4">
+            <div className="rounded-circle position-relative flex-shrink-0" style={{ width: 177, height: 177, background: gradient }}>
+                <div className="rounded-circle bg-white position-absolute top-50 start-50 translate-middle d-flex flex-column align-items-center justify-content-center" style={{ width: 105, height: 105 }}>
+                    <strong style={{ fontSize: 21 }}>1,248</strong>
+                    <small style={{ color: MUTED }}>Total</small>
+                </div>
+            </div>
+            <div className="w-100" style={{ maxWidth: 200 }}>
+                {data.map((item) => (
+                    <div key={item.label} className="d-flex justify-content-between mb-3 gap-2" style={{ color: "#3f4e6b", fontSize: 12 }}>
+                        <span className="d-flex align-items-center gap-2">
+                            <i className="rounded-circle" style={{ width: 9, height: 9, background: item.color }} />{item.label}
+                        </span>
+                        <span className="fw-semibold text-nowrap">{item.value} ({item.percent})</span>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+}
+
+function BarChart() {
+    const labels = ["Dec ’24", "Jan ’25", "Feb ’25", "Mar ’25", "Apr ’25", "May ’25"];
+    const heights = [57, 83, 99, 118, 141, 165];
+    return (
+        <svg viewBox="0 0 330 230" className="w-100" role="img" aria-label="Monthly agreement bar chart" style={{ height: 230 }}>
+            {[34, 77, 120, 163, 206].map((y, index) => (
+                <g key={y}>
+                    <line x1="30" x2="320" y1={y} y2={y} stroke="#edf0f5" />
+                    <text x="1" y={y + 4} fill="#71809b" fontSize="11">{["1K", "750", "500", "250", "0"][index]}</text>
+                </g>
+            ))}
+            {heights.map((height, index) => (
+                <g key={labels[index]}>
+                    <rect x={40 + index * 47} y={206 - height} width="25" height={height} rx="3" fill={BLUE} />
+                    <text x={52 + index * 47} y="226" textAnchor="middle" fill="#71809b" fontSize="10">{labels[index]}</text>
+                </g>
+            ))}
+        </svg>
+    );
+}
+
+function Pill() {
+    return <span className="rounded-2 fw-semibold" style={{ padding: "6px 10px", background: "#fff4e8", color: "#ff8500", fontSize: 12 }}>Expiring Soon</span>;
+}
+
+function TopExpiringTable({ data }) {
+    const headers = ["Agreement Name", "Party", "Expiry Date", "Days Left", "Value", "Status"];
+    return (
+        <Card className="h-100 border shadow-sm overflow-hidden" style={{ borderColor: BORDER, borderRadius: 10 }}>
+            <Card.Body className="p-0">
+                <div className="p-3 px-4 border-bottom" style={{ borderColor: BORDER }}>
+                    <h2 className="h6 fw-bold mb-1">Top Expiring Agreements</h2>
+                    <p className="mb-0" style={{ color: MUTED, fontSize: 12 }}>Contracts expiring in the next 60 days</p>
+                </div>
+                <div className="table-responsive">
+                    <Table className="mb-0 align-middle" style={{ minWidth: 650, fontSize: 12 }}>
+                        <thead style={{ color: "#3d4a68", background: "#fbfcff" }}>
+                        <tr>
+                            {headers.map((header) => <th key={header} className="fw-semibold px-3 py-3">{header}</th>)}
+                        </tr>
+                        </thead>
+                        <tbody>
+                        {data.map((row, index) => (
+                            <tr key={index}>
+                                <td className="px-3 py-3 fw-semibold">{row.name}</td>
+                                <td>{row.party}</td>
+                                <td>{row.date}</td>
+                                <td>{row.days}</td>
+                                <td>{row.value}</td>
+                                <td><Pill /></td>
+                            </tr>
+                        ))}
+                        </tbody>
+                    </Table>
+                </div>
+                <div className="d-flex justify-content-between align-items-center px-3 py-3 border-top" style={{ color: MUTED, borderColor: BORDER, fontSize: 12 }}>
+                    <span>Showing 1 to {data.length} of {data.length} results</span>
+                    <span className="d-flex align-items-center gap-2">
+                        <IconArrowLeft size={15} />
+                        <button type="button" className="btn btn-sm border" style={{ color: BLUE, borderColor: "#8ba9ff" }}>1</button>
+                        <IconArrowRight size={15} />
+                    </span>
+                </div>
+            </Card.Body>
+        </Card>
+    );
+}
+
+function ValueByType({ data }) {
+    return (
+        <Card className="h-100 border shadow-sm" style={{ borderColor: BORDER, borderRadius: 10 }}>
+            <Card.Body className="p-4">
+                <h2 className="h6 fw-bold mb-1">Value by Type</h2>
+                <p className="mb-4" style={{ color: MUTED, fontSize: 12 }}>Total contract value by contract type</p>
+
+                {data.map((row, index) => (
+                    <div key={index} className="d-flex align-items-center gap-3 mb-3">
+                        <span className="fw-semibold" style={{ fontSize: 12, width: 112 }}>{row.name}</span>
+                        <div className="flex-grow-1 rounded" style={{ height: 12, background: "#eff2f7" }}>
+                            <div className="h-100 rounded" style={{ width: `${row.percent}%`, background: BLUE }} />
+                        </div>
+                        <span className="text-end fw-semibold" style={{ width: 55, fontSize: 12, color: "#50607e" }}>{row.value}</span>
+                    </div>
+                ))}
+            </Card.Body>
+        </Card>
+    );
+}
+
+export default ContractStatisticalReports;

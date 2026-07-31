@@ -1,38 +1,26 @@
 import { useEffect, useState } from "react";
 import { Alert, Button, Modal, Spinner } from "react-bootstrap";
-import {
-  configureProjectPermission,
-  listProjectPermissionConfigurations,
-} from "../../services/projectService/projectApi.js";
-import {
-  permissionActionOptions,
-  permissionWorkScopeOptions,
-} from "../permissionComponents/permissionModuleOptions.js";
+import { useNavigate } from "react-router-dom";
+import { listProjectPermissionConfigurations } from "../../services/projectService/projectApi.js";
+import Icon from "./Icon.jsx";
 import PermissionConfigureRow from "./PermissionConfigureRow.jsx";
 import "../../assets/styles/css/projectStyles/PermissionConfigureModal.css";
 
-const emptyConfiguration = {
-  allowedActions: [],
-  workScope: "FULL",
-};
-
 function PermissionConfigureModal({ show, projectId, projectName, onHide }) {
+  const navigate = useNavigate();
   const [permissions, setPermissions] = useState([]);
-  const [selectedPermissionId, setSelectedPermissionId] = useState(null);
-  const [configuration, setConfiguration] = useState(emptyConfiguration);
   const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const [successMessage, setSuccessMessage] = useState("");
 
-  useEffect(() => {
+  useEffect(function () {
     if (!show) {
       return undefined;
     }
 
     let isActive = true;
+    const requestController = new AbortController();
 
-    const loadPermissions = async () => {
+    async function loadPermissions() {
       if (!projectId) {
         setPermissions([]);
         setError("Project id is missing.");
@@ -42,115 +30,70 @@ function PermissionConfigureModal({ show, projectId, projectName, onHide }) {
       try {
         setLoading(true);
         setError("");
-        setSuccessMessage("");
-        setSelectedPermissionId(null);
-        const response = await listProjectPermissionConfigurations(projectId);
-        const payload = response.data?.data ?? response.data;
+        const payload = await listProjectPermissionConfigurations(
+          projectId,
+          requestController.signal
+        );
 
         if (isActive) {
           setPermissions(Array.isArray(payload) ? payload : []);
         }
       } catch (requestError) {
-        console.error("Unable to load project permissions:", requestError);
-
-        if (isActive) {
-          setPermissions([]);
-          setError(getErrorMessage(requestError));
+        if (!isActive) {
+          return;
         }
+
+        console.error("Unable to load project permissions:", requestError);
+        setPermissions([]);
+        setError(getErrorMessage(requestError));
       } finally {
         if (isActive) {
           setLoading(false);
         }
       }
-    };
+    }
 
     loadPermissions();
 
-    return () => {
+    return function () {
       isActive = false;
+      requestController.abort();
     };
   }, [projectId, show]);
 
-  const openConfiguration = (permission) => {
-    setSelectedPermissionId(permission.permissionId);
-    setConfiguration({
-      allowedActions: Array.isArray(permission.allowedActions)
-        ? [...permission.allowedActions]
-        : [],
-      workScope: permission.workScope === "OWN" ? "OWN" : "FULL",
-    });
-    setError("");
-    setSuccessMessage("");
-  };
-
-  const toggleAction = (action) => {
-    setConfiguration((currentConfiguration) => {
-      const currentActions = currentConfiguration.allowedActions;
-      const hasAction = currentActions.includes(action);
-
-      return {
-        ...currentConfiguration,
-        allowedActions: hasAction
-          ? currentActions.filter((currentAction) => currentAction !== action)
-          : [...currentActions, action],
-      };
-    });
-  };
-
-  const saveConfiguration = async () => {
-    if (!selectedPermissionId) {
+  function openPermissionUpdate(permission) {
+    if (!permission?.permissionId) {
       return;
     }
 
-    try {
-      setSaving(true);
-      setError("");
-      setSuccessMessage("");
-      const response = await configureProjectPermission(
-        projectId,
-        selectedPermissionId,
-        configuration
-      );
-      const updatedPermission = response.data?.data ?? response.data;
+    onHide();
+    navigate(
+      `/permission/update?edit=${encodeURIComponent(permission.permissionId)}`
+        + `&returnProjectId=${encodeURIComponent(projectId)}`
+    );
+  }
 
-      setPermissions((currentPermissions) =>
-        currentPermissions.map((permission) =>
-          permission.permissionId === selectedPermissionId
-            ? updatedPermission
-            : permission
-        )
-      );
-      setConfiguration({
-        allowedActions: Array.isArray(updatedPermission?.allowedActions)
-          ? [...updatedPermission.allowedActions]
-          : [],
-        workScope: updatedPermission?.workScope === "OWN" ? "OWN" : "FULL",
-      });
-      setSuccessMessage(
-        `Configuration for "${updatedPermission?.permissionName || "permission"}" was saved.`
-      );
-    } catch (requestError) {
-      console.error("Unable to save permission configuration:", requestError);
-      setError(getErrorMessage(requestError));
-    } finally {
-      setSaving(false);
+  function openCreatePermission() {
+    if (!projectId) {
+      return;
     }
-  };
+
+    onHide();
+    navigate(
+      `/permission/create?projectId=${encodeURIComponent(projectId)}`
+    );
+  }
 
   return (
     <Modal
       show={show}
-      onHide={() => {
-        if (!saving) {
-          onHide();
-        }
-      }}
+      onHide={onHide}
       centered
       scrollable
       size="lg"
       className="permission-configure-modal"
     >
-      <Modal.Header closeButton={!saving}>
+      <Modal.Header closeButton>
         <div>
           <Modal.Title>Permission Configure</Modal.Title>
           <p>
@@ -161,7 +104,6 @@ function PermissionConfigureModal({ show, projectId, projectName, onHide }) {
 
       <Modal.Body>
         {error && <Alert variant="danger">{error}</Alert>}
-        {successMessage && <Alert variant="success">{successMessage}</Alert>}
 
         {loading ? (
           <div className="permission-configure-state">
@@ -178,20 +120,7 @@ function PermissionConfigureModal({ show, projectId, projectName, onHide }) {
               <PermissionConfigureRow
                 key={permission.permissionId}
                 permission={permission}
-                isOpen={selectedPermissionId === permission.permissionId}
-                configuration={configuration}
-                actionOptions={permissionActionOptions}
-                workScopeOptions={permissionWorkScopeOptions}
-                saving={saving}
-                onConfigure={openConfiguration}
-                onToggleAction={toggleAction}
-                onScopeChange={(workScope) =>
-                  setConfiguration((currentConfiguration) => ({
-                    ...currentConfiguration,
-                    workScope,
-                  }))
-                }
-                onSave={saveConfiguration}
+                onConfigure={openPermissionUpdate}
               />
             ))}
           </div>
@@ -199,8 +128,17 @@ function PermissionConfigureModal({ show, projectId, projectName, onHide }) {
       </Modal.Body>
 
       <Modal.Footer>
-        <Button type="button" variant="light" disabled={saving} onClick={onHide}>
+        <Button type="button" variant="light" onClick={onHide}>
           Close
+        </Button>
+        <Button
+          type="button"
+          disabled={!projectId}
+          className="permission-configure-add-button"
+          onClick={openCreatePermission}
+        >
+          <Icon name="plus" size={18} color="#fff" />
+          Add Permission
         </Button>
       </Modal.Footer>
     </Modal>
