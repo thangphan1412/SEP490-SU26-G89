@@ -446,10 +446,16 @@ function CreateProject({ onCreateProject }) {
                     <div className="create-project-section-header">
                         <div>
                             <Card.Title as="h2" className="project-management-card-title">Project Members</Card.Title>
-                            <p className="create-project-section-note">Only selected members are shown here. Use Add Members to choose users from the database.</p>
+                            <p className="create-project-section-note">
+                                The signed-in user will be added automatically with the
+                                Project Full Access permission after the project is created.
+                                Use Add Members to choose additional users.
+                            </p>
                         </div>
                         <div className="create-project-member-header-actions">
-                            <span className="create-project-selected-count">{project.members.length} members</span>
+                            <span className="create-project-selected-count">
+                                {project.members.length} additional members
+                            </span>
                             <Button
                                 type="button"
                                 variant="light"
@@ -467,7 +473,10 @@ function CreateProject({ onCreateProject }) {
                     ) : loadingEmployees ? (
                         <div className="create-project-empty-state">Loading employees...</div>
                     ) : currentProjectMembers.length === 0 ? (
-                        <div className="create-project-empty-state">No members have been added to this project.</div>
+                        <div className="create-project-empty-state">
+                            No additional members have been selected. The signed-in
+                            user will be added automatically after creation.
+                        </div>
                     ) : (
                         <div className="create-project-member-list">
                             {currentProjectMembers.map((member) => (

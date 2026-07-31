@@ -11,10 +11,13 @@ import "../../assets/styles/css/permissionStyles/CreatePermissionPage.css";
 import {
   createPermission,
   listPermissionProjects,
-  listPermissionRoles,
 } from "../../services/permissionService/permissionApi.js";
 import PermissionFormField from "../../components/permissionComponents/PermissionFormField.jsx";
 import PermissionPage from "../../components/permissionComponents/PermissionPage.jsx";
+import {
+  permissionActionOptions,
+  permissionWorkScopeOptions,
+} from "../../components/permissionComponents/permissionModuleOptions.js";
 import {
   formatPermissionProjectName,
   getPermissionErrorMessage,
@@ -25,20 +28,21 @@ const initialPermission = {
   permissionCode: "",
   permissionDescription: "",
   projectId: "",
-  roleId: "",
   status: true,
+  allowedActions: [],
+  workScope: "FULL",
 };
 
 function CreatePermissionPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const requestedProjectId = searchParams.get("projectId") || "";
+  const returnProjectId = searchParams.get("returnProjectId") || "";
   const [permission, setPermission] = useState({
     ...initialPermission,
     projectId: requestedProjectId,
   });
   const [projects, setProjects] = useState([]);
-  const [roles, setRoles] = useState([]);
   const [loadingOptions, setLoadingOptions] = useState(true);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
@@ -49,14 +53,12 @@ function CreatePermissionPage() {
 
     async function loadOptions() {
       try {
-        const [projectPayload, rolePayload] = await Promise.all([
-          listPermissionProjects(requestController.signal),
-          listPermissionRoles(requestController.signal),
-        ]);
+        const projectPayload = await listPermissionProjects(
+          requestController.signal
+        );
 
         if (isActive) {
           setProjects(Array.isArray(projectPayload) ? projectPayload : []);
-          setRoles(Array.isArray(rolePayload) ? rolePayload : []);
         }
       } catch (requestError) {
         if (!isActive) {
@@ -64,7 +66,7 @@ function CreatePermissionPage() {
         }
 
         console.error("Unable to load permission options:", requestError);
-        setError("Unable to load projects or roles. Please try again later.");
+        setError("Unable to load projects. Please try again later.");
       } finally {
         if (isActive) {
           setLoadingOptions(false);
@@ -88,6 +90,64 @@ function CreatePermissionPage() {
     }));
   }
 
+  function toggleAllowedAction(action) {
+    setPermission(function (currentPermission) {
+      const currentActions = currentPermission.allowedActions;
+      let allowedActions;
+
+      if (currentActions.includes(action)) {
+        allowedActions = currentActions.filter(function (currentAction) {
+          return currentAction !== action;
+        });
+      } else {
+        allowedActions = [...currentActions, action];
+      }
+
+      return {
+        ...currentPermission,
+        allowedActions,
+      };
+    });
+  }
+
+  function handleWorkScopeChange(event) {
+    const workScope = event.target.value;
+
+    setPermission(function (currentPermission) {
+      return {
+        ...currentPermission,
+        workScope,
+      };
+    });
+  }
+
+  function getBackPath() {
+    if (returnProjectId) {
+      return `/project-management/view?id=${encodeURIComponent(returnProjectId)}`
+        + "&openPermissionConfigure=true";
+    }
+
+    return "/permission/list";
+  }
+
+  function getCreatedPermissionPath(permissionId) {
+    if (!permissionId) {
+      return getBackPath();
+    }
+
+    let path = `/permission/list?view=${encodeURIComponent(permissionId)}`;
+
+    if (returnProjectId) {
+      path += `&returnProjectId=${encodeURIComponent(returnProjectId)}`;
+    }
+
+    return path;
+  }
+
+  function goBack() {
+    navigate(getBackPath());
+  }
+
   async function handleSubmit(event) {
     event.preventDefault();
     setError("");
@@ -99,16 +159,12 @@ function CreatePermissionPage() {
         permissionCode: permission.permissionCode.trim(),
         permissionDescription: permission.permissionDescription.trim(),
         projectId: permission.projectId,
-        roleId: permission.roleId,
         status: permission.status,
+        allowedActions: permission.allowedActions,
+        workScope: permission.workScope,
       });
 
-      if (createdPermission?.id) {
-        navigate(`/permission/list?view=${createdPermission.id}`);
-        return;
-      }
-
-      navigate("/permission/list");
+      navigate(getCreatedPermissionPath(createdPermission?.id));
     } catch (requestError) {
       console.error("Unable to create permission:", requestError);
       setError(getPermissionErrorMessage(
@@ -121,23 +177,28 @@ function CreatePermissionPage() {
   }
 
   const backAction = (
-    <Button className="permission-secondary-button" onClick={() => navigate("/permission/list")}>
-      <IconArrowLeft size={18} /> Back to list
+    <Button
+      type="button"
+      className="permission-secondary-button"
+      onClick={goBack}
+    >
+      <IconArrowLeft size={18} />
+      {returnProjectId ? "Back to project" : "Back to list"}
     </Button>
   );
-  const noOptions = !loadingOptions && (projects.length === 0 || roles.length === 0);
+  const noOptions = !loadingOptions && projects.length === 0;
 
   return (
     <PermissionPage
       title="Create Permission"
-      description="Define a clear access rule and assign it to a project and role."
+      description="Define a clear access rule and assign it to a project."
       action={backAction}
     >
       <Form className="permission-create-form" onSubmit={handleSubmit}>
         {error && <Alert variant="danger">{error}</Alert>}
         {noOptions && (
           <Alert variant="warning">
-            At least one project and one role are required before a permission can be created.
+            At least one project is required before a permission can be created.
           </Alert>
         )}
 
@@ -203,12 +264,12 @@ function CreatePermissionPage() {
             <span className="permission-section-number">2</span>
             <div>
               <h2>Assignment and status</h2>
-              <p>Choose where this permission is used and who receives it.</p>
+              <p>Choose the project where this permission is used.</p>
             </div>
           </div>
 
           <Row className="g-4">
-            <Col md={6}>
+            <Col xs={12}>
               <PermissionFormField controlId="permission-project" label="Project" required>
                 <Form.Select
                   className="permission-input"
@@ -223,24 +284,6 @@ function CreatePermissionPage() {
                     <option key={project.id} value={project.id}>
                       {formatPermissionProjectName(project)}
                     </option>
-                  ))}
-                </Form.Select>
-              </PermissionFormField>
-            </Col>
-
-            <Col md={6}>
-              <PermissionFormField controlId="permission-role" label="Role" required>
-                <Form.Select
-                  className="permission-input"
-                  name="roleId"
-                  value={permission.roleId}
-                  onChange={handleChange}
-                  disabled={loadingOptions || roles.length === 0}
-                  required
-                >
-                  <option value="" disabled>{loadingOptions ? "Loading roles..." : "Select role"}</option>
-                  {roles.map((role) => (
-                    <option key={role.id} value={role.id}>{role.roleName || `Role #${role.id}`}</option>
                   ))}
                 </Form.Select>
               </PermissionFormField>
@@ -264,13 +307,70 @@ function CreatePermissionPage() {
           </Row>
         </Card>
 
+        <Card as="section" className="permission-form-card">
+          <div className="permission-section-heading">
+            <span className="permission-section-number">3</span>
+            <div>
+              <h2>Access configuration</h2>
+              <p>Choose what this permission can do and which project work it can see.</p>
+            </div>
+          </div>
+
+          <div className="permission-create-configuration-section">
+            <div className="permission-create-configuration-heading">
+              <h3>Allowed actions</h3>
+              <p>Select all actions that users with this permission can perform.</p>
+            </div>
+
+            <div className="permission-create-action-grid">
+              {permissionActionOptions.map((option) => (
+                <Form.Check
+                  key={option.value}
+                  id={`create-permission-action-${option.value.toLowerCase()}`}
+                  type="checkbox"
+                  label={option.label}
+                  checked={permission.allowedActions.includes(option.value)}
+                  onChange={() => toggleAllowedAction(option.value)}
+                />
+              ))}
+            </div>
+          </div>
+
+          <div className="permission-create-configuration-section permission-create-work-scope">
+            <div className="permission-create-configuration-heading">
+              <h3>Work visibility</h3>
+              <p>Choose one visibility level for tasks and deliverables.</p>
+            </div>
+
+            <div className="permission-create-scope-options">
+              {permissionWorkScopeOptions.map((option) => (
+                <Form.Check
+                  key={option.value}
+                  id={`create-permission-scope-${option.value.toLowerCase()}`}
+                  type="radio"
+                  name="workScope"
+                  value={option.value}
+                  label={option.label}
+                  checked={permission.workScope === option.value}
+                  onChange={handleWorkScopeChange}
+                />
+              ))}
+            </div>
+          </div>
+        </Card>
+
         <div className="permission-audit-note">
           <IconInfoCircle size={19} />
           <span><IconClock size={16} /> Creation time is recorded automatically by the server.</span>
         </div>
 
         <div className="permission-form-actions">
-          <Button className="permission-secondary-button" onClick={() => navigate("/permission/list")} disabled={saving}>
+          <Button
+            type="button"
+            className="permission-secondary-button"
+            onClick={goBack}
+            disabled={saving}
+          >
             Cancel
           </Button>
           <Button type="submit" className="permission-primary-button" disabled={saving || loadingOptions || noOptions}>

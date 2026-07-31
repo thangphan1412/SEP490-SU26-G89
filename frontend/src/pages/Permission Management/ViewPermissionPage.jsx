@@ -28,6 +28,7 @@ function ViewPermissionPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const permissionId = searchParams.get("view");
+  const returnProjectId = searchParams.get("returnProjectId");
   const [permission, setPermission] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -80,6 +81,19 @@ function ViewPermissionPage() {
     };
   }, [permissionId]);
 
+  function getBackPath() {
+    if (returnProjectId) {
+      return `/project-management/view?id=${encodeURIComponent(returnProjectId)}`
+        + "&openPermissionConfigure=true";
+    }
+
+    return "/permission/list";
+  }
+
+  function goBack() {
+    navigate(getBackPath());
+  }
+
   async function handleDelete() {
     if (!permission?.id || !window.confirm(`Delete permission "${permission.permissionName}"?`)) {
       return;
@@ -89,7 +103,7 @@ function ViewPermissionPage() {
       setDeleting(true);
       setError("");
       await deletePermission(permission.id);
-      navigate("/permission/list");
+      navigate(getBackPath());
     } catch (requestError) {
       console.error("Unable to delete permission:", requestError);
       setError(getPermissionErrorMessage(
@@ -103,7 +117,7 @@ function ViewPermissionPage() {
 
   const pageActions = (
     <Stack direction="horizontal" className="permission-view-actions">
-      <Button className="permission-secondary-button" onClick={() => navigate("/permission/list")}>
+      <Button className="permission-secondary-button" onClick={goBack}>
         <IconArrowLeft size={18} /> Back
       </Button>
       {permission && (
@@ -152,14 +166,13 @@ function ViewPermissionPage() {
             <Card as="section" className="permission-view-card permission-view-card--wide">
               <div className="permission-view-card-title">
                 <span><IconFolder size={20} /></span>
-                <div><h3>Access assignment</h3><p>Where this permission applies and which role receives it.</p></div>
+                <div><h3>Access assignment</h3><p>Where this permission applies.</p></div>
               </div>
               <div className="permission-view-info-grid">
                 <ViewPermissionInfo
                   label="Project"
                   value={formatPermissionProjectValue(permission)}
                 />
-                <ViewPermissionInfo label="Role" value={permission.roleName || "Unassigned"} />
                 <ViewPermissionInfo label="Module" value={formatPermissionModule(permission.permissionModule)} />
                 <div className="permission-info-item">
                   <p className="permission-info-label">Status</p>

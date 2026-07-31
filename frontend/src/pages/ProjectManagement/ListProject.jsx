@@ -71,6 +71,7 @@ function ListProject() {
     const [searchInput, setSearchInput] = useState("");
     const [search, setSearch] = useState("");
     const [status, setStatus] = useState("");
+    const [viewOnlyYourProjects, setViewOnlyYourProjects] = useState(false);
     const [page, setPage] = useState(0);
     const [totalElements, setTotalElements] = useState(0);
     const [totalPages, setTotalPages] = useState(0);
@@ -101,6 +102,7 @@ function ListProject() {
             const requestParams = {
                 search: search,
                 status: status,
+                viewOnlyYourProjects: viewOnlyYourProjects,
                 page: page,
                 sortBy: sortBy,
                 sortDirection: sortDirection,
@@ -171,7 +173,14 @@ function ListProject() {
             isActive = false;
             requestController.abort();
         };
-    }, [page, search, status, sortBy, sortDirection]);
+    }, [
+        page,
+        search,
+        status,
+        viewOnlyYourProjects,
+        sortBy,
+        sortDirection,
+    ]);
 
     const pageNumbers = createPageNumbers(page, totalPages);
 
@@ -198,10 +207,16 @@ function ListProject() {
         setPage(0);
     }
 
+    function handleViewOnlyYourProjectsChange(event) {
+        setViewOnlyYourProjects(event.target.checked);
+        setPage(0);
+    }
+
     function clearFilters() {
         setSearchInput("");
         setSearch("");
         setStatus("");
+        setViewOnlyYourProjects(false);
         setPage(0);
     }
 
@@ -289,7 +304,19 @@ function ListProject() {
                     </span>
                 </Form.Group>
 
-                {(searchInput || status) && (
+                <Form.Group
+                    className="list-project-view-filter"
+                    controlId="view-only-your-projects-filter"
+                >
+                    <Form.Check
+                        type="switch"
+                        label="View Only Your Projects"
+                        checked={viewOnlyYourProjects}
+                        onChange={handleViewOnlyYourProjectsChange}
+                    />
+                </Form.Group>
+
+                {(searchInput || status || viewOnlyYourProjects) && (
                     <Button
                         type="button"
                         variant="light"

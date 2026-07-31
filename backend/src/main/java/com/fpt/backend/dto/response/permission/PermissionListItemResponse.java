@@ -13,8 +13,6 @@ public record PermissionListItemResponse(
         UUID projectId,
         String projectCode,
         String projectName,
-        UUID roleId,
-        String roleName,
         LocalDateTime createdAt
 ) {
 }

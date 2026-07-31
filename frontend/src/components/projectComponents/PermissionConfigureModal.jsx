@@ -78,9 +78,11 @@ function PermissionConfigureModal({ show, projectId, projectName, onHide }) {
       return;
     }
 
+    const encodedProjectId = encodeURIComponent(projectId);
     onHide();
     navigate(
-      `/permission/create?projectId=${encodeURIComponent(projectId)}`
+      `/permission/create?projectId=${encodedProjectId}`
+        + `&returnProjectId=${encodedProjectId}`
     );
   }
 

@@ -49,6 +49,8 @@ function ViewProject() {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const projectId = searchParams.get("id");
+    const openPermissionConfigure =
+        searchParams.get("openPermissionConfigure") === "true";
     const [project, setProject] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
@@ -57,7 +59,9 @@ function ViewProject() {
     const [userSearch, setUserSearch] = useState("");
     const [contractSearch, setContractSearch] = useState("");
     const [contractStatus, setContractStatus] = useState("");
-    const [showPermissionConfigure, setShowPermissionConfigure] = useState(false);
+    const [showPermissionConfigure, setShowPermissionConfigure] = useState(
+        openPermissionConfigure
+    );
 
     useEffect(function () {
         let isActive = true;
