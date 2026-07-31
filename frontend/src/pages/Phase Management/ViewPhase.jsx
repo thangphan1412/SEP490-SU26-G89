@@ -5,6 +5,7 @@ import {
   IconChecklist,
   IconFileDescription,
   IconFileText,
+  IconSettings,
   IconTimelineEvent,
 } from "@tabler/icons-react";
 import { useNavigate, useParams } from "react-router-dom";
@@ -151,6 +152,15 @@ function ViewPhase() {
             title="Tasks"
             description="Work items planned for this phase."
             count={tasks.length}
+            action={(
+              <Button
+                type="button"
+                variant="outline-primary"
+                className="phase-manage-button"
+              >
+                <IconSettings size={16} /> Manage Tasks
+              </Button>
+            )}
           >
             <div className="phase-table-wrap">
               <Table responsive hover className="phase-data-table mb-0">
@@ -169,6 +179,15 @@ function ViewPhase() {
             title="Deliverables"
             description="Outputs that must be completed in this phase."
             count={deliverables.length}
+            action={(
+              <Button
+                type="button"
+                variant="outline-primary"
+                className="phase-manage-button"
+              >
+                <IconSettings size={16} /> Manage Deliverables
+              </Button>
+            )}
           >
             <div className="phase-table-wrap">
               <Table responsive hover className="phase-data-table mb-0">
@@ -194,6 +213,15 @@ function ViewPhase() {
             title="Contracts"
             description="Contracts linked directly to this phase."
             count={contracts.length}
+            action={(
+              <Button
+                type="button"
+                variant="outline-primary"
+                className="phase-manage-button"
+              >
+                <IconSettings size={16} /> Manage Contracts
+              </Button>
+            )}
           >
             <div className="phase-table-wrap">
               <Table responsive hover className="phase-data-table mb-0">

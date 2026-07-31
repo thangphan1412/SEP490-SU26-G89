@@ -5,7 +5,6 @@ import com.fpt.backend.dto.request.permission.PermissionRequest;
 import com.fpt.backend.dto.response.permission.PermissionDetailResponse;
 import com.fpt.backend.dto.response.permission.PermissionListResponse;
 import com.fpt.backend.dto.response.permission.PermissionProjectResponse;
-import com.fpt.backend.dto.response.permission.PermissionRoleResponse;
 import com.fpt.backend.service.interfaces.permission.PermissionService;
 import com.fpt.backend.util.BaseResponse;
 import lombok.RequiredArgsConstructor;
@@ -35,13 +34,19 @@ public class PermissionController {
     public ResponseEntity<BaseResponse<PermissionListResponse>> getPermissions(
             @RequestParam(defaultValue = "") String search,
             @RequestParam(required = false) UUID projectId,
-            @RequestParam(required = false) UUID roleId,
             @RequestParam(required = false) Boolean status,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "createdAt") String sortBy,
             @RequestParam(defaultValue = "desc") String sortDirection) {
         PermissionListResponse permissions = permissionService.getPermissions(
-                new PermissionListRequest(search, projectId, roleId, status, page, sortBy, sortDirection)
+                new PermissionListRequest(
+                        search,
+                        projectId,
+                        status,
+                        page,
+                        sortBy,
+                        sortDirection
+                )
         );
 
         return ResponseEntity.ok()
@@ -54,13 +59,6 @@ public class PermissionController {
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.noStore())
                 .body(new BaseResponse<>(permissionService.getProjectsForPermissionSelection()));
-    }
-
-    @GetMapping("/roles")
-    public ResponseEntity<BaseResponse<List<PermissionRoleResponse>>> getRolesForPermissionSelection() {
-        return ResponseEntity.ok()
-                .cacheControl(CacheControl.noStore())
-                .body(new BaseResponse<>(permissionService.getRolesForPermissionSelection()));
     }
 
     @GetMapping({"/view/{id}", "/{id}"})

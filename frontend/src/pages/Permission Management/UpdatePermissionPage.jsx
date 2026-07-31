@@ -5,7 +5,6 @@ import { IconArrowLeft, IconClock, IconDeviceFloppy, IconInfoCircle } from "@tab
 import "../../assets/styles/css/permissionStyles/UpdatePermissionPage.css";
 import {
   listPermissionProjects,
-  listPermissionRoles,
   updatePermission,
   viewPermission,
 } from "../../services/permissionService/permissionApi.js";
@@ -26,7 +25,6 @@ const initialPermission = {
   permissionCode: "",
   permissionDescription: "",
   projectId: "",
-  roleId: "",
   status: true,
   allowedActions: [],
   workScope: "FULL",
@@ -40,7 +38,6 @@ function UpdatePermissionPage() {
   const returnProjectId = searchParams.get("returnProjectId");
   const [permission, setPermission] = useState(initialPermission);
   const [projects, setProjects] = useState([]);
-  const [roles, setRoles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
   const [error, setError] = useState("");
@@ -64,10 +61,9 @@ function UpdatePermissionPage() {
         setLoading(true);
         setError("");
         setLoadFailed(false);
-        const [permissionPayload, projectPayload, rolePayload] = await Promise.all([
+        const [permissionPayload, projectPayload] = await Promise.all([
           viewPermission(permissionId, requestController.signal),
           listPermissionProjects(requestController.signal),
-          listPermissionRoles(requestController.signal),
         ]);
 
         if (isActive) {
@@ -76,7 +72,6 @@ function UpdatePermissionPage() {
             permissionCode: permissionPayload?.permissionCode || "",
             permissionDescription: permissionPayload?.permissionDescription || "",
             projectId: permissionPayload?.projectId ? String(permissionPayload.projectId) : "",
-            roleId: permissionPayload?.roleId ? String(permissionPayload.roleId) : "",
             status: permissionPayload?.status ?? true,
             allowedActions: Array.isArray(permissionPayload?.allowedActions)
               ? permissionPayload.allowedActions
@@ -85,7 +80,6 @@ function UpdatePermissionPage() {
             createdAt: permissionPayload?.createdAt || null,
           });
           setProjects(Array.isArray(projectPayload) ? projectPayload : []);
-          setRoles(Array.isArray(rolePayload) ? rolePayload : []);
         }
       } catch (requestError) {
         if (!isActive) {
@@ -167,7 +161,6 @@ function UpdatePermissionPage() {
         permissionCode: permission.permissionCode.trim(),
         permissionDescription: permission.permissionDescription.trim(),
         projectId: permission.projectId,
-        roleId: permission.roleId,
         status: permission.status,
         allowedActions: permission.allowedActions,
         workScope: permission.workScope,
@@ -221,7 +214,7 @@ function UpdatePermissionPage() {
     );
   }
 
-  const noOptions = projects.length === 0 || roles.length === 0;
+  const noOptions = projects.length === 0;
 
   return (
     <PermissionPage
@@ -232,7 +225,7 @@ function UpdatePermissionPage() {
       <Form className="permission-update-form" onSubmit={handleSubmit}>
         {error && <Alert variant="danger">{error}</Alert>}
         {noOptions && (
-          <Alert variant="warning">At least one project and one role are required to save this permission.</Alert>
+          <Alert variant="warning">At least one project is required to save this permission.</Alert>
         )}
 
         <Card as="section" className="permission-form-card">
@@ -279,12 +272,12 @@ function UpdatePermissionPage() {
             <span className="permission-section-number">2</span>
             <div>
               <h2>Assignment and status</h2>
-              <p>Change the project, role, or availability when business rules change.</p>
+              <p>Change the project or availability when business rules change.</p>
             </div>
           </div>
 
           <Row className="g-4">
-            <Col md={6}>
+            <Col xs={12}>
               <PermissionFormField controlId="update-permission-project" label="Project" required>
                 <Form.Select className="permission-input" name="projectId" value={permission.projectId} onChange={handleChange} disabled={projects.length === 0} required>
                   <option value="" disabled>Select project</option>
@@ -292,16 +285,6 @@ function UpdatePermissionPage() {
                     <option key={project.id} value={project.id}>
                       {formatPermissionProjectName(project)}
                     </option>
-                  ))}
-                </Form.Select>
-              </PermissionFormField>
-            </Col>
-            <Col md={6}>
-              <PermissionFormField controlId="update-permission-role" label="Role" required>
-                <Form.Select className="permission-input" name="roleId" value={permission.roleId} onChange={handleChange} disabled={roles.length === 0} required>
-                  <option value="" disabled>Select role</option>
-                  {roles.map((role) => (
-                    <option key={role.id} value={role.id}>{role.roleName || `Role #${role.id}`}</option>
                   ))}
                 </Form.Select>
               </PermissionFormField>

@@ -1,13 +1,14 @@
 export const permissionActionOptions = [
   { value: "VIEW_TASKS", label: "Allow View Tasks" },
-  { value: "VIEW_DELIVERABLES", label: "Allow View Deliverables" },
-  { value: "VIEW_CONTRACTS", label: "Allow View Contracts" },
   { value: "CREATE_TASKS", label: "Allow Create Tasks" },
   { value: "EDIT_TASKS", label: "Allow Edit Tasks" },
   { value: "DELETE_TASKS", label: "Allow Delete Tasks" },
+  { value: "VIEW_DELIVERABLES", label: "Allow View Deliverables" },
   { value: "CREATE_DELIVERABLES", label: "Allow Create Deliverables" },
   { value: "EDIT_DELIVERABLES", label: "Allow Edit Deliverables" },
   { value: "DELETE_DELIVERABLES", label: "Allow Delete Deliverables" },
+  { value: "VIEW_CONTRACTS", label: "Allow View Contracts" },
+  { value: "EDIT_PROJECT", label: "Allow Edit Project Informations" },
   { value: "EDIT_PHASE", label: "Allow Edit Phase Information" },
   { value: "MANAGE_MEMBERS", label: "Allow Manage Project Members" },
 ];

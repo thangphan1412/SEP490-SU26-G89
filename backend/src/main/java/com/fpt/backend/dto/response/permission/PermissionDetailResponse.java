@@ -16,8 +16,6 @@ public record PermissionDetailResponse(
         UUID projectId,
         String projectCode,
         String projectName,
-        UUID roleId,
-        String roleName,
         LocalDateTime createdAt
 ) {
 }

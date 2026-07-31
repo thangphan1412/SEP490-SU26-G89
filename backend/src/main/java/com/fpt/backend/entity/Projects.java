@@ -38,7 +38,11 @@ public class Projects extends BaseEntity {
 
     /// Relation
     // permission
-    @OneToMany(mappedBy = "project")
+    @OneToMany(
+            mappedBy = "project",
+            cascade = CascadeType.REMOVE,
+            orphanRemoval = true
+    )
     private List<Permissions> permission;
     // Logs
     @OneToMany(mappedBy = "project")

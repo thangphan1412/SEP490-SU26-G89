@@ -27,6 +27,7 @@ public class PermissionModuleServiceImpl
             "CREATE_DELIVERABLES",
             "EDIT_DELIVERABLES",
             "DELETE_DELIVERABLES",
+            "EDIT_PROJECT",
             "EDIT_PHASE",
             "MANAGE_MEMBERS"
     );

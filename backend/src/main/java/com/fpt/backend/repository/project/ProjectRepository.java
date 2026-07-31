@@ -51,6 +51,48 @@ public interface ProjectRepository extends JpaRepository<Projects, UUID> {
     );
 
     @Query("""
+            SELECT project
+            FROM Projects project
+            JOIN project.projectCreatedBy creator
+            WHERE (
+                :search = ''
+                OR LOWER(COALESCE(project.projectCode, '')) LIKE CONCAT('%', CONCAT(:search, '%'))
+                OR LOWER(COALESCE(project.projectName, '')) LIKE CONCAT('%', CONCAT(:search, '%'))
+                OR LOWER(COALESCE(project.projectDescription, '')) LIKE CONCAT('%', CONCAT(:search, '%'))
+                OR LOWER(COALESCE(creator.firstName, '')) LIKE CONCAT('%', CONCAT(:search, '%'))
+                OR LOWER(COALESCE(creator.lastName, '')) LIKE CONCAT('%', CONCAT(:search, '%'))
+                OR LOWER(COALESCE(creator.email, '')) LIKE CONCAT('%', CONCAT(:search, '%'))
+                OR LOWER(
+                    TRIM(
+                        CONCAT(
+                            COALESCE(creator.firstName, ''),
+                            CONCAT(' ', COALESCE(creator.lastName, ''))
+                        )
+                    )
+                ) LIKE CONCAT('%', CONCAT(:search, '%'))
+            )
+            AND (
+                :status = ''
+                OR LOWER(COALESCE(project.projectStatus, '')) = :status
+            )
+            AND (
+                project.projectCreatedBy.id = :userId
+                OR EXISTS (
+                    SELECT member.id
+                    FROM ProjectMember member
+                    WHERE member.project.id = project.id
+                        AND member.user.id = :userId
+                )
+            )
+            """)
+    Page<Projects> searchViewableProjects(
+            @Param("search") String search,
+            @Param("status") String status,
+            @Param("userId") UUID userId,
+            Pageable pageable
+    );
+
+    @Query("""
             SELECT DISTINCT project.projectStatus
             FROM Projects project
             WHERE project.projectStatus IS NOT NULL

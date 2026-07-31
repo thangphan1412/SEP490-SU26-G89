@@ -2,6 +2,7 @@ package com.fpt.backend.service.impl.project;
 
 import com.fpt.backend.dto.request.project.ProjectCreateRequest;
 import com.fpt.backend.dto.request.project.ProjectListRequest;
+import com.fpt.backend.dto.request.project.ProjectMemberRequest;
 import com.fpt.backend.dto.request.project.ProjectPermissionConfigurationRequest;
 import com.fpt.backend.dto.request.project.ProjectUpdateRequest;
 import com.fpt.backend.dto.response.project.ProjectContractResponse;
@@ -93,6 +94,7 @@ public class ProjectServiceImpl implements ProjectService {
             validRequest = new ProjectListRequest(
                     "",
                     "",
+                    false,
                     0,
                     DEFAULT_SORT_FIELD,
                     "desc"
@@ -101,13 +103,19 @@ public class ProjectServiceImpl implements ProjectService {
 
         String search = normalize(validRequest.search());
         String status = normalize(validRequest.status());
+        Users currentUser = currentUserUtil.getCurrentUser();
         Pageable pageable = createPageable(
                 validRequest.page(),
                 validRequest.sortBy(),
                 validRequest.sortDirection()
         );
-        Page<Projects> projects = findProjects(search, status, pageable);
-        Users currentUser = currentUserUtil.getCurrentUser();
+        Page<Projects> projects = findProjects(
+                search,
+                status,
+                validRequest.viewOnlyYourProjects(),
+                currentUser.getId(),
+                pageable
+        );
 
         return new ProjectListResponse(
                 DATA_SOURCE,
@@ -170,10 +178,18 @@ public class ProjectServiceImpl implements ProjectService {
         );
 
         Projects savedProject = projectRepository.save(project);
+        UUID fullAccessPermissionId =
+                projectPermissionService.createProjectFullAccessPermission(
+                        savedProject
+                );
         projectPhaseService.syncPhases(savedProject, request.phases());
         projectMemberService.syncMembers(
                 savedProject,
-                request.members(),
+                createInitialMembers(
+                        request.members(),
+                        currentUser.getId(),
+                        fullAccessPermissionId
+                ),
                 false
         );
         projectRepository.flush();
@@ -297,7 +313,18 @@ public class ProjectServiceImpl implements ProjectService {
     private Page<Projects> findProjects(
             String search,
             String status,
+            boolean viewOnlyYourProjects,
+            UUID currentUserId,
             Pageable pageable) {
+        if (viewOnlyYourProjects) {
+            return projectRepository.searchViewableProjects(
+                    search.toLowerCase(Locale.ROOT),
+                    status.toLowerCase(Locale.ROOT),
+                    currentUserId,
+                    pageable
+            );
+        }
+
         if (search.isBlank() && status.isBlank()) {
             return projectRepository.findAll(pageable);
         }
@@ -433,6 +460,30 @@ public class ProjectServiceImpl implements ProjectService {
     private boolean isCompletedProject(Projects project) {
         String status = normalize(project.getProjectStatus());
         return COMPLETED_PROJECT_STATUS.equalsIgnoreCase(status);
+    }
+
+    private List<ProjectMemberRequest> createInitialMembers(
+            List<ProjectMemberRequest> requestedMembers,
+            UUID projectCreatorId,
+            UUID fullAccessPermissionId) {
+        List<ProjectMemberRequest> initialMembers = new ArrayList<>();
+
+        if (requestedMembers != null) {
+            for (ProjectMemberRequest member : requestedMembers) {
+                if (member != null
+                        && projectCreatorId.equals(member.userId())) {
+                    continue;
+                }
+
+                initialMembers.add(member);
+            }
+        }
+
+        initialMembers.add(new ProjectMemberRequest(
+                projectCreatorId,
+                fullAccessPermissionId
+        ));
+        return initialMembers;
     }
 
     private ProjectListItemResponse toListItem(

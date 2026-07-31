@@ -104,6 +104,29 @@
     pointer-events: none;
 }
 
+.list-project-view-filter {
+    min-height: 55px;
+    padding: 0 16px;
+    display: flex;
+    align-items: center;
+    border: 1px solid #d7dfeb;
+    border-radius: 8px;
+    background: #fff;
+    color: #243452;
+    font-size: 14px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.list-project-view-filter .form-check {
+    margin-bottom: 0;
+}
+
+.list-project-view-filter .form-check-input,
+.list-project-view-filter .form-check-label {
+    cursor: pointer;
+}
+
 .list-project-filter-button.btn {
     height: 55px;
     padding: 0 18px;
@@ -308,7 +331,8 @@
 @media (max-width: 700px) {
     .list-project-toolbar { padding: 18px 16px; }
     .list-project-search-box.input-group,
-    .list-project-select-box { width: 100%; }
+    .list-project-select-box,
+    .list-project-view-filter { width: 100%; }
     .list-project-table-wrap { margin: 0 16px; }
     .list-project-footer { padding: 18px 16px; }
 }

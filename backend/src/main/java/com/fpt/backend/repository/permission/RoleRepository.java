@@ -5,7 +5,6 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.Repository;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 
 public interface RoleRepository extends Repository<Role, UUID> {
@@ -17,6 +16,4 @@ public interface RoleRepository extends Repository<Role, UUID> {
             ORDER BY role.roleName, role.id
             """)
     List<Role> findAllForSelection();
-
-    Optional<Role> findById(UUID id);
 }

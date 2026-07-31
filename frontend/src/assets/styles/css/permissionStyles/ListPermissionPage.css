@@ -1,7 +1,7 @@
 .permission-list-toolbar {
   padding: 22px 28px;
   display: grid;
-  grid-template-columns: minmax(260px, 1.8fr) repeat(3, minmax(145px, 0.75fr)) auto;
+  grid-template-columns: minmax(260px, 1.8fr) repeat(2, minmax(145px, 0.75fr)) auto;
   align-items: end;
   gap: 12px;
   border-bottom: 1px solid #edf0f5;
@@ -114,7 +114,7 @@
 
 .permission-list-table.table {
   width: 100%;
-  min-width: 1180px;
+  min-width: 1000px;
   table-layout: fixed;
   border-collapse: collapse;
   --bs-table-bg: #ffffff;
@@ -159,10 +159,6 @@
 }
 
 .permission-list-table th:nth-child(5) {
-  width: 105px;
-}
-
-.permission-list-table th:nth-child(6) {
   width: 185px;
 }
 
@@ -249,8 +245,7 @@
   text-overflow: ellipsis;
 }
 
-.permission-project-cell,
-.permission-role-cell {
+.permission-project-cell {
   line-height: 1.4;
   overflow-wrap: anywhere;
 }

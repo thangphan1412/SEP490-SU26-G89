@@ -39,11 +39,19 @@ public class ProjectController {
     public ResponseEntity<BaseResponse<ProjectListResponse>> getProjects(
             @RequestParam(defaultValue = "") String search,
             @RequestParam(defaultValue = "") String status,
+            @RequestParam(defaultValue = "false") boolean viewOnlyYourProjects,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "projectCreatedAt") String sortBy,
             @RequestParam(defaultValue = "desc") String sortDirection) {
         ProjectListResponse projects = projectService.getProjects(
-                new ProjectListRequest(search, status, page, sortBy, sortDirection)
+                new ProjectListRequest(
+                        search,
+                        status,
+                        viewOnlyYourProjects,
+                        page,
+                        sortBy,
+                        sortDirection
+                )
         );
 
         return ResponseEntity.ok()

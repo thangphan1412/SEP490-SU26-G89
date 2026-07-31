@@ -9,6 +9,8 @@ import java.util.List;
 import java.util.UUID;
 
 public interface ProjectPermissionService {
+    UUID createProjectFullAccessPermission(Projects project);
+
     List<ProjectPermissionConfigurationResponse> getConfigurations(
             UUID projectId
     );

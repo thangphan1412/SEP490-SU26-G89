@@ -187,7 +187,6 @@ public class ProjectMemberServiceImpl implements ProjectMemberService {
 
     @Override
     public void deleteProjectData(UUID projectId) {
-        userPermissionRepository.deleteByProjectId(projectId);
         projectMemberRepository.deleteByProjectId(projectId);
     }
 

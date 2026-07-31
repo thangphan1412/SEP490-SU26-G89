@@ -27,7 +27,6 @@ import "../../assets/styles/css/permissionStyles/ListPermissionPage.css";
 import {
   deletePermission,
   listPermissionProjects,
-  listPermissionRoles,
   listPermissions,
 } from "../../services/permissionService/permissionApi.js";
 import PermissionPage from "../../components/permissionComponents/PermissionPage.jsx";
@@ -45,7 +44,6 @@ const sortableColumns = [
   ["Permission", "permissionName"],
   ["Permission Code", "permissionCode"],
   ["Project", "projectName"],
-  ["Role", "roleName"],
   ["Status", "status"],
 ];
 
@@ -94,11 +92,9 @@ function PermissionListContent() {
   const navigate = useNavigate();
   const [permissions, setPermissions] = useState([]);
   const [projects, setProjects] = useState([]);
-  const [roles, setRoles] = useState([]);
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [projectId, setProjectId] = useState("");
-  const [roleId, setRoleId] = useState("");
   const [status, setStatus] = useState("");
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
@@ -126,14 +122,12 @@ function PermissionListContent() {
 
     async function loadFilterOptions() {
       try {
-        const [projectPayload, rolePayload] = await Promise.all([
-          listPermissionProjects(requestController.signal),
-          listPermissionRoles(requestController.signal),
-        ]);
+        const projectPayload = await listPermissionProjects(
+          requestController.signal
+        );
 
         if (isActive) {
           setProjects(Array.isArray(projectPayload) ? projectPayload : []);
-          setRoles(Array.isArray(rolePayload) ? rolePayload : []);
         }
       } catch (requestError) {
         if (isActive) {
@@ -162,7 +156,6 @@ function PermissionListContent() {
           {
             search,
             projectId: projectId || undefined,
-            roleId: roleId || undefined,
             status: status === "" ? undefined : status === "true",
             page,
             sortBy,
@@ -208,7 +201,7 @@ function PermissionListContent() {
       isActive = false;
       requestController.abort();
     };
-  }, [deleteVersion, page, projectId, roleId, search, sortBy, sortDirection, status]);
+  }, [deleteVersion, page, projectId, search, sortBy, sortDirection, status]);
 
   function handleSort(field) {
     setPage(0);
@@ -232,7 +225,6 @@ function PermissionListContent() {
     setSearchInput("");
     setSearch("");
     setProjectId("");
-    setRoleId("");
     setStatus("");
     setPage(0);
   }
@@ -276,11 +268,6 @@ function PermissionListContent() {
     setPage(0);
   }
 
-  function handleRoleFilterChange(event) {
-    setRoleId(event.target.value);
-    setPage(0);
-  }
-
   function handleStatusFilterChange(event) {
     setStatus(event.target.value);
     setPage(0);
@@ -292,7 +279,7 @@ function PermissionListContent() {
   }
 
   const pageNumbers = createPageNumbers(page, totalPages);
-  const filtersAreActive = Boolean(searchInput || projectId || roleId || status);
+  const filtersAreActive = Boolean(searchInput || projectId || status);
   const createAction = (
     <Button className="permission-primary-button" onClick={() => navigate("/permission/create")}>
       <IconPlus size={19} />
@@ -303,7 +290,7 @@ function PermissionListContent() {
   return (
     <PermissionPage
       title="Permissions"
-      description="Manage access rules by project, role, module, and status."
+      description="Manage access rules by project, module, and status."
       action={createAction}
     >
       <div className="permission-list-toolbar">
@@ -330,16 +317,6 @@ function PermissionListContent() {
               <option key={project.id} value={project.id}>
                 {formatPermissionProjectName(project)}
               </option>
-            ))}
-          </Form.Select>
-        </Form.Group>
-
-        <Form.Group className="permission-list-filter">
-          <Form.Label>Role</Form.Label>
-          <Form.Select value={roleId} onChange={handleRoleFilterChange}>
-            <option value="">All roles</option>
-            {roles.map((role) => (
-              <option key={role.id} value={role.id}>{role.roleName || `Role #${role.id}`}</option>
             ))}
           </Form.Select>
         </Form.Group>
@@ -385,13 +362,13 @@ function PermissionListContent() {
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={6} className="permission-list-state">
+                <td colSpan={5} className="permission-list-state">
                   <Spinner animation="border" size="sm" /> Loading permissions...
                 </td>
               </tr>
             ) : permissions.length === 0 ? (
               <tr>
-                <td colSpan={6} className="permission-list-state">
+                <td colSpan={5} className="permission-list-state">
                   <span className="permission-empty-icon"><IconShieldCheck size={28} /></span>
                   <strong>No permissions found</strong>
                   <span>Try changing the filters or create a new permission.</span>
@@ -421,7 +398,6 @@ function PermissionListContent() {
                   <td className="permission-project-cell">
                     {formatPermissionProjectValue(permission)}
                   </td>
-                  <td className="permission-role-cell">{permission.roleName || "Unassigned"}</td>
                   <td className="permission-status-cell"><PermissionStatusBadge status={permission.status} /></td>
                   <td className="permission-actions-cell">
                     <Stack direction="horizontal" className="permission-row-actions">

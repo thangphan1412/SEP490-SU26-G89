@@ -9,7 +9,6 @@ public record PermissionRequest(
         String permissionDescription,
         Boolean status,
         UUID projectId,
-        UUID roleId,
         List<String> allowedActions,
         String workScope
 ) {
