@@ -3,11 +3,19 @@ package com.fpt.backend.service.impl;
 import com.fpt.backend.dto.request.contract.ContractListRequest;
 import com.fpt.backend.dto.request.contract.ContractRequest;
 import com.fpt.backend.dto.response.contract.ContractListResponse;
+import com.fpt.backend.dto.response.contract.ContractProjectOptionResponse;
 import com.fpt.backend.dto.response.contract.ContractResponse;
+import com.fpt.backend.entity.ContractTemplateVersions;
+import com.fpt.backend.entity.ContractTemplates;
+import com.fpt.backend.entity.ContractTypes;
 import com.fpt.backend.entity.Contracts;
 import com.fpt.backend.entity.Projects;
+import com.fpt.backend.exception.BadHttpException;
 import com.fpt.backend.exception.NotFoundException;
 import com.fpt.backend.repository.contract.ContractRepository;
+import com.fpt.backend.repository.contract.ContractTemplateRepository;
+import com.fpt.backend.repository.contract.ContractTemplateVersionRepository;
+import com.fpt.backend.repository.contract.ContractTypeRepository;
 import com.fpt.backend.repository.project.ProjectRepository;
 import com.fpt.backend.service.interfaces.ContractService;
 import lombok.RequiredArgsConstructor;
@@ -19,6 +27,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
@@ -43,6 +52,9 @@ public class ContractServiceImpl implements ContractService {
 
     private final ContractRepository contractRepository;
     private final ProjectRepository projectRepository;
+    private final ContractTypeRepository contractTypeRepository;
+    private final ContractTemplateRepository contractTemplateRepository;
+    private final ContractTemplateVersionRepository contractTemplateVersionRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -64,6 +76,22 @@ public class ContractServiceImpl implements ContractService {
                 contracts.isLast(),
                 contractRepository.findDistinctContractStatuses()
         );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ContractProjectOptionResponse> getProjectOptions() {
+        return projectRepository.findAll(Sort.by(
+                        Sort.Direction.ASC,
+                        "projectName"
+                ))
+                .stream()
+                .map(project -> new ContractProjectOptionResponse(
+                        project.getId(),
+                        project.getProjectCode(),
+                        project.getProjectName()
+                ))
+                .toList();
     }
 
     @Override
@@ -120,22 +148,187 @@ public class ContractServiceImpl implements ContractService {
     }
 
     private void applyRequest(Contracts contract, ContractRequest request) {
-        contract.setContractNumber(request.contractNumber());
-        contract.setContractTitle(request.contractTitle());
-        contract.setContractStatus(request.contractStatus());
+        validateRequest(request);
+
+        Projects project = resolveProject(request.projectId());
+        ContractTypes contractType = resolveContractType(request.contractTypeId());
+        ContractTemplates template = resolveTemplate(request.contractTemplateId());
+        validateTemplateBelongsToType(template, contractType);
+
+        ContractTemplateVersions version = resolveVersion(
+                request.contractTemplateVersionId()
+        );
+        validateVersionBelongsToTemplate(version, template);
+
+        if (Boolean.TRUE.equals(request.saveAsTemplateVersion())) {
+            version = createTemplateVersion(template, request);
+        }
+
+        String content = normalizeContent(request.contractContent());
+        String layoutJson = normalizeContent(request.contractLayoutJson());
+
+        if (version != null) {
+            if (request.contractContent() == null) {
+                content = version.getTemplateContent();
+            }
+            if (request.contractLayoutJson() == null) {
+                layoutJson = version.getLayoutJson();
+            }
+        }
+
+        contract.setContractNumber(request.contractNumber().trim());
+        contract.setContractTitle(request.contractTitle().trim());
+        contract.setContractStatus(
+                isBlank(request.contractStatus())
+                        ? "Draft"
+                        : request.contractStatus().trim()
+        );
         contract.setEffectiveDate(request.effectiveDate());
         contract.setExpirationDate(request.expirationDate());
-        contract.setContractCreateBy(request.contractCreatedBy());
-        contract.setProject(resolveProject(request.projectId()));
+        contract.setContractCreateBy(normalizeToNull(request.contractCreatedBy()));
+        contract.setProject(project);
+        contract.setContractType(contractType);
+        contract.setContractTemplate(template);
+        contract.setContractTemplateVersion(version);
+        contract.setContractContent(content);
+        contract.setContractLayoutJson(layoutJson);
     }
 
     private Projects resolveProject(UUID projectId) {
         if (projectId == null) {
-            return null;
+            throw new BadHttpException("Project is required");
         }
 
         return projectRepository.findById(projectId)
                 .orElseThrow(() -> new NotFoundException("Project not found with id: " + projectId));
+    }
+
+    private ContractTypes resolveContractType(UUID contractTypeId) {
+        if (contractTypeId == null) {
+            throw new BadHttpException("Contract type is required");
+        }
+
+        return contractTypeRepository.findById(contractTypeId)
+                .orElseThrow(() -> new NotFoundException(
+                        "Contract type not found with id: " + contractTypeId
+                ));
+    }
+
+    private ContractTemplates resolveTemplate(UUID contractTemplateId) {
+        if (contractTemplateId == null) {
+            return null;
+        }
+
+        return contractTemplateRepository.findById(contractTemplateId)
+                .orElseThrow(() -> new NotFoundException(
+                        "Contract template not found with id: " + contractTemplateId
+                ));
+    }
+
+    private ContractTemplateVersions resolveVersion(UUID versionId) {
+        if (versionId == null) {
+            return null;
+        }
+
+        return contractTemplateVersionRepository.findById(versionId)
+                .orElseThrow(() -> new NotFoundException(
+                        "Contract template version not found with id: " + versionId
+                ));
+    }
+
+    private void validateTemplateBelongsToType(
+            ContractTemplates template,
+            ContractTypes contractType
+    ) {
+        if (template == null) {
+            return;
+        }
+
+        ContractTypes templateType = template.getContractType();
+        if (templateType == null || !templateType.getId().equals(contractType.getId())) {
+            throw new BadHttpException(
+                    "The selected contract template does not belong to the selected contract type"
+            );
+        }
+    }
+
+    private void validateVersionBelongsToTemplate(
+            ContractTemplateVersions version,
+            ContractTemplates template
+    ) {
+        if (version == null) {
+            return;
+        }
+
+        if (template == null
+                || version.getContractTemplate() == null
+                || !version.getContractTemplate().getId().equals(template.getId())) {
+            throw new BadHttpException(
+                    "The selected template version does not belong to the selected template"
+            );
+        }
+    }
+
+    private ContractTemplateVersions createTemplateVersion(
+            ContractTemplates template,
+            ContractRequest request
+    ) {
+        if (template == null) {
+            throw new BadHttpException(
+                    "Select a contract template before saving a reusable version"
+            );
+        }
+
+        String content = normalizeContent(request.contractContent());
+        if (isBlank(content)) {
+            throw new BadHttpException(
+                    "Contract content is required to save a reusable template version"
+            );
+        }
+
+        int nextVersionNumber =
+                contractTemplateVersionRepository.findLatestVersionNumber(template.getId()) + 1;
+        ContractTemplateVersions version = new ContractTemplateVersions();
+        version.setContractTemplate(template);
+        version.setVersionNumber(nextVersionNumber);
+        version.setVersionName(
+                isBlank(request.templateVersionName())
+                        ? "Version " + nextVersionNumber
+                        : request.templateVersionName().trim()
+        );
+        version.setTemplateContent(content);
+        version.setLayoutJson(normalizeContent(request.contractLayoutJson()));
+        version.setChangeNote(normalizeToNull(request.templateVersionNote()));
+        version.setCreatedBy(normalizeToNull(request.contractCreatedBy()));
+        version.setCreatedAt(LocalDateTime.now());
+
+        ContractTemplateVersions savedVersion =
+                contractTemplateVersionRepository.save(version);
+        template.setContractTemplateUpdateAt(LocalDateTime.now());
+        contractTemplateRepository.save(template);
+        return savedVersion;
+    }
+
+    private void validateRequest(ContractRequest request) {
+        if (request == null) {
+            throw new BadHttpException("Contract information is required");
+        }
+
+        if (isBlank(request.contractNumber())) {
+            throw new BadHttpException("Contract number is required");
+        }
+
+        if (isBlank(request.contractTitle())) {
+            throw new BadHttpException("Contract title is required");
+        }
+
+        if (request.effectiveDate() != null
+                && request.expirationDate() != null
+                && request.expirationDate().isBefore(request.effectiveDate())) {
+            throw new BadHttpException(
+                    "Expiration date must be on or after the effective date"
+            );
+        }
     }
 
     private Contracts findContract(UUID id) {
@@ -159,18 +352,43 @@ public class ContractServiceImpl implements ContractService {
 
     private ContractResponse toResponse(Contracts contract) {
         Projects project = contract.getProject();
+        ContractTypes contractType = contract.getContractType();
+        ContractTemplates template = contract.getContractTemplate();
+        ContractTemplateVersions version = contract.getContractTemplateVersion();
 
         return new ContractResponse(
                 contract.getId(),
                 project != null ? project.getId() : null,
                 project != null ? project.getProjectName() : null,
+                contractType != null ? contractType.getId() : null,
+                contractType != null ? contractType.getContractTypeCode() : null,
+                contractType != null ? contractType.getContractTypeName() : null,
+                template != null ? template.getId() : null,
+                template != null ? template.getContractTemplateName() : null,
+                version != null ? version.getId() : null,
+                version != null ? version.getVersionNumber() : null,
+                version != null ? version.getVersionName() : null,
                 contract.getContractNumber(),
                 contract.getContractTitle(),
                 contract.getContractStatus(),
                 contract.getEffectiveDate(),
                 contract.getExpirationDate(),
                 contract.getContractCreateBy(),
-                contract.getContractCreatedAt()
+                contract.getContractCreatedAt(),
+                contract.getContractContent(),
+                contract.getContractLayoutJson()
         );
+    }
+
+    private String normalizeContent(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
+    }
+
+    private String normalizeToNull(String value) {
+        return isBlank(value) ? null : value.trim();
+    }
+
+    private boolean isBlank(String value) {
+        return value == null || value.isBlank();
     }
 }

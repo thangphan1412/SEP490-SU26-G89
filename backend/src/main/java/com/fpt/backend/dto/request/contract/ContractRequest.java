@@ -6,12 +6,20 @@ import java.util.UUID;
 
 public record ContractRequest(
         UUID projectId,
+        UUID contractTypeId,
+        UUID contractTemplateId,
+        UUID contractTemplateVersionId,
         String contractNumber,
         String contractTitle,
         String contractStatus,
         LocalDate effectiveDate,
         LocalDate expirationDate,
         String contractCreatedBy,
-        LocalDateTime contractCreatedAt
+        LocalDateTime contractCreatedAt,
+        String contractContent,
+        String contractLayoutJson,
+        Boolean saveAsTemplateVersion,
+        String templateVersionName,
+        String templateVersionNote
 ) {
 }

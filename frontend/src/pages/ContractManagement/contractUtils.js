@@ -1,14 +1,16 @@
-import { listProjects } from "../../services/projectService/projectApi.js";
+import contractApi from "../../services/contractService/contractApi.js";
 
 export const defaultContractStatuses = [
     "Draft",
     "Pending",
     "Active",
+    "Rejected",
+    "Completed",
     "Expired",
 ];
 
 export function unwrapApiResponse(response) {
-    return response?.data?.data ?? response?.data;
+    return response?.data?.data ?? response?.data ?? response;
 }
 
 export function getApiErrorMessage(error, fallbackMessage) {
@@ -18,6 +20,9 @@ export function getApiErrorMessage(error, fallbackMessage) {
 export function createEmptyContract(projectId = "") {
     return {
         projectId,
+        contractTypeId: "",
+        contractTemplateId: "",
+        contractTemplateVersionId: "",
         contractNumber: "",
         contractTitle: "",
         contractStatus: "Draft",
@@ -25,12 +30,20 @@ export function createEmptyContract(projectId = "") {
         expirationDate: "",
         contractCreatedBy: localStorage.getItem("fullName") || "",
         contractCreatedAt: null,
+        contractContent: "",
+        contractLayoutJson: "",
+        saveAsTemplateVersion: false,
+        templateVersionName: "",
+        templateVersionNote: "",
     };
 }
 
 export function mapContractToForm(contract) {
     return {
         projectId: contract?.projectId || "",
+        contractTypeId: contract?.contractTypeId || "",
+        contractTemplateId: contract?.contractTemplateId || "",
+        contractTemplateVersionId: contract?.contractTemplateVersionId || "",
         contractNumber: contract?.contractNumber || "",
         contractTitle: contract?.contractTitle || "",
         contractStatus: contract?.contractStatus || "Draft",
@@ -38,12 +51,21 @@ export function mapContractToForm(contract) {
         expirationDate: contract?.expirationDate || "",
         contractCreatedBy: contract?.contractCreatedBy || "",
         contractCreatedAt: contract?.contractCreatedAt || null,
+        contractContent: contract?.contractContent || "",
+        contractLayoutJson: contract?.contractLayoutJson || "",
+        saveAsTemplateVersion: false,
+        templateVersionName: "",
+        templateVersionNote: "",
     };
 }
 
 export function toContractRequest(contract, isCreating = false) {
     return {
         projectId: contract.projectId || null,
+        contractTypeId: contract.contractTypeId || null,
+        contractTemplateId: contract.contractTemplateId || null,
+        contractTemplateVersionId:
+            contract.contractTemplateVersionId || null,
         contractNumber: contract.contractNumber.trim(),
         contractTitle: contract.contractTitle.trim(),
         contractStatus: contract.contractStatus,
@@ -51,14 +73,23 @@ export function toContractRequest(contract, isCreating = false) {
         expirationDate: contract.expirationDate || null,
         contractCreatedBy: contract.contractCreatedBy.trim() || null,
         contractCreatedAt: isCreating
-            ? new Date().toISOString().slice(0, 19)
+            ? null
             : contract.contractCreatedAt,
+        contractContent: contract.contractContent.trim() || null,
+        contractLayoutJson: contract.contractLayoutJson.trim() || null,
+        saveAsTemplateVersion: Boolean(contract.saveAsTemplateVersion),
+        templateVersionName: contract.templateVersionName.trim() || null,
+        templateVersionNote: contract.templateVersionNote.trim() || null,
     };
 }
 
 export function validateContract(contract) {
     if (!contract.projectId) {
         return "Please select a project.";
+    }
+
+    if (!contract.contractTypeId) {
+        return "Please select a contract type.";
     }
 
     if (!contract.contractNumber.trim() || !contract.contractTitle.trim()) {
@@ -71,6 +102,17 @@ export function validateContract(contract) {
         contract.effectiveDate > contract.expirationDate
     ) {
         return "Expiration date must be on or after the effective date.";
+    }
+
+    if (contract.saveAsTemplateVersion && !contract.contractTemplateId) {
+        return "Please select a template before saving a reusable version.";
+    }
+
+    if (
+        contract.saveAsTemplateVersion &&
+        !contract.contractContent.trim()
+    ) {
+        return "Contract content is required to save a template version.";
     }
 
     return "";
@@ -113,31 +155,8 @@ export function formatContractDateTime(value) {
 }
 
 export async function loadProjectOptions() {
-    const requestParams = {
-        search: "",
-        status: "",
-        page: 0,
-        sortBy: "projectName",
-        sortDirection: "asc",
-    };
-    const firstResponse = await listProjects(requestParams);
-    const firstPayload = unwrapApiResponse(firstResponse);
-    const firstItems = Array.isArray(firstPayload?.items) ? firstPayload.items : [];
-    const totalPages = Number(firstPayload?.totalPages) || 0;
+    const response = await contractApi.getProjectOptions();
+    const payload = unwrapApiResponse(response);
 
-    if (totalPages <= 1) {
-        return firstItems;
-    }
-
-    const remainingResponses = await Promise.all(
-        Array.from({ length: totalPages - 1 }, (_, index) =>
-            listProjects({ ...requestParams, page: index + 1 })
-        )
-    );
-
-    return remainingResponses.reduce((projects, response) => {
-        const payload = unwrapApiResponse(response);
-        const items = Array.isArray(payload?.items) ? payload.items : [];
-        return projects.concat(items);
-    }, firstItems);
+    return Array.isArray(payload) ? payload : [];
 }

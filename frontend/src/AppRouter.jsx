@@ -14,17 +14,12 @@ import CreateProject from "./pages/ProjectManagement/CreateProject.jsx";
 import ViewProject from "./pages/ProjectManagement/ViewProject.jsx";
 import UpdateProject from "./pages/ProjectManagement/UpdateProject.jsx";
 import ListContract from "./pages/ContractManagement/ListContract.jsx";
-import CreateContract from "./pages/ContractManagement/CreateContract.jsx";
-import ViewContract from "./pages/ContractManagement/ViewContract.jsx";
-import UpdateContract from "./pages/ContractManagement/UpdateContract.jsx";
 import PermissionCreatePage from "./pages/Permission Management/CreatePermissionPage.jsx";
 import ListPermissionPage from "./pages/Permission Management/ListPermissionPage.jsx";
 import ViewPermissionPage from "./pages/Permission Management/ViewPermissionPage.jsx";
 import UpdatePermissionPage from "./pages/Permission Management/UpdatePermissionPage.jsx";
 import ListContractType from "./pages/contractType/ListContractType.jsx";
-import CreateContractType from "./pages/contractType/CreateContractType.jsx";
-import ViewContractType from "./pages/contractType/ViewContractType.jsx";
-import UpdateContractType from "./pages/contractType/UpdateContractType.jsx";
+import ListContractTemplate from "./pages/contractTemplate/ListContractTemplate.jsx";
 import ListDepartment from "./pages/Departments/ListDepartment.jsx";
 import CreateDepartment from "./pages/Departments/CreateDepartment.jsx";
 import ViewDepartment from "./pages/Departments/ViewDepartment.jsx";
@@ -127,15 +122,15 @@ function AppRouter() {
                 />
                 <Route
                     path="/contract-management/create"
-                    element={<CreateContract />}
+                    element={<Navigate to="/contract-management/list" replace />}
                 />
                 <Route
                     path="/contract-management/view/:id"
-                    element={<ViewContract />}
+                    element={<Navigate to="/contract-management/list" replace />}
                 />
                 <Route
                     path="/contract-management/update/:id"
-                    element={<UpdateContract />}
+                    element={<Navigate to="/contract-management/list" replace />}
                 />
                 <Route
                     path="/permission/create"
@@ -159,15 +154,19 @@ function AppRouter() {
                 />
                 <Route
                     path="/contract-types/new"
-                    element={<CreateContractType />}
+                    element={<Navigate to="/contract-types" replace />}
                 />
                 <Route
                     path="/contract-types/detail/:id"
-                    element={<ViewContractType />}
+                    element={<Navigate to="/contract-types" replace />}
                 />
                 <Route
                     path="/contract-types/update/:id"
-                    element={<UpdateContractType />}
+                    element={<Navigate to="/contract-types" replace />}
+                />
+                <Route
+                    path="/contract-templates"
+                    element={<ListContractTemplate />}
                 />
                 <Route
                     path="/department-management/list"

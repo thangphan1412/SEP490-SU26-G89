@@ -11,14 +11,15 @@ export const navConfig = [
     {
         key: "contract",
         headerLabel: "Contract Management",
-        matchPaths: ["/contract-management", "/contract-types"],
+        matchPaths: [
+            "/contract-management",
+            "/contract-types",
+            "/contract-templates",
+        ],
         children: [
             { label: "List Contract", path: "/contract-management/list" },
-            { label: "Create Contract", path: "/contract-management/create" },
-            { label: "View Contract", path: "/contract-management/view/:id" },
-            { label: "Update Contract", path: "/contract-management/update/:id" },
             { label: "List Contract Type", path: "/contract-types" },
-            { label: "Create Contract Type", path: "/contract-types/new" },
+            { label: "List Contract Template", path: "/contract-templates" },
         ],
     },
     {

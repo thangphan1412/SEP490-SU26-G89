@@ -16,6 +16,13 @@ const contractApi = {
         });
     },
 
+    getProjectOptions() {
+        return axios.get(
+            CONTRACT_ENDPOINT + "/project-options",
+            noCacheConfig
+        );
+    },
+
     getContractById(id) {
         return axios.get(CONTRACT_ENDPOINT + "/" + id, noCacheConfig);
     },

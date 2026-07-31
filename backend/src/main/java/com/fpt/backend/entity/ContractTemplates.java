@@ -14,12 +14,14 @@ import java.util.List;
 @Builder
 @Table(name = "contract_templates")
 public class ContractTemplates extends BaseEntity{
-    @Column(name = "contract_template_name")
+    @Column(name = "contract_template_name", columnDefinition = "nvarchar(200)")
     private String contractTemplateName;
-    @Column(name = "contract_template_version")
-    private Integer contractTemplateVersion;
-    @Column(name = "contract_template_description")
+    @Column(name = "contract_template_description", columnDefinition = "nvarchar(1000)")
     private String contractTemplateDescription;
+    @Column(name = "contract_template_status", columnDefinition = "nvarchar(30)")
+    private String contractTemplateStatus;
+    @Column(name = "contract_template_created_by", columnDefinition = "nvarchar(150)")
+    private String contractTemplateCreatedBy;
     @Column(name = "contract_template_create_at")
     private LocalDateTime contractTemplateCreateAt;
     @Column(name = "contract_template_update_at")
@@ -36,5 +38,16 @@ public class ContractTemplates extends BaseEntity{
     // contractposition
     @OneToMany(mappedBy = "contractTemplates")
     private List<ContractPositions> contractPositions;
+    // immutable child versions
+    @OneToMany(
+            mappedBy = "contractTemplate",
+            cascade = CascadeType.ALL,
+            orphanRemoval = true
+    )
+    @OrderBy("versionNumber DESC")
+    private List<ContractTemplateVersions> contractTemplateVersions;
+    // contracts created from this template
+    @OneToMany(mappedBy = "contractTemplate")
+    private List<Contracts> contracts;
 
 }

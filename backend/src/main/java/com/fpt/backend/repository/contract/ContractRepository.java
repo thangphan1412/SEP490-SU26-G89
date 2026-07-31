@@ -15,15 +15,26 @@ import java.util.UUID;
 public interface ContractRepository extends JpaRepository<Contracts, UUID> {
     Page<Contracts> findByContractStatusIgnoreCase(String contractStatus, Pageable pageable);
 
+    long countByContractTypeId(UUID contractTypeId);
+
+    long countByContractTemplateId(UUID contractTemplateId);
+
+    long countByContractTemplateVersionId(UUID contractTemplateVersionId);
+
     @Query("""
             SELECT contract
             FROM Contracts contract
             LEFT JOIN contract.project project
+            LEFT JOIN contract.contractType contractType
+            LEFT JOIN contract.contractTemplate contractTemplate
             WHERE (
                 LOWER(COALESCE(contract.contractNumber, '')) LIKE CONCAT('%', CONCAT(:search, '%'))
                 OR LOWER(COALESCE(contract.contractTitle, '')) LIKE CONCAT('%', CONCAT(:search, '%'))
                 OR LOWER(COALESCE(contract.contractCreateBy, '')) LIKE CONCAT('%', CONCAT(:search, '%'))
                 OR LOWER(COALESCE(project.projectName, '')) LIKE CONCAT('%', CONCAT(:search, '%'))
+                OR LOWER(COALESCE(contractType.contractTypeCode, '')) LIKE CONCAT('%', CONCAT(:search, '%'))
+                OR LOWER(COALESCE(contractType.contractTypeName, '')) LIKE CONCAT('%', CONCAT(:search, '%'))
+                OR LOWER(COALESCE(contractTemplate.contractTemplateName, '')) LIKE CONCAT('%', CONCAT(:search, '%'))
             )
             AND (
                 :status = ''

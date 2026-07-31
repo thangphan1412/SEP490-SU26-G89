@@ -1,14 +1,13 @@
-import {
-    Icon,
-    styles,
-} from "./ContractComponents.jsx";
 import { defaultContractStatuses } from "./contractUtils.js";
 
 function ContractForm({
     contract,
     onChange,
-    projects,
+    projects = [],
+    contractTypes = [],
+    contractTemplates = [],
     loadingProjects = false,
+    loadingContractOptions = false,
     creatorReadOnly = false,
 }) {
     const statusOptions = defaultContractStatuses.includes(contract.contractStatus)
@@ -17,14 +16,20 @@ function ContractForm({
     const containsCurrentProject = projects.some(
         (project) => project.id === contract.projectId
     );
+    const filteredTemplates = contractTemplates.filter(
+        (template) => template.contractTypeId === contract.contractTypeId
+    );
+    const selectedTemplate = filteredTemplates.find(
+        (template) => template.id === contract.contractTemplateId
+    );
+    const versions = Array.isArray(selectedTemplate?.versions)
+        ? selectedTemplate.versions
+        : [];
 
     return (
-        <section style={styles.card}>
-            <h2 style={styles.cardTitle}>Contract Information</h2>
-
-            <div style={localStyles.formGrid}>
+        <div className="contract-form-grid">
                 <TextField
-                    label="Contract ID"
+                    label="Contract Number"
                     name="contractNumber"
                     value={contract.contractNumber}
                     onChange={onChange}
@@ -41,50 +46,102 @@ function ContractForm({
                     required
                 />
 
-                <div>
-                    <label htmlFor="projectId" style={styles.label}>Project</label>
+                <SelectField
+                    label="Project"
+                    name="projectId"
+                    value={contract.projectId}
+                    onChange={onChange}
+                    disabled={loadingProjects}
+                    required
+                >
+                    <option value="">
+                        {loadingProjects ? "Loading projects..." : "Select project"}
+                    </option>
 
-                    <div style={localStyles.inputWrap}>
-                        <select
-                            id="projectId"
-                            name="projectId"
-                            value={contract.projectId}
-                            onChange={onChange}
-                            style={styles.input}
-                            disabled={loadingProjects}
-                            required
-                        >
-                            <option value="">
-                                {loadingProjects ? "Loading projects..." : "Select project"}
-                            </option>
+                    {contract.projectId && !containsCurrentProject && (
+                        <option value={contract.projectId}>
+                            Current project ({contract.projectId})
+                        </option>
+                    )}
 
-                            {contract.projectId && !containsCurrentProject && (
-                                <option value={contract.projectId}>
-                                    Current project ({contract.projectId})
-                                </option>
-                            )}
+                    {projects.map((project) => (
+                        <option key={project.id} value={project.id}>
+                            {project.projectCode ? `${project.projectCode} - ` : ""}
+                            {project.projectName || project.id}
+                        </option>
+                    ))}
+                </SelectField>
 
-                            {projects.map((project) => (
-                                <option key={project.id} value={project.id}>
-                                    {project.projectCode ? `${project.projectCode} - ` : ""}
-                                    {project.projectName || project.id}
-                                </option>
-                            ))}
-                        </select>
+                <SelectField
+                    label="Contract Type"
+                    name="contractTypeId"
+                    value={contract.contractTypeId}
+                    onChange={onChange}
+                    disabled={loadingContractOptions}
+                    required
+                >
+                    <option value="">
+                        {loadingContractOptions
+                            ? "Loading contract types..."
+                            : "Select contract type"}
+                    </option>
 
-                        <span style={localStyles.rightIcon}>
-                            <Icon name="chevron" size={18} color="#243452" />
-                        </span>
-                    </div>
-                </div>
+                    {contractTypes.map((contractType) => (
+                        <option key={contractType.id} value={contractType.id}>
+                            {contractType.contractTypeCode
+                                ? `${contractType.contractTypeCode} - `
+                                : ""}
+                            {contractType.contractTypeName}
+                        </option>
+                    ))}
+                </SelectField>
+
+                <SelectField
+                    label="Contract Template"
+                    name="contractTemplateId"
+                    value={contract.contractTemplateId}
+                    onChange={onChange}
+                    disabled={!contract.contractTypeId || loadingContractOptions}
+                >
+                    <option value="">Start without a template</option>
+
+                    {filteredTemplates.map((template) => (
+                        <option key={template.id} value={template.id}>
+                            {template.contractTemplateName}
+                        </option>
+                    ))}
+                </SelectField>
+
+                <SelectField
+                    label="Template Version"
+                    name="contractTemplateVersionId"
+                    value={contract.contractTemplateVersionId}
+                    onChange={onChange}
+                    disabled={!contract.contractTemplateId || versions.length === 0}
+                >
+                    <option value="">
+                        {versions.length === 0
+                            ? "No saved versions"
+                            : "Do not link a saved version"}
+                    </option>
+
+                    {versions.map((version) => (
+                        <option key={version.id} value={version.id}>
+                            V{version.versionNumber} - {version.versionName}
+                        </option>
+                    ))}
+                </SelectField>
 
                 <SelectField
                     label="Status"
                     name="contractStatus"
                     value={contract.contractStatus}
                     onChange={onChange}
-                    options={statusOptions}
-                />
+                >
+                    {statusOptions.map((option) => (
+                        <option key={option} value={option}>{option}</option>
+                    ))}
+                </SelectField>
 
                 <TextField
                     label="Effective Date"
@@ -112,8 +169,74 @@ function ContractForm({
                     placeholder="Current user"
                     readOnly={creatorReadOnly}
                 />
-            </div>
-        </section>
+
+                <div className="contract-form-full">
+                    <label htmlFor="contractContent" className="contract-form-label">
+                        Contract Content
+                    </label>
+                    <textarea
+                        id="contractContent"
+                        name="contractContent"
+                        value={contract.contractContent}
+                        onChange={onChange}
+                        className="form-control contract-content-editor"
+                        placeholder="Enter or edit the reusable contract content..."
+                    />
+                    <div className="form-text">
+                        Selecting a saved version copies its content here. Editing
+                        this field does not overwrite that version.
+                    </div>
+                </div>
+
+                <details className="contract-form-full contract-layout-details">
+                    <summary>Advanced layout data (optional)</summary>
+                    <textarea
+                        id="contractLayoutJson"
+                        name="contractLayoutJson"
+                        value={contract.contractLayoutJson}
+                        onChange={onChange}
+                        className="form-control contract-layout-editor"
+                        placeholder='{"fields":[]}'
+                    />
+                </details>
+
+                {contract.contractTemplateId && (
+                    <div className="contract-form-full contract-version-option">
+                        <label className="form-check">
+                            <input
+                                className="form-check-input"
+                                type="checkbox"
+                                name="saveAsTemplateVersion"
+                                checked={contract.saveAsTemplateVersion}
+                                onChange={onChange}
+                            />
+                            <span className="form-check-label">
+                                Save the edited content as a new reusable version
+                                of this template
+                            </span>
+                        </label>
+
+                        {contract.saveAsTemplateVersion && (
+                            <div className="contract-version-fields">
+                                <TextField
+                                    label="Version Name"
+                                    name="templateVersionName"
+                                    value={contract.templateVersionName}
+                                    onChange={onChange}
+                                    placeholder="Defaults to Version N"
+                                />
+                                <TextField
+                                    label="Change Note"
+                                    name="templateVersionNote"
+                                    value={contract.templateVersionNote}
+                                    onChange={onChange}
+                                    placeholder="What changed in this version?"
+                                />
+                            </div>
+                        )}
+                    </div>
+                )}
+        </div>
     );
 }
 
@@ -130,85 +253,49 @@ function TextField({
 }) {
     return (
         <div>
-            <label htmlFor={name} style={styles.label}>{label}</label>
+            <label htmlFor={name} className="contract-form-label">{label}</label>
 
-            <div style={localStyles.inputWrap}>
-                {icon && (
-                    <span style={localStyles.leftIcon}>
-                        <Icon name={icon} size={18} color="#53617e" />
-                    </span>
-                )}
-
-                <input
-                    id={name}
-                    name={name}
-                    type={type}
-                    value={value}
-                    onChange={onChange}
-                    placeholder={placeholder}
-                    required={required}
-                    readOnly={readOnly}
-                    style={{
-                        ...styles.input,
-                        paddingLeft: icon ? 42 : 13,
-                        background: readOnly ? "#f8fafc" : "#ffffff",
-                    }}
-                />
-            </div>
+            <input
+                id={name}
+                name={name}
+                type={type}
+                value={value}
+                onChange={onChange}
+                placeholder={placeholder}
+                required={required}
+                readOnly={readOnly}
+                className={`form-control${icon ? " contract-date-input" : ""}`}
+            />
         </div>
     );
 }
 
-function SelectField({ label, name, value, onChange, options }) {
+function SelectField({
+    label,
+    name,
+    value,
+    onChange,
+    children,
+    disabled = false,
+    required = false,
+}) {
     return (
         <div>
-            <label htmlFor={name} style={styles.label}>{label}</label>
+            <label htmlFor={name} className="contract-form-label">{label}</label>
 
-            <div style={localStyles.inputWrap}>
-                <select
-                    id={name}
-                    name={name}
-                    value={value}
-                    onChange={onChange}
-                    style={styles.input}
-                >
-                    {options.map((option) => (
-                        <option key={option} value={option}>{option}</option>
-                    ))}
-                </select>
-
-                <span style={localStyles.rightIcon}>
-                    <Icon name="chevron" size={18} color="#243452" />
-                </span>
-            </div>
+            <select
+                id={name}
+                name={name}
+                value={value}
+                onChange={onChange}
+                className="form-select"
+                disabled={disabled}
+                required={required}
+            >
+                {children}
+            </select>
         </div>
     );
 }
-
-const localStyles = {
-    formGrid: {
-        display: "grid",
-        gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
-        columnGap: 30,
-        rowGap: 18,
-    },
-    inputWrap: { position: "relative" },
-    leftIcon: {
-        position: "absolute",
-        left: 12,
-        top: "50%",
-        transform: "translateY(-50%)",
-        display: "flex",
-        zIndex: 1,
-    },
-    rightIcon: {
-        position: "absolute",
-        right: 12,
-        top: "50%",
-        transform: "translateY(-50%)",
-        display: "flex",
-        pointerEvents: "none",
-    },
-};
 
 export default ContractForm;
