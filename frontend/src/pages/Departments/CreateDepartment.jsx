@@ -1,6 +1,5 @@
 import { useState } from "react";
-import { Button, Form, Nav } from "react-bootstrap";
-import { IconHierarchy, IconListDetails, IconPlus, IconSettings, IconUsers } from "@tabler/icons-react";
+import { Button, Form } from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
 import departmentApi from "../../services/departmentService/departmentApi.js";
 import "../../assets/styles/css/departmentStyles/Departments.css";
@@ -46,17 +45,6 @@ function CreateDepartment() {
 
   return (
     <div className="department-layout">
-      <aside className="department-sidebar">
-        <p>Department Management</p>
-        <Nav className="department-sidebar-nav">
-          <Nav.Link onClick={() => navigate("/department-management/list")}><IconListDetails size={21} /><span>List Department</span></Nav.Link>
-          <Nav.Link active onClick={() => navigate("/department-management/create")}><IconPlus size={21} /><span>Create Department</span></Nav.Link>
-          <Nav.Link onClick={() => navigate("/department-management/list")}><IconHierarchy size={21} /><span>Organization Chart</span></Nav.Link>
-          <Nav.Link onClick={() => navigate("/department-management/view/2")}><IconUsers size={21} /><span>Team Members</span></Nav.Link>
-          <Nav.Link onClick={() => navigate("/department-management/update/2")}><IconSettings size={21} /><span>Department Settings</span></Nav.Link>
-        </Nav>
-      </aside>
-
       <section className="department-content">
         <div className="department-panel department-panel--compact">
           <header className="department-panel-header">

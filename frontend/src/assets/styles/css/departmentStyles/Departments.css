@@ -1,12 +1,6 @@
 .department-layout,
 .department-layout * { box-sizing: border-box; }
-.department-layout { min-height: calc(100vh - 108px); margin: -24px; display: grid; grid-template-columns: 240px minmax(0, 1fr); color: #14213d; background: #f7f9fd; font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; }
-.department-sidebar { padding: 34px 10px; border-right: 1px solid #e2e7f0; background: #fff; }
-.department-sidebar > p { margin: 0 18px 18px; color: #667594; font-size: 12px; font-weight: 600; text-transform: uppercase; }
-.department-sidebar-nav { display: grid; gap: 6px; }
-.department-sidebar-nav .nav-link { min-height: 48px; padding: 0 18px; display: flex; align-items: center; gap: 13px; border-left: 3px solid transparent; border-radius: 7px; color: #263653; font-size: 14px; cursor: pointer; }
-.department-sidebar-nav .nav-link:hover { color: #164dff; background: #f6f8ff; }
-.department-sidebar-nav .nav-link.active { border-left-color: #164dff; color: #164dff; background: linear-gradient(90deg, #f0f4ff, #f8f9ff); font-weight: 650; }
+.department-layout { min-height: calc(100vh - 108px); margin: -24px; color: #14213d; background: #f7f9fd; font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; }
 .department-content { min-width: 0; padding: 26px 36px 40px; }
 .department-panel { max-width: 1160px; min-height: calc(100vh - 160px); margin: 0 auto; overflow: hidden; border: 1px solid #dfe5ee; border-radius: 16px; background: #fff; box-shadow: 0 7px 24px rgba(35, 52, 89, .07); }
 .department-panel--compact { max-width: 1100px; }
@@ -86,7 +80,6 @@
 .department-role { padding: 4px 9px; border: 1px solid #d5deed; border-radius: 6px; color: #506184; background: #f8faff; }
 
 @media (max-width: 1050px) {
-  .department-layout { grid-template-columns: 205px minmax(0, 1fr); }
   .department-content { padding: 22px; }
   .department-toolbar { grid-template-columns: 1fr 150px 170px; }
   .department-tool-button, .department-toolbar > .department-icon-button { display: none !important; }
@@ -94,11 +87,6 @@
   .department-info { grid-template-columns: 28px 120px minmax(0, 1fr); }
 }
 @media (max-width: 760px) {
-  .department-layout { grid-template-columns: 1fr; }
-  .department-sidebar { padding: 12px; border-right: 0; border-bottom: 1px solid #e2e7f0; }
-  .department-sidebar > p { display: none; }
-  .department-sidebar-nav { display: flex; overflow-x: auto; }
-  .department-sidebar-nav .nav-link { min-width: max-content; }
   .department-content { padding: 14px; }
   .department-panel-header { padding: 22px; align-items: flex-start; flex-direction: column; }
   .department-toolbar { grid-template-columns: 1fr; }
