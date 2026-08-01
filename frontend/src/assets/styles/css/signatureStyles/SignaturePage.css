@@ -1,0 +1,194 @@
+.signatures-page {
+    padding: 24px;
+}
+
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 20px;
+}
+
+.page-header h2 {
+    font-size: 22px;
+    font-weight: 700;
+    margin: 0 0 4px 0;
+    color: #111827;
+}
+
+.page-subtitle {
+    font-size: 13px;
+    color: #6b7280;
+    margin: 0;
+}
+
+.signature-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 16px;
+}
+
+.search-box {
+    position: relative;
+    flex: 1;
+    max-width: 340px;
+}
+
+.search-box .search-icon {
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #9ca3af;
+}
+
+.search-box input {
+    width: 100%;
+    padding: 8px 12px 8px 34px;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    font-size: 13px;
+}
+
+.filter-select {
+    padding: 8px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    font-size: 13px;
+    color: #374151;
+}
+
+.filters-btn, .refresh-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    background: #ffffff;
+    font-size: 13px;
+    color: #374151;
+    cursor: pointer;
+}
+
+.new-signature-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    border: none;
+    border-radius: 8px;
+    background: #2563eb;
+    color: #ffffff;
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
+    margin-left: auto;
+}
+
+.signature-table-wrapper {
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.signature-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.signature-table th {
+    text-align: left;
+    font-size: 12px;
+    color: #6b7280;
+    padding: 12px 16px;
+    border-bottom: 1px solid #e5e7eb;
+    background: #f9fafb;
+}
+
+.signature-row td {
+    padding: 14px 16px;
+    border-bottom: 1px solid #f3f4f6;
+    font-size: 13px;
+}
+
+.signature-name-cell {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.signature-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: #f3f4f6;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 600;
+    font-style: italic;
+}
+
+.signature-name-text {
+    font-weight: 500;
+    color: #111827;
+}
+
+.status-badge {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.status-active {
+    background: #ecfdf5;
+    color: #059669;
+}
+
+.status-inactive {
+    background: #f3f4f6;
+    color: #9ca3af;
+}
+
+.row-action-btn {
+    background: none;
+    border: none;
+    color: #9ca3af;
+    cursor: pointer;
+}
+
+.signature-pagination {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 16px;
+    font-size: 13px;
+    color: #6b7280;
+}
+
+.pagination-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.pagination-controls button {
+    border: 1px solid #d1d5db;
+    background: #ffffff;
+    border-radius: 6px;
+    padding: 4px 8px;
+    cursor: pointer;
+}
+
+.page-number {
+    border: 1px solid #2563eb;
+    color: #2563eb;
+    border-radius: 6px;
+    padding: 2px 10px;
+    font-weight: 600;
+}

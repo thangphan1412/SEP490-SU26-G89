@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @AllArgsConstructor
 @NoArgsConstructor
@@ -39,4 +40,10 @@ public class FileStorage extends BaseEntity{
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
     private Users user;
+    //electronic
+    @OneToMany(mappedBy = "fileStorage")
+    private List<ElectronicSignatures> electronicSignatures;
+    //signature
+    @OneToMany(mappedBy = "fileStorage")
+    private List<Signature> signatures;
 }

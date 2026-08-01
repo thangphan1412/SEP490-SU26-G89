@@ -34,8 +34,13 @@ function HeaderForm(){
 
                 <Navbar.Collapse id="basic-navbar-nav">
                     <Nav className="nav-list">
-                        <Nav.Link as={NavLink} to="#" className="nav-item" ><IconLayoutDashboard stroke={2}/>Signature Management</Nav.Link>
-                        <Nav.Link as={NavLink} to="/contract-management/list" className="nav-item"><IconContract stroke={2}/>Contract Management</Nav.Link>
+                        <Nav.Link as={NavLink} to="/signature-management/list" className="nav-item" ><IconLayoutDashboard stroke={2}/>Signature Management</Nav.Link>
+                        <Nav.Link as={NavLink}
+                                  to="/contract-management/list"
+                                  // className={({ isActive  }) => isActive ? "nav-item active": "nav-item"}
+                            className="nav-item"
+
+                        ><IconContract stroke={2}/>Contract Management</Nav.Link>
                         <Nav.Link as={NavLink} to="/project-management/list" className="nav-item"><IconCreditCard stroke={2} />Project Management</Nav.Link>
                         <Nav.Link as={NavLink} to="/permission/list" className="nav-item"><IconShieldCheck stroke={2} />Permission Management</Nav.Link>
                         <Nav.Link as={NavLink} to="/department-management/list" className="nav-item"><IconBuildingSkyscraper stroke={2} />Department Management</Nav.Link>

@@ -1,6 +1,6 @@
 import {IconEye, IconEyeX, IconLock, IconMail} from "@tabler/icons-react";
 import {Link, useNavigation} from "react-router-dom";
-import resetpassword from "../../pages/Authentication/Resetpassword.jsx";
+import resetpassword from "../../pages/authentication/Resetpassword.jsx";
 import authenService from "../../services/userService/authenService.js";
 import {use, useState} from "react";
 

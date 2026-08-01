@@ -1,5 +1,5 @@
 import { Navigate, Route, Routes } from "react-router-dom";
-import LoginPage from "./pages/Authentication/LoginPage.jsx";
+import LoginPage from "./pages/authentication/LoginPage.jsx";
 import Homepage from "./pages/homePage/HomePage.jsx";
 import ViewProfile from "./pages/CompanyProfileManagement/ViewProfile.jsx";
 import UpdateProfile from "./pages/CompanyProfileManagement/UpdateProfile.jsx";
@@ -27,13 +27,14 @@ import UpdateDepartment from "./pages/Departments/UpdateDepartment.jsx";
 import ProtectedRoute from "./components/common/ProtectedRouter.jsx";
 import HeaderForm from "./components/layout/HeaderForm.jsx";
 import MainLayout from "./components/layout/MainLayout.jsx";
-import ForgotPassword from "./pages/Authentication/ForgotPassword.jsx";
-import Resetpassword from "./pages/Authentication/Resetpassword.jsx";
+import ForgotPassword from "./pages/authentication/ForgotPassword.jsx";
+import Resetpassword from "./pages/authentication/Resetpassword.jsx";
 import ViewPhase from "./pages/Phase Management/ViewPhase.jsx";
 import AgreementStatistics from "./pages/Dashboard/AgreementStatistics.jsx";
 import TotalAgreements from "./pages/Dashboard/TotalAgreements.jsx";
 import PendingSignatureAgreements from "./pages/Dashboard/PendingSignatureAgreements.jsx";
 import ContractStatisticalReports from "./pages/Dashboard/ContractStatisticalReports.jsx";
+import SignatureList from "./pages/signature/SignatureList.jsx";
 
 function AppRouter() {
     return (
@@ -57,7 +58,7 @@ function AppRouter() {
             <Route element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
                 <Route
                     path="/home_page"
-                    element={<Homepage />}
+
                     element={
                         <ProtectedRoute>
                             <Homepage />
@@ -199,6 +200,10 @@ function AppRouter() {
                 <Route
                     path="/dashboard/contract-statistical-reports"
                     element={<ContractStatisticalReports />}
+                />
+                <Route
+                    path="/signature-management/list"
+                    element={<SignatureList />}
                 />
             </Route>
 
