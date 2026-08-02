@@ -4,6 +4,7 @@ import com.fpt.backend.dto.request.department.DepartmentRequestDTO;
 import com.fpt.backend.dto.response.department.DepartmentResponseDTO;
 
 import java.util.List;
+import java.util.UUID;
 
 public interface IDepartmentService {
     List<DepartmentResponseDTO> getAllDepartments();
@@ -11,8 +12,9 @@ public interface IDepartmentService {
     List<DepartmentResponseDTO> searchDepartments(String search, String status);
 
     DepartmentResponseDTO getDepartmentById(Integer id);
+    DepartmentResponseDTO getDepartmentById(UUID id);
 
     DepartmentResponseDTO createDepartment(DepartmentRequestDTO request);
 
-    DepartmentResponseDTO updateDepartment(Integer id, DepartmentRequestDTO request);
+    DepartmentResponseDTO updateDepartment(UUID id, DepartmentRequestDTO request);
 }

@@ -45,7 +45,7 @@
     color: #111827 ;
     letter-spacing: 0.04em;
     padding: 0 ;
-    margin: 0 t;
+    margin: 0 ;
 }
 
 .brand-sub {
@@ -119,3 +119,16 @@
     font-size: 12px;
     color: #6c757d;
 }
+/*!*.nav-item]]]-item:hover {*!*/
+/*!*    background-color: #f3f4f6;*!*/
+/*!*}*!*/
+
+/*.nav-item {*/
+/*    color: #6b7280; !* màu mặc định khi chưa active *!*/
+/*    transition: color 0.15s ease;*/
+/*}*/
+
+/*.nav-item.active {*/
+/*    color: #2563eb;*/
+/*    font-weight: 600;*/
+/*}*/

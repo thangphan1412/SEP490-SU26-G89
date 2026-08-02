@@ -2,9 +2,10 @@ package com.fpt.backend.dto.response.project;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.UUID;
 
 public record ProjectDetailResponse(
-        int id,
+        UUID id,
         String projectCode,
         String projectName,
         String projectDescription,
@@ -16,6 +17,7 @@ public record ProjectDetailResponse(
         List<ProjectPhaseResponse> phases,
         List<ProjectUserResponse> users,
         List<ProjectPermissionOptionResponse> availablePermissions,
-        List<ProjectContractResponse> contracts
+        List<ProjectContractResponse> contracts,
+        boolean currentUserIsCreator
 ) {
 }

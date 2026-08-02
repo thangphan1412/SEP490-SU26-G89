@@ -9,6 +9,7 @@ import com.fpt.backend.dto.response.userProfile.UserProfileResponseDTO;
 import com.fpt.backend.entity.Users;
 
 import java.util.List;
+import java.util.UUID;
 
 public interface IUserService {
 
@@ -18,13 +19,15 @@ public interface IUserService {
     RegisterResponse create(RegisterRequest registerRequest);
 
     List<UserResponseDTO> getAllUsers();
-    UserResponseDTO getUserById(Integer id); // Sửa thành Integer
+    UserResponseDTO getUserById(UUID id); // Sửa thành Integer
     UserResponseDTO createUser(UserRequestDTO request);
-    UserResponseDTO updateUser(Integer id, UserRequestDTO request); // Sửa thành Integer
+    UserResponseDTO updateUser(UUID id, UserRequestDTO request); // Sửa thành Integer
+
+    List<UserResponseDTO> getAllUsersFiltered(String type, String currentUsername, String keyword, String role, String department, String status);
 
     // Thêm 2 hàm cho Profile
-    UserProfileResponseDTO getMyProfile(Integer userId);
-    UserProfileResponseDTO updateMyProfile(Integer userId, UserProfileRequestDTO request);
+    UserProfileResponseDTO getMyProfile(UUID userId);
+    UserProfileResponseDTO updateMyProfile(UUID userId, UserProfileRequestDTO request);
 
 
 }

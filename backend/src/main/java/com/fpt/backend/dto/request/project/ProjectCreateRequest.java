@@ -8,7 +8,6 @@ public record ProjectCreateRequest(
         String projectCode,
         LocalDate projectStartDate,
         LocalDate projectEndDate,
-        String projectCreatedAt,
         String projectDescription,
         String projectStatus,
         List<ProjectPhaseRequest> phases,

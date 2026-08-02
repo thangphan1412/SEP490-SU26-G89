@@ -37,6 +37,13 @@
     box-shadow: none;
 }
 
+.list-project-search-input.form-control:focus,
+.list-project-search-input.form-control:focus-visible {
+    border-color: transparent;
+    outline: none;
+    box-shadow: none;
+}
+
 .list-project-clear-search.btn {
     width: 28px;
     height: 28px;
@@ -83,11 +90,41 @@
     box-shadow: none;
 }
 
+.list-project-select.form-select:focus,
+.list-project-select.form-select:focus-visible {
+    border-color: transparent;
+    outline: none;
+    box-shadow: none;
+}
+
 .list-project-select-icon {
     position: absolute;
     right: 12px;
     bottom: 13px;
     pointer-events: none;
+}
+
+.list-project-view-filter {
+    min-height: 55px;
+    padding: 0 16px;
+    display: flex;
+    align-items: center;
+    border: 1px solid #d7dfeb;
+    border-radius: 8px;
+    background: #fff;
+    color: #243452;
+    font-size: 14px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.list-project-view-filter .form-check {
+    margin-bottom: 0;
+}
+
+.list-project-view-filter .form-check-input,
+.list-project-view-filter .form-check-label {
+    cursor: pointer;
 }
 
 .list-project-filter-button.btn {
@@ -294,7 +331,8 @@
 @media (max-width: 700px) {
     .list-project-toolbar { padding: 18px 16px; }
     .list-project-search-box.input-group,
-    .list-project-select-box { width: 100%; }
+    .list-project-select-box,
+    .list-project-view-filter { width: 100%; }
     .list-project-table-wrap { margin: 0 16px; }
     .list-project-footer { padding: 18px 16px; }
 }

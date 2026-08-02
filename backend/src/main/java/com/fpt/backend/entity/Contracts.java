@@ -29,6 +29,10 @@ public class Contracts extends BaseEntity {
     private String contractCreateBy;
     @Column(name = "contract_created_at")
     private LocalDateTime contractCreatedAt;
+    @Column(name = "contract_content", columnDefinition = "nvarchar(max)")
+    private String contractContent;
+    @Column(name = "contract_layout_json", columnDefinition = "nvarchar(max)")
+    private String contractLayoutJson;
 
     /// Relation
     // project
@@ -38,9 +42,18 @@ public class Contracts extends BaseEntity {
     //Signature
     @OneToMany(mappedBy = "contract")
     private List<Signature>  signatures;
-    //contract type
-    @OneToMany(mappedBy = "contract")
-    private List<ContractTypes>  contractTypes;
+    // contract type
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "contract_type_id")
+    private ContractTypes contractType;
+    // contract template
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "contract_template_id")
+    private ContractTemplates contractTemplate;
+    // immutable template version selected for this contract
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "contract_template_version_id")
+    private ContractTemplateVersions contractTemplateVersion;
     // contrac approvals
     @OneToMany(mappedBy = "contract")
     private List<ContractApprovals> contractApprovals;

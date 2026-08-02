@@ -15,7 +15,7 @@ import {
 } from "@tabler/icons-react";
 
 // IMPORT HÀM GỌI API
-import { getCompanyProfile } from "../../config/companyApi/companyApi";
+import { getCompanyProfile } from "../../services/companyService/companyApi";
 
 function ViewProfile({ onEditProfile }) {
     const navigate = useNavigate();
@@ -52,19 +52,19 @@ function ViewProfile({ onEditProfile }) {
     return (
         <div className="bg-light min-vh-screen">
             {/* --- HEADER ĐỒNG BỘ --- */}
-            <header className="d-flex justify-content-between align-items-center px-4 py-3 bg-white border-bottom mb-4">
-                <div className="d-flex align-items-center gap-2">
-                    <span className="fs-4">🛡️</span>
-                    <div className="d-flex flex-column lh-sm">
-                        <strong className="text-dark">E-CONTRACT</strong>
-                        <small className="text-muted" style={{ fontSize: "12px" }}>Management System</small>
-                    </div>
-                </div>
-                <NavDropdown title={<span className="text-dark fw-semibold"><IconWorld size={20} className="me-1"/>English</span>} id="lang-dropdown">
-                    <NavDropdown.Item>English</NavDropdown.Item>
-                    <NavDropdown.Item>Vietnamese</NavDropdown.Item>
-                </NavDropdown>
-            </header>
+            {/*<header className="d-flex justify-content-between align-items-center px-4 py-3 bg-white border-bottom mb-4">*/}
+            {/*    <div className="d-flex align-items-center gap-2">*/}
+            {/*        <span className="fs-4">🛡️</span>*/}
+            {/*        <div className="d-flex flex-column lh-sm">*/}
+            {/*            <strong className="text-dark">E-CONTRACT</strong>*/}
+            {/*            <small className="text-muted" style={{ fontSize: "12px" }}>Management System</small>*/}
+            {/*        </div>*/}
+            {/*    </div>*/}
+            {/*    <NavDropdown title={<span className="text-dark fw-semibold"><IconWorld size={20} className="me-1"/>English</span>} id="lang-dropdown">*/}
+            {/*        <NavDropdown.Item>English</NavDropdown.Item>*/}
+            {/*        <NavDropdown.Item>Vietnamese</NavDropdown.Item>*/}
+            {/*    </NavDropdown>*/}
+            {/*</header>*/}
 
             {/* --- MAIN CONTENT --- */}
             <Container fluid="lg" className="mb-5">

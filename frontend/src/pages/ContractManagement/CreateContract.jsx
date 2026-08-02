@@ -1,129 +1,163 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import contractApi from "../../services/contractService/contractApi.js";
 import {
     CancelButton,
     Icon,
     InfoAlert,
     PagePanel,
     PrimaryButton,
-    contractParties,
-    contractStatuses,
-    contractTypes,
     styles,
 } from "./ContractComponents.jsx";
-
-const initialContract = {
-    contractNumber: "CON-2025-0009",
-    title: "",
-    party: "",
-    type: "",
-    status: "Draft",
-    effectiveDate: "",
-    expirationDate: "",
-    owner: "Alex Morgan",
-    project: "",
-    value: "",
-    description: "",
-};
+import ContractForm from "./ContractForm.jsx";
+import {
+    createEmptyContract,
+    getApiErrorMessage,
+    loadProjectOptions,
+    toContractRequest,
+    unwrapApiResponse,
+    validateContract,
+} from "./contractUtils.js";
 
 function CreateContract() {
     const navigate = useNavigate();
-    const [contract, setContract] = useState(initialContract);
+    const [searchParams] = useSearchParams();
+    const formRef = useRef(null);
+    const [contract, setContract] = useState(() =>
+        createEmptyContract(searchParams.get("projectId") || "")
+    );
+    const [projects, setProjects] = useState([]);
+    const [loadingProjects, setLoadingProjects] = useState(true);
+    const [submitting, setSubmitting] = useState(false);
+    const [errorMessage, setErrorMessage] = useState("");
+
+    useEffect(() => {
+        let active = true;
+
+        const loadProjects = async () => {
+            try {
+                const projectItems = await loadProjectOptions();
+
+                if (active) {
+                    setProjects(projectItems);
+                }
+            } catch (error) {
+                if (active) {
+                    setErrorMessage(
+                        getApiErrorMessage(error, "Unable to load projects.")
+                    );
+                }
+            } finally {
+                if (active) {
+                    setLoadingProjects(false);
+                }
+            }
+        };
+
+        loadProjects();
+
+        return () => {
+            active = false;
+        };
+    }, []);
 
     const handleChange = (event) => {
         const { name, value } = event.target;
         setContract((current) => ({ ...current, [name]: value }));
     };
 
-    const handleSubmit = (event) => {
+    const handleSubmit = async (event) => {
         event.preventDefault();
-        navigate("/contract-management/list");
+
+        if (submitting) {
+            return;
+        }
+
+        const validationMessage = validateContract(contract);
+
+        if (validationMessage) {
+            setErrorMessage(validationMessage);
+            return;
+        }
+
+        setSubmitting(true);
+        setErrorMessage("");
+
+        try {
+            const response = await contractApi.createContract(
+                toContractRequest(contract, true)
+            );
+            const createdContract = unwrapApiResponse(response);
+
+            navigate(
+                createdContract?.id
+                    ? `/contract-management/view/${createdContract.id}`
+                    : "/contract-management/list"
+            );
+        } catch (error) {
+            setErrorMessage(
+                getApiErrorMessage(error, "Unable to create the contract.")
+            );
+        } finally {
+            setSubmitting(false);
+        }
     };
 
     return (
         <PagePanel
             title="Create Contract"
-            description="Create a new contract record and prepare it for review."
+            description="Create a contract and link it to an existing project."
             action={
                 <div style={styles.actions}>
-                    <CancelButton onClick={() => navigate("/contract-management/list")} />
-                    <PrimaryButton type="submit"><Icon name="save" size={19} color="#fff" />Save Contract</PrimaryButton>
+                    <CancelButton
+                        onClick={() => navigate("/contract-management/list")}
+                    />
+
+                    <PrimaryButton
+                        onClick={() => {
+                            if (!submitting) {
+                                formRef.current?.requestSubmit();
+                            }
+                        }}
+                    >
+                        <Icon name="save" size={19} color="#fff" />
+                        {submitting ? "Saving..." : "Save Contract"}
+                    </PrimaryButton>
                 </div>
             }
         >
-            <form onSubmit={handleSubmit}>
-                <section style={styles.card}>
-                    <h2 style={styles.cardTitle}>Contract Information</h2>
-                    <div style={localStyles.formGrid}>
-                        <TextField label="Contract ID" name="contractNumber" value={contract.contractNumber} onChange={handleChange} />
-                        <TextField label="Title" name="title" value={contract.title} onChange={handleChange} placeholder="Enter contract title" />
-                        <SelectField label="Party / Parties" name="party" value={contract.party} onChange={handleChange} placeholder="Select party" options={contractParties} />
-                        <SelectField label="Contract Type" name="type" value={contract.type} onChange={handleChange} placeholder="Select type" options={contractTypes} />
-                        <SelectField label="Status" name="status" value={contract.status} onChange={handleChange} options={contractStatuses} />
-                        <TextField label="Effective Date" name="effectiveDate" value={contract.effectiveDate} onChange={handleChange} placeholder="May 01, 2025" icon="calendar" />
-                        <TextField label="Expiration Date" name="expirationDate" value={contract.expirationDate} onChange={handleChange} placeholder="May 01, 2026" icon="calendar" />
-                        <TextField label="Owner" name="owner" value={contract.owner} onChange={handleChange} />
-                        <TextField label="Project" name="project" value={contract.project} onChange={handleChange} placeholder="Linked project" />
-                        <TextField label="Contract Value" name="value" value={contract.value} onChange={handleChange} placeholder="$0.00" icon="dollar" />
+            <form ref={formRef} onSubmit={handleSubmit}>
+                <ContractForm
+                    contract={contract}
+                    onChange={handleChange}
+                    projects={projects}
+                    loadingProjects={loadingProjects}
+                    creatorReadOnly={Boolean(localStorage.getItem("fullName"))}
+                />
+
+                {errorMessage ? (
+                    <div role="alert" style={localStyles.errorAlert}>
+                        {errorMessage}
                     </div>
-                    <div style={localStyles.fullWidth}>
-                        <label htmlFor="description" style={styles.label}>Description</label>
-                        <textarea
-                            id="description"
-                            name="description"
-                            value={contract.description}
-                            onChange={handleChange}
-                            placeholder="Enter contract summary..."
-                            style={styles.textarea}
-                        />
-                    </div>
-                </section>
-                <InfoAlert>This screen is using mock data first. The submit handler can be replaced with a POST API call later.</InfoAlert>
+                ) : (
+                    <InfoAlert>
+                        The contract will be saved through the backend Contract API.
+                    </InfoAlert>
+                )}
             </form>
         </PagePanel>
     );
 }
 
-function TextField({ label, name, value, onChange, placeholder, icon }) {
-    return (
-        <div>
-            <label htmlFor={name} style={styles.label}>{label}</label>
-            <div style={localStyles.inputWrap}>
-                {icon && <span style={localStyles.leftIcon}><Icon name={icon} size={18} color="#53617e" /></span>}
-                <input
-                    id={name}
-                    name={name}
-                    value={value}
-                    onChange={onChange}
-                    placeholder={placeholder}
-                    style={{ ...styles.input, paddingLeft: icon ? 42 : 13 }}
-                />
-            </div>
-        </div>
-    );
-}
-
-function SelectField({ label, name, value, onChange, placeholder, options }) {
-    return (
-        <div>
-            <label htmlFor={name} style={styles.label}>{label}</label>
-            <div style={localStyles.inputWrap}>
-                <select id={name} name={name} value={value} onChange={onChange} style={styles.input}>
-                    {placeholder && <option value="">{placeholder}</option>}
-                    {options.map((option) => <option key={option}>{option}</option>)}
-                </select>
-                <span style={localStyles.rightIcon}><Icon name="chevron" size={18} color="#243452" /></span>
-            </div>
-        </div>
-    );
-}
-
 const localStyles = {
-    formGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", columnGap: 30, rowGap: 18 },
-    inputWrap: { position: "relative" },
-    leftIcon: { position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", display: "flex", zIndex: 1 },
-    rightIcon: { position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", display: "flex", pointerEvents: "none" },
-    fullWidth: { marginTop: 18 },
+    errorAlert: {
+        margin: "0 28px 24px",
+        border: "1px solid #fecaca",
+        background: "#fef2f2",
+        color: "#b91c1c",
+        borderRadius: 7,
+        padding: "12px 16px",
+    },
 };
 
 export default CreateContract;

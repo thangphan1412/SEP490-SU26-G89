@@ -1,22 +1,31 @@
-import axiosClient from "../../config/api/axiosClient.js";
+import axios from "axios";
 
-const CONTRACT_TYPE_ENDPOINT = "/contract-types";
+const CONTRACT_TYPE_ENDPOINT = "http://localhost:8080/api/v1/contract-types";
+const noCacheConfig = {
+    headers: {
+        "Cache-Control": "no-cache",
+    },
+};
 
 const contractTypeApi = {
     getAllContractTypes() {
-        return axiosClient.get(CONTRACT_TYPE_ENDPOINT);
+        return axios.get(CONTRACT_TYPE_ENDPOINT, noCacheConfig);
     },
 
     getContractTypeById(id) {
-        return axiosClient.get(CONTRACT_TYPE_ENDPOINT + "/" + id);
+        return axios.get(CONTRACT_TYPE_ENDPOINT + "/" + id, noCacheConfig);
     },
 
     createContractType(data) {
-        return axiosClient.post(CONTRACT_TYPE_ENDPOINT, data);
+        return axios.post(CONTRACT_TYPE_ENDPOINT, data);
     },
 
     updateContractType(id, data) {
-        return axiosClient.put(CONTRACT_TYPE_ENDPOINT + "/" + id, data);
+        return axios.put(CONTRACT_TYPE_ENDPOINT + "/" + id, data);
+    },
+
+    deleteContractType(id) {
+        return axios.delete(CONTRACT_TYPE_ENDPOINT + "/" + id);
     },
 };
 

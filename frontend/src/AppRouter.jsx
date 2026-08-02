@@ -1,5 +1,5 @@
 import { Navigate, Route, Routes } from "react-router-dom";
-import LoginPage from "./pages/Authentication/LoginPage.jsx";
+import LoginPage from "./pages/authentication/LoginPage.jsx";
 import Homepage from "./pages/homePage/HomePage.jsx";
 import ViewProfile from "./pages/CompanyProfileManagement/ViewProfile.jsx";
 import UpdateProfile from "./pages/CompanyProfileManagement/UpdateProfile.jsx";
@@ -14,23 +14,27 @@ import CreateProject from "./pages/ProjectManagement/CreateProject.jsx";
 import ViewProject from "./pages/ProjectManagement/ViewProject.jsx";
 import UpdateProject from "./pages/ProjectManagement/UpdateProject.jsx";
 import ListContract from "./pages/ContractManagement/ListContract.jsx";
-import CreateContract from "./pages/ContractManagement/CreateContract.jsx";
-import ViewContract from "./pages/ContractManagement/ViewContract.jsx";
-import UpdateContract from "./pages/ContractManagement/UpdateContract.jsx";
 import PermissionCreatePage from "./pages/Permission Management/CreatePermissionPage.jsx";
 import ListPermissionPage from "./pages/Permission Management/ListPermissionPage.jsx";
 import ViewPermissionPage from "./pages/Permission Management/ViewPermissionPage.jsx";
 import UpdatePermissionPage from "./pages/Permission Management/UpdatePermissionPage.jsx";
 import ListContractType from "./pages/contractType/ListContractType.jsx";
-import CreateContractType from "./pages/contractType/CreateContractType.jsx";
-import ViewContractType from "./pages/contractType/ViewContractType.jsx";
-import UpdateContractType from "./pages/contractType/UpdateContractType.jsx";
+import ListContractTemplate from "./pages/contractTemplate/ListContractTemplate.jsx";
 import ListDepartment from "./pages/Departments/ListDepartment.jsx";
 import CreateDepartment from "./pages/Departments/CreateDepartment.jsx";
 import ViewDepartment from "./pages/Departments/ViewDepartment.jsx";
 import UpdateDepartment from "./pages/Departments/UpdateDepartment.jsx";
 import ProtectedRoute from "./components/common/ProtectedRouter.jsx";
+import HeaderForm from "./components/layout/HeaderForm.jsx";
 import MainLayout from "./components/layout/MainLayout.jsx";
+import ForgotPassword from "./pages/authentication/ForgotPassword.jsx";
+import Resetpassword from "./pages/authentication/Resetpassword.jsx";
+import ViewPhase from "./pages/Phase Management/ViewPhase.jsx";
+import AgreementStatistics from "./pages/Dashboard/AgreementStatistics.jsx";
+import TotalAgreements from "./pages/Dashboard/TotalAgreements.jsx";
+import PendingSignatureAgreements from "./pages/Dashboard/PendingSignatureAgreements.jsx";
+import ContractStatisticalReports from "./pages/Dashboard/ContractStatisticalReports.jsx";
+import SignatureList from "./pages/signature/SignatureList.jsx";
 
 function AppRouter() {
     return (
@@ -42,23 +46,25 @@ function AppRouter() {
                 path="/login"
                 element={<LoginPage />}
             />
+            <Route
+                path="/forgot_password"
+                element={<ForgotPassword />}
+            />
+            <Route
+                path="/reset-password"
+                element={<Resetpassword />}
+            />
+
             <Route element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
                 <Route
                     path="/home_page"
-                    element={<Homepage />}
+
+                    element={
+                        <ProtectedRoute>
+                            <Homepage />
+                        </ProtectedRoute>
+                    }
                 />
-                {/* <Route
-                path="/register"
-                element={<RegisterPage/>}
-            /> */}
-                {/* <Route
-                path="/forgot_password"
-                element={<FogotPassword />}
-            />*/}
-                {/*<Route*/}
-                {/*    path="/home_page"*/}
-                {/*    element={<Homepage />}*/}
-                {/*/>*/}
                 <Route
                     path="/company-profile/view"
                     element={<ViewProfile />}
@@ -108,20 +114,24 @@ function AppRouter() {
                     element={<UpdateProject />}
                 />
                 <Route
+                    path="/phase-management/view/:projectId/:phaseId"
+                    element={<ViewPhase />}
+                />
+                <Route
                     path="/contract-management/list"
                     element={<ListContract />}
                 />
                 <Route
                     path="/contract-management/create"
-                    element={<CreateContract />}
+                    element={<Navigate to="/contract-management/list" replace />}
                 />
                 <Route
                     path="/contract-management/view/:id"
-                    element={<ViewContract />}
+                    element={<Navigate to="/contract-management/list" replace />}
                 />
                 <Route
                     path="/contract-management/update/:id"
-                    element={<UpdateContract />}
+                    element={<Navigate to="/contract-management/list" replace />}
                 />
                 <Route
                     path="/permission/create"
@@ -145,15 +155,19 @@ function AppRouter() {
                 />
                 <Route
                     path="/contract-types/new"
-                    element={<CreateContractType />}
+                    element={<Navigate to="/contract-types" replace />}
                 />
                 <Route
                     path="/contract-types/detail/:id"
-                    element={<ViewContractType />}
+                    element={<Navigate to="/contract-types" replace />}
                 />
                 <Route
                     path="/contract-types/update/:id"
-                    element={<UpdateContractType />}
+                    element={<Navigate to="/contract-types" replace />}
+                />
+                <Route
+                    path="/contract-templates"
+                    element={<ListContractTemplate />}
                 />
                 <Route
                     path="/department-management/list"
@@ -171,7 +185,28 @@ function AppRouter() {
                     path="/department-management/update/:id"
                     element={<UpdateDepartment />}
                 />
+                <Route
+                    path="/dashboard/agreement-statistics"
+                    element={<AgreementStatistics />}
+                />
+                <Route
+                    path="/dashboard/total-agreements"
+                    element={<TotalAgreements />}
+                />
+                <Route
+                    path="/dashboard/pending-signature-agreements"
+                    element={<PendingSignatureAgreements />}
+                />
+                <Route
+                    path="/dashboard/contract-statistical-reports"
+                    element={<ContractStatisticalReports />}
+                />
+                <Route
+                    path="/signature-management/list"
+                    element={<SignatureList />}
+                />
             </Route>
+
 
         </Routes>
     )

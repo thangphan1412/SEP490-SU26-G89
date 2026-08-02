@@ -11,6 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping(ApiConstant.Department.DEPARTMENTS)
@@ -50,7 +51,7 @@ public class DepartmentController {
 
     @GetMapping(ApiConstant.Department.BY_ID)
     public ResponseEntity<BaseResponse<DepartmentResponseDTO>> getDepartmentById(
-            @PathVariable Integer id
+            @PathVariable UUID id
     ) {
         try {
             DepartmentResponseDTO department = departmentService.getDepartmentById(id);
@@ -98,7 +99,7 @@ public class DepartmentController {
 
     @PutMapping(ApiConstant.Department.BY_ID)
     public ResponseEntity<BaseResponse<DepartmentResponseDTO>> updateDepartment(
-            @PathVariable Integer id,
+            @PathVariable UUID id,
             @RequestBody DepartmentRequestDTO request
     ) {
         try {

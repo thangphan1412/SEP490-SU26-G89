@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 // THÊM useParams để lấy ID từ URL
-import { useNavigate, useParams } from "react-router-dom";
+import {useLocation, useNavigate, useParams} from "react-router-dom";
 import { Container, Card, Row, Col, Form, Button, NavDropdown, Spinner, Stack, Alert } from "react-bootstrap";
 import {
     IconWorld,
@@ -21,53 +21,78 @@ import {
 } from "@tabler/icons-react";
 
 // IMPORT HÀM GỌI API
-import { getUserById, updateUser } from "../../config/userApi/userApi";
+import { getUserById, updateUser } from "../../services/userService/userApi.js";
+import departmentApi from "../../services/departmentService/departmentApi";
 
 function UpdateUser({ onUpdateUser }) {
     const navigate = useNavigate();
-    const { id } = useParams(); // Lấy ID người dùng từ đường dẫn URL
+    const { id } = useParams();
+    const location = useLocation();
 
-    // State khởi tạo (tách firstName, lastName và giữ nguyên các trường hardcode)
+    // Thông tin phân quyền
+    const currentUserRole = localStorage.getItem("role") || "";
+    const currentUserDept = localStorage.getItem("departmentName") || "";
+
+    const searchParams = new URLSearchParams(location.search);
+    const viewType = searchParams.get("type") || "employee";
+
+    // Tính toán Role có sẵn giống hệt bên Create
+    const availableRoles = (currentUserRole === 'CEO' || currentUserRole === 'Admin')
+        ? (viewType === 'customer' ? ['Customer'] : ['Manager', 'Employee'])
+        : ['Employee'];
+
+    const [departmentsDB, setDepartmentsDB] = useState([]);
+    const [isLoadingData, setIsLoadingData] = useState(true);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
     const [user, setUser] = useState({
         firstName: "",
         lastName: "",
         phoneNumber: "",
         email: "",
-        role: "Legal Reviewer",
-        status: "Active",
-        // Các trường bên dưới là Hardcode
+        role: "", // Sẽ được API ghi đè
+        status: "ACTIVE",
         employeeId: "EMP-00987",
-        department: "Legal",
+        department: "",
         startDate: "2023-06-15",
         position: "Senior Legal Counsel",
         accessScope: "Department Level Access",
-        deactivateAccount: false,
+        sendUpdateEmail: true,
     });
 
-    const [isLoadingData, setIsLoadingData] = useState(true); // State chờ tải dữ liệu cũ
-    const [isSubmitting, setIsSubmitting] = useState(false);
-
-    // Dùng useEffect để lấy thông tin User từ Backend khi vừa vào trang
     useEffect(() => {
+        const fetchDepts = async () => {
+            try {
+                // Gọi qua departmentApi
+                const res = await departmentApi.getAllDepartments();
+                setDepartmentsDB(res.data?.data || res.data || []);
+            } catch (error) {
+                console.error("Lỗi lấy danh sách department:", error);
+            }
+        };
+        fetchDepts();
+
+        // Lấy data user hiện tại
         const fetchUser = async () => {
             try {
                 const response = await getUserById(id);
                 const data = response.data.data;
 
-                // Cập nhật State với dữ liệu từ BE, các trường không có ở BE giữ nguyên cấu hình mặc định
                 setUser(prev => ({
                     ...prev,
                     firstName: data.firstName || "",
                     lastName: data.lastName || "",
                     email: data.email || "",
                     phoneNumber: data.numberPhone || "",
-                    role: data.role || "Legal Reviewer",
-                    status: data.status || "Active",
+                    role: data.role || availableRoles[0], // Lấy role từ DB, nếu không có thì lấy mặc định
+                    status: data.status || "ACTIVE",
+                    // Nhớ map thêm department từ BE trả về nếu có
+                    department: data.departmentName || (currentUserRole === 'Manager' ? currentUserDept : ""),
                 }));
             } catch (error) {
                 console.error("Lỗi khi tải dữ liệu user:", error);
                 alert("Không thể tải thông tin người dùng!");
-                navigate("/user-management/list"); // Lỗi thì quay về trang list
+                navigate(`/user-management/list?type=${viewType}`);
             } finally {
                 setIsLoadingData(false);
             }
@@ -76,7 +101,7 @@ function UpdateUser({ onUpdateUser }) {
         if (id) {
             fetchUser();
         }
-    }, [id, navigate]);
+    }, [id, navigate, currentUserRole, currentUserDept, viewType]);
 
     const handleChange = (event) => {
         const { name, value, checked, type } = event.target;
@@ -91,27 +116,26 @@ function UpdateUser({ onUpdateUser }) {
         setIsSubmitting(true);
 
         try {
-            // Chuẩn bị payload chỉ chứa những dữ liệu Backend cần
             const payload = {
                 firstName: user.firstName,
                 lastName: user.lastName,
                 email: user.email,
-                numberPhone: user.phoneNumber, // Map sang tên biến của BE
+                numberPhone: user.phoneNumber,
                 role: user.role,
-                status: user.status
+                status: user.status,
+                departmentName: user.department,
+                sendWelcomeEmail: user.sendUpdateEmail
             };
 
-            // Gọi API Update
             await updateUser(id, payload);
-
             if (onUpdateUser) onUpdateUser(user);
 
             alert("Cập nhật thông tin người dùng thành công!");
-            navigate("/user-management/list");
+            navigate(`/user-management/list?type=${viewType}`);
 
         } catch (error) {
             console.error("Lỗi:", error);
-            alert("Có lỗi xảy ra trong quá trình lưu dữ liệu: " + (error.response?.data?.message || "Vui lòng thử lại!"));
+            alert("Có lỗi xảy ra: " + (error.response?.data?.message || "Vui lòng thử lại!"));
         } finally {
             setIsSubmitting(false);
         }
@@ -120,19 +144,19 @@ function UpdateUser({ onUpdateUser }) {
     return (
         <div className="bg-light min-vh-screen">
             {/* --- HEADER ĐỒNG BỘ --- */}
-            <header className="d-flex justify-content-between align-items-center px-4 py-3 bg-white border-bottom mb-4">
-                <div className="d-flex align-items-center gap-2">
-                    <span className="fs-4">🛡️</span>
-                    <div className="d-flex flex-column lh-sm">
-                        <strong className="text-dark">E-CONTRACT</strong>
-                        <small className="text-muted" style={{ fontSize: "12px" }}>Management System</small>
-                    </div>
-                </div>
-                <NavDropdown title={<span className="text-dark fw-semibold"><IconWorld size={20} className="me-1"/>English</span>} id="lang-dropdown">
-                    <NavDropdown.Item>English</NavDropdown.Item>
-                    <NavDropdown.Item>Vietnamese</NavDropdown.Item>
-                </NavDropdown>
-            </header>
+            {/*<header className="d-flex justify-content-between align-items-center px-4 py-3 bg-white border-bottom mb-4">*/}
+            {/*    <div className="d-flex align-items-center gap-2">*/}
+            {/*        <span className="fs-4">🛡️</span>*/}
+            {/*        <div className="d-flex flex-column lh-sm">*/}
+            {/*            <strong className="text-dark">E-CONTRACT</strong>*/}
+            {/*            <small className="text-muted" style={{ fontSize: "12px" }}>Management System</small>*/}
+            {/*        </div>*/}
+            {/*    </div>*/}
+            {/*    <NavDropdown title={<span className="text-dark fw-semibold"><IconWorld size={20} className="me-1"/>English</span>} id="lang-dropdown">*/}
+            {/*        <NavDropdown.Item>English</NavDropdown.Item>*/}
+            {/*        <NavDropdown.Item>Vietnamese</NavDropdown.Item>*/}
+            {/*    </NavDropdown>*/}
+            {/*</header>*/}
 
             {/* --- MAIN CONTENT --- */}
             <Container fluid="lg" className="mb-5">
@@ -150,7 +174,7 @@ function UpdateUser({ onUpdateUser }) {
                             <Button
                                 variant="outline-secondary"
                                 className="fw-bold px-3"
-                                onClick={() => navigate("/user-management/list")}
+                                onClick={() => navigate(`/user-management/list?type=${viewType}`)} // Thêm ?type=${viewType} vào
                                 disabled={isSubmitting || isLoadingData}
                             >
                                 Cancel
@@ -245,17 +269,18 @@ function UpdateUser({ onUpdateUser }) {
                                         </Form.Group>
                                     </Col>
 
-                                    {/* Department */}
+                                    {/* DROPDOWN DEPARTMENT */}
                                     <Col md={6}>
                                         <Form.Group>
                                             <Form.Label className="small fw-bold text-secondary">Department</Form.Label>
                                             <div className="position-relative">
                                                 <IconBuilding className="position-absolute start-0 top-50 translate-middle-y ms-3 text-muted" size={18} style={{ zIndex: 5 }} />
-                                                <Form.Select id="department" name="department" value={user.department} onChange={handleChange} disabled={isSubmitting} className="ps-5 py-2">
-                                                    <option value="Legal">Legal</option>
-                                                    <option value="HR">HR</option>
-                                                    <option value="Finance">Finance</option>
-                                                    <option value="Sales">Sales</option>
+                                                <Form.Select name="department" value={user.department} onChange={handleChange}
+                                                             disabled={isSubmitting || currentUserRole === 'Manager'} className="ps-5 py-2">
+                                                    <option value="">Select department</option>
+                                                    {departmentsDB.map(d => (
+                                                        <option key={d.departmentName} value={d.departmentName}>{d.departmentName}</option>
+                                                    ))}
                                                 </Form.Select>
                                             </div>
                                         </Form.Group>
@@ -284,17 +309,18 @@ function UpdateUser({ onUpdateUser }) {
                                         </Form.Group>
                                     </Col>
 
-                                    {/* Role */}
+                                    {/* DROPDOWN ROLE */}
                                     <Col md={6}>
                                         <Form.Group>
                                             <Form.Label className="small fw-bold text-secondary">Role</Form.Label>
                                             <div className="position-relative">
                                                 <IconShieldCheck className="position-absolute start-0 top-50 translate-middle-y ms-3 text-muted" size={18} style={{ zIndex: 5 }} />
-                                                <Form.Select id="role" name="role" value={user.role} onChange={handleChange} disabled={isSubmitting} className="ps-5 py-2">
-                                                    <option value="Legal Reviewer">Legal Reviewer</option>
-                                                    <option value="Contract Manager">Contract Manager</option>
-                                                    <option value="Approver">Approver</option>
-                                                    <option value="Viewer">Viewer</option>
+                                                <Form.Select name="role" value={user.role} onChange={handleChange}
+                                                             disabled={isSubmitting || availableRoles.length === 1} className="ps-5 py-2">
+                                                    <option value="">Select role</option>
+                                                    {availableRoles.map(r => (
+                                                        <option key={r} value={r}>{r}</option>
+                                                    ))}
                                                 </Form.Select>
                                             </div>
                                         </Form.Group>
@@ -305,8 +331,8 @@ function UpdateUser({ onUpdateUser }) {
                                         <Form.Group>
                                             <Form.Label className="small fw-bold text-secondary">Status</Form.Label>
                                             <Form.Select id="status" name="status" value={user.status} onChange={handleChange} disabled={isSubmitting} className="py-2">
-                                                <option value="Active">Active</option>
-                                                <option value="Inactive">Inactive</option>
+                                                <option value="ACTIVE">Active</option>
+                                                <option value="INACTIVE">Inactive</option>
                                             </Form.Select>
                                         </Form.Group>
                                     </Col>
@@ -338,21 +364,21 @@ function UpdateUser({ onUpdateUser }) {
                                     </Col>
                                 </Row>
 
-                                {/* --- DEACTIVATE ACCOUNT TOGGLE --- */}
+                                {/* --- SEND NOTIFICATION EMAIL TOGGLE --- */}
                                 <Stack direction="horizontal" gap={3} className="mt-4 pt-4 border-top align-items-center">
                                     <Form.Check
                                         type="switch"
-                                        id="deactivateAccount"
-                                        name="deactivateAccount"
-                                        checked={user.deactivateAccount}
+                                        id="sendUpdateEmail"
+                                        name="sendUpdateEmail"
+                                        checked={user.sendUpdateEmail}
                                         onChange={handleChange}
                                         disabled={isSubmitting}
                                         style={{ transform: "scale(1.3)" }}
                                     />
                                     <div>
-                                        <h3 className="h6 fw-bold mb-1 text-dark">Deactivate Account</h3>
+                                        <h3 className="h6 fw-bold mb-1 text-dark">Send Notification Email</h3>
                                         <p className="small text-muted mb-0">
-                                            Revoke this user's access to the system. This action can be reversed later if needed.
+                                            Send an email to the user notifying them of these account changes.
                                         </p>
                                     </div>
                                 </Stack>

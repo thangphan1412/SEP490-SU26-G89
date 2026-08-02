@@ -16,7 +16,11 @@ import java.util.List;
 public class Permissions extends BaseEntity {
     @Column(name = "permission_name", columnDefinition = "nvarchar(50)")
     private String permissionName;
-    @Column(name = "permission_code", columnDefinition = "nvarchar(50)")
+    @Column(
+            name = "permission_code",
+            columnDefinition = "nvarchar(50)",
+            unique = true
+    )
     private String permissionCode;
     @Column(name = "permission_module", columnDefinition = "nvarchar(255)")
     private String permissionModule;
@@ -30,11 +34,6 @@ public class Permissions extends BaseEntity {
     @JoinColumn(name = "project_id")
     private Projects project;
 
-    // role
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "role_id")
-    private Role role;
-
     @Column(name = "permission_description", columnDefinition = "nvarchar(255)")
     private String permissionDescription;
 
@@ -43,7 +42,5 @@ public class Permissions extends BaseEntity {
 
     @Column(name = "permission_created_at")
     private LocalDateTime createdAt;
-
-    @Column(name = "permission_updated_at")
-    private LocalDateTime updatedAt;
+    
 }

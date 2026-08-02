@@ -22,7 +22,4 @@ public class Role extends BaseEntity{
     // user role
     @OneToMany(mappedBy = "role")
     private List<UserRole> userRoles;
-    //permision
-    @OneToMany(mappedBy = "role")
-    private List<Permissions>  permissions;
 }

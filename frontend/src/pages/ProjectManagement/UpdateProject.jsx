@@ -6,18 +6,27 @@ import {
     listProjectRoles,
     updateProject,
     viewProject,
-} from "../../config/projectApi/projectApi.js";
+} from "../../services/projectService/projectApi.js";
+import CancelButton from "../../components/projectComponents/CancelButton.jsx";
+import Icon from "../../components/projectComponents/Icon.jsx";
+import PagePanel from "../../components/projectComponents/PagePanel.jsx";
+import PrimaryButton from "../../components/projectComponents/PrimaryButton.jsx";
 import {
-    CancelButton,
-    Icon,
-    InfoAlert,
-    PagePanel,
-    PrimaryButton,
-} from "./ProjectComponents.jsx";
+    addOneDay,
+    calculatePhaseStartDatesForDisplay,
+    createClientId,
+    employeeHasRole,
+    getApiErrorMessage,
+    getEmployeeDescription,
+    getEmployeeName,
+    getEmployeeRoleNames,
+    getEmployeeSearchText,
+    getFilterOptions,
+    isCompletedProjectStatus,
+    PHASE_STATUS_OPTIONS as phaseStatusOptions,
+    PROJECT_STATUS_OPTIONS as projectStatusOptions,
+} from "../../components/projectComponents/projectFormUtils.js";
 import "../../assets/styles/css/projectStyles/UpdateProject.css";
-
-const projectStatusOptions = ["Planning", "Active", "On Hold", "Completed", "Cancelled"];
-const phaseStatusOptions = ["Planning", "In Progress", "On Hold", "Completed"];
 
 function UpdateProject({ onUpdateProject }) {
     const navigate = useNavigate();
@@ -37,10 +46,11 @@ function UpdateProject({ onUpdateProject }) {
     const [submitError, setSubmitError] = useState("");
     const [saving, setSaving] = useState(false);
 
-    useEffect(() => {
+    useEffect(function () {
         let isActive = true;
+        const requestController = new AbortController();
 
-        const loadPageData = async () => {
+        async function loadPageData() {
             if (!projectId) {
                 setLoadError("Project id is missing. Please choose a project from the list.");
                 setLoading(false);
@@ -48,16 +58,19 @@ function UpdateProject({ onUpdateProject }) {
             }
 
             try {
-                const [projectResponse, employeeResponse, roleResponse] = await Promise.all([
-                    viewProject(projectId),
-                    listProjectEmployees(),
-                    listProjectRoles(),
+                const [projectData, employeeData, roleData] = await Promise.all([
+                    viewProject(projectId, requestController.signal),
+                    listProjectEmployees(requestController.signal),
+                    listProjectRoles(requestController.signal),
                 ]);
-                const projectData = projectResponse.data?.data ?? projectResponse.data;
-                const employeeData = employeeResponse.data?.data ?? employeeResponse.data;
-                const roleData = roleResponse.data?.data ?? roleResponse.data;
 
                 if (!isActive) {
+                    return;
+                }
+
+                if (isCompletedProjectStatus(projectData?.projectStatus)) {
+                    setProject(null);
+                    setLoadError("Completed projects cannot be updated.");
                     return;
                 }
 
@@ -86,32 +99,69 @@ function UpdateProject({ onUpdateProject }) {
                 setPermissionOptions(projectPermissions);
                 setLoadError("");
             } catch (error) {
-                console.error("Unable to load project update data:", error);
-
-                if (isActive) {
-                    setProject(null);
-                    setLoadError("Unable to load this project. Please try again later.");
+                if (!isActive) {
+                    return;
                 }
+
+                console.error("Unable to load project update data:", error);
+                setProject(null);
+                setLoadError("Unable to load this project. Please try again later.");
             } finally {
                 if (isActive) {
                     setLoading(false);
                 }
             }
-        };
+        }
 
         loadPageData();
 
-        return () => {
+        return function () {
             isActive = false;
+            requestController.abort();
         };
     }, [projectId]);
 
-    const handleProjectChange = (event) => {
+    function handleProjectChange(event) {
         const { name, value } = event.target;
-        setProject((currentProject) => ({ ...currentProject, [name]: value }));
-    };
+        setProject(function (currentProject) {
+            let phases = currentProject.phases;
 
-    const addPhase = () => {
+            if (name === "projectStartDate" && phases.length > 0) {
+                phases = calculatePhaseStartDatesForDisplay(phases, value);
+            }
+
+            if (name === "projectEndDate" && phases.length > 0) {
+                phases = phases.map((phase, index) =>
+                    index === phases.length - 1 ? { ...phase, endDate: value } : phase
+                );
+            }
+
+            return { ...currentProject, [name]: value, phases };
+        });
+    }
+
+    function addPhase() {
+        if (!project.projectStartDate || !project.projectEndDate) {
+            setSubmitError("Select the project start date and end date before adding phases.");
+            return;
+        }
+
+        if (project.projectEndDate < project.projectStartDate) {
+            setSubmitError("Project end date must not be before its start date.");
+            return;
+        }
+
+        const lastPhase = project.phases[project.phases.length - 1];
+        const nextStartDate = lastPhase
+            ? addOneDay(lastPhase.endDate)
+            : project.projectStartDate;
+
+        if (!nextStartDate || nextStartDate > project.projectEndDate) {
+            setSubmitError("Shorten the current final phase before adding another phase.");
+            return;
+        }
+
+        setSubmitError("");
         setProject((currentProject) => ({
             ...currentProject,
             phases: [
@@ -121,58 +171,78 @@ function UpdateProject({ onUpdateProject }) {
                     clientId: createClientId(),
                     title: "",
                     description: "",
-                    startDate: currentProject.projectStartDate,
+                    startDate: nextStartDate,
                     endDate: currentProject.projectEndDate,
                     status: "Planning",
-                    progress: 0,
                 },
             ],
         }));
-    };
+    }
 
-    const updatePhase = (clientId, event) => {
+    function updatePhase(clientId, event) {
         const { name, value } = event.target;
 
-        setProject((currentProject) => ({
-            ...currentProject,
-            phases: currentProject.phases.map((phase) =>
+        setProject(function (currentProject) {
+            let phases = currentProject.phases.map((phase) =>
                 phase.clientId === clientId
-                    ? { ...phase, [name]: name === "progress" ? Number(value) : value }
+                    ? { ...phase, [name]: value }
                     : phase
-            ),
-        }));
-    };
+            );
 
-    const removePhase = (clientId) => {
-        setProject((currentProject) => ({
-            ...currentProject,
-            phases: currentProject.phases.filter((phase) => phase.clientId !== clientId),
-        }));
-    };
+            if (name === "endDate") {
+                phases = calculatePhaseStartDatesForDisplay(
+                    phases,
+                    currentProject.projectStartDate
+                );
+            }
 
-    const openMemberModal = () => {
+            return { ...currentProject, phases };
+        });
+    }
+
+    function removePhase(clientId) {
+        setProject(function (currentProject) {
+            let phases = currentProject.phases.filter((phase) => phase.clientId !== clientId);
+
+            if (phases.length > 0) {
+                phases = phases.map((phase, index) =>
+                    index === phases.length - 1
+                        ? { ...phase, endDate: currentProject.projectEndDate }
+                        : phase
+                );
+                phases = calculatePhaseStartDatesForDisplay(
+                    phases,
+                    currentProject.projectStartDate
+                );
+            }
+
+            return { ...currentProject, phases };
+        });
+    }
+
+    function openMemberModal() {
         setMemberSearch("");
         setMemberRoleFilter("");
         setMemberStatusFilter("");
         setPendingMemberIds([]);
         setShowMemberModal(true);
-    };
+    }
 
-    const closeMemberModal = () => {
+    function closeMemberModal() {
         setShowMemberModal(false);
         setPendingMemberIds([]);
-    };
+    }
 
-    const togglePendingMember = (userId) => {
+    function togglePendingMember(userId) {
         setPendingMemberIds((currentIds) =>
             currentIds.includes(userId)
                 ? currentIds.filter((id) => id !== userId)
                 : [...currentIds, userId]
         );
-    };
+    }
 
-    const addSelectedMembers = () => {
-        setProject((currentProject) => {
+    function addSelectedMembers() {
+        setProject(function (currentProject) {
             const currentMemberIds = new Set(
                 currentProject.members.map((member) => member.userId)
             );
@@ -187,17 +257,17 @@ function UpdateProject({ onUpdateProject }) {
         });
 
         closeMemberModal();
-    };
+    }
 
-    const removeMember = (userId) => {
+    function removeMember(userId) {
         setProject((currentProject) => ({
             ...currentProject,
             members: currentProject.members.filter((member) => member.userId !== userId),
         }));
-    };
+    }
 
-    const changeMemberPermission = (userId, selectedValue) => {
-        const permissionId = selectedValue ? Number(selectedValue) : null;
+    function changeMemberPermission(userId, selectedValue) {
+        const permissionId = selectedValue || null;
 
         setProject((currentProject) => ({
             ...currentProject,
@@ -205,21 +275,15 @@ function UpdateProject({ onUpdateProject }) {
                 member.userId === userId ? { ...member, permissionId } : member
             ),
         }));
-    };
+    }
 
-    const handleSubmit = async (event) => {
+    async function handleSubmit(event) {
         event.preventDefault();
-        const validationMessage = validateProject(project);
-
-        if (validationMessage) {
-            setSubmitError(validationMessage);
-            return;
-        }
 
         try {
             setSaving(true);
             setSubmitError("");
-            const response = await updateProject(projectId, {
+            const updatedProject = await updateProject(projectId, {
                 projectName: project.projectName.trim(),
                 projectCode: project.projectCode.trim(),
                 projectStartDate: project.projectStartDate,
@@ -230,24 +294,24 @@ function UpdateProject({ onUpdateProject }) {
                     id: phase.id,
                     title: phase.title.trim(),
                     description: phase.description.trim(),
-                    startDate: phase.startDate,
                     endDate: phase.endDate,
                     status: phase.status,
-                    progress: Number(phase.progress),
                 })),
                 members: project.members,
             });
-            const updatedProject = response.data?.data ?? response.data;
 
             onUpdateProject?.(updatedProject);
             navigate("/project-management/view?id=" + projectId);
         } catch (error) {
             console.error("Unable to update project:", error);
-            setSubmitError(getErrorMessage(error));
+            setSubmitError(getApiErrorMessage(
+                error,
+                "Unable to update the project. Please check the information and try again."
+            ));
         } finally {
             setSaving(false);
         }
-    };
+    }
 
     const selectedMemberIds = new Set(project?.members.map((member) => member.userId) || []);
     const employeeById = new Map(employees.map((employee) => [employee.id, employee]));
@@ -261,13 +325,49 @@ function UpdateProject({ onUpdateProject }) {
     const availableEmployees = employees.filter((employee) => !selectedMemberIds.has(employee.id));
     const normalizedMemberSearch = memberSearch.trim().toLowerCase();
     const memberStatusOptions = getFilterOptions(availableEmployees, "status");
-    const visibleAvailableEmployees = availableEmployees.filter((employee) => {
+
+    function employeeMatchesFilters(employee) {
         const matchesSearch = getEmployeeSearchText(employee).includes(normalizedMemberSearch);
         const matchesRole = !memberRoleFilter || employeeHasRole(employee, memberRoleFilter);
         const matchesStatus = !memberStatusFilter || employee.status === memberStatusFilter;
 
         return matchesSearch && matchesRole && matchesStatus;
-    });
+    }
+
+    const visibleAvailableEmployees = availableEmployees.filter(employeeMatchesFilters);
+
+    function renderAvailableEmployee(employee) {
+        const isSelected = pendingMemberIds.includes(employee.id);
+
+        return (
+            <label
+                key={employee.id}
+                htmlFor={"add-project-member-" + employee.id}
+                className={isSelected
+                    ? "update-project-modal-user selected"
+                    : "update-project-modal-user"}
+            >
+                <Form.Check
+                    type="checkbox"
+                    id={"add-project-member-" + employee.id}
+                    checked={isSelected}
+                    onChange={() => togglePendingMember(employee.id)}
+                    className="update-project-modal-user-check"
+                />
+                <span className="project-management-icon-circle update-project-modal-user-avatar">
+                    <Icon name="users" size={19} />
+                </span>
+                <span className="update-project-modal-user-info">
+                    <strong>{getEmployeeName(employee)}</strong>
+                    <small>{employee.email || "No email"}</small>
+                </span>
+                <span className="update-project-modal-user-meta">
+                    <small>{getEmployeeRoleNames(employee).join(", ") || "No assigned role"}</small>
+                    <small>{employee.status || "Unknown"}</small>
+                </span>
+            </label>
+        );
+    }
 
     const pageAction = (
         <Stack direction="horizontal" className="project-management-actions">
@@ -367,7 +467,7 @@ function UpdateProject({ onUpdateProject }) {
                         <div className="update-project-section-header">
                             <div>
                                 <Card.Title as="h2" className="project-management-card-title">Project Phases</Card.Title>
-                                <p className="update-project-section-note">Phase dates must stay inside the project date range.</p>
+                                <p className="update-project-section-note">Phases must cover the full project timeline without gaps or overlapping dates.</p>
                             </div>
                             <Button type="button" variant="light" className="update-project-add-button" onClick={addPhase}>
                                 <Icon name="plus" size={18} /> Add Phase
@@ -391,7 +491,10 @@ function UpdateProject({ onUpdateProject }) {
                                             </Col>
                                             <Col md={3}>
                                                 <Form.Label className="project-management-field-label">Start Date</Form.Label>
-                                                <Form.Control required type="date" name="startDate" min={project.projectStartDate} max={project.projectEndDate} value={phase.startDate} onChange={(event) => updatePhase(phase.clientId, event)} className="project-management-input" />
+                                                <Form.Control readOnly required type="date" name="startDate" value={phase.startDate} className="project-management-input update-project-phase-start-input" />
+                                                <Form.Text className="update-project-phase-date-note">
+                                                    Preview only. The server calculates this date when saving.
+                                                </Form.Text>
                                             </Col>
                                             <Col md={3}>
                                                 <Form.Label className="project-management-field-label">End Date</Form.Label>
@@ -402,10 +505,6 @@ function UpdateProject({ onUpdateProject }) {
                                                 <Form.Select name="status" value={phase.status} onChange={(event) => updatePhase(phase.clientId, event)} className="project-management-input">
                                                     {phaseStatusOptions.map((status) => <option key={status}>{status}</option>)}
                                                 </Form.Select>
-                                            </Col>
-                                            <Col md={8}>
-                                                <Form.Label className="project-management-field-label">Progress: {phase.progress}%</Form.Label>
-                                                <Form.Range name="progress" min="0" max="100" value={phase.progress} onChange={(event) => updatePhase(phase.clientId, event)} />
                                             </Col>
                                             <Col xs={12}>
                                                 <Form.Label className="project-management-field-label">Description</Form.Label>
@@ -487,7 +586,6 @@ function UpdateProject({ onUpdateProject }) {
                         )}
                     </Card>
 
-                    <InfoAlert>Only permissions stored in the database for this project are available. Members may remain Not assigned.</InfoAlert>
                 </Form>
             )}
 
@@ -555,38 +653,7 @@ function UpdateProject({ onUpdateProject }) {
                         <div className="update-project-modal-empty">No users match the selected filters.</div>
                     ) : (
                         <div className="update-project-modal-user-list">
-                            {visibleAvailableEmployees.map((employee) => {
-                                const isSelected = pendingMemberIds.includes(employee.id);
-
-                                return (
-                                    <label
-                                        key={employee.id}
-                                        htmlFor={"add-project-member-" + employee.id}
-                                        className={isSelected
-                                            ? "update-project-modal-user selected"
-                                            : "update-project-modal-user"}
-                                    >
-                                        <Form.Check
-                                            type="checkbox"
-                                            id={"add-project-member-" + employee.id}
-                                            checked={isSelected}
-                                            onChange={() => togglePendingMember(employee.id)}
-                                            className="update-project-modal-user-check"
-                                        />
-                                        <span className="project-management-icon-circle update-project-modal-user-avatar">
-                                            <Icon name="users" size={19} />
-                                        </span>
-                                        <span className="update-project-modal-user-info">
-                                            <strong>{getEmployeeName(employee)}</strong>
-                                            <small>{employee.email || "No email"}</small>
-                                        </span>
-                                        <span className="update-project-modal-user-meta">
-                                            <small>{getEmployeeRoleNames(employee).join(", ") || "No assigned role"}</small>
-                                            <small>{employee.status || "Unknown"}</small>
-                                        </span>
-                                    </label>
-                                );
-                            })}
+                            {visibleAvailableEmployees.map(renderAvailableEmployee)}
                         </div>
                     )}
                 </Modal.Body>
@@ -615,23 +682,28 @@ function mapPhases(phases) {
         return [];
     }
 
-    return phases.map((phase) => ({
-        id: phase.id,
-        clientId: "phase-existing-" + phase.id,
-        title: phase.title || "",
-        description: phase.description || "",
-        startDate: phase.startDate || "",
-        endDate: phase.endDate || "",
-        status: phase.status || "Planning",
-        progress: Number(phase.progress || 0),
-    }));
+    const mappedPhases = [];
+
+    for (const phase of phases) {
+        mappedPhases.push({
+            id: phase.id,
+            clientId: "phase-existing-" + phase.id,
+            title: phase.title || "",
+            description: phase.description || "",
+            startDate: phase.startDate || "",
+            endDate: phase.endDate || "",
+            status: phase.status || "Planning",
+        });
+    }
+
+    return mappedPhases;
 }
 
 function mergeEmployees(employeeData, projectUsers) {
     const employees = Array.isArray(employeeData) ? [...employeeData] : [];
     const employeeIds = new Set(employees.map((employee) => employee.id));
 
-    projectUsers.forEach((user) => {
+    for (const user of projectUsers) {
         if (!employeeIds.has(user.userId)) {
             employees.push({
                 id: user.userId,
@@ -641,83 +713,9 @@ function mergeEmployees(employeeData, projectUsers) {
                 status: user.userStatus,
             });
         }
-    });
+    }
 
     return employees;
-}
-
-function validateProject(project) {
-    if (project.projectEndDate < project.projectStartDate) {
-        return "Project end date must not be before its start date.";
-    }
-
-    for (const phase of project.phases) {
-        if (phase.endDate < phase.startDate) {
-            return "Each phase end date must not be before its start date.";
-        }
-
-        if (phase.startDate < project.projectStartDate || phase.endDate > project.projectEndDate) {
-            return "Every phase must stay inside the project date range.";
-        }
-    }
-
-    return "";
-}
-
-function createClientId() {
-    return "phase-" + Date.now() + "-" + Math.random().toString(16).slice(2);
-}
-
-function getEmployeeName(employee) {
-    const fullName = ((employee.firstName || "") + " " + (employee.lastName || "")).trim();
-    return fullName || employee.userName || employee.email || "Employee #" + employee.id;
-}
-
-function getEmployeeDescription(employee) {
-    const roleNames = getEmployeeRoleNames(employee);
-    return [employee.email, roleNames.join(", ") || "No assigned role", employee.status]
-        .filter(Boolean)
-        .join(" | ");
-}
-
-function getEmployeeSearchText(employee) {
-    return [
-        employee.firstName,
-        employee.lastName,
-        employee.userName,
-        employee.email,
-        ...getEmployeeRoleNames(employee),
-        employee.status,
-    ]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase();
-}
-
-function getEmployeeRoleNames(employee) {
-    if (!Array.isArray(employee.roles)) {
-        return [];
-    }
-
-    return employee.roles
-        .map((role) => role?.roleName?.trim())
-        .filter(Boolean);
-}
-
-function employeeHasRole(employee, roleId) {
-    if (!Array.isArray(employee.roles)) {
-        return false;
-    }
-
-    return employee.roles.some((role) => String(role.id) === String(roleId));
-}
-
-function getFilterOptions(employees, fieldName) {
-    return [...new Set(
-        employees
-            .map((employee) => employee[fieldName])
-            .filter(Boolean)
-    )].sort((firstValue, secondValue) => firstValue.localeCompare(secondValue));
 }
 
 function getPermissionLabel(permission) {
@@ -725,12 +723,6 @@ function getPermissionLabel(permission) {
     const code = permission.permissionCode ? " (" + permission.permissionCode + ")" : "";
     const inactive = permission.status === false ? " - Inactive" : "";
     return name + code + inactive;
-}
-
-function getErrorMessage(error) {
-    return error.response?.data?.message
-        || error.response?.data?.error
-        || "Unable to update the project. Please check the information and try again.";
 }
 
 export default UpdateProject;

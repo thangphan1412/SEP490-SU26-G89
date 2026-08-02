@@ -3,6 +3,7 @@ package com.fpt.backend.controller.contractController;
 import com.fpt.backend.dto.request.contract.ContractListRequest;
 import com.fpt.backend.dto.request.contract.ContractRequest;
 import com.fpt.backend.dto.response.contract.ContractListResponse;
+import com.fpt.backend.dto.response.contract.ContractProjectOptionResponse;
 import com.fpt.backend.dto.response.contract.ContractResponse;
 import com.fpt.backend.service.interfaces.ContractService;
 import com.fpt.backend.util.BaseResponse;
@@ -20,6 +21,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.UUID;
+import java.util.List;
 
 @RestController
 @RequestMapping({"/api/contracts", "/api/v1/contracts"})
@@ -44,8 +48,16 @@ public class ContractController {
                 .body(new BaseResponse<>(contracts));
     }
 
+    @GetMapping("/project-options")
+    public ResponseEntity<BaseResponse<List<ContractProjectOptionResponse>>>
+            getProjectOptions() {
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .body(new BaseResponse<>(contractService.getProjectOptions()));
+    }
+
     @GetMapping("/{id}")
-    public ResponseEntity<BaseResponse<ContractResponse>> getContractById(@PathVariable int id) {
+    public ResponseEntity<BaseResponse<ContractResponse>> getContractById(@PathVariable UUID id) {
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.noStore())
                 .body(new BaseResponse<>(contractService.getContractById(id)));
@@ -65,13 +77,13 @@ public class ContractController {
 
     @PutMapping("/{id}")
     public ResponseEntity<BaseResponse<ContractResponse>> updateContract(
-            @PathVariable int id,
+            @PathVariable UUID id,
             @RequestBody ContractRequest request) {
         return ResponseEntity.ok(new BaseResponse<>(contractService.updateContract(id, request)));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<BaseResponse<Void>> deleteContract(@PathVariable int id) {
+    public ResponseEntity<BaseResponse<Void>> deleteContract(@PathVariable UUID id) {
         contractService.deleteContract(id);
         return ResponseEntity.ok(new BaseResponse<>(
                 HttpStatus.OK.value(),

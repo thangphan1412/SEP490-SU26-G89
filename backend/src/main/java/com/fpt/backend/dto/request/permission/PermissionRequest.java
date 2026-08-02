@@ -1,12 +1,15 @@
 package com.fpt.backend.dto.request.permission;
 
+import java.util.List;
+import java.util.UUID;
+
 public record PermissionRequest(
         String permissionName,
         String permissionCode,
-        String permissionModule,
         String permissionDescription,
         Boolean status,
-        Integer projectId,
-        Integer roleId
+        UUID projectId,
+        List<String> allowedActions,
+        String workScope
 ) {
 }

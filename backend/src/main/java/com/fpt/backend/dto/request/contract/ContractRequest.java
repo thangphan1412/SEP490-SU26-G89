@@ -2,15 +2,24 @@ package com.fpt.backend.dto.request.contract;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 public record ContractRequest(
-        Integer projectId,
+        UUID projectId,
+        UUID contractTypeId,
+        UUID contractTemplateId,
+        UUID contractTemplateVersionId,
         String contractNumber,
         String contractTitle,
         String contractStatus,
         LocalDate effectiveDate,
         LocalDate expirationDate,
         String contractCreatedBy,
-        LocalDateTime contractCreatedAt
+        LocalDateTime contractCreatedAt,
+        String contractContent,
+        String contractLayoutJson,
+        Boolean saveAsTemplateVersion,
+        String templateVersionName,
+        String templateVersionNote
 ) {
 }

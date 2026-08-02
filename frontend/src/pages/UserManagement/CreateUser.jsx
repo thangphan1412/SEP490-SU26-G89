@@ -1,5 +1,5 @@
-import React, {useState} from "react";
-import {useNavigate} from "react-router-dom";
+import React, {useEffect, useState} from "react";
+import {useLocation, useNavigate} from "react-router-dom";
 import {Container, Card, Row, Col, Form, Button, Alert, NavDropdown, Spinner, Stack} from "react-bootstrap";
 import {
     IconWorld,
@@ -11,18 +11,52 @@ import {
     IconInfoCircle
 } from "@tabler/icons-react";
 // IMPORT FILE API VÀO ĐÂY
-import { createUser } from "../../config/userApi/userApi";
+import { createUser } from "../../services/userService/userApi.js";
+import departmentApi from "../../services/departmentService/departmentApi";
 
 function CreateUser() {
     const navigate = useNavigate();
+    const location = useLocation();
 
-    // Đã thay fullName thành firstName và lastName
+    const currentUserRole = localStorage.getItem("role") || "";
+    const currentUserDept = localStorage.getItem("departmentName") || "";
+
+    // Lấy type từ URL (VD: ?type=customer)
+    const searchParams = new URLSearchParams(location.search);
+    const viewType = searchParams.get("type") || "employee";
+
+    const [departmentsDB, setDepartmentsDB] = useState([]);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    // Tính toán Role có sẵn
+    const availableRoles = (currentUserRole === 'CEO' || currentUserRole === 'Admin')
+        ? (viewType === 'customer' ? ['Customer'] : ['Manager', 'Employee'])
+        : ['Employee']; // Manager
+
     const [user, setUser] = useState({
         firstName: "", lastName: "", email: "", initialPassword: "", confirmPassword: "",
-        department: "", role: "", position: "", phoneNumber: "",
-        employeeId: "", startDate: "", status: "Active", sendWelcomeEmail: true
+        department: "",
+        role: availableRoles[0] || "", // Mặc định lấy role đầu tiên
+        position: "", phoneNumber: "", employeeId: "", startDate: "",
+        status: "ACTIVE", sendWelcomeEmail: true
     });
-    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    useEffect(() => {
+        const fetchDepts = async () => {
+            try {
+                // Gọi qua departmentApi
+                const res = await departmentApi.getAllDepartments();
+                setDepartmentsDB(res.data?.data || res.data || []);
+            } catch (error) {
+                console.error("Lỗi lấy danh sách department:", error);
+            }
+        };
+        fetchDepts();
+
+        if (currentUserRole === 'Manager') {
+            setUser(prev => ({ ...prev, department: currentUserDept, role: 'Employee' }));
+        }
+    }, [currentUserRole, currentUserDept]);
 
     const handleChange = (e) => {
         const {name, value, checked, type} = e.target;
@@ -39,7 +73,7 @@ function CreateUser() {
         setIsSubmitting(true);
 
         try {
-            // Chuẩn bị Payload (Chỉ lấy những trường có trong Entity Users ở BE)
+            // Chuẩn bị Payload
             const payload = {
                 firstName: user.firstName,
                 lastName: user.lastName,
@@ -47,7 +81,10 @@ function CreateUser() {
                 password: user.initialPassword,
                 numberPhone: user.phoneNumber,
                 role: user.role,
-                status: user.status
+                status: user.status,
+                departmentName: user.department,
+                // ĐÃ THÊM: Truyền cờ gửi mail xuống BE
+                sendWelcomeEmail: user.sendWelcomeEmail
             };
 
             // Gọi API từ thư mục config/api/userApi.js
@@ -68,19 +105,19 @@ function CreateUser() {
     return (
         <div className="bg-light min-vh-screen">
             {/* --- HEADER ĐỒNG BỘ --- */}
-            <header className="d-flex justify-content-between align-items-center px-4 py-3 bg-white border-bottom mb-4">
-                <div className="d-flex align-items-center gap-2">
-                    <span className="fs-4">🛡️</span>
-                    <div className="d-flex flex-column lh-sm">
-                        <strong className="text-dark">E-CONTRACT</strong>
-                        <small className="text-muted" style={{ fontSize: "12px" }}>Management System</small>
-                    </div>
-                </div>
-                <NavDropdown title={<span className="text-dark fw-semibold"><IconWorld size={20} className="me-1"/>English</span>} id="lang-dropdown">
-                    <NavDropdown.Item>English</NavDropdown.Item>
-                    <NavDropdown.Item>Vietnamese</NavDropdown.Item>
-                </NavDropdown>
-            </header>
+            {/*<header className="d-flex justify-content-between align-items-center px-4 py-3 bg-white border-bottom mb-4">*/}
+            {/*    <div className="d-flex align-items-center gap-2">*/}
+            {/*        <span className="fs-4">🛡️</span>*/}
+            {/*        <div className="d-flex flex-column lh-sm">*/}
+            {/*            <strong className="text-dark">E-CONTRACT</strong>*/}
+            {/*            <small className="text-muted" style={{ fontSize: "12px" }}>Management System</small>*/}
+            {/*        </div>*/}
+            {/*    </div>*/}
+            {/*    <NavDropdown title={<span className="text-dark fw-semibold"><IconWorld size={20} className="me-1"/>English</span>} id="lang-dropdown">*/}
+            {/*        <NavDropdown.Item>English</NavDropdown.Item>*/}
+            {/*        <NavDropdown.Item>Vietnamese</NavDropdown.Item>*/}
+            {/*    </NavDropdown>*/}
+            {/*</header>*/}
 
             <Container fluid="lg" className="mb-5">
                 <Form onSubmit={handleSubmit} className="border shadow-sm rounded-4 overflow-hidden bg-white">
@@ -91,7 +128,7 @@ function CreateUser() {
                         </div>
                         <div className="d-flex gap-2">
                             <Button variant="outline-secondary" className="fw-bold px-3"
-                                    onClick={() => navigate("/user-management/list")}
+                                    onClick={() => navigate(`/user-management/list?type=${viewType}`)}
                                     disabled={isSubmitting}>Cancel</Button>
                             <Button type="submit" variant="primary"
                                     className="fw-bold px-4 d-flex align-items-center gap-2" disabled={isSubmitting}>
@@ -158,35 +195,38 @@ function CreateUser() {
                                 </Form.Group>
                             </Col>
 
-                            {/* CÁC TRƯỜNG BÊN DƯỚI ĐƯỢC GIỮ NGUYÊN (HARDCODE) THEO Ý BẠN */}
+                            {/* DROPDOWN DEPARTMENT */}
                             <Col md={6}>
                                 <Form.Group>
-                                    <Form.Label className="small fw-bold">Department <span
-                                        className="text-danger">*</span></Form.Label>
-                                    <Form.Select name="department" value={user.department} onChange={handleChange}
-                                                 required disabled={isSubmitting}>
+                                    <Form.Label className="small fw-bold">Department <span className="text-danger">*</span></Form.Label>
+                                    <Form.Select name="department" value={user.department} onChange={handleChange} required
+                                        // KHÓA LẠI NẾU LÀ MANAGER
+                                                 disabled={isSubmitting || currentUserRole === 'Manager'}>
                                         <option value="">Select department</option>
-                                        <option value="Legal">Legal</option>
-                                        <option value="HR">HR</option>
-                                        <option value="Finance">Finance</option>
-                                        <option value="Sales">Sales</option>
+                                        {departmentsDB.map(d => (
+                                            <option key={d.departmentName} value={d.departmentName}>{d.departmentName}</option>
+                                        ))}
                                     </Form.Select>
                                 </Form.Group>
                             </Col>
+
+                            {/* DROPDOWN ROLE */}
                             <Col md={6}>
                                 <Form.Group>
-                                    <Form.Label className="small fw-bold">Role <span
-                                        className="text-danger">*</span></Form.Label>
+                                    <Form.Label className="small fw-bold">Role <span className="text-danger">*</span></Form.Label>
                                     <Form.Select name="role" value={user.role} onChange={handleChange} required
-                                                 disabled={isSubmitting}>
+                                        // NẾU CHỈ CÓ 1 ROLE (VD: MANAGER TẠO NV, HOẶC TẠO CUSTOMER), KHÓA LUÔN CHO ĐỠ BẤM
+                                                 disabled={isSubmitting || availableRoles.length === 1}>
                                         <option value="">Select role</option>
-                                        <option value="Contract Manager">Contract Manager</option>
-                                        <option value="HR Admin">HR Admin</option>
-                                        <option value="Approver">Approver</option>
-                                        <option value="Viewer">Viewer</option>
+                                        {availableRoles.map(r => (
+                                            <option key={r} value={r}>{r}</option>
+                                        ))}
                                     </Form.Select>
                                 </Form.Group>
                             </Col>
+
+
+                            {/* CÁC TRƯỜNG BÊN DƯỚI ĐƯỢC GIỮ NGUYÊN (HARDCODE) THEO Ý BẠN */}
                             <Col md={6}>
                                 <Form.Group><Form.Label className="small fw-bold">Position</Form.Label><Form.Control
                                     type="text" name="position" value={user.position} onChange={handleChange}
@@ -212,8 +252,8 @@ function CreateUser() {
                                     <Form.Label className="small fw-bold">Status <span className="text-danger">*</span></Form.Label>
                                     <Form.Select name="status" value={user.status} onChange={handleChange} required
                                                  disabled={isSubmitting}>
-                                        <option value="Active">Active</option>
-                                        <option value="Inactive">Inactive</option>
+                                        <option value="ACTIVE">Active</option>
+                                        <option value="INACTIVE">Inactive</option>
                                     </Form.Select>
                                 </Form.Group>
                             </Col>

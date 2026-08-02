@@ -1,9 +1,10 @@
 package com.fpt.backend.dto.response.project;
 
 import java.time.LocalDate;
+import java.util.UUID;
 
 public record ProjectPhaseResponse(
-        int id,
+        UUID id,
         String title,
         String description,
         LocalDate startDate,

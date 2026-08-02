@@ -41,9 +41,9 @@ public class Users extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "department_id")
     private Departments department;
-    // Signature
+    //UserKey
     @OneToMany(mappedBy = "user")
-    private List<Signature> signatures;
+    private List<UserKeys> userKeys;
     //Notification
     @OneToMany(mappedBy = "user")
     private List<Notifications> notifications;

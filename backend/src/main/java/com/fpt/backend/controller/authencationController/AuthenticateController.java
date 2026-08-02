@@ -4,6 +4,7 @@ import com.fpt.backend.configuration.JWTService;
 import com.fpt.backend.configuration.MyUserDetail;
 import com.fpt.backend.constant.ApiConstant;
 import com.fpt.backend.dto.request.authentication.AuthenticateRequest;
+import com.fpt.backend.dto.request.authentication.ChangePasswordRequest;
 import com.fpt.backend.dto.request.authentication.ForgotPasswordRequest;
 import com.fpt.backend.dto.request.authentication.ResetPasswordRequest;
 import com.fpt.backend.dto.response.authentication.AuthenticateResponse;
@@ -45,6 +46,15 @@ public class AuthenticateController {
             authenticateResponse.setToken(token);
             authenticateResponse.setRole(users.getRole());
             authenticateResponse.setFullName(users.getFirstName()+" "+users.getLastName());
+
+            // --- THÊM ĐOẠN CODE NÀY ---
+            if (users.getDepartment() != null) {
+                authenticateResponse.setDepartmentName(users.getDepartment().getDepartmentName());
+            } else {
+                authenticateResponse.setDepartmentName(""); // Đề phòng user chưa có phòng ban
+            }
+            // ---------------------------------------
+
             BaseResponse<AuthenticateResponse> response = new BaseResponse<>(
                     HttpStatus.CREATED.value(),
                     "Login susscessed",
@@ -57,14 +67,20 @@ public class AuthenticateController {
 
     }
 
-    @PostMapping("/forgotPassword")
+    @PostMapping(ApiConstant.Authentication.FORGOT)
     public ResponseEntity<BaseResponse<?>> forGotPassword(@RequestBody ForgotPasswordRequest  forgotPasswordRequest)  {
         userServiceImpl.forgotPassword(forgotPasswordRequest.getEmail());
         return ResponseEntity.status(HttpStatus.CREATED).body(new BaseResponse<>());
     }
-    @PostMapping("/ResetPasswrod")
+    @PostMapping(ApiConstant.Authentication.RESET_PASSWORD)
     public ResponseEntity<BaseResponse<?>> resetPasswrod(@RequestBody ResetPasswordRequest resetPasswordRequest)  {
         userServiceImpl.resetPassword(resetPasswordRequest);
+        return ResponseEntity.status(HttpStatus.CREATED).body(new BaseResponse<>());
+    }
+
+    @PostMapping(ApiConstant.Authentication.CHANGE_PASSWORD)
+    public ResponseEntity<BaseResponse<?>> resetPassword(@RequestBody ChangePasswordRequest changePasswordRequest)  {
+        userServiceImpl.changePassword(changePasswordRequest);
         return ResponseEntity.status(HttpStatus.CREATED).body(new BaseResponse<>());
     }
 }

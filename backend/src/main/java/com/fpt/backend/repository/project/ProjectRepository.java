@@ -9,23 +9,35 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.UUID;
 
 @Repository
-public interface ProjectRepository extends JpaRepository<Projects, Integer> {
+public interface ProjectRepository extends JpaRepository<Projects, UUID> {
     boolean existsByProjectCodeIgnoreCase(String projectCode);
 
-    boolean existsByProjectCodeIgnoreCaseAndIdNot(String projectCode, int id);
+    boolean existsByProjectCodeIgnoreCaseAndIdNot(String projectCode, UUID id);
 
     Page<Projects> findByProjectStatusIgnoreCase(String projectStatus, Pageable pageable);
 
     @Query("""
             SELECT project
             FROM Projects project
+            JOIN project.projectCreatedBy creator
             WHERE (
                 LOWER(COALESCE(project.projectCode, '')) LIKE CONCAT('%', CONCAT(:search, '%'))
                 OR LOWER(COALESCE(project.projectName, '')) LIKE CONCAT('%', CONCAT(:search, '%'))
                 OR LOWER(COALESCE(project.projectDescription, '')) LIKE CONCAT('%', CONCAT(:search, '%'))
-                OR LOWER(COALESCE(project.projectCreatedBy, '')) LIKE CONCAT('%', CONCAT(:search, '%'))
+                OR LOWER(COALESCE(creator.firstName, '')) LIKE CONCAT('%', CONCAT(:search, '%'))
+                OR LOWER(COALESCE(creator.lastName, '')) LIKE CONCAT('%', CONCAT(:search, '%'))
+                OR LOWER(COALESCE(creator.email, '')) LIKE CONCAT('%', CONCAT(:search, '%'))
+                OR LOWER(
+                    TRIM(
+                        CONCAT(
+                            COALESCE(creator.firstName, ''),
+                            CONCAT(' ', COALESCE(creator.lastName, ''))
+                        )
+                    )
+                ) LIKE CONCAT('%', CONCAT(:search, '%'))
             )
             AND (
                 :status = ''
@@ -35,6 +47,48 @@ public interface ProjectRepository extends JpaRepository<Projects, Integer> {
     Page<Projects> searchProjects(
             @Param("search") String search,
             @Param("status") String status,
+            Pageable pageable
+    );
+
+    @Query("""
+            SELECT project
+            FROM Projects project
+            JOIN project.projectCreatedBy creator
+            WHERE (
+                :search = ''
+                OR LOWER(COALESCE(project.projectCode, '')) LIKE CONCAT('%', CONCAT(:search, '%'))
+                OR LOWER(COALESCE(project.projectName, '')) LIKE CONCAT('%', CONCAT(:search, '%'))
+                OR LOWER(COALESCE(project.projectDescription, '')) LIKE CONCAT('%', CONCAT(:search, '%'))
+                OR LOWER(COALESCE(creator.firstName, '')) LIKE CONCAT('%', CONCAT(:search, '%'))
+                OR LOWER(COALESCE(creator.lastName, '')) LIKE CONCAT('%', CONCAT(:search, '%'))
+                OR LOWER(COALESCE(creator.email, '')) LIKE CONCAT('%', CONCAT(:search, '%'))
+                OR LOWER(
+                    TRIM(
+                        CONCAT(
+                            COALESCE(creator.firstName, ''),
+                            CONCAT(' ', COALESCE(creator.lastName, ''))
+                        )
+                    )
+                ) LIKE CONCAT('%', CONCAT(:search, '%'))
+            )
+            AND (
+                :status = ''
+                OR LOWER(COALESCE(project.projectStatus, '')) = :status
+            )
+            AND (
+                project.projectCreatedBy.id = :userId
+                OR EXISTS (
+                    SELECT member.id
+                    FROM ProjectMember member
+                    WHERE member.project.id = project.id
+                        AND member.user.id = :userId
+                )
+            )
+            """)
+    Page<Projects> searchViewableProjects(
+            @Param("search") String search,
+            @Param("status") String status,
+            @Param("userId") UUID userId,
             Pageable pageable
     );
 

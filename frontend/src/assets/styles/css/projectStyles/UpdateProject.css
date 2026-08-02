@@ -119,12 +119,20 @@
     text-decoration: underline;
 }
 
-.update-project-phase-card .form-range {
-    accent-color: #2450f5;
-}
-
 .update-project-phase-description.form-control {
     min-height: 68px;
+}
+
+.update-project-phase-start-input.form-control[readonly] {
+    background: #f1f4f9;
+    color: #52617f;
+}
+
+.update-project-phase-date-note.form-text {
+    display: block;
+    margin-top: 5px;
+    color: #7a869b;
+    font-size: 10px;
 }
 
 .update-project-selected-count {

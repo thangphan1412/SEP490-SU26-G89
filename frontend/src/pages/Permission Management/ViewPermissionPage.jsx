@@ -13,27 +13,32 @@ import {
   IconUserShield,
 } from "@tabler/icons-react";
 import "../../assets/styles/css/permissionStyles/ViewPermissionPage.css";
-import { deletePermission, viewPermission } from "../../config/permissionApi/permissionApi.js";
+import { deletePermission, viewPermission } from "../../services/permissionService/permissionApi.js";
+import PermissionPage from "../../components/permissionComponents/PermissionPage.jsx";
+import PermissionStatusBadge from "../../components/permissionComponents/PermissionStatusBadge.jsx";
+import ViewPermissionInfo from "../../components/permissionComponents/ViewPermissionInfo.jsx";
+import { formatPermissionModule } from "../../components/permissionComponents/permissionModuleOptions.js";
 import {
-  PermissionPage,
-  PermissionStatusBadge,
-  ViewPermissionInfo,
-} from "./PermissionComponents.jsx";
-import { formatPermissionDate } from "./permissionUtils.js";
+  formatPermissionDate,
+  formatPermissionProjectValue,
+  getPermissionErrorMessage,
+} from "./permissionUtils.js";
 
 function ViewPermissionPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const permissionId = searchParams.get("view");
+  const returnProjectId = searchParams.get("returnProjectId");
   const [permission, setPermission] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [deleting, setDeleting] = useState(false);
 
-  useEffect(() => {
+  useEffect(function () {
     let isActive = true;
+    const requestController = new AbortController();
 
-    const loadPermission = async () => {
+    async function loadPermission() {
       if (!permissionId) {
         if (isActive) {
           setError("Permission id is missing. Please choose a permission from the list.");
@@ -45,33 +50,51 @@ function ViewPermissionPage() {
       try {
         setLoading(true);
         setError("");
-        const response = await viewPermission(permissionId);
-        const payload = response.data?.data ?? response.data;
+        const payload = await viewPermission(permissionId, requestController.signal);
 
         if (isActive) {
           setPermission(payload || null);
         }
       } catch (requestError) {
-        console.error("Unable to load permission:", requestError);
-        if (isActive) {
-          setPermission(null);
-          setError(getErrorMessage(requestError));
+        if (!isActive) {
+          return;
         }
+
+        console.error("Unable to load permission:", requestError);
+        setPermission(null);
+        setError(getPermissionErrorMessage(
+          requestError,
+          "Unable to load permission. Please try again later."
+        ));
       } finally {
         if (isActive) {
           setLoading(false);
         }
       }
-    };
+    }
 
     loadPermission();
 
-    return () => {
+    return function () {
       isActive = false;
+      requestController.abort();
     };
   }, [permissionId]);
 
-  const handleDelete = async () => {
+  function getBackPath() {
+    if (returnProjectId) {
+      return `/project-management/view?id=${encodeURIComponent(returnProjectId)}`
+        + "&openPermissionConfigure=true";
+    }
+
+    return "/permission/list";
+  }
+
+  function goBack() {
+    navigate(getBackPath());
+  }
+
+  async function handleDelete() {
     if (!permission?.id || !window.confirm(`Delete permission "${permission.permissionName}"?`)) {
       return;
     }
@@ -80,18 +103,21 @@ function ViewPermissionPage() {
       setDeleting(true);
       setError("");
       await deletePermission(permission.id);
-      navigate("/permission/list");
+      navigate(getBackPath());
     } catch (requestError) {
       console.error("Unable to delete permission:", requestError);
-      setError(getErrorMessage(requestError));
+      setError(getPermissionErrorMessage(
+        requestError,
+        "Unable to delete permission. Please try again later."
+      ));
     } finally {
       setDeleting(false);
     }
-  };
+  }
 
   const pageActions = (
     <Stack direction="horizontal" className="permission-view-actions">
-      <Button className="permission-secondary-button" onClick={() => navigate("/permission/list")}>
+      <Button className="permission-secondary-button" onClick={goBack}>
         <IconArrowLeft size={18} /> Back
       </Button>
       {permission && (
@@ -140,12 +166,14 @@ function ViewPermissionPage() {
             <Card as="section" className="permission-view-card permission-view-card--wide">
               <div className="permission-view-card-title">
                 <span><IconFolder size={20} /></span>
-                <div><h3>Access assignment</h3><p>Where this permission applies and which role receives it.</p></div>
+                <div><h3>Access assignment</h3><p>Where this permission applies.</p></div>
               </div>
               <div className="permission-view-info-grid">
-                <ViewPermissionInfo label="Project" value={formatProjectValue(permission)} />
-                <ViewPermissionInfo label="Role" value={permission.roleName || "Unassigned"} />
-                <ViewPermissionInfo label="Module" value={permission.permissionModule} />
+                <ViewPermissionInfo
+                  label="Project"
+                  value={formatPermissionProjectValue(permission)}
+                />
+                <ViewPermissionInfo label="Module" value={formatPermissionModule(permission.permissionModule)} />
                 <div className="permission-info-item">
                   <p className="permission-info-label">Status</p>
                   <PermissionStatusBadge status={permission.status} />
@@ -156,11 +184,10 @@ function ViewPermissionPage() {
             <Card as="section" className="permission-view-card">
               <div className="permission-view-card-title">
                 <span><IconClock size={20} /></span>
-                <div><h3>Audit information</h3><p>Times recorded automatically by the server.</p></div>
+                <div><h3>Audit information</h3><p>Creation time recorded automatically by the server.</p></div>
               </div>
               <div className="permission-view-audit-list">
                 <ViewPermissionInfo label="Created at" value={formatPermissionDate(permission.createdAt)} />
-                <ViewPermissionInfo label="Last updated" value={formatPermissionDate(permission.updatedAt)} />
               </div>
             </Card>
 
@@ -181,7 +208,7 @@ function ViewPermissionPage() {
               </div>
               <div className="permission-view-audit-list">
                 <ViewPermissionInfo label="Permission code" value={permission.permissionCode} />
-                <ViewPermissionInfo label="Module" value={permission.permissionModule} />
+                <ViewPermissionInfo label="Module" value={formatPermissionModule(permission.permissionModule)} />
               </div>
             </Card>
           </div>
@@ -189,21 +216,6 @@ function ViewPermissionPage() {
       )}
     </PermissionPage>
   );
-}
-
-function formatProjectValue(permission) {
-  if (!permission.projectName && !permission.projectCode) {
-    return "Unassigned";
-  }
-
-  return [permission.projectCode, permission.projectName].filter(Boolean).join(" - ");
-}
-
-function getErrorMessage(error) {
-  return error.response?.data?.message
-    || error.response?.data?.detail
-    || error.response?.data?.error
-    || "Unable to load permission. Please try again later.";
 }
 
 export default ViewPermissionPage;

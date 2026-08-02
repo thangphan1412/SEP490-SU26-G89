@@ -9,6 +9,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.security.Principal;
 import java.util.List;
 import java.util.UUID;
 
@@ -21,21 +22,42 @@ public class UserController {
 
     // 1. GET ALL USERS (ListUser)
     @GetMapping
-    public ResponseEntity<BaseResponse<List<UserResponseDTO>>> getAllUsers() {
-        List<UserResponseDTO> users = userService.getAllUsers();
-        return ResponseEntity
-                .status(HttpStatus.OK)
-                .body(BaseResponse.<List<UserResponseDTO>>builder()
-                        .status(HttpStatus.OK.value())
-                        .message("Successfully fetched all users")
-                        .data(users) // Giả sử BaseResponse của bạn có field "data" kiểu T
-                        .build()
-                );
+    public ResponseEntity<BaseResponse<List<UserResponseDTO>>> getAllUsers(
+            @RequestParam(defaultValue = "employee") String type,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false, defaultValue = "All") String role,
+            @RequestParam(required = false, defaultValue = "All") String department,
+            @RequestParam(required = false, defaultValue = "All") String status,
+            Principal principal
+    ) {
+        try {
+            // Truyền toàn bộ param xuống Service
+            List<UserResponseDTO> users = userService.getAllUsersFiltered(
+                    type, principal.getName(), keyword, role, department, status
+            );
+
+            return ResponseEntity
+                    .status(HttpStatus.OK)
+                    .body(BaseResponse.<List<UserResponseDTO>>builder()
+                            .status(HttpStatus.OK.value())
+                            .message("Successfully fetched users")
+                            .data(users)
+                            .build()
+                    );
+        } catch (Exception e) {
+            return ResponseEntity
+                    .status(HttpStatus.FORBIDDEN) // Lỗi 403 (Cấm truy cập)
+                    .body(BaseResponse.<List<UserResponseDTO>>builder()
+                            .status(HttpStatus.FORBIDDEN.value())
+                            .message(e.getMessage())
+                            .build()
+                    );
+        }
     }
 
     // 2. GET USER BY ID (ViewUser)
     @GetMapping("/{id}")
-    public ResponseEntity<BaseResponse<UserResponseDTO>> getUserById(@PathVariable Integer id) {
+    public ResponseEntity<BaseResponse<UserResponseDTO>> getUserById(@PathVariable UUID id) {
         try {
             UserResponseDTO user = userService.getUserById(id);
             return ResponseEntity
@@ -84,7 +106,7 @@ public class UserController {
     // 4. UPDATE USER (UpdateUser)
     @PutMapping("/{id}")
     public ResponseEntity<BaseResponse<UserResponseDTO>> updateUser(
-            @PathVariable Integer id,
+            @PathVariable UUID id,
             @RequestBody UserRequestDTO request) {
         try {
             UserResponseDTO updatedUser = userService.updateUser(id, request);

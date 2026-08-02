@@ -1,7 +1,9 @@
 package com.fpt.backend.dto.response.project;
 
+import java.util.UUID;
+
 public record ProjectPermissionOptionResponse(
-        Integer id,
+        UUID id,
         String permissionName,
         String permissionCode,
         String permissionDescription,

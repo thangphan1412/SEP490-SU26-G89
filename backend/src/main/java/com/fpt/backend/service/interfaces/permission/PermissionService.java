@@ -5,22 +5,20 @@ import com.fpt.backend.dto.request.permission.PermissionRequest;
 import com.fpt.backend.dto.response.permission.PermissionDetailResponse;
 import com.fpt.backend.dto.response.permission.PermissionListResponse;
 import com.fpt.backend.dto.response.permission.PermissionProjectResponse;
-import com.fpt.backend.dto.response.permission.PermissionRoleResponse;
 
 import java.util.List;
+import java.util.UUID;
 
 public interface PermissionService {
     PermissionListResponse getPermissions(PermissionListRequest request);
 
-    PermissionDetailResponse getPermissionById(int id);
+    PermissionDetailResponse getPermissionById(UUID id);
 
     PermissionDetailResponse createPermission(PermissionRequest request);
 
-    PermissionDetailResponse updatePermission(int id, PermissionRequest request);
+    PermissionDetailResponse updatePermission(UUID id, PermissionRequest request);
 
-    void deletePermission(int id);
+    void deletePermission(UUID id);
 
     List<PermissionProjectResponse> getProjectsForPermissionSelection();
-
-    List<PermissionRoleResponse> getRolesForPermissionSelection();
 }

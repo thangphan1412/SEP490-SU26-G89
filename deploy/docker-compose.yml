@@ -1,4 +1,5 @@
 services:
+
   redis:
     image: redis:7.2-alpine
     container_name: redis
@@ -43,6 +44,10 @@ services:
       SPRING_DATASOURCE_USERNAME: sa
       SPRING_DATASOURCE_PASSWORD: Sep490@123
       APP_HOST: http://localhost:8080
+
+      CLOUDINARY_CLOUD_NAME: dndbphbe9
+      CLOUDINARY_API_KEY: 677699931464114
+      CLOUDINARY_API_SECRET: q74iK1lPx6HJeb62lON88y-DpDg
     depends_on:
       sqlserver:
         condition: service_healthy
