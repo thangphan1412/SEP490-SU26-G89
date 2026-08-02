@@ -20,6 +20,9 @@ public record ContractRequest(
         String contractLayoutJson,
         Boolean saveAsTemplateVersion,
         String templateVersionName,
-        String templateVersionNote
+        String templateVersionNote,
+        UUID previousContractId,
+        String actorName,
+        String actorRole
 ) {
 }

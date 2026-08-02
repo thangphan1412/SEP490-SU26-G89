@@ -1,4 +1,4 @@
-import { defaultContractStatuses } from "./contractUtils.js";
+import { formatContractStatus } from "./contractUtils.js";
 
 function ContractForm({
     contract,
@@ -10,9 +10,6 @@ function ContractForm({
     loadingContractOptions = false,
     creatorReadOnly = false,
 }) {
-    const statusOptions = defaultContractStatuses.includes(contract.contractStatus)
-        ? defaultContractStatuses
-        : [contract.contractStatus, ...defaultContractStatuses];
     const containsCurrentProject = projects.some(
         (project) => project.id === contract.projectId
     );
@@ -28,6 +25,17 @@ function ContractForm({
 
     return (
         <div className="contract-form-grid">
+                {contract.previousContractId && (
+                    <div className="contract-form-full contract-replacement-banner">
+                        This is a new replacement for cancelled contract{" "}
+                        <strong>
+                            {contract.previousContractNumber
+                                || contract.previousContractId}
+                        </strong>
+                        . The cancelled contract remains unchanged for audit.
+                    </div>
+                )}
+
                 <TextField
                     label="Contract Number"
                     name="contractNumber"
@@ -132,16 +140,11 @@ function ContractForm({
                     ))}
                 </SelectField>
 
-                <SelectField
+                <ReadOnlyField
                     label="Status"
-                    name="contractStatus"
-                    value={contract.contractStatus}
-                    onChange={onChange}
-                >
-                    {statusOptions.map((option) => (
-                        <option key={option} value={option}>{option}</option>
-                    ))}
-                </SelectField>
+                    value={formatContractStatus(contract.contractStatus)}
+                    hint="Status changes are performed by workflow actions, not by editing."
+                />
 
                 <TextField
                     label="Effective Date"
@@ -150,6 +153,7 @@ function ContractForm({
                     value={contract.effectiveDate}
                     onChange={onChange}
                     icon="calendar"
+                    required
                 />
 
                 <TextField
@@ -159,6 +163,7 @@ function ContractForm({
                     value={contract.expirationDate}
                     onChange={onChange}
                     icon="calendar"
+                    required
                 />
 
                 <TextField
@@ -236,6 +241,16 @@ function ContractForm({
                         )}
                     </div>
                 )}
+        </div>
+    );
+}
+
+function ReadOnlyField({ label, value, hint }) {
+    return (
+        <div>
+            <span className="contract-form-label">{label}</span>
+            <div className="contract-readonly-field">{value || "-"}</div>
+            {hint && <div className="form-text">{hint}</div>}
         </div>
     );
 }

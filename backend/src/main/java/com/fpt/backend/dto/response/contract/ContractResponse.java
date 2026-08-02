@@ -2,6 +2,7 @@ package com.fpt.backend.dto.response.contract;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 public record ContractResponse(
@@ -24,6 +25,12 @@ public record ContractResponse(
         String contractCreatedBy,
         LocalDateTime contractCreatedAt,
         String contractContent,
-        String contractLayoutJson
+        String contractLayoutJson,
+        LocalDateTime contractStatusUpdatedAt,
+        LocalDateTime contractEndedAt,
+        String contractCancellationReason,
+        UUID previousContractId,
+        String previousContractNumber,
+        List<ContractStatusHistoryResponse> statusHistory
 ) {
 }

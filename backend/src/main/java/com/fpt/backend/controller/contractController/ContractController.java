@@ -2,6 +2,7 @@ package com.fpt.backend.controller.contractController;
 
 import com.fpt.backend.dto.request.contract.ContractListRequest;
 import com.fpt.backend.dto.request.contract.ContractRequest;
+import com.fpt.backend.dto.request.contract.ContractTransitionRequest;
 import com.fpt.backend.dto.response.contract.ContractListResponse;
 import com.fpt.backend.dto.response.contract.ContractProjectOptionResponse;
 import com.fpt.backend.dto.response.contract.ContractResponse;
@@ -82,9 +83,21 @@ public class ContractController {
         return ResponseEntity.ok(new BaseResponse<>(contractService.updateContract(id, request)));
     }
 
+    @PostMapping("/{id}/transitions")
+    public ResponseEntity<BaseResponse<ContractResponse>> transitionContract(
+            @PathVariable UUID id,
+            @RequestBody ContractTransitionRequest request) {
+        return ResponseEntity.ok(new BaseResponse<>(
+                contractService.transitionContract(id, request)
+        ));
+    }
+
     @DeleteMapping("/{id}")
-    public ResponseEntity<BaseResponse<Void>> deleteContract(@PathVariable UUID id) {
-        contractService.deleteContract(id);
+    public ResponseEntity<BaseResponse<Void>> deleteContract(
+            @PathVariable UUID id,
+            @RequestParam String actorName,
+            @RequestParam String actorRole) {
+        contractService.deleteContract(id, actorName, actorRole);
         return ResponseEntity.ok(new BaseResponse<>(
                 HttpStatus.OK.value(),
                 "Deleted",

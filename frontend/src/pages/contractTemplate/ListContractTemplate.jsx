@@ -16,6 +16,11 @@ import {
     getApiErrorMessage,
     unwrapApiResponse,
 } from "../ContractManagement/contractUtils.js";
+import TemplatePositionDesigner from "./TemplatePositionDesigner.jsx";
+import {
+    cloneVersionPositions,
+    toPositionRequest,
+} from "./templatePositionUtils.js";
 import "../../assets/styles/css/layoutStyles/ContractWorkspace.css";
 
 function createEmptyTemplateForm() {
@@ -28,13 +33,32 @@ function createEmptyTemplateForm() {
     };
 }
 
-function createEmptyVersionForm() {
+function readVersionLayout(version) {
+    if (!version?.layoutJson) {
+        return {};
+    }
+
+    try {
+        return JSON.parse(version.layoutJson);
+    } catch {
+        return {};
+    }
+}
+
+function createEmptyVersionForm(sourceVersion = null) {
+    const savedLayout = readVersionLayout(sourceVersion);
+    const sourcePositions = Array.isArray(sourceVersion?.positions)
+        && sourceVersion.positions.length > 0
+        ? sourceVersion.positions
+        : savedLayout.fields;
+
     return {
         versionName: "",
-        templateContent: "",
-        layoutJson: "",
+        templateContent: sourceVersion?.templateContent || "",
         changeNote: "",
         createdBy: localStorage.getItem("fullName") || "",
+        pageCount: Number(sourceVersion?.pageCount || savedLayout.pageCount) || 1,
+        positions: cloneVersionPositions(sourcePositions),
     };
 }
 
@@ -160,9 +184,12 @@ function ListContractTemplate() {
     };
 
     const openVersionModal = (template) => {
+        const latestVersion = Array.isArray(template?.versions)
+            ? template.versions[0]
+            : null;
         setModalMode(null);
         setSelectedTemplate(template);
-        setVersionForm(createEmptyVersionForm());
+        setVersionForm(createEmptyVersionForm(latestVersion));
         setModalError("");
         setVersionModalOpen(true);
     };
@@ -191,6 +218,14 @@ function ListContractTemplate() {
     const handleVersionChange = (event) => {
         const { name, value } = event.target;
         setVersionForm((current) => ({ ...current, [name]: value }));
+    };
+
+    const handleLayoutChange = ({ pageCount, positions }) => {
+        setVersionForm((current) => ({
+            ...current,
+            pageCount,
+            positions,
+        }));
     };
 
     const handleTemplateSubmit = async (event) => {
@@ -258,6 +293,20 @@ function ListContractTemplate() {
             return;
         }
 
+        const invalidPosition = versionForm.positions.find(
+            (position) =>
+                !position.fieldLabel.trim()
+                || !/^[a-z][a-z0-9_]{1,79}$/.test(
+                    position.attributeKey.trim().toLowerCase()
+                )
+        );
+        if (invalidPosition) {
+            setModalError(
+                "Every layout field needs a label and a lowercase attribute key."
+            );
+            return;
+        }
+
         setSubmitting(true);
         setModalError("");
 
@@ -267,9 +316,11 @@ function ListContractTemplate() {
                 {
                     versionName: versionForm.versionName.trim() || null,
                     templateContent: versionForm.templateContent.trim(),
-                    layoutJson: versionForm.layoutJson.trim() || null,
+                    layoutJson: null,
                     changeNote: versionForm.changeNote.trim() || null,
                     createdBy: versionForm.createdBy.trim() || null,
+                    pageCount: versionForm.pageCount,
+                    positions: versionForm.positions.map(toPositionRequest),
                 }
             );
 
@@ -525,6 +576,7 @@ function ListContractTemplate() {
                 error={modalError}
                 submitting={submitting}
                 onChange={handleVersionChange}
+                onLayoutChange={handleLayoutChange}
                 onClose={closeVersionModal}
                 onSubmit={handleVersionSubmit}
             />
@@ -657,6 +709,16 @@ function TemplateModal({
                                                 {version.changeNote ||
                                                     "No change note"}
                                             </span>
+                                        </div>
+                                        <div className="contract-version-position-summary">
+                                            <span>
+                                                {version.pageCount || 1} page(s)
+                                            </span>
+                                            <span>
+                                                {version.positions?.length || 0}{" "}
+                                                positioned field(s)
+                                            </span>
+                                            <span>Normalized coordinates</span>
                                         </div>
                                         <pre>
                                             {version.templateContent ||
@@ -805,6 +867,7 @@ function VersionModal({
     error,
     submitting,
     onChange,
+    onLayoutChange,
     onClose,
     onSubmit,
 }) {
@@ -812,7 +875,7 @@ function VersionModal({
         <Modal
             show={show}
             onHide={onClose}
-            size="lg"
+            size="xl"
             centered
             backdrop={submitting ? "static" : true}
             className="contract-modal"
@@ -826,7 +889,8 @@ function VersionModal({
                 <Modal.Body>
                     <Alert variant="info">
                         This creates V{(template?.latestVersion || 0) + 1}. Existing
-                        versions remain unchanged.
+                        versions remain unchanged. The latest version content and
+                        positions are copied as the starting point.
                     </Alert>
                     {error && <Alert variant="danger">{error}</Alert>}
                     <div className="contract-form-grid">
@@ -877,17 +941,14 @@ function VersionModal({
                                 required
                             />
                         </div>
-                        <details className="contract-form-full contract-layout-details">
-                            <summary>Advanced layout data (optional)</summary>
-                            <textarea
-                                id="layoutJson"
-                                name="layoutJson"
-                                className="form-control contract-layout-editor"
-                                value={form.layoutJson}
-                                onChange={onChange}
-                                placeholder='{"fields":[]}'
+                        <div className="contract-form-full">
+                            <TemplatePositionDesigner
+                                content={form.templateContent}
+                                pageCount={form.pageCount}
+                                positions={form.positions}
+                                onChange={onLayoutChange}
                             />
-                        </details>
+                        </div>
                     </div>
                 </Modal.Body>
                 <Modal.Footer>
