@@ -8,6 +8,8 @@ import java.util.List;
 public interface IDepartmentService {
     List<DepartmentResponseDTO> getAllDepartments();
 
+    List<DepartmentResponseDTO> searchDepartments(String search, String status);
+
     DepartmentResponseDTO getDepartmentById(Integer id);
 
     DepartmentResponseDTO createDepartment(DepartmentRequestDTO request);

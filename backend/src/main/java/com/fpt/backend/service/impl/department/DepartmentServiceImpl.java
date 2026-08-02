@@ -8,7 +8,7 @@ import com.fpt.backend.service.interfaces.department.IDepartmentService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Locale;
 import java.util.stream.Collectors;
@@ -21,7 +21,15 @@ public class DepartmentServiceImpl implements IDepartmentService {
 
     @Override
     public List<DepartmentResponseDTO> getAllDepartments() {
-        return departmentRepository.findAll()
+        return searchDepartments("", "");
+    }
+
+    @Override
+    public List<DepartmentResponseDTO> searchDepartments(String search, String status) {
+        return departmentRepository.searchAndFilter(
+                        normalize(search).toLowerCase(Locale.ROOT),
+                        normalize(status).toLowerCase(Locale.ROOT)
+                )
                 .stream()
                 .map(DepartmentResponseDTO::fromEntity)
                 .collect(Collectors.toList());
@@ -47,10 +55,10 @@ public class DepartmentServiceImpl implements IDepartmentService {
         Departments department = Departments.builder()
                 .departmentName(request.getDepartmentName().trim())
                 .departmentCode(departmentCode)
-                .departmentCreateAt(request.getDepartmentCreateAt() != null
-                        ? request.getDepartmentCreateAt()
-                        : LocalDate.now())
                 .departmentStatus(resolveStatus(request.getDepartmentStatus()))
+                .departmentCreatedAt(LocalDateTime.now())
+                .updatedAt(null)
+                .company(null)
                 .build();
 
         Departments savedDepartment = departmentRepository.save(department);
@@ -72,10 +80,7 @@ public class DepartmentServiceImpl implements IDepartmentService {
         department.setDepartmentName(request.getDepartmentName().trim());
         department.setDepartmentCode(departmentCode);
         department.setDepartmentStatus(resolveStatus(request.getDepartmentStatus()));
-
-        if (request.getDepartmentCreateAt() != null) {
-            department.setDepartmentCreateAt(request.getDepartmentCreateAt());
-        }
+        department.setUpdatedAt(LocalDateTime.now());
 
         Departments updatedDepartment = departmentRepository.save(department);
         return DepartmentResponseDTO.fromEntity(updatedDepartment);
@@ -103,5 +108,9 @@ public class DepartmentServiceImpl implements IDepartmentService {
         return departmentStatus == null || departmentStatus.isBlank()
                 ? "Active"
                 : departmentStatus;
+    }
+
+    private String normalize(String value) {
+        return value == null ? "" : value.trim();
     }
 }

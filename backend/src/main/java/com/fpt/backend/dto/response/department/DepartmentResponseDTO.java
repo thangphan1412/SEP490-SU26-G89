@@ -7,7 +7,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Getter
 @Setter
@@ -16,18 +16,22 @@ import java.time.LocalDate;
 @Builder
 public class DepartmentResponseDTO {
     private Integer id;
+    private Integer companyId;
     private String departmentName;
     private String departmentCode;
-    private LocalDate departmentCreateAt;
     private String departmentStatus;
+    private LocalDateTime departmentCreatedAt;
+    private LocalDateTime updatedAt;
 
     public static DepartmentResponseDTO fromEntity(Departments department) {
         return DepartmentResponseDTO.builder()
                 .id(department.getId())
+                .companyId(department.getCompany() == null ? null : department.getCompany().getId())
                 .departmentName(department.getDepartmentName())
                 .departmentCode(department.getDepartmentCode())
-                .departmentCreateAt(department.getDepartmentCreateAt())
                 .departmentStatus(department.getDepartmentStatus())
+                .departmentCreatedAt(department.getDepartmentCreatedAt())
+                .updatedAt(department.getUpdatedAt())
                 .build();
     }
 }

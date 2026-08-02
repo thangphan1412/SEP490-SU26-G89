@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping(ApiConstant.API + "/departments")
+@RequestMapping(ApiConstant.Department.DEPARTMENTS)
 public class DepartmentController {
 
     @Autowired
@@ -32,7 +32,23 @@ public class DepartmentController {
                         .build());
     }
 
-    @GetMapping("/{id}")
+    @GetMapping(ApiConstant.Department.LIST)
+    public ResponseEntity<BaseResponse<List<DepartmentResponseDTO>>> searchDepartments(
+            @RequestParam(defaultValue = "") String search,
+            @RequestParam(defaultValue = "") String status
+    ) {
+        List<DepartmentResponseDTO> departments = departmentService.searchDepartments(search, status);
+
+        return ResponseEntity
+                .status(HttpStatus.OK)
+                .body(BaseResponse.<List<DepartmentResponseDTO>>builder()
+                        .status(HttpStatus.OK.value())
+                        .message("Successfully searched departments")
+                        .data(departments)
+                        .build());
+    }
+
+    @GetMapping(ApiConstant.Department.BY_ID)
     public ResponseEntity<BaseResponse<DepartmentResponseDTO>> getDepartmentById(
             @PathVariable Integer id
     ) {
@@ -80,7 +96,7 @@ public class DepartmentController {
         }
     }
 
-    @PutMapping("/{id}")
+    @PutMapping(ApiConstant.Department.BY_ID)
     public ResponseEntity<BaseResponse<DepartmentResponseDTO>> updateDepartment(
             @PathVariable Integer id,
             @RequestBody DepartmentRequestDTO request

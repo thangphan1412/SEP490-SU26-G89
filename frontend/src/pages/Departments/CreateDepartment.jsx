@@ -9,9 +9,6 @@ function CreateDepartment() {
   const [form, setForm] = useState({
     departmentName: "",
     departmentCode: "",
-    parentDepartment: "",
-    head: "",
-    description: "",
     active: true,
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -62,32 +59,6 @@ function CreateDepartment() {
               <Form.Group className="department-field">
                 <Form.Label>Department Code <span>*</span></Form.Label>
                 <div><Form.Control name="departmentCode" value={form.departmentCode} onChange={handleChange} placeholder="Enter department code" required /></div>
-              </Form.Group>
-
-              <Form.Group className="department-field">
-                <Form.Label>Parent Department</Form.Label>
-                <div>
-                  <Form.Select name="parentDepartment" value={form.parentDepartment} onChange={handleChange} disabled>
-                    <option value="">Not available in Department entity</option>
-                  </Form.Select>
-                </div>
-              </Form.Group>
-
-              <Form.Group className="department-field">
-                <Form.Label>Head of Department</Form.Label>
-                <div>
-                  <Form.Select name="head" value={form.head} onChange={handleChange} disabled>
-                    <option value="">Not available in Department entity</option>
-                  </Form.Select>
-                </div>
-              </Form.Group>
-
-              <Form.Group className="department-field">
-                <Form.Label>Description</Form.Label>
-                <div className="department-description-control">
-                  <Form.Control as="textarea" maxLength={255} name="description" value={form.description} onChange={handleChange} placeholder="Not available in Department entity" disabled />
-                  <span>{form.description.length} / 255</span>
-                </div>
               </Form.Group>
 
               <Form.Group className="department-field">
