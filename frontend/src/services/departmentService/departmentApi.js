@@ -7,6 +7,10 @@ const departmentApi = {
         return axiosClient.get(DEPARTMENT_ENDPOINT);
     },
 
+    searchDepartments(params = {}) {
+        return axiosClient.get(DEPARTMENT_ENDPOINT + "/list", { params });
+    },
+
     getDepartmentById(id) {
         return axiosClient.get(DEPARTMENT_ENDPOINT + "/" + id);
     },

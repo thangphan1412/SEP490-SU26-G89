@@ -10,10 +10,6 @@ function UpdateDepartment() {
   const [form, setForm] = useState({
     departmentName: "",
     departmentCode: "",
-    departmentCreateAt: "",
-    parentDepartment: "",
-    head: "",
-    description: "",
     active: true,
   });
   const [isLoading, setIsLoading] = useState(true);
@@ -29,7 +25,6 @@ function UpdateDepartment() {
           ...current,
           departmentName: department?.departmentName || "",
           departmentCode: department?.departmentCode || "",
-          departmentCreateAt: department?.departmentCreateAt || "",
           active: department?.departmentStatus?.toLowerCase() !== "inactive",
         }));
       } catch (requestError) {
@@ -58,7 +53,6 @@ function UpdateDepartment() {
       await departmentApi.updateDepartment(id, {
         departmentName: form.departmentName,
         departmentCode: form.departmentCode,
-        departmentCreateAt: form.departmentCreateAt || null,
         departmentStatus: form.active ? "Active" : "Inactive",
       });
       navigate(`/department-management/view/${id}`);
@@ -88,34 +82,6 @@ function UpdateDepartment() {
               <Form.Group className="department-field">
                 <Form.Label>Department Code <span>*</span></Form.Label>
                 <div><Form.Control name="departmentCode" value={form.departmentCode} onChange={handleChange} required /><Form.Text>Unique code used to identify the department.</Form.Text></div>
-              </Form.Group>
-
-              <Form.Group className="department-field">
-                <Form.Label>Parent Department</Form.Label>
-                <div>
-                  <Form.Select name="parentDepartment" value={form.parentDepartment} onChange={handleChange} disabled>
-                    <option value="">Not available in Department entity</option>
-                  </Form.Select>
-                  <Form.Text>Parent department is not currently stored by the backend.</Form.Text>
-                </div>
-              </Form.Group>
-
-              <Form.Group className="department-field">
-                <Form.Label>Head of Department</Form.Label>
-                <div>
-                  <Form.Select name="head" value={form.head} onChange={handleChange} disabled>
-                    <option value="">Not available in Department entity</option>
-                  </Form.Select>
-                  <Form.Text>Head of department is not currently stored by the backend.</Form.Text>
-                </div>
-              </Form.Group>
-
-              <Form.Group className="department-field">
-                <Form.Label>Description</Form.Label>
-                <div className="department-description-control">
-                  <Form.Control as="textarea" maxLength={255} name="description" value={form.description} onChange={handleChange} disabled />
-                  <span>{form.description.length} / 255</span>
-                </div>
               </Form.Group>
 
               <Form.Group className="department-field">

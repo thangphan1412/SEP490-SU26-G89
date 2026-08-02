@@ -9,6 +9,9 @@ import java.util.UUID;
 public interface IDepartmentService {
     List<DepartmentResponseDTO> getAllDepartments();
 
+    List<DepartmentResponseDTO> searchDepartments(String search, String status);
+
+    DepartmentResponseDTO getDepartmentById(Integer id);
     DepartmentResponseDTO getDepartmentById(UUID id);
 
     DepartmentResponseDTO createDepartment(DepartmentRequestDTO request);
