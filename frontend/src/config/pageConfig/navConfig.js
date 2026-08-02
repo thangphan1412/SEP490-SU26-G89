@@ -58,6 +58,15 @@ export const navConfig = [
         ],
     },
     {
+        key: "role",
+        headerLabel: "Role Management",
+        matchPaths: ["/role-management"],
+        children: [
+            { label: "List Role", path: "/role-management/list" },
+            { label: "Create Role", path: "/role-management/create" },
+        ],
+    },
+    {
         key: "employee",
         headerLabel: "Employee Management",
         matchPaths: ["/user-management"],

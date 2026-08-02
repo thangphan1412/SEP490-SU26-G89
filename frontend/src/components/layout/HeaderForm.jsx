@@ -8,10 +8,10 @@ import {    IconContract,
             IconLayoutDashboard,
             IconCreditCard,
             IconShieldCheck,
+            IconUserShield,
             IconBuildingSkyscraper,
             IconUserPlus,
             IconReportAnalytics,
-            IconSettings,
             IconUserCircle
         } from '@tabler/icons-react';
 function HeaderForm(){
@@ -44,6 +44,12 @@ function HeaderForm(){
                         <Nav.Link as={NavLink} to="/project-management/list" className="nav-item"><IconCreditCard stroke={2} />Project Management</Nav.Link>
                         <Nav.Link as={NavLink} to="/permission/list" className="nav-item"><IconShieldCheck stroke={2} />Permission Management</Nav.Link>
                         <Nav.Link as={NavLink} to="/department-management/list" className="nav-item"><IconBuildingSkyscraper stroke={2} />Department Management</Nav.Link>
+
+                        {['CEO', 'Admin'].includes(role) && (
+                            <Nav.Link as={NavLink} to="/role-management/list" className="nav-item">
+                                <IconUserShield stroke={2} />Role Management
+                            </Nav.Link>
+                        )}
 
                         {/* HIỂN THỊ DỰA TRÊN ROLE */}
                         {/* Chỉ CEO và Manager mới thấy Employee Management */}
