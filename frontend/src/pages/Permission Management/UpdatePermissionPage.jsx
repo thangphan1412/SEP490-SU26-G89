@@ -4,6 +4,7 @@ import { Alert, Button, Card, Col, Form, Row, Spinner } from "react-bootstrap";
 import { IconArrowLeft, IconClock, IconDeviceFloppy, IconInfoCircle } from "@tabler/icons-react";
 import "../../assets/styles/css/permissionStyles/UpdatePermissionPage.css";
 import {
+  listPermissionActions,
   listPermissionProjects,
   updatePermission,
   viewPermission,
@@ -11,7 +12,6 @@ import {
 import PermissionFormField from "../../components/permissionComponents/PermissionFormField.jsx";
 import PermissionPage from "../../components/permissionComponents/PermissionPage.jsx";
 import {
-  permissionActionOptions,
   permissionWorkScopeOptions,
 } from "../../components/permissionComponents/permissionModuleOptions.js";
 import {
@@ -38,6 +38,7 @@ function UpdatePermissionPage() {
   const returnProjectId = searchParams.get("returnProjectId");
   const [permission, setPermission] = useState(initialPermission);
   const [projects, setProjects] = useState([]);
+  const [actionOptions, setActionOptions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
   const [error, setError] = useState("");
@@ -61,9 +62,10 @@ function UpdatePermissionPage() {
         setLoading(true);
         setError("");
         setLoadFailed(false);
-        const [permissionPayload, projectPayload] = await Promise.all([
+        const [permissionPayload, projectPayload, actionPayload] = await Promise.all([
           viewPermission(permissionId, requestController.signal),
           listPermissionProjects(requestController.signal),
+          listPermissionActions(requestController.signal),
         ]);
 
         if (isActive) {
@@ -80,6 +82,7 @@ function UpdatePermissionPage() {
             createdAt: permissionPayload?.createdAt || null,
           });
           setProjects(Array.isArray(projectPayload) ? projectPayload : []);
+          setActionOptions(Array.isArray(actionPayload) ? actionPayload : []);
         }
       } catch (requestError) {
         if (!isActive) {
@@ -214,7 +217,9 @@ function UpdatePermissionPage() {
     );
   }
 
-  const noOptions = projects.length === 0;
+  const noProjects = projects.length === 0;
+  const noActions = actionOptions.length === 0;
+  const noOptions = noProjects || noActions;
 
   return (
     <PermissionPage
@@ -224,8 +229,11 @@ function UpdatePermissionPage() {
     >
       <Form className="permission-update-form" onSubmit={handleSubmit}>
         {error && <Alert variant="danger">{error}</Alert>}
-        {noOptions && (
+        {noProjects && (
           <Alert variant="warning">At least one project is required to save this permission.</Alert>
+        )}
+        {noActions && (
+          <Alert variant="warning">No active permission actions are available in the database.</Alert>
         )}
 
         <Card as="section" className="permission-form-card">
@@ -323,14 +331,15 @@ function UpdatePermissionPage() {
             </div>
 
             <div className="permission-update-action-grid">
-              {permissionActionOptions.map((option) => (
+              {actionOptions.map((option) => (
                 <Form.Check
-                  key={option.value}
-                  id={`update-permission-action-${option.value.toLowerCase()}`}
+                  key={option.id || option.actionCode}
+                  id={`update-permission-action-${option.actionCode.toLowerCase()}`}
                   type="checkbox"
-                  label={option.label}
-                  checked={permission.allowedActions.includes(option.value)}
-                  onChange={() => toggleAllowedAction(option.value)}
+                  label={option.actionName || option.actionCode}
+                  title={option.description || ""}
+                  checked={permission.allowedActions.includes(option.actionCode)}
+                  onChange={() => toggleAllowedAction(option.actionCode)}
                 />
               ))}
             </div>

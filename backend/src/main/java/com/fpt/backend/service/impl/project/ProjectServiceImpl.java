@@ -6,6 +6,7 @@ import com.fpt.backend.dto.request.project.ProjectMemberRequest;
 import com.fpt.backend.dto.request.project.ProjectPermissionConfigurationRequest;
 import com.fpt.backend.dto.request.project.ProjectUpdateRequest;
 import com.fpt.backend.dto.response.project.ProjectContractResponse;
+import com.fpt.backend.dto.response.project.ProjectAccessResponse;
 import com.fpt.backend.dto.response.project.ProjectDetailResponse;
 import com.fpt.backend.dto.response.project.ProjectEmployeeResponse;
 import com.fpt.backend.dto.response.project.ProjectListItemResponse;
@@ -13,6 +14,7 @@ import com.fpt.backend.dto.response.project.ProjectListResponse;
 import com.fpt.backend.dto.response.project.ProjectPermissionConfigurationResponse;
 import com.fpt.backend.dto.response.project.ProjectRoleResponse;
 import com.fpt.backend.entity.Contracts;
+import com.fpt.backend.entity.PermissionAction;
 import com.fpt.backend.entity.Projects;
 import com.fpt.backend.entity.Users;
 import com.fpt.backend.exception.BadHttpException;
@@ -22,6 +24,7 @@ import com.fpt.backend.repository.project.ProjectContractRepository;
 import com.fpt.backend.repository.project.ProjectMemberRepository;
 import com.fpt.backend.repository.project.ProjectRepository;
 import com.fpt.backend.service.interfaces.project.ProjectDeleteResult;
+import com.fpt.backend.service.interfaces.permission.PermissionAccessService;
 import com.fpt.backend.service.interfaces.project.ProjectMemberService;
 import com.fpt.backend.service.interfaces.project.ProjectPermissionService;
 import com.fpt.backend.service.interfaces.project.ProjectPhaseService;
@@ -33,16 +36,15 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -57,6 +59,14 @@ public class ProjectServiceImpl implements ProjectService {
     private static final String DEFAULT_PROJECT_STATUS = "Planning";
     private static final String CANCELLED_PROJECT_STATUS = "Cancelled";
     private static final String COMPLETED_PROJECT_STATUS = "Completed";
+    private static final String EDIT_PROJECT =
+            PermissionAction.DefaultAction.EDIT_PROJECT.getActionCode();
+    private static final String EDIT_PHASE =
+            PermissionAction.DefaultAction.EDIT_PHASE.getActionCode();
+    private static final String MANAGE_MEMBERS =
+            PermissionAction.DefaultAction.MANAGE_MEMBERS.getActionCode();
+    private static final String VIEW_CONTRACTS =
+            PermissionAction.DefaultAction.VIEW_CONTRACTS.getActionCode();
     private static final String PROJECT_ACCESS_DENIED_MESSAGE =
             "Bạn không được quyền xem project này!";
     private static final List<String> CREATE_PROJECT_STATUSES = List.of(
@@ -84,6 +94,7 @@ public class ProjectServiceImpl implements ProjectService {
     private final ProjectPhaseService projectPhaseService;
     private final ProjectMemberService projectMemberService;
     private final ProjectPermissionService projectPermissionService;
+    private final PermissionAccessService permissionAccessService;
     private final CurrentUser currentUserUtil;
 
     @Override
@@ -134,23 +145,9 @@ public class ProjectServiceImpl implements ProjectService {
     @Override
     public ProjectDetailResponse getProjectById(UUID id) {
         Projects project = findProject(id);
-        Users currentUser = currentUserUtil.getCurrentUser();
-        boolean currentUserIsCreator =
-                isProjectCreator(project, currentUser);
-        boolean currentUserIsMember =
-                projectMemberRepository.countByProjectIdAndUserId(
-                        project.getId(),
-                        currentUser.getId()
-                ) > 0;
-
-        if (!currentUserIsCreator && !currentUserIsMember) {
-            throw new ResponseStatusException(
-                    HttpStatus.FORBIDDEN,
-                    PROJECT_ACCESS_DENIED_MESSAGE
-            );
-        }
-
-        return toDetail(project, currentUserIsCreator);
+        ProjectAccessResponse access =
+                permissionAccessService.getCurrentUserAccess(id);
+        return toDetail(project, access);
     }
 
     @Override
@@ -194,7 +191,12 @@ public class ProjectServiceImpl implements ProjectService {
         );
         projectRepository.flush();
 
-        return toDetail(savedProject, true);
+        return toDetail(
+                savedProject,
+                permissionAccessService.getCurrentUserAccess(
+                        savedProject.getId()
+                )
+        );
     }
 
     @Override
@@ -207,6 +209,8 @@ public class ProjectServiceImpl implements ProjectService {
         }
 
         Projects project = findProject(id);
+        ProjectAccessResponse access =
+                permissionAccessService.getCurrentUserAccess(id);
 
         if (isCompletedProject(project)) {
             throw new BadHttpException(
@@ -214,32 +218,67 @@ public class ProjectServiceImpl implements ProjectService {
             );
         }
 
-        applyProjectInformation(
-                project,
-                request.projectName(),
-                request.projectCode(),
-                request.projectStartDate(),
-                request.projectEndDate(),
-                request.projectDescription(),
-                request.projectStatus(),
-                id
-        );
-        projectRepository.save(project);
+        boolean updateProjectInformation = hasProjectInformation(request);
+        boolean updatePhases = request.phases() != null;
+        boolean updateMembers = request.members() != null;
 
-        projectPhaseService.syncPhases(project, request.phases());
-        projectMemberService.syncMembers(project, request.members(), true);
+        if (!updateProjectInformation && !updatePhases && !updateMembers) {
+            throw new BadHttpException("No project changes were provided");
+        }
+
+        if (updateProjectInformation) {
+            permissionAccessService.requireAction(id, EDIT_PROJECT);
+            boolean projectDatesChanged = !Objects.equals(
+                    project.getProjectStartDate(),
+                    request.projectStartDate()
+            ) || !Objects.equals(
+                    project.getProjectEndDate(),
+                    request.projectEndDate()
+            );
+
+            if (projectDatesChanged) {
+                permissionAccessService.requireAction(id, EDIT_PHASE);
+
+                if (!updatePhases) {
+                    throw new BadHttpException(
+                            "Phases are required when project dates change"
+                    );
+                }
+            }
+
+            applyProjectInformation(
+                    project,
+                    request.projectName(),
+                    request.projectCode(),
+                    request.projectStartDate(),
+                    request.projectEndDate(),
+                    request.projectDescription(),
+                    request.projectStatus(),
+                    id
+            );
+            projectRepository.save(project);
+        }
+
+        if (updatePhases) {
+            permissionAccessService.requireAction(id, EDIT_PHASE);
+            projectPhaseService.syncPhases(project, request.phases());
+        }
+
+        if (updateMembers) {
+            permissionAccessService.requireAction(id, MANAGE_MEMBERS);
+            projectMemberService.syncMembers(project, request.members(), true);
+        }
+
         projectRepository.flush();
 
-        return toDetail(
-                project,
-                isProjectCreator(project, currentUserUtil.getCurrentUser())
-        );
+        return toDetail(project, access);
     }
 
     @Override
     @Transactional
     public ProjectDeleteResult deleteProject(UUID id) {
         Projects project = findProject(id);
+        permissionAccessService.requireAction(id, EDIT_PROJECT);
 
         if (isCompletedProject(project)) {
             throw new BadHttpException(
@@ -283,6 +322,7 @@ public class ProjectServiceImpl implements ProjectService {
     public List<ProjectPermissionConfigurationResponse>
     getProjectPermissionConfigurations(UUID projectId) {
         findProject(projectId);
+        permissionAccessService.requireAction(projectId, MANAGE_MEMBERS);
         return projectPermissionService.getConfigurations(projectId);
     }
 
@@ -293,6 +333,7 @@ public class ProjectServiceImpl implements ProjectService {
             UUID permissionId,
             ProjectPermissionConfigurationRequest request) {
         Projects project = findProject(projectId);
+        permissionAccessService.requireAction(projectId, MANAGE_MEMBERS);
         return projectPermissionService.configure(
                 project,
                 permissionId,
@@ -511,8 +552,16 @@ public class ProjectServiceImpl implements ProjectService {
 
     private ProjectDetailResponse toDetail(
             Projects project,
-            boolean currentUserIsCreator) {
+            ProjectAccessResponse access) {
         UUID projectId = project.getId();
+        boolean canManageMembers = permissionAccessService.hasAction(
+                access,
+                MANAGE_MEMBERS
+        );
+        boolean canViewContracts = permissionAccessService.hasAction(
+                access,
+                VIEW_CONTRACTS
+        );
 
         return new ProjectDetailResponse(
                 projectId,
@@ -525,11 +574,27 @@ public class ProjectServiceImpl implements ProjectService {
                 getUserName(project.getProjectCreatedBy()),
                 project.getProjectCreatedAt(),
                 projectPhaseService.getProjectPhases(projectId),
-                projectMemberService.getProjectUsers(projectId),
-                projectPermissionService.getOptions(projectId),
-                toProjectContracts(projectId),
-                currentUserIsCreator
+                canManageMembers
+                        ? projectMemberService.getProjectUsers(projectId)
+                        : List.of(),
+                canManageMembers
+                        ? projectPermissionService.getOptions(projectId)
+                        : List.of(),
+                canViewContracts
+                        ? toProjectContracts(projectId)
+                        : List.of(),
+                access.projectCreator(),
+                access
         );
+    }
+
+    private boolean hasProjectInformation(ProjectUpdateRequest request) {
+        return request.projectName() != null
+                || request.projectCode() != null
+                || request.projectStartDate() != null
+                || request.projectEndDate() != null
+                || request.projectDescription() != null
+                || request.projectStatus() != null;
     }
 
     private List<ProjectContractResponse> toProjectContracts(UUID projectId) {
