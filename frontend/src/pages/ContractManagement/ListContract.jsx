@@ -3,6 +3,7 @@ import { Alert, Button, Modal, Spinner } from "react-bootstrap";
 import {
     IconCopy,
     IconEye,
+    IconFileTypePdf,
     IconPencil,
     IconPlus,
     IconRefresh,
@@ -15,11 +16,13 @@ import contractTemplateApi from "../../services/contractTemplateService/contract
 import ContractForm from "./ContractForm.jsx";
 import {
     CONTRACT_STATUS,
+    canExportContractPdf,
     canManageNewContract,
     createEmptyContract,
     createReplacementContract,
     formatContractDate,
     formatContractDateTime,
+    formatContractMoney,
     formatContractStatus,
     getAvailableContractActions,
     getApiErrorMessage,
@@ -73,6 +76,7 @@ function ListContract() {
     const [modalError, setModalError] = useState("");
     const [submitting, setSubmitting] = useState(false);
     const [deletingId, setDeletingId] = useState(null);
+    const [exportingPdfId, setExportingPdfId] = useState(null);
     const [transitionAction, setTransitionAction] = useState(null);
     const [transitionContract, setTransitionContract] = useState(null);
     const [transitionForm, setTransitionForm] = useState({
@@ -298,6 +302,7 @@ function ListContract() {
                     contractTemplateVersionId: "",
                     contractContent: "",
                     contractLayoutJson: "",
+                    attributeValues: {},
                     saveAsTemplateVersion: false,
                     templateVersionName: "",
                     templateVersionNote: "",
@@ -318,6 +323,7 @@ function ListContract() {
                     contractTemplateVersionId: latestVersion?.id || "",
                     contractContent: latestVersion?.templateContent || "",
                     contractLayoutJson: latestVersion?.layoutJson || "",
+                    attributeValues: {},
                     saveAsTemplateVersion: false,
                     templateVersionName: "",
                     templateVersionNote: "",
@@ -337,6 +343,18 @@ function ListContract() {
                     contractTemplateVersionId: value,
                     contractContent: version?.templateContent || "",
                     contractLayoutJson: version?.layoutJson || "",
+                    attributeValues: {},
+                };
+            }
+
+            if (name.startsWith("attributeValues.")) {
+                const attributeKey = name.slice("attributeValues.".length);
+                return {
+                    ...current,
+                    attributeValues: {
+                        ...(current.attributeValues || {}),
+                        [attributeKey]: nextValue,
+                    },
                 };
             }
 
@@ -482,6 +500,43 @@ function ListContract() {
         }
     };
 
+    const handleExportPdf = async (contract) => {
+        if (!contract?.id || exportingPdfId) {
+            return;
+        }
+
+        setExportingPdfId(contract.id);
+        setModalError("");
+
+        try {
+            const response = await contractApi.exportContractPdf(contract.id);
+            const pdfBlob = response.data instanceof Blob
+                ? response.data
+                : new Blob([response.data], { type: "application/pdf" });
+            const pdfUrl = URL.createObjectURL(pdfBlob);
+            const previewWindow = window.open(pdfUrl, "_blank");
+
+            if (previewWindow) {
+                previewWindow.opener = null;
+            } else {
+                const link = document.createElement("a");
+                link.href = pdfUrl;
+                link.download = `contract-${contract.contractNumber || contract.id}.pdf`;
+                document.body.appendChild(link);
+                link.click();
+                link.remove();
+            }
+
+            window.setTimeout(() => URL.revokeObjectURL(pdfUrl), 60_000);
+        } catch (error) {
+            setModalError(
+                getApiErrorMessage(error, "Unable to export the completed PDF.")
+            );
+        } finally {
+            setExportingPdfId(null);
+        }
+    };
+
     const clearFilters = () => {
         setSearchInput("");
         setSearch("");
@@ -499,8 +554,8 @@ function ListContract() {
                 <div>
                     <h1>Contracts</h1>
                     <p>
-                        Manage contracts from NEW to ENDED or CANCELLED with
-                        role-based workflow actions.
+                        Manage contracts from NEW through approval, signing and
+                        the active lifecycle with role-based actions.
                     </p>
                 </div>
                 <Button
@@ -647,6 +702,19 @@ function ListContract() {
                                                         openViewModal(contract)
                                                     }
                                                 />
+                                                {canExportContractPdf(contract) && (
+                                                    <ActionButton
+                                                        label="Export PDF"
+                                                        icon={IconFileTypePdf}
+                                                        disabled={
+                                                            exportingPdfId
+                                                            === contract.id
+                                                        }
+                                                        onClick={() =>
+                                                            handleExportPdf(contract)
+                                                        }
+                                                    />
+                                                )}
                                                 <ActionButton
                                                     label="Edit"
                                                     icon={IconPencil}
@@ -754,6 +822,11 @@ function ListContract() {
                 onTransition={(action) =>
                     openTransitionModal(selectedContract, action)
                 }
+                onExportPdf={() => handleExportPdf(selectedContract)}
+                exportingPdf={
+                    exportingPdfId != null
+                    && exportingPdfId === selectedContract?.id
+                }
                 currentActor={currentActor}
             />
 
@@ -793,6 +866,8 @@ function ContractModal({
     onEdit,
     onCreateReplacement,
     onTransition,
+    onExportPdf,
+    exportingPdf,
     currentActor,
 }) {
     if (!mode) {
@@ -828,6 +903,7 @@ function ContractModal({
                         <Modal.Title>{title}</Modal.Title>
                     </Modal.Header>
                     <Modal.Body>
+                        {error && <Alert variant="danger">{error}</Alert>}
                         <ContractDetails
                             contract={contract}
                             currentActor={currentActor}
@@ -847,6 +923,20 @@ function ContractModal({
                             >
                                 <IconCopy size={18} />
                                 Create Replacement
+                            </Button>
+                        )}
+                        {canExportContractPdf(contract) && (
+                            <Button
+                                variant="success"
+                                onClick={onExportPdf}
+                                disabled={exportingPdf}
+                            >
+                                {exportingPdf ? (
+                                    <Spinner animation="border" size="sm" />
+                                ) : (
+                                    <IconFileTypePdf size={18} />
+                                )}
+                                {exportingPdf ? "Exporting..." : "Export PDF"}
                             </Button>
                         )}
                         {canManageNewContract(
@@ -966,6 +1056,12 @@ function ContractDetails({
                     value={contract.contractNumber}
                 />
                 <DetailItem label="Title" value={contract.contractTitle} />
+                <DetailItem
+                    label="Contract Value"
+                    value={formatContractMoney(
+                        contract.attributeValues?.contract_value
+                    )}
+                />
                 <DetailItem label="Project" value={contract.projectName} />
                 <DetailItem
                     label="Contract Type"
@@ -1009,6 +1105,22 @@ function ContractDetails({
                     value={formatContractDateTime(contract.contractCreatedAt)}
                 />
                 <DetailItem
+                    label="Director Signed By"
+                    value={contract.directorSignerName || "Not signed"}
+                />
+                <DetailItem
+                    label="Director Signed At"
+                    value={formatContractDateTime(contract.directorSignedAt)}
+                />
+                <DetailItem
+                    label="Partner Signed By"
+                    value={contract.partnerSignerName || "Not signed"}
+                />
+                <DetailItem
+                    label="Partner Signed At"
+                    value={formatContractDateTime(contract.partnerSignedAt)}
+                />
+                <DetailItem
                     label="Status Updated At"
                     value={formatContractDateTime(
                         contract.contractStatusUpdatedAt
@@ -1031,8 +1143,10 @@ function ContractDetails({
                 )}
             </div>
             <div className="contract-content-preview">
-                <h3>Contract Content</h3>
-                <pre>{contract.contractContent || "No content."}</pre>
+                <h3>Completed Contract Content</h3>
+                <pre>{contract.renderedContractContent
+                    || contract.contractContent
+                    || "No content."}</pre>
             </div>
             <ContractHistory history={contract.statusHistory} />
         </>

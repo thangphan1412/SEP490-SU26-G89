@@ -3,6 +3,7 @@ package com.fpt.backend.dto.response.contract;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 public record ContractResponse(
@@ -25,7 +26,14 @@ public record ContractResponse(
         String contractCreatedBy,
         LocalDateTime contractCreatedAt,
         String contractContent,
+        String renderedContractContent,
         String contractLayoutJson,
+        Map<String, String> attributeValues,
+        String directorSignerName,
+        LocalDateTime directorSignedAt,
+        String partnerSignerName,
+        LocalDateTime partnerSignedAt,
+        boolean pdfAvailable,
         LocalDateTime contractStatusUpdatedAt,
         LocalDateTime contractEndedAt,
         String contractCancellationReason,

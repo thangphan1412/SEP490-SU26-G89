@@ -413,6 +413,44 @@
   margin-top: 16px;
 }
 
+.contract-manual-fields {
+  padding: 16px;
+  border: 1px solid #c9d7ff;
+  border-radius: 9px;
+  background: #f5f8ff;
+}
+
+.contract-manual-fields-heading {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 14px;
+}
+
+.contract-manual-fields-heading strong {
+  color: #17213d;
+  font-size: 14px;
+}
+
+.contract-manual-fields-heading span {
+  color: #697691;
+  font-size: 12px;
+}
+
+.contract-manual-fields-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px 20px;
+}
+
+.contract-manual-checkbox {
+  display: flex;
+  min-height: 43px;
+  align-items: center;
+  gap: 9px;
+  margin: 0;
+}
+
 .contract-detail-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1342,6 +1380,7 @@
 
   .contract-form-grid,
   .contract-version-fields,
+  .contract-manual-fields-grid,
   .contract-detail-grid {
     grid-template-columns: 1fr;
   }

@@ -78,7 +78,11 @@ public class Contracts extends BaseEntity {
     @OneToMany(mappedBy = "contract")
     private List<ContractApprovals> contractApprovals;
     //contract attribute value
-    @OneToMany(mappedBy = "contract")
+    @OneToMany(
+            mappedBy = "contract",
+            cascade = CascadeType.ALL,
+            orphanRemoval = true
+    )
     private List<ContractAttributeValues> contractAttributeValues;
     // external
     @OneToMany(mappedBy = "contract")

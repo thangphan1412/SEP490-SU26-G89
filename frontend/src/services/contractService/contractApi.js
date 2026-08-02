@@ -42,6 +42,15 @@ const contractApi = {
         );
     },
 
+    exportContractPdf(id) {
+        return axios.get(CONTRACT_ENDPOINT + "/" + id + "/pdf", {
+            responseType: "blob",
+            headers: {
+                "Cache-Control": "no-cache",
+            },
+        });
+    },
+
     deleteContract(id, actor) {
         return axios.delete(CONTRACT_ENDPOINT + "/" + id, {
             params: actor,

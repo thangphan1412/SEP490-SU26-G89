@@ -5,9 +5,12 @@ import com.fpt.backend.dto.request.contract.ContractRequest;
 import com.fpt.backend.dto.request.contract.ContractTemplateLayout;
 import com.fpt.backend.dto.request.contract.ContractTransitionRequest;
 import com.fpt.backend.dto.response.contract.ContractListResponse;
+import com.fpt.backend.dto.response.contract.ContractPdfResponse;
 import com.fpt.backend.dto.response.contract.ContractProjectOptionResponse;
 import com.fpt.backend.dto.response.contract.ContractResponse;
 import com.fpt.backend.dto.response.contract.ContractStatusHistoryResponse;
+import com.fpt.backend.entity.ContractAttributeValues;
+import com.fpt.backend.entity.ContractPositions;
 import com.fpt.backend.entity.ContractStatusHistory;
 import com.fpt.backend.entity.ContractTemplateVersions;
 import com.fpt.backend.entity.ContractTemplates;
@@ -18,6 +21,7 @@ import com.fpt.backend.enums.ContractAction;
 import com.fpt.backend.enums.ContractStatus;
 import com.fpt.backend.exception.BadHttpException;
 import com.fpt.backend.exception.NotFoundException;
+import com.fpt.backend.repository.contract.ContractAttributeValueRepository;
 import com.fpt.backend.repository.contract.ContractRepository;
 import com.fpt.backend.repository.contract.ContractStatusHistoryRepository;
 import com.fpt.backend.repository.contract.ContractTemplateRepository;
@@ -37,8 +41,10 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.Period;
 import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -68,7 +74,10 @@ public class ContractServiceImpl implements ContractService {
     private final ContractTemplateRepository contractTemplateRepository;
     private final ContractTemplateVersionRepository contractTemplateVersionRepository;
     private final ContractStatusHistoryRepository contractStatusHistoryRepository;
+    private final ContractAttributeValueRepository contractAttributeValueRepository;
     private final ContractTemplateLayoutMapper layoutMapper;
+    private final ContractDocumentRenderer documentRenderer;
+    private final ContractPdfGenerator pdfGenerator;
 
     @Override
     @Transactional(readOnly = true)
@@ -140,6 +149,7 @@ public class ContractServiceImpl implements ContractService {
         ));
 
         Contracts savedContract = contractRepository.save(contract);
+        syncAttributeValues(savedContract, request.attributeValues());
         recordHistory(
                 savedContract,
                 null,
@@ -168,8 +178,11 @@ public class ContractServiceImpl implements ContractService {
                 "edit"
         );
         applyEditableFields(contract, request, false);
-
-        return toResponse(contractRepository.save(contract));
+        Contracts savedContract = contractRepository.save(contract);
+        if (request.attributeValues() != null) {
+            syncAttributeValues(savedContract, request.attributeValues());
+        }
+        return toResponse(savedContract);
     }
 
     @Override
@@ -240,11 +253,39 @@ public class ContractServiceImpl implements ContractService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public ContractPdfResponse exportContractPdf(UUID id) {
+        Contracts contract = findContract(id);
+        ContractStatus status = readStatus(contract);
+        if (status != ContractStatus.ACTIVE && status != ContractStatus.ENDED) {
+            throw new BadHttpException(
+                    "A completed PDF is available only after both parties sign"
+            );
+        }
+
+        List<ContractStatusHistory> history = loadHistory(contract.getId());
+        Map<String, String> attributeValues = readAttributeValues(contract.getId());
+        ContractDocumentRenderer.RenderedDocument renderedDocument =
+                documentRenderer.render(contract, history, attributeValues);
+        if (!renderedDocument.fullySigned()) {
+            throw new BadHttpException(
+                    "Both Director and Partner signatures are required before PDF export"
+            );
+        }
+
+        return new ContractPdfResponse(
+                createPdfFileName(contract),
+                pdfGenerator.generate(contract, renderedDocument)
+        );
+    }
+
+    @Override
     @Transactional
     public void deleteContract(UUID id, String actorName, String actorRole) {
         Contracts contract = findContract(id);
         requireStatus(contract, ContractStatus.NEW, "Only NEW contracts can be deleted");
         validateNewContractOwner(contract, actorName, actorRole, "delete");
+        contractAttributeValueRepository.deleteAllByContractId(contract.getId());
         contractRepository.delete(contract);
     }
 
@@ -288,6 +329,11 @@ public class ContractServiceImpl implements ContractService {
         if (Boolean.TRUE.equals(request.saveAsTemplateVersion())) {
             version = createTemplateVersion(template, version, request);
         }
+        Map<String, String> requestedAttributeValues = request.attributeValues();
+        if (!creating && requestedAttributeValues == null) {
+            requestedAttributeValues = readAttributeValues(contract.getId());
+        }
+        validateManualAttributeValues(version, requestedAttributeValues);
 
         String content = normalizeContent(request.contractContent());
         String layoutJson = normalizeContent(request.contractLayoutJson());
@@ -389,7 +435,6 @@ public class ContractServiceImpl implements ContractService {
                     currentStatus == ContractStatus.PENDING_DIRECTOR_SIGNATURE;
             case SIGN_PARTNER ->
                     currentStatus == ContractStatus.PENDING_PARTNER_SIGNATURE;
-            case END -> currentStatus == ContractStatus.ACTIVE;
             case CANCEL -> !currentStatus.isTerminal();
             case REJECT -> currentStatus == ContractStatus.PENDING_INTERNAL_APPROVAL
                     || currentStatus == ContractStatus.PENDING_DIRECTOR_SIGNATURE
@@ -419,7 +464,6 @@ public class ContractServiceImpl implements ContractService {
             case APPROVE_INTERNAL -> Set.of("MANAGER");
             case SIGN_DIRECTOR -> Set.of("CEO", "DIRECTOR");
             case SIGN_PARTNER -> Set.of("PARTNER", "EXTERNAL", "EXTERNAL_PARTNER");
-            case END -> Set.of("CEO", "DIRECTOR", "PARTNER", "EXTERNAL_PARTNER");
             case REJECT -> rolesForCurrentStage(currentStatus);
             case CANCEL -> rolesForCancellation(currentStatus);
         };
@@ -498,7 +542,6 @@ public class ContractServiceImpl implements ContractService {
             case APPROVE_INTERNAL -> ContractStatus.PENDING_DIRECTOR_SIGNATURE;
             case SIGN_DIRECTOR -> ContractStatus.PENDING_PARTNER_SIGNATURE;
             case SIGN_PARTNER -> ContractStatus.ACTIVE;
-            case END -> ContractStatus.ENDED;
             case CANCEL, REJECT -> ContractStatus.CANCELLED;
         };
     }
@@ -659,6 +702,105 @@ public class ContractServiceImpl implements ContractService {
         return savedVersion;
     }
 
+    private void validateManualAttributeValues(
+            ContractTemplateVersions version,
+            Map<String, String> requestedValues
+    ) {
+        Map<String, String> normalizedValues = normalizeAttributeValues(
+                requestedValues
+        );
+
+        for (ContractPositions position : manualPositions(version)) {
+            String value = normalizedValues.get(
+                    normalizeAttributeKey(position.getAttributeKey())
+            );
+            if (Boolean.TRUE.equals(position.getIsRequired()) && isBlank(value)) {
+                throw new BadHttpException(
+                        position.getFieldLabel() + " is required"
+                );
+            }
+            if (value != null && value.length() > 255) {
+                throw new BadHttpException(
+                        position.getFieldLabel() + " must not exceed 255 characters"
+                );
+            }
+        }
+    }
+
+    private void syncAttributeValues(
+            Contracts contract,
+            Map<String, String> requestedValues
+    ) {
+        contractAttributeValueRepository.deleteAllByContractId(contract.getId());
+        Map<String, String> normalizedValues = normalizeAttributeValues(
+                requestedValues
+        );
+        LocalDateTime now = LocalDateTime.now();
+        List<ContractAttributeValues> values = manualPositions(
+                contract.getContractTemplateVersion()
+        ).stream()
+                .map(position -> {
+                    String attributeKey = normalizeAttributeKey(
+                            position.getAttributeKey()
+                    );
+                    String value = normalizeToNull(normalizedValues.get(attributeKey));
+                    if (value == null) {
+                        return null;
+                    }
+
+                    ContractAttributeValues attributeValue =
+                            new ContractAttributeValues();
+                    attributeValue.setContract(contract);
+                    attributeValue.setAttributeKey(attributeKey);
+                    attributeValue.setAttributeValue(value);
+                    attributeValue.setValueSource("MANUAL");
+                    attributeValue.setCreatedAt(now);
+                    attributeValue.setUpdatedAt(now);
+                    return attributeValue;
+                })
+                .filter(java.util.Objects::nonNull)
+                .toList();
+
+        if (!values.isEmpty()) {
+            contractAttributeValueRepository.saveAll(values);
+        }
+    }
+
+    private List<ContractPositions> manualPositions(
+            ContractTemplateVersions version
+    ) {
+        if (version == null || version.getPositions() == null) {
+            return List.of();
+        }
+
+        return version.getPositions().stream()
+                .filter(position -> "MANUAL".equalsIgnoreCase(
+                        position.getValueSource()
+                ))
+                .toList();
+    }
+
+    private Map<String, String> normalizeAttributeValues(
+            Map<String, String> requestedValues
+    ) {
+        Map<String, String> normalized = new LinkedHashMap<>();
+        if (requestedValues == null) {
+            return normalized;
+        }
+
+        requestedValues.forEach((key, value) -> {
+            String normalizedKey = normalizeAttributeKey(key);
+            if (!normalizedKey.isBlank()) {
+                normalized.put(normalizedKey, normalizeToNull(value));
+            }
+        });
+        return normalized;
+    }
+
+    private String normalizeAttributeKey(String key) {
+        return key == null ? "" : key.trim().toLowerCase(Locale.ROOT);
+    }
+
     private void validateRequest(ContractRequest request) {
         if (request == null) {
             throw new BadHttpException("Contract information is required");
@@ -805,12 +947,16 @@ public class ContractServiceImpl implements ContractService {
         ContractTemplateVersions version = contract.getContractTemplateVersion();
         Contracts previousContract = contract.getPreviousContract();
         ContractStatus status = readStatus(contract);
-        List<ContractStatusHistoryResponse> history =
-                contractStatusHistoryRepository
-                        .findByContractIdOrderByChangedAtDesc(contract.getId())
-                        .stream()
-                        .map(this::toHistoryResponse)
-                        .toList();
+        List<ContractStatusHistory> historyEntities = loadHistory(contract.getId());
+        List<ContractStatusHistoryResponse> history = historyEntities.stream()
+                .map(this::toHistoryResponse)
+                .toList();
+        Map<String, String> attributeValues = readAttributeValues(contract.getId());
+        ContractDocumentRenderer.RenderedDocument renderedDocument =
+                documentRenderer.render(contract, historyEntities, attributeValues);
+        boolean pdfAvailable = (status == ContractStatus.ACTIVE
+                || status == ContractStatus.ENDED)
+                && renderedDocument.fullySigned();
 
         return new ContractResponse(
                 contract.getId(),
@@ -832,7 +978,14 @@ public class ContractServiceImpl implements ContractService {
                 contract.getContractCreateBy(),
                 contract.getContractCreatedAt(),
                 contract.getContractContent(),
+                renderedDocument.content(),
                 contract.getContractLayoutJson(),
+                attributeValues,
+                renderedDocument.directorSignerName(),
+                renderedDocument.directorSignedAt(),
+                renderedDocument.partnerSignerName(),
+                renderedDocument.partnerSignedAt(),
+                pdfAvailable,
                 contract.getContractStatusUpdatedAt(),
                 contract.getContractEndedAt(),
                 contract.getContractCancellationReason(),
@@ -840,6 +993,30 @@ public class ContractServiceImpl implements ContractService {
                 previousContract != null ? previousContract.getContractNumber() : null,
                 history
         );
+    }
+
+    private List<ContractStatusHistory> loadHistory(UUID contractId) {
+        return contractStatusHistoryRepository
+                .findByContractIdOrderByChangedAtDesc(contractId);
+    }
+
+    private Map<String, String> readAttributeValues(UUID contractId) {
+        Map<String, String> values = new LinkedHashMap<>();
+        contractAttributeValueRepository
+                .findByContractIdOrderByAttributeKeyAsc(contractId)
+                .forEach(item -> values.put(
+                        normalizeAttributeKey(item.getAttributeKey()),
+                        item.getAttributeValue()
+                ));
+        return values;
+    }
+
+    private String createPdfFileName(Contracts contract) {
+        String number = isBlank(contract.getContractNumber())
+                ? contract.getId().toString()
+                : contract.getContractNumber().trim();
+        String safeNumber = number.replaceAll("[^a-zA-Z0-9._-]", "_");
+        return "contract-" + safeNumber + ".pdf";
     }
 
     private ContractStatusHistoryResponse toHistoryResponse(

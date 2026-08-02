@@ -22,6 +22,19 @@ function ContractForm({
     const versions = Array.isArray(selectedTemplate?.versions)
         ? selectedTemplate.versions
         : [];
+    const selectedVersion = versions.find(
+        (version) => version.id === contract.contractTemplateVersionId
+    );
+    const manualFields = (Array.isArray(selectedVersion?.positions)
+        ? selectedVersion.positions
+        : []
+    ).filter(
+        (position, index, positions) =>
+            String(position.valueSource || "").toUpperCase() === "MANUAL"
+            && positions.findIndex(
+                (item) => item.attributeKey === position.attributeKey
+            ) === index
+    );
 
     return (
         <div className="contract-form-grid">
@@ -175,6 +188,32 @@ function ContractForm({
                     readOnly={creatorReadOnly}
                 />
 
+                {manualFields.length > 0 && (
+                    <section className="contract-form-full contract-manual-fields">
+                        <div className="contract-manual-fields-heading">
+                            <strong>Contract-specific values</strong>
+                            <span>
+                                These values fill the selected template without
+                                changing the reusable version.
+                            </span>
+                        </div>
+                        <div className="contract-manual-fields-grid">
+                            {manualFields.map((field) => (
+                                <ManualAttributeField
+                                    key={field.attributeKey}
+                                    field={field}
+                                    value={
+                                        contract.attributeValues?.[
+                                            field.attributeKey
+                                        ] || ""
+                                    }
+                                    onChange={onChange}
+                                />
+                            ))}
+                        </div>
+                    </section>
+                )}
+
                 <div className="contract-form-full">
                     <label htmlFor="contractContent" className="contract-form-label">
                         Contract Content
@@ -265,6 +304,9 @@ function TextField({
     type = "text",
     required = false,
     readOnly = false,
+    min,
+    step,
+    inputMode,
 }) {
     return (
         <div>
@@ -279,9 +321,58 @@ function TextField({
                 placeholder={placeholder}
                 required={required}
                 readOnly={readOnly}
+                min={min}
+                step={step}
+                inputMode={inputMode}
                 className={`form-control${icon ? " contract-date-input" : ""}`}
             />
         </div>
+    );
+}
+
+function ManualAttributeField({ field, value, onChange }) {
+    const fieldType = String(field.fieldType || "TEXT").toUpperCase();
+    const isContractValue = field.attributeKey === "contract_value";
+
+    if (fieldType === "CHECKBOX") {
+        return (
+            <label className="form-check contract-manual-checkbox">
+                <input
+                    className="form-check-input"
+                    type="checkbox"
+                    checked={String(value).toLowerCase() === "true"}
+                    onChange={(event) => onChange({
+                        target: {
+                            name: `attributeValues.${field.attributeKey}`,
+                            value: String(event.target.checked),
+                            type: "text",
+                        },
+                    })}
+                />
+                <span className="form-check-label">
+                    {field.fieldLabel || field.attributeKey}
+                </span>
+            </label>
+        );
+    }
+
+    return (
+        <TextField
+            label={
+                isContractValue
+                    ? `${field.fieldLabel || "Contract Value"} (VND)`
+                    : field.fieldLabel || field.attributeKey
+            }
+            name={`attributeValues.${field.attributeKey}`}
+            value={value}
+            onChange={onChange}
+            type={isContractValue ? "number" : fieldType === "DATE" ? "date" : "text"}
+            min={isContractValue ? "0" : undefined}
+            step={isContractValue ? "1000" : undefined}
+            inputMode={isContractValue ? "decimal" : undefined}
+            placeholder={isContractValue ? "Example: 150000000" : "Enter value"}
+            required={Boolean(field.required)}
+        />
     );
 }
 

@@ -17,7 +17,6 @@ export const CONTRACT_ACTION = Object.freeze({
     APPROVE_INTERNAL: "APPROVE_INTERNAL",
     SIGN_DIRECTOR: "SIGN_DIRECTOR",
     SIGN_PARTNER: "SIGN_PARTNER",
-    END: "END",
     CANCEL: "CANCEL",
     REJECT: "REJECT",
 });
@@ -44,11 +43,6 @@ const ACTION_DETAILS = Object.freeze({
         description: "Verify the partner's age and activate the signed contract.",
         tone: "primary",
         requiresSignerDateOfBirth: true,
-    },
-    [CONTRACT_ACTION.END]: {
-        label: "End contract",
-        description: "Close an active contract as completed or expired.",
-        tone: "success",
     },
     [CONTRACT_ACTION.CANCEL]: {
         label: "Cancel contract",
@@ -94,6 +88,7 @@ export function createEmptyContract(projectId = "") {
         contractCreatedAt: null,
         contractContent: "",
         contractLayoutJson: "",
+        attributeValues: {},
         saveAsTemplateVersion: false,
         templateVersionName: "",
         templateVersionNote: "",
@@ -117,6 +112,7 @@ export function mapContractToForm(contract) {
         contractCreatedAt: contract?.contractCreatedAt || null,
         contractContent: contract?.contractContent || "",
         contractLayoutJson: contract?.contractLayoutJson || "",
+        attributeValues: { ...(contract?.attributeValues || {}) },
         saveAsTemplateVersion: false,
         templateVersionName: "",
         templateVersionNote: "",
@@ -166,6 +162,11 @@ export function toContractRequest(contract, isCreating = false) {
         previousContractId: contract.previousContractId || null,
         actorName: actor.actorName,
         actorRole: actor.actorRole,
+        attributeValues: Object.fromEntries(
+            Object.entries(contract.attributeValues || {})
+                .map(([key, value]) => [key, String(value ?? "").trim()])
+                .filter(([, value]) => value !== "")
+        ),
     };
 }
 
@@ -208,6 +209,15 @@ export function validateContract(contract) {
         return "Expiration date must be on or after the effective date.";
     }
 
+    const contractValue = contract.attributeValues?.contract_value;
+    if (
+        contractValue !== undefined
+        && contractValue !== ""
+        && Number(contractValue) <= 0
+    ) {
+        return "Contract value must be greater than zero.";
+    }
+
     if (contract.saveAsTemplateVersion && !contract.contractTemplateId) {
         return "Please select a template before saving a reusable version.";
     }
@@ -237,6 +247,13 @@ export function normalizeContractStatus(status) {
     };
 
     return legacyStatusMap[normalized] || normalized;
+}
+
+export function canExportContractPdf(contract) {
+    const status = normalizeContractStatus(contract?.contractStatus);
+
+    return Boolean(contract?.pdfAvailable)
+        || [CONTRACT_STATUS.ACTIVE, CONTRACT_STATUS.ENDED].includes(status);
 }
 
 export function formatContractStatus(status) {
@@ -341,7 +358,7 @@ export function getAvailableContractActions(contract, role, actorName) {
             )
         )
     ) {
-        return [CONTRACT_ACTION.END, CONTRACT_ACTION.CANCEL];
+        return [CONTRACT_ACTION.CANCEL];
     }
 
     return [];
@@ -439,6 +456,21 @@ export function formatContractDate(value) {
     return Number.isNaN(date.getTime())
         ? value
         : new Intl.DateTimeFormat("vi-VN").format(date);
+}
+
+export function formatContractMoney(value) {
+    if (value === null || value === undefined || value === "") {
+        return "-";
+    }
+
+    const amount = Number(value);
+    if (!Number.isFinite(amount)) {
+        return String(value);
+    }
+
+    return `${new Intl.NumberFormat("vi-VN", {
+        maximumFractionDigits: 2,
+    }).format(amount)} VNĐ`;
 }
 
 export function formatContractDateTime(value) {

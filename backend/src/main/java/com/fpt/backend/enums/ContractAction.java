@@ -7,7 +7,6 @@ public enum ContractAction {
     APPROVE_INTERNAL,
     SIGN_DIRECTOR,
     SIGN_PARTNER,
-    END,
     CANCEL,
     REJECT;
 
