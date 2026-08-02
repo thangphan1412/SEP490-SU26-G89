@@ -8,7 +8,6 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.LocalDateTime;
-import java.time.LocalDate;
 import java.util.UUID;
 
 @Getter
@@ -17,9 +16,8 @@ import java.util.UUID;
 @NoArgsConstructor
 @Builder
 public class DepartmentResponseDTO {
-    private Integer id;
-    private Integer companyId;
     private UUID id;
+    private UUID companyId;
     private String departmentName;
     private String departmentCode;
     private String departmentStatus;
