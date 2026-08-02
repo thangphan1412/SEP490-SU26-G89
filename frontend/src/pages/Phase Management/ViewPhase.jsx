@@ -14,6 +14,11 @@ import PhaseInfoItem from "../../components/phaseComponents/PhaseInfoItem.jsx";
 import PhasePage from "../../components/phaseComponents/PhasePage.jsx";
 import PhaseStatusBadge from "../../components/phaseComponents/PhaseStatusBadge.jsx";
 import PhaseTableSection from "../../components/phaseComponents/PhaseTableSection.jsx";
+import {
+  hasAnyProjectAction,
+  hasProjectAction,
+  PROJECT_ACTIONS,
+} from "../../components/permissionComponents/permissionAccess.js";
 import { viewPhase } from "../../services/phaseService/phaseApi.js";
 import "../../assets/styles/css/phaseStyles/ViewPhase.css";
 
@@ -70,6 +75,39 @@ function ViewPhase() {
   const deliverables = Array.isArray(phase?.deliverables) ? phase.deliverables : [];
   const contracts = Array.isArray(phase?.contracts) ? phase.contracts : [];
   const progress = normalizeProgress(phase?.progress);
+  const access = phase?.currentUserAccess;
+  const canViewTasks = hasProjectAction(
+    access,
+    PROJECT_ACTIONS.VIEW_TASKS
+  );
+  const canManageTasks = canViewTasks && hasAnyProjectAction(access, [
+    PROJECT_ACTIONS.CREATE_TASKS,
+    PROJECT_ACTIONS.EDIT_TASKS,
+    PROJECT_ACTIONS.DELETE_TASKS,
+  ]);
+  const canViewDeliverables = hasProjectAction(
+    access,
+    PROJECT_ACTIONS.VIEW_DELIVERABLES
+  );
+  const canManageDeliverables = canViewDeliverables
+    && hasAnyProjectAction(access, [
+      PROJECT_ACTIONS.CREATE_DELIVERABLES,
+      PROJECT_ACTIONS.EDIT_DELIVERABLES,
+      PROJECT_ACTIONS.DELETE_DELIVERABLES,
+    ]);
+  const canViewContracts = hasProjectAction(
+    access,
+    PROJECT_ACTIONS.VIEW_CONTRACTS
+  );
+  const canManageContracts = canViewContracts
+    && hasAnyProjectAction(access, [
+      PROJECT_ACTIONS.CREATE_CONTRACTS,
+      PROJECT_ACTIONS.EDIT_CONTRACTS,
+      PROJECT_ACTIONS.DELETE_CONTRACTS,
+    ]);
+  const canViewAnyWorkModule = canViewTasks
+    || canViewDeliverables
+    || canViewContracts;
 
   function renderTask(task) {
     const taskProgress = normalizeProgress(task.progress);
@@ -147,12 +185,19 @@ function ViewPhase() {
             </div>
           </Card>
 
+          {!canViewAnyWorkModule && (
+            <Alert variant="info" className="phase-page-message">
+              You do not have permission to view tasks, deliverables, or contracts in this project.
+            </Alert>
+          )}
+
+          {canViewTasks && (
           <PhaseTableSection
             icon={<IconChecklist size={22} />}
             title="Tasks"
             description="Work items planned for this phase."
             count={tasks.length}
-            action={(
+            action={canManageTasks ? (
               <Button
                 type="button"
                 variant="outline-primary"
@@ -160,7 +205,7 @@ function ViewPhase() {
               >
                 <IconSettings size={16} /> Manage Tasks
               </Button>
-            )}
+            ) : null}
           >
             <div className="phase-table-wrap">
               <Table responsive hover className="phase-data-table mb-0">
@@ -173,13 +218,15 @@ function ViewPhase() {
               </Table>
             </div>
           </PhaseTableSection>
+          )}
 
+          {canViewDeliverables && (
           <PhaseTableSection
             icon={<IconFileDescription size={22} />}
             title="Deliverables"
             description="Outputs that must be completed in this phase."
             count={deliverables.length}
-            action={(
+            action={canManageDeliverables ? (
               <Button
                 type="button"
                 variant="outline-primary"
@@ -187,7 +234,7 @@ function ViewPhase() {
               >
                 <IconSettings size={16} /> Manage Deliverables
               </Button>
-            )}
+            ) : null}
           >
             <div className="phase-table-wrap">
               <Table responsive hover className="phase-data-table mb-0">
@@ -207,13 +254,15 @@ function ViewPhase() {
               </Table>
             </div>
           </PhaseTableSection>
+          )}
 
+          {canViewContracts && (
           <PhaseTableSection
             icon={<IconFileText size={22} />}
             title="Contracts"
             description="Contracts linked directly to this phase."
             count={contracts.length}
-            action={(
+            action={canManageContracts ? (
               <Button
                 type="button"
                 variant="outline-primary"
@@ -221,7 +270,7 @@ function ViewPhase() {
               >
                 <IconSettings size={16} /> Manage Contracts
               </Button>
-            )}
+            ) : null}
           >
             <div className="phase-table-wrap">
               <Table responsive hover className="phase-data-table mb-0">
@@ -242,6 +291,7 @@ function ViewPhase() {
               </Table>
             </div>
           </PhaseTableSection>
+          )}
         </div>
       )}
     </PhasePage>

@@ -5,8 +5,10 @@ import com.fpt.backend.dto.response.phase.PhaseDeliverableResponse;
 import com.fpt.backend.dto.response.phase.PhaseDetailResponse;
 import com.fpt.backend.dto.response.phase.PhaseListItemResponse;
 import com.fpt.backend.dto.response.phase.PhaseTaskResponse;
+import com.fpt.backend.dto.response.project.ProjectAccessResponse;
 import com.fpt.backend.entity.Contracts;
 import com.fpt.backend.entity.Deliverable;
+import com.fpt.backend.entity.PermissionAction;
 import com.fpt.backend.entity.Projects;
 import com.fpt.backend.entity.Timeline;
 import com.fpt.backend.entity.TimelineContract;
@@ -20,6 +22,7 @@ import com.fpt.backend.repository.phase.PhaseTaskRepository;
 import com.fpt.backend.repository.project.ProjectRepository;
 import com.fpt.backend.service.interfaces.phase.PhaseProgressService;
 import com.fpt.backend.service.interfaces.phase.PhaseService;
+import com.fpt.backend.service.interfaces.permission.PermissionAccessService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -37,6 +40,13 @@ import java.util.UUID;
 @Transactional(readOnly = true)
 public class PhaseServiceImpl implements PhaseService {
     private static final ZoneId APP_TIME_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
+    private static final String VIEW_TASKS =
+            PermissionAction.DefaultAction.VIEW_TASKS.getActionCode();
+    private static final String VIEW_DELIVERABLES =
+            PermissionAction.DefaultAction.VIEW_DELIVERABLES
+                    .getActionCode();
+    private static final String VIEW_CONTRACTS =
+            PermissionAction.DefaultAction.VIEW_CONTRACTS.getActionCode();
 
     private final PhaseRepository phaseRepository;
     private final PhaseTaskRepository phaseTaskRepository;
@@ -44,12 +54,15 @@ public class PhaseServiceImpl implements PhaseService {
     private final PhaseContractRepository phaseContractRepository;
     private final ProjectRepository projectRepository;
     private final PhaseProgressService phaseProgressService;
+    private final PermissionAccessService permissionAccessService;
 
     @Override
     public List<PhaseListItemResponse> getPhasesByProjectId(UUID projectId) {
         if (projectId == null || !projectRepository.existsById(projectId)) {
             throw new NotFoundException("Project not found");
         }
+
+        permissionAccessService.getCurrentUserAccess(projectId);
 
         List<Timeline> phases = phaseRepository.findByProjectId(projectId);
         List<PhaseListItemResponse> responses = new ArrayList<>();
@@ -71,63 +84,13 @@ public class PhaseServiceImpl implements PhaseService {
 
         Timeline phase = optionalPhase.get();
         Projects project = phase.getProject();
-
-        List<TimelineTask> phaseTasks = phaseTaskRepository.findByPhaseId(phaseId);
-        List<PhaseTaskResponse> tasks = new ArrayList<>();
-
-        for (TimelineTask task : phaseTasks) {
-            Users assignedUser = task.getAssignedTo();
-            UUID assignedUserId = null;
-            String assignedUserName = null;
-            String assignedUserEmail = null;
-
-            if (assignedUser != null) {
-                assignedUserId = assignedUser.getId();
-                assignedUserName = getUserName(assignedUser);
-                assignedUserEmail = assignedUser.getEmail();
-            }
-
-            tasks.add(new PhaseTaskResponse(
-                    task.getId(),
-                    task.getTitle(),
-                    task.getStatus(),
-                    toLocalDate(task.getStartDate()),
-                    toLocalDate(task.getEndDate()),
-                    task.getProgress(),
-                    assignedUserId,
-                    assignedUserName,
-                    assignedUserEmail
-            ));
-        }
-
-        List<Deliverable> phaseDeliverables = phaseDeliverableRepository.findByPhaseId(phaseId);
-        List<PhaseDeliverableResponse> deliverables = new ArrayList<>();
-
-        for (Deliverable deliverable : phaseDeliverables) {
-            deliverables.add(new PhaseDeliverableResponse(
-                    deliverable.getId(),
-                    deliverable.getTitle(),
-                    deliverable.getDescription(),
-                    toLocalDate(deliverable.getDueDate()),
-                    deliverable.getStatus()
-            ));
-        }
-
-        List<TimelineContract> phaseContracts = phaseContractRepository.findByPhaseId(phaseId);
-        List<PhaseContractResponse> contracts = new ArrayList<>();
-
-        for (TimelineContract phaseContract : phaseContracts) {
-            Contracts contract = phaseContract.getContract();
-            contracts.add(new PhaseContractResponse(
-                    contract.getId(),
-                    contract.getContractNumber(),
-                    contract.getContractTitle(),
-                    contract.getContractStatus(),
-                    contract.getEffectiveDate(),
-                    contract.getExpirationDate(),
-                    phaseContract.getLinkedAt()
-            ));
-        }
+        ProjectAccessResponse access = permissionAccessService
+                .getCurrentUserAccess(project.getId());
+        List<PhaseTaskResponse> tasks = getVisibleTasks(phaseId, access);
+        List<PhaseDeliverableResponse> deliverables =
+                getVisibleDeliverables(phaseId, access);
+        List<PhaseContractResponse> contracts =
+                getVisibleContracts(phaseId, access);
 
         return new PhaseDetailResponse(
                 phase.getId(),
@@ -142,7 +105,115 @@ public class PhaseServiceImpl implements PhaseService {
                 project.getProjectName(),
                 tasks,
                 deliverables,
-                contracts
+                contracts,
+                access
+        );
+    }
+
+    private List<PhaseTaskResponse> getVisibleTasks(
+            UUID phaseId,
+            ProjectAccessResponse access) {
+        List<PhaseTaskResponse> responses = new ArrayList<>();
+
+        if (!permissionAccessService.hasAction(access, VIEW_TASKS)) {
+            return responses;
+        }
+
+        List<TimelineTask> tasks;
+
+        if (permissionAccessService.hasFullWorkScope(
+                access,
+                VIEW_TASKS
+        )) {
+            tasks = phaseTaskRepository.findByPhaseId(phaseId);
+        } else {
+            tasks = phaseTaskRepository.findByPhaseIdAndAssignedUserId(
+                    phaseId,
+                    access.currentUserId()
+            );
+        }
+
+        for (TimelineTask task : tasks) {
+            responses.add(toTaskResponse(task));
+        }
+
+        return responses;
+    }
+
+    private List<PhaseDeliverableResponse> getVisibleDeliverables(
+            UUID phaseId,
+            ProjectAccessResponse access) {
+        List<PhaseDeliverableResponse> responses = new ArrayList<>();
+
+        if (!permissionAccessService.hasAction(
+                access,
+                VIEW_DELIVERABLES
+        )) {
+            return responses;
+        }
+
+        for (Deliverable deliverable
+                : phaseDeliverableRepository.findByPhaseId(phaseId)) {
+            responses.add(new PhaseDeliverableResponse(
+                    deliverable.getId(),
+                    deliverable.getTitle(),
+                    deliverable.getDescription(),
+                    toLocalDate(deliverable.getDueDate()),
+                    deliverable.getStatus()
+            ));
+        }
+
+        return responses;
+    }
+
+    private List<PhaseContractResponse> getVisibleContracts(
+            UUID phaseId,
+            ProjectAccessResponse access) {
+        List<PhaseContractResponse> responses = new ArrayList<>();
+
+        if (!permissionAccessService.hasAction(access, VIEW_CONTRACTS)) {
+            return responses;
+        }
+
+        for (TimelineContract phaseContract
+                : phaseContractRepository.findByPhaseId(phaseId)) {
+            Contracts contract = phaseContract.getContract();
+            responses.add(new PhaseContractResponse(
+                    contract.getId(),
+                    contract.getContractNumber(),
+                    contract.getContractTitle(),
+                    contract.getContractStatus(),
+                    contract.getEffectiveDate(),
+                    contract.getExpirationDate(),
+                    phaseContract.getLinkedAt()
+            ));
+        }
+
+        return responses;
+    }
+
+    private PhaseTaskResponse toTaskResponse(TimelineTask task) {
+        Users assignedUser = task.getAssignedTo();
+        UUID assignedUserId = null;
+        String assignedUserName = null;
+        String assignedUserEmail = null;
+
+        if (assignedUser != null) {
+            assignedUserId = assignedUser.getId();
+            assignedUserName = getUserName(assignedUser);
+            assignedUserEmail = assignedUser.getEmail();
+        }
+
+        return new PhaseTaskResponse(
+                task.getId(),
+                task.getTitle(),
+                task.getStatus(),
+                toLocalDate(task.getStartDate()),
+                toLocalDate(task.getEndDate()),
+                task.getProgress(),
+                assignedUserId,
+                assignedUserName,
+                assignedUserEmail
         );
     }
 
