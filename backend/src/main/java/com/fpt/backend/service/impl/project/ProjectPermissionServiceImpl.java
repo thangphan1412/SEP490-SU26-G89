@@ -9,7 +9,7 @@ import com.fpt.backend.exception.BadHttpException;
 import com.fpt.backend.exception.NotFoundException;
 import com.fpt.backend.repository.permission.PermissionRepository;
 import com.fpt.backend.repository.permission.UserPermissionRepository;
-import com.fpt.backend.service.interfaces.permission.PermissionModuleService;
+import com.fpt.backend.service.interfaces.permission.PermissionActionService;
 import com.fpt.backend.service.interfaces.project.ProjectPermissionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -28,24 +28,8 @@ public class ProjectPermissionServiceImpl
     private static final String FULL_ACCESS_PERMISSION_NAME =
             "Project Full Access";
     private static final String FULL_ACCESS_PERMISSION_CODE_PREFIX = "PFA_";
-    private static final String FULL_WORK_SCOPE = "FULL";
-    private static final List<String> FULL_ACCESS_ACTIONS = List.of(
-            "VIEW_TASKS",
-            "CREATE_TASKS",
-            "EDIT_TASKS",
-            "DELETE_TASKS",
-            "VIEW_DELIVERABLES",
-            "CREATE_DELIVERABLES",
-            "EDIT_DELIVERABLES",
-            "DELETE_DELIVERABLES",
-            "VIEW_CONTRACTS",
-            "EDIT_PROJECT",
-            "EDIT_PHASE",
-            "MANAGE_MEMBERS"
-    );
-
     private final PermissionRepository permissionRepository;
-    private final PermissionModuleService permissionModuleService;
+    private final PermissionActionService permissionActionService;
     private final UserPermissionRepository userPermissionRepository;
 
     @Override
@@ -65,12 +49,7 @@ public class ProjectPermissionServiceImpl
                 "Full access permission created automatically "
                         + "for the project creator"
         );
-        permission.setPermissionModule(
-                permissionModuleService.createModuleValue(
-                        FULL_ACCESS_ACTIONS,
-                        FULL_WORK_SCOPE
-                )
-        );
+        permissionActionService.configureFullAccess(permission);
         permission.setStatus(true);
         permission.setCreatedAt(LocalDateTime.now());
         permission.setProject(project);
@@ -113,11 +92,10 @@ public class ProjectPermissionServiceImpl
         }
 
         Permissions permission = optionalPermission.get();
-        permission.setPermissionModule(
-                permissionModuleService.createModuleValue(
-                        request.allowedActions(),
-                        request.workScope()
-                )
+        permissionActionService.configurePermission(
+                permission,
+                request.allowedActions(),
+                request.workScope()
         );
 
         return toConfiguration(permissionRepository.save(permission));
@@ -151,7 +129,9 @@ public class ProjectPermissionServiceImpl
     @Override
     public void deleteProjectData(UUID projectId) {
         userPermissionRepository.deleteByProjectId(projectId);
-        permissionRepository.deleteByProjectId(projectId);
+        List<Permissions> permissions =
+                permissionRepository.findByProjectId(projectId);
+        permissionRepository.deleteAll(permissions);
         permissionRepository.flush();
     }
 
@@ -172,12 +152,8 @@ public class ProjectPermissionServiceImpl
                 permission.getPermissionCode(),
                 permission.getPermissionDescription(),
                 permission.getStatus(),
-                permissionModuleService.getAllowedActions(
-                        permission.getPermissionModule()
-                ),
-                permissionModuleService.getWorkScope(
-                        permission.getPermissionModule()
-                )
+                permissionActionService.getAllowedActionCodes(permission),
+                permissionActionService.getWorkScope(permission)
         );
     }
 

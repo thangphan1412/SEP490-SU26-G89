@@ -12,6 +12,11 @@ import Icon from "../../components/projectComponents/Icon.jsx";
 import PagePanel from "../../components/projectComponents/PagePanel.jsx";
 import PrimaryButton from "../../components/projectComponents/PrimaryButton.jsx";
 import {
+    hasAnyProjectAction,
+    hasProjectAction,
+    PROJECT_ACTIONS,
+} from "../../components/permissionComponents/permissionAccess.js";
+import {
     addOneDay,
     calculatePhaseStartDatesForDisplay,
     createClientId,
@@ -33,6 +38,7 @@ function UpdateProject({ onUpdateProject }) {
     const [searchParams] = useSearchParams();
     const projectId = searchParams.get("id");
     const [project, setProject] = useState(null);
+    const [access, setAccess] = useState(null);
     const [employees, setEmployees] = useState([]);
     const [memberRoleOptions, setMemberRoleOptions] = useState([]);
     const [permissionOptions, setPermissionOptions] = useState([]);
@@ -58,11 +64,41 @@ function UpdateProject({ onUpdateProject }) {
             }
 
             try {
-                const [projectData, employeeData, roleData] = await Promise.all([
-                    viewProject(projectId, requestController.signal),
-                    listProjectEmployees(requestController.signal),
-                    listProjectRoles(requestController.signal),
-                ]);
+                const projectData = await viewProject(
+                    projectId,
+                    requestController.signal
+                );
+                const projectAccess = projectData?.currentUserAccess;
+                const canManageMembers = hasProjectAction(
+                    projectAccess,
+                    PROJECT_ACTIONS.MANAGE_MEMBERS
+                );
+                const canUpdateProject = hasAnyProjectAction(
+                    projectAccess,
+                    [
+                        PROJECT_ACTIONS.EDIT_PROJECT,
+                        PROJECT_ACTIONS.EDIT_PHASE,
+                        PROJECT_ACTIONS.MANAGE_MEMBERS,
+                    ]
+                );
+
+                if (!canUpdateProject) {
+                    setProject(null);
+                    setLoadError(
+                        "You do not have permission to update this project."
+                    );
+                    return;
+                }
+
+                let employeeData = [];
+                let roleData = [];
+
+                if (canManageMembers) {
+                    [employeeData, roleData] = await Promise.all([
+                        listProjectEmployees(requestController.signal),
+                        listProjectRoles(requestController.signal),
+                    ]);
+                }
 
                 if (!isActive) {
                     return;
@@ -75,6 +111,7 @@ function UpdateProject({ onUpdateProject }) {
                 }
 
                 const projectUsers = Array.isArray(projectData?.users) ? projectData.users : [];
+                setAccess(projectAccess);
                 setProject({
                     projectName: projectData?.projectName || "",
                     projectCode: projectData?.projectCode || "",
@@ -105,6 +142,7 @@ function UpdateProject({ onUpdateProject }) {
 
                 console.error("Unable to load project update data:", error);
                 setProject(null);
+                setAccess(null);
                 setLoadError("Unable to load this project. Please try again later.");
             } finally {
                 if (isActive) {
@@ -120,6 +158,19 @@ function UpdateProject({ onUpdateProject }) {
             requestController.abort();
         };
     }, [projectId]);
+
+    const canEditProject = hasProjectAction(
+        access,
+        PROJECT_ACTIONS.EDIT_PROJECT
+    );
+    const canEditPhase = hasProjectAction(
+        access,
+        PROJECT_ACTIONS.EDIT_PHASE
+    );
+    const canManageMembers = hasProjectAction(
+        access,
+        PROJECT_ACTIONS.MANAGE_MEMBERS
+    );
 
     function handleProjectChange(event) {
         const { name, value } = event.target;
@@ -284,20 +335,34 @@ function UpdateProject({ onUpdateProject }) {
             setSaving(true);
             setSubmitError("");
             const updatedProject = await updateProject(projectId, {
-                projectName: project.projectName.trim(),
-                projectCode: project.projectCode.trim(),
-                projectStartDate: project.projectStartDate,
-                projectEndDate: project.projectEndDate,
-                projectDescription: project.projectDescription.trim(),
-                projectStatus: project.projectStatus,
-                phases: project.phases.map((phase) => ({
-                    id: phase.id,
-                    title: phase.title.trim(),
-                    description: phase.description.trim(),
-                    endDate: phase.endDate,
-                    status: phase.status,
-                })),
-                members: project.members,
+                projectName: canEditProject
+                    ? project.projectName.trim()
+                    : null,
+                projectCode: canEditProject
+                    ? project.projectCode.trim()
+                    : null,
+                projectStartDate: canEditProject
+                    ? project.projectStartDate
+                    : null,
+                projectEndDate: canEditProject
+                    ? project.projectEndDate
+                    : null,
+                projectDescription: canEditProject
+                    ? project.projectDescription.trim()
+                    : null,
+                projectStatus: canEditProject
+                    ? project.projectStatus
+                    : null,
+                phases: canEditPhase
+                    ? project.phases.map((phase) => ({
+                        id: phase.id,
+                        title: phase.title.trim(),
+                        description: phase.description.trim(),
+                        endDate: phase.endDate,
+                        status: phase.status,
+                    }))
+                    : null,
+                members: canManageMembers ? project.members : null,
             });
 
             onUpdateProject?.(updatedProject);
@@ -412,6 +477,7 @@ function UpdateProject({ onUpdateProject }) {
                         </Alert>
                     )}
 
+                    {canEditProject && (
                     <Card as="section" className="project-management-card">
                         <Card.Title as="h2" className="project-management-card-title">
                             Basic Information
@@ -430,12 +496,12 @@ function UpdateProject({ onUpdateProject }) {
 
                             <Form.Group as={Col} md={6} controlId="projectStartDate">
                                 <Form.Label className="project-management-field-label">Start Date</Form.Label>
-                                <Form.Control required type="date" name="projectStartDate" value={project.projectStartDate} onChange={handleProjectChange} className="project-management-input" />
+                                <Form.Control disabled={!canEditPhase} required type="date" name="projectStartDate" value={project.projectStartDate} onChange={handleProjectChange} className="project-management-input" />
                             </Form.Group>
 
                             <Form.Group as={Col} md={6} controlId="projectEndDate">
                                 <Form.Label className="project-management-field-label">End Date</Form.Label>
-                                <Form.Control required type="date" min={project.projectStartDate} name="projectEndDate" value={project.projectEndDate} onChange={handleProjectChange} className="project-management-input" />
+                                <Form.Control disabled={!canEditPhase} required type="date" min={project.projectStartDate} name="projectEndDate" value={project.projectEndDate} onChange={handleProjectChange} className="project-management-input" />
                             </Form.Group>
 
                             <Form.Group as={Col} md={6} controlId="projectStatus">
@@ -462,7 +528,9 @@ function UpdateProject({ onUpdateProject }) {
                             <div className="update-project-counter">{project.projectDescription.length} / 255</div>
                         </Form.Group>
                     </Card>
+                    )}
 
+                    {canEditPhase && (
                     <Card as="section" className="project-management-card">
                         <div className="update-project-section-header">
                             <div>
@@ -516,7 +584,9 @@ function UpdateProject({ onUpdateProject }) {
                             </div>
                         )}
                     </Card>
+                    )}
 
+                    {canManageMembers && (
                     <Card as="section" className="project-management-card">
                         <div className="update-project-section-header">
                             <div>
@@ -585,10 +655,12 @@ function UpdateProject({ onUpdateProject }) {
                             </div>
                         )}
                     </Card>
+                    )}
 
                 </Form>
             )}
 
+            {canManageMembers && (
             <Modal
                 show={showMemberModal}
                 onHide={closeMemberModal}
@@ -673,6 +745,7 @@ function UpdateProject({ onUpdateProject }) {
                     </Button>
                 </Modal.Footer>
             </Modal>
+            )}
         </PagePanel>
     );
 }

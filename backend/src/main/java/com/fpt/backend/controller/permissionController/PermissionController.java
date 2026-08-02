@@ -2,6 +2,7 @@ package com.fpt.backend.controller.permissionController;
 
 import com.fpt.backend.dto.request.permission.PermissionListRequest;
 import com.fpt.backend.dto.request.permission.PermissionRequest;
+import com.fpt.backend.dto.response.permission.PermissionActionResponse;
 import com.fpt.backend.dto.response.permission.PermissionDetailResponse;
 import com.fpt.backend.dto.response.permission.PermissionListResponse;
 import com.fpt.backend.dto.response.permission.PermissionProjectResponse;
@@ -59,6 +60,16 @@ public class PermissionController {
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.noStore())
                 .body(new BaseResponse<>(permissionService.getProjectsForPermissionSelection()));
+    }
+
+    @GetMapping("/actions")
+    public ResponseEntity<BaseResponse<List<PermissionActionResponse>>>
+    getAvailableActions() {
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .body(new BaseResponse<>(
+                        permissionService.getAvailableActions()
+                ));
     }
 
     @GetMapping({"/view/{id}", "/{id}"})

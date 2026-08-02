@@ -17,7 +17,10 @@ import { deletePermission, viewPermission } from "../../services/permissionServi
 import PermissionPage from "../../components/permissionComponents/PermissionPage.jsx";
 import PermissionStatusBadge from "../../components/permissionComponents/PermissionStatusBadge.jsx";
 import ViewPermissionInfo from "../../components/permissionComponents/ViewPermissionInfo.jsx";
-import { formatPermissionModule } from "../../components/permissionComponents/permissionModuleOptions.js";
+import {
+  formatPermissionActions,
+  formatPermissionWorkScope,
+} from "../../components/permissionComponents/permissionModuleOptions.js";
 import {
   formatPermissionDate,
   formatPermissionProjectValue,
@@ -173,7 +176,17 @@ function ViewPermissionPage() {
                   label="Project"
                   value={formatPermissionProjectValue(permission)}
                 />
-                <ViewPermissionInfo label="Module" value={formatPermissionModule(permission.permissionModule)} />
+                <ViewPermissionInfo
+                  label="Allowed actions"
+                  value={formatPermissionActions(
+                    permission.actionDetails,
+                    permission.allowedActions
+                  )}
+                />
+                <ViewPermissionInfo
+                  label="Work visibility"
+                  value={formatPermissionWorkScope(permission.workScope)}
+                />
                 <div className="permission-info-item">
                   <p className="permission-info-label">Status</p>
                   <PermissionStatusBadge status={permission.status} />
@@ -208,7 +221,14 @@ function ViewPermissionPage() {
               </div>
               <div className="permission-view-audit-list">
                 <ViewPermissionInfo label="Permission code" value={permission.permissionCode} />
-                <ViewPermissionInfo label="Module" value={formatPermissionModule(permission.permissionModule)} />
+                <ViewPermissionInfo
+                  label="Action codes"
+                  value={Array.isArray(permission.allowedActions)
+                    && permission.allowedActions.length > 0
+                    ? permission.allowedActions.join("\n")
+                    : "-"}
+                />
+                <ViewPermissionInfo label="Work scope" value={permission.workScope || "-"} />
               </div>
             </Card>
           </div>

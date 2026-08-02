@@ -9,6 +9,10 @@ import PermissionConfigureModal from "../../components/projectComponents/Permiss
 import PrimaryButton from "../../components/projectComponents/PrimaryButton.jsx";
 import StatusBadge from "../../components/projectComponents/StatusBadge.jsx";
 import { isCompletedProjectStatus } from "../../components/projectComponents/projectFormUtils.js";
+import {
+    hasProjectAction,
+    PROJECT_ACTIONS,
+} from "../../components/permissionComponents/permissionAccess.js";
 import "../../assets/styles/css/projectStyles/ViewProject.css";
 
 const PROJECT_ACCESS_DENIED_MESSAGE =
@@ -197,6 +201,26 @@ function ViewProject() {
     const completedProject = isCompletedProjectStatus(
         project?.projectStatus
     );
+    const access = project?.currentUserAccess;
+    const canEditProject = hasProjectAction(
+        access,
+        PROJECT_ACTIONS.EDIT_PROJECT
+    );
+    const canEditPhase = hasProjectAction(
+        access,
+        PROJECT_ACTIONS.EDIT_PHASE
+    );
+    const canManageMembers = hasProjectAction(
+        access,
+        PROJECT_ACTIONS.MANAGE_MEMBERS
+    );
+    const canOpenUpdate = canEditProject
+        || canEditPhase
+        || canManageMembers;
+    const canViewContracts = hasProjectAction(
+        access,
+        PROJECT_ACTIONS.VIEW_CONTRACTS
+    );
 
     const pageAction = (
         <Stack direction="horizontal" gap={2} className="view-project-actions">
@@ -211,7 +235,7 @@ function ViewProject() {
 
             {project && (
                 <>
-                    {project.currentUserIsCreator && (
+                    {canManageMembers && (
                         <Button
                             type="button"
                             variant="outline-primary"
@@ -222,20 +246,24 @@ function ViewProject() {
                             Permission Configure
                         </Button>
                     )}
-                    <DangerButton
-                        disabled={deleting || completedProject}
-                        onClick={handleDelete}
-                    >
-                        <Icon name="trash" size={18} color="#b42318" />
-                        {deleting ? "Deleting..." : "Delete"}
-                    </DangerButton>
-                    <PrimaryButton
-                        disabled={completedProject}
-                        onClick={() => navigate("/project-management/update?id=" + projectId)}
-                    >
-                        <Icon name="edit" size={20} color="#ffffff" />
-                        Edit Project
-                    </PrimaryButton>
+                    {canEditProject && (
+                        <DangerButton
+                            disabled={deleting || completedProject}
+                            onClick={handleDelete}
+                        >
+                            <Icon name="trash" size={18} color="#b42318" />
+                            {deleting ? "Deleting..." : "Delete"}
+                        </DangerButton>
+                    )}
+                    {canOpenUpdate && (
+                        <PrimaryButton
+                            disabled={completedProject}
+                            onClick={() => navigate("/project-management/update?id=" + projectId)}
+                        >
+                            <Icon name="edit" size={20} color="#ffffff" />
+                            Edit Project
+                        </PrimaryButton>
+                    )}
                 </>
             )}
         </Stack>
@@ -346,6 +374,7 @@ function ViewProject() {
                         </div>
                     </Card>
 
+                    {canManageMembers && (
                     <Card as="section" className="project-management-card">
                         <div className="view-project-section-header">
                             <Card.Title as="h2" className="project-management-card-title">
@@ -412,7 +441,9 @@ function ViewProject() {
                             </Table>
                         </div>
                     </Card>
+                    )}
 
+                    {canViewContracts && (
                     <Card as="section" className="project-management-card">
                         <div className="view-project-section-header">
                             <Card.Title as="h2" className="project-management-card-title">
@@ -484,10 +515,11 @@ function ViewProject() {
                             </Table>
                         </div>
                     </Card>
+                    )}
                 </>
             )}
 
-            {project?.currentUserIsCreator && (
+            {canManageMembers && (
                 <PermissionConfigureModal
                     show={showPermissionConfigure}
                     projectId={projectId}
