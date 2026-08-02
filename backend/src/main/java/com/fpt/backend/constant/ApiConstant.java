@@ -16,4 +16,9 @@
             public static final String LIST = "/list";
             public static final String BY_ID = "/{id}";
         }
+        public static class Role {
+            public static final String ROLES = API + "/roles";
+            public static final String LIST = "/list";
+            public static final String BY_ID = "/{id}";
+}
     }
