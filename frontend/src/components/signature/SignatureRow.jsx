@@ -3,7 +3,7 @@ import StatusBadge from "./StatusBadge.jsx";
 
 
 function SignatureRow({ signature }) {
-    const { name, type, usedIn, status, updatedAt, avatarText, avatarColor } = signature
+    const { name, type, status,defaults, updatedAt, avatarText, avatarColor } = signature
 
     return (
         <tr className="signature-row">
@@ -16,8 +16,9 @@ function SignatureRow({ signature }) {
                 </div>
             </td>
             <td className="text-muted">{type}</td>
-            <td className="text-muted">{usedIn}</td>
+
             <td><StatusBadge status={status} /></td>
+            <td className="text-muted">{defaults}</td>
             <td className="text-muted">{updatedAt}</td>
             <td className="text-end">
                 <button className="row-action-btn">

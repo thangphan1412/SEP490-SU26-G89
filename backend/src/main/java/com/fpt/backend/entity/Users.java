@@ -63,4 +63,6 @@ public class Users extends BaseEntity {
     private List<ProjectMember>  projectMembers;
     @OneToMany(mappedBy = "assignedTo")
     private List<TimelineTask>  timelineTasks;
+    @OneToMany(mappedBy = "user")
+    private List<ElectronicSignatures>  electronicSignatures;
 }
