@@ -8,12 +8,12 @@ import com.fpt.backend.dto.response.phase.PhaseTaskResponse;
 import com.fpt.backend.dto.response.project.ProjectAccessResponse;
 import com.fpt.backend.entity.Contracts;
 import com.fpt.backend.entity.Deliverable;
-import com.fpt.backend.entity.PermissionAction;
 import com.fpt.backend.entity.Projects;
 import com.fpt.backend.entity.Timeline;
 import com.fpt.backend.entity.TimelineContract;
 import com.fpt.backend.entity.TimelineTask;
 import com.fpt.backend.entity.Users;
+import com.fpt.backend.enums.PermissionModule;
 import com.fpt.backend.exception.NotFoundException;
 import com.fpt.backend.repository.phase.PhaseContractRepository;
 import com.fpt.backend.repository.phase.PhaseDeliverableRepository;
@@ -41,12 +41,12 @@ import java.util.UUID;
 public class PhaseServiceImpl implements PhaseService {
     private static final ZoneId APP_TIME_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
     private static final String VIEW_TASKS =
-            PermissionAction.DefaultAction.VIEW_TASKS.getActionCode();
+            PermissionModule.VIEW_TASKS.getActionCode();
     private static final String VIEW_DELIVERABLES =
-            PermissionAction.DefaultAction.VIEW_DELIVERABLES
+            PermissionModule.VIEW_DELIVERABLES
                     .getActionCode();
     private static final String VIEW_CONTRACTS =
-            PermissionAction.DefaultAction.VIEW_CONTRACTS.getActionCode();
+            PermissionModule.VIEW_CONTRACTS.getActionCode();
 
     private final PhaseRepository phaseRepository;
     private final PhaseTaskRepository phaseTaskRepository;

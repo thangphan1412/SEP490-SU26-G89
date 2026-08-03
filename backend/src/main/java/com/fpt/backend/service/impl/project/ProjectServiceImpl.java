@@ -14,9 +14,9 @@ import com.fpt.backend.dto.response.project.ProjectListResponse;
 import com.fpt.backend.dto.response.project.ProjectPermissionConfigurationResponse;
 import com.fpt.backend.dto.response.project.ProjectRoleResponse;
 import com.fpt.backend.entity.Contracts;
-import com.fpt.backend.entity.PermissionAction;
 import com.fpt.backend.entity.Projects;
 import com.fpt.backend.entity.Users;
+import com.fpt.backend.enums.PermissionModule;
 import com.fpt.backend.exception.BadHttpException;
 import com.fpt.backend.exception.NotFoundException;
 import com.fpt.backend.repository.project.ProjectCleanupRepository;
@@ -60,13 +60,13 @@ public class ProjectServiceImpl implements ProjectService {
     private static final String CANCELLED_PROJECT_STATUS = "Cancelled";
     private static final String COMPLETED_PROJECT_STATUS = "Completed";
     private static final String EDIT_PROJECT =
-            PermissionAction.DefaultAction.EDIT_PROJECT.getActionCode();
+            PermissionModule.EDIT_PROJECT.getActionCode();
     private static final String EDIT_PHASE =
-            PermissionAction.DefaultAction.EDIT_PHASE.getActionCode();
+            PermissionModule.EDIT_PHASE.getActionCode();
     private static final String MANAGE_MEMBERS =
-            PermissionAction.DefaultAction.MANAGE_MEMBERS.getActionCode();
+            PermissionModule.MANAGE_MEMBERS.getActionCode();
     private static final String VIEW_CONTRACTS =
-            PermissionAction.DefaultAction.VIEW_CONTRACTS.getActionCode();
+            PermissionModule.VIEW_CONTRACTS.getActionCode();
     private static final String PROJECT_ACCESS_DENIED_MESSAGE =
             "Bạn không được quyền xem project này!";
     private static final List<String> CREATE_PROJECT_STATUSES = List.of(

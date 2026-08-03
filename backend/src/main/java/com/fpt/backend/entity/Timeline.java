@@ -40,19 +40,12 @@ public class Timeline extends BaseEntity {
     @JoinColumn(name = "project_id", nullable = false)
     private Projects project;
 
-    /*
-     * Giữ nguyên TimelineTask.
-     */
     @OneToMany(mappedBy = "timeline")
     private List<TimelineTask> timelineTasks = new ArrayList<>();
 
     @OneToMany(mappedBy = "timeline")
     private List<Deliverable> deliverables = new ArrayList<>();
 
-    /*
-     * Xóa Timeline sẽ chỉ xóa các liên kết,
-     * không xóa Contracts.
-     */
     @OneToMany(mappedBy = "timeline", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<TimelineContract> timelineContracts = new ArrayList<>();
 }
