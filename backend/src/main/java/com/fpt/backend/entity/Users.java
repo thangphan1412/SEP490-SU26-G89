@@ -1,5 +1,6 @@
 package com.fpt.backend.entity;
 
+import com.fpt.backend.enums.UserStatus;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.processing.Pattern;
@@ -25,10 +26,13 @@ public class Users extends BaseEntity {
     private String lastName;
     @Column(name = "user_number_phone")
     private String numberPhone;
+    @Enumerated(EnumType.STRING)
     @Column(name = "user_status")
-    private String status;
+    private UserStatus status;
     @Column(name = "user_role")
     private String role;
+    @Column(name = "date_of_birth")
+    private String dob;
 
     /// Relation
     // permissions
@@ -65,4 +69,5 @@ public class Users extends BaseEntity {
     private List<TimelineTask>  timelineTasks;
     @OneToMany(mappedBy = "user")
     private List<ElectronicSignatures>  electronicSignatures;
+
 }
