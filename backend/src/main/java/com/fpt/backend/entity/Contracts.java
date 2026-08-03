@@ -29,6 +29,12 @@ public class Contracts extends BaseEntity {
     private String contractCreateBy;
     @Column(name = "contract_created_at")
     private LocalDateTime contractCreatedAt;
+    @Column(name = "contract_status_updated_at")
+    private LocalDateTime contractStatusUpdatedAt;
+    @Column(name = "contract_ended_at")
+    private LocalDateTime contractEndedAt;
+    @Column(name = "contract_cancellation_reason", columnDefinition = "nvarchar(1000)")
+    private String contractCancellationReason;
     @Column(name = "contract_content", columnDefinition = "nvarchar(max)")
     private String contractContent;
     @Column(name = "contract_layout_json", columnDefinition = "nvarchar(max)")
@@ -54,11 +60,29 @@ public class Contracts extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "contract_template_version_id")
     private ContractTemplateVersions contractTemplateVersion;
+    // cancelled contract that this new contract replaces
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "previous_contract_id")
+    private Contracts previousContract;
+    @OneToMany(mappedBy = "previousContract")
+    private List<Contracts> replacementContracts;
+    // immutable audit trail for lifecycle transitions
+    @OneToMany(
+            mappedBy = "contract",
+            cascade = CascadeType.ALL,
+            orphanRemoval = true
+    )
+    @OrderBy("changedAt DESC")
+    private List<ContractStatusHistory> statusHistory;
     // contrac approvals
     @OneToMany(mappedBy = "contract")
     private List<ContractApprovals> contractApprovals;
     //contract attribute value
-    @OneToMany(mappedBy = "contract")
+    @OneToMany(
+            mappedBy = "contract",
+            cascade = CascadeType.ALL,
+            orphanRemoval = true
+    )
     private List<ContractAttributeValues> contractAttributeValues;
     // external
     @OneToMany(mappedBy = "contract")

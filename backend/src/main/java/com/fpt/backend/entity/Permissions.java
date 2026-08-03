@@ -4,7 +4,9 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 @AllArgsConstructor
 @NoArgsConstructor
@@ -22,8 +24,39 @@ public class Permissions extends BaseEntity {
             unique = true
     )
     private String permissionCode;
-    @Column(name = "permission_module", columnDefinition = "nvarchar(255)")
-    private String permissionModule;
+    @Enumerated(EnumType.STRING)
+    @Column(
+            name = "permission_work_scope",
+            nullable = false,
+            length = 20,
+            columnDefinition = "nvarchar(20)"
+    )
+    @Builder.Default
+    private WorkScope workScope = WorkScope.FULL;
+
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+            name = "permission_action_mapping",
+            joinColumns = @JoinColumn(
+                    name = "permission_id",
+                    foreignKey = @ForeignKey(
+                            name = "FK_permission_action_permission"
+                    )
+            ),
+            inverseJoinColumns = @JoinColumn(
+                    name = "action_id",
+                    foreignKey = @ForeignKey(
+                            name = "FK_permission_action_catalog"
+                    )
+            ),
+            uniqueConstraints = @UniqueConstraint(
+                    name = "UK_permission_action_mapping",
+                    columnNames = {"permission_id", "action_id"}
+            )
+    )
+    @OrderBy("displayOrder ASC, actionCode ASC")
+    @Builder.Default
+    private Set<PermissionAction> actions = new LinkedHashSet<>();
 
     /// Relation
     // userpermistion
@@ -42,5 +75,9 @@ public class Permissions extends BaseEntity {
 
     @Column(name = "permission_created_at")
     private LocalDateTime createdAt;
-    
+
+    public enum WorkScope {
+        OWN,
+        FULL
+    }
 }

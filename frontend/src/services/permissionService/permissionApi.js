@@ -35,6 +35,15 @@ export async function listPermissionProjects(signal) {
   return getResponseData(response);
 }
 
+export async function listPermissionActions(signal) {
+  const response = await axiosClient.get(
+    `${PERMISSION_API_BASE_URL}/actions`,
+    { signal }
+  );
+
+  return getResponseData(response);
+}
+
 export async function createPermission(permission) {
   const response = await axiosClient.post(PERMISSION_API_BASE_URL, permission);
   return getResponseData(response);

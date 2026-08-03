@@ -22,6 +22,37 @@ public interface UserPermissionRepository extends JpaRepository<UserPermission, 
             """)
     List<UserPermission> findByProjectId(@Param("projectId") UUID projectId);
 
+    @Query("""
+            SELECT DISTINCT userPermission
+            FROM UserPermission userPermission
+            JOIN FETCH userPermission.permission permission
+            LEFT JOIN FETCH permission.actions action
+            WHERE userPermission.user.id = :userId
+                AND permission.project.id = :projectId
+                AND permission.status = true
+            ORDER BY permission.id
+            """)
+    List<UserPermission> findActiveByUserIdAndProjectId(
+            @Param("userId") UUID userId,
+            @Param("projectId") UUID projectId
+    );
+
+    @Query("""
+            SELECT DISTINCT permission.project.id
+            FROM UserPermission userPermission
+            JOIN userPermission.permission permission
+            JOIN permission.actions action
+            WHERE userPermission.user.id = :userId
+                AND permission.status = true
+                AND action.status = true
+                AND UPPER(action.actionCode) = :actionCode
+            ORDER BY permission.project.id
+            """)
+    List<UUID> findProjectIdsByUserAndAction(
+            @Param("userId") UUID userId,
+            @Param("actionCode") String actionCode
+    );
+
     @Modifying
     @Query("""
             DELETE FROM UserPermission userPermission

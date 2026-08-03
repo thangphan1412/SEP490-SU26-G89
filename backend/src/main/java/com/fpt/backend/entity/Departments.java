@@ -3,7 +3,7 @@ package com.fpt.backend.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Setter
@@ -18,8 +18,10 @@ public class Departments extends BaseEntity{
     private String departmentName;
     @Column(name = "department_code")
     private String departmentCode;
-    @Column(name = "department_create_at")
-    private LocalDate departmentCreateAt;
+    @Column(name = "department_create_at", nullable = false)
+    private LocalDateTime departmentCreatedAt;
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
     @Column(name = "department_status")
     private String departmentStatus;
 
@@ -31,7 +33,7 @@ public class Departments extends BaseEntity{
     @OneToMany(mappedBy = "department")
     private List<Proposals> proposals;
 
-    // comapy
+    // Company
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "company_id")
     private Company company;

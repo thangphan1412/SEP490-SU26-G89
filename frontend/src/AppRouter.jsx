@@ -24,8 +24,11 @@ import ListDepartment from "./pages/Departments/ListDepartment.jsx";
 import CreateDepartment from "./pages/Departments/CreateDepartment.jsx";
 import ViewDepartment from "./pages/Departments/ViewDepartment.jsx";
 import UpdateDepartment from "./pages/Departments/UpdateDepartment.jsx";
+import ListRole from "./pages/RoleManagement/ListRole.jsx";
+import CreateRole from "./pages/RoleManagement/CreateRole.jsx";
+import ViewRole from "./pages/RoleManagement/ViewRole.jsx";
+import UpdateRole from "./pages/RoleManagement/UpdateRole.jsx";
 import ProtectedRoute from "./components/common/ProtectedRouter.jsx";
-import HeaderForm from "./components/layout/HeaderForm.jsx";
 import MainLayout from "./components/layout/MainLayout.jsx";
 import ForgotPassword from "./pages/authentication/ForgotPassword.jsx";
 import Resetpassword from "./pages/authentication/Resetpassword.jsx";
@@ -184,6 +187,22 @@ function AppRouter() {
                 <Route
                     path="/department-management/update/:id"
                     element={<UpdateDepartment />}
+                />
+                <Route
+                    path="/role-management/list"
+                    element={<ListRole />}
+                />
+                <Route
+                    path="/role-management/create"
+                    element={<CreateRole />}
+                />
+                <Route
+                    path="/role-management/view/:id"
+                    element={<ViewRole />}
+                />
+                <Route
+                    path="/role-management/update/:id"
+                    element={<UpdateRole />}
                 />
                 <Route
                     path="/dashboard/agreement-statistics"

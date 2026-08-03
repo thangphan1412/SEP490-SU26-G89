@@ -62,8 +62,21 @@ function CreateContract() {
     }, []);
 
     const handleChange = (event) => {
-        const { name, value } = event.target;
-        setContract((current) => ({ ...current, [name]: value }));
+        const { name, value, type, checked } = event.target;
+        const nextValue = type === "checkbox" ? checked : value;
+        setContract((current) => {
+            if (name.startsWith("attributeValues.")) {
+                const attributeKey = name.slice("attributeValues.".length);
+                return {
+                    ...current,
+                    attributeValues: {
+                        ...(current.attributeValues || {}),
+                        [attributeKey]: nextValue,
+                    },
+                };
+            }
+            return { ...current, [name]: nextValue };
+        });
     };
 
     const handleSubmit = async (event) => {

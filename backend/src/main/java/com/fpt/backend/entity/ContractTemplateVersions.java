@@ -1,11 +1,13 @@
 package com.fpt.backend.entity;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
+import jakarta.persistence.OrderBy;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import lombok.AllArgsConstructor;
@@ -43,6 +45,9 @@ public class ContractTemplateVersions extends BaseEntity {
     @Column(name = "layout_json", columnDefinition = "nvarchar(max)")
     private String layoutJson;
 
+    @Column(name = "page_count", nullable = false)
+    private Integer pageCount;
+
     @Column(name = "change_note", columnDefinition = "nvarchar(1000)")
     private String changeNote;
 
@@ -58,4 +63,12 @@ public class ContractTemplateVersions extends BaseEntity {
 
     @OneToMany(mappedBy = "contractTemplateVersion")
     private List<Contracts> contracts;
+
+    @OneToMany(
+            mappedBy = "contractTemplateVersion",
+            cascade = CascadeType.ALL,
+            orphanRemoval = true
+    )
+    @OrderBy("pageNumber ASC, createdAt ASC")
+    private List<ContractPositions> positions;
 }
