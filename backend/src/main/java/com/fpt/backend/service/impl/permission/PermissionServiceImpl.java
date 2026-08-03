@@ -8,8 +8,8 @@ import com.fpt.backend.dto.response.permission.PermissionListItemResponse;
 import com.fpt.backend.dto.response.permission.PermissionListResponse;
 import com.fpt.backend.dto.response.permission.PermissionProjectResponse;
 import com.fpt.backend.entity.Permissions;
-import com.fpt.backend.entity.PermissionAction;
 import com.fpt.backend.entity.Projects;
+import com.fpt.backend.enums.PermissionModule;
 import com.fpt.backend.exception.BadHttpException;
 import com.fpt.backend.exception.NotFoundException;
 import com.fpt.backend.repository.permission.PermissionRepository;
@@ -42,7 +42,7 @@ public class PermissionServiceImpl implements PermissionService {
     private static final int PAGE_SIZE = 7;
     private static final String DEFAULT_SORT_FIELD = "createdAt";
     private static final String MANAGE_MEMBERS =
-            PermissionAction.DefaultAction.MANAGE_MEMBERS.getActionCode();
+            PermissionModule.MANAGE_MEMBERS.getActionCode();
     private static final Set<String> SORT_FIELDS = Set.of(
             "id",
             "permissionName",
