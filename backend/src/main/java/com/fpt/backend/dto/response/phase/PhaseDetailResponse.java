@@ -1,6 +1,7 @@
 package com.fpt.backend.dto.response.phase;
 
 import com.fpt.backend.dto.response.project.ProjectAccessResponse;
+import com.fpt.backend.enums.PhaseStatus;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -12,7 +13,7 @@ public record PhaseDetailResponse(
         String description,
         LocalDate startDate,
         LocalDate endDate,
-        String status,
+        PhaseStatus status,
         Double progress,
         UUID projectId,
         String projectCode,

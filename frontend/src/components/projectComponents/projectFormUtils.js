@@ -13,10 +13,10 @@ export const CREATE_PROJECT_STATUS_OPTIONS = [
 ];
 
 export const PHASE_STATUS_OPTIONS = [
-  "Planning",
-  "In Progress",
-  "On Hold",
-  "Completed",
+  "PLANNING",
+  "IN_PROGRESS",
+  "ON_HOLD",
+  "COMPLETED",
 ];
 
 export function createClientId() {
