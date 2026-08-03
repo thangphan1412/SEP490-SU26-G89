@@ -224,7 +224,7 @@ function UpdateProject({ onUpdateProject }) {
                     description: "",
                     startDate: nextStartDate,
                     endDate: currentProject.projectEndDate,
-                    status: "Planning",
+                    status: "PLANNING",
                 },
             ],
         }));
@@ -765,7 +765,7 @@ function mapPhases(phases) {
             description: phase.description || "",
             startDate: phase.startDate || "",
             endDate: phase.endDate || "",
-            status: phase.status || "Planning",
+            status: phase.status || "PLANNING",
         });
     }
 
