@@ -41,8 +41,7 @@ import java.util.UUID;
 public class PermissionServiceImpl implements PermissionService {
     private static final int PAGE_SIZE = 7;
     private static final String DEFAULT_SORT_FIELD = "createdAt";
-    private static final String MANAGE_MEMBERS =
-            PermissionModule.MANAGE_MEMBERS.getActionCode();
+    private static final String MANAGE_MEMBERS = PermissionModule.MANAGE_MEMBERS.getActionCode();
     private static final Set<String> SORT_FIELDS = Set.of(
             "id",
             "permissionName",
@@ -50,8 +49,7 @@ public class PermissionServiceImpl implements PermissionService {
             "permissionDescription",
             "status",
             "projectName",
-            "createdAt"
-    );
+            "createdAt");
 
     private final PermissionRepository permissionRepository;
     private final ProjectRepository projectRepository;
@@ -68,23 +66,20 @@ public class PermissionServiceImpl implements PermissionService {
                         null,
                         0,
                         DEFAULT_SORT_FIELD,
-                        "desc"
-                )
+                        "desc")
                 : request;
         String search = normalize(validRequest.search());
         Pageable pageable = createPageable(
                 validRequest.page(),
                 validRequest.sortBy(),
-                validRequest.sortDirection()
-        );
+                validRequest.sortDirection());
         Page<Permissions> permissions = permissionRepository.searchPermissions(
                 search.toLowerCase(Locale.ROOT),
                 validRequest.projectId(),
                 validRequest.status(),
                 currentUser.getCurrentUser().getId(),
                 MANAGE_MEMBERS,
-                pageable
-        );
+                pageable);
 
         return new PermissionListResponse(
                 permissions.map(this::toListItem).getContent(),
@@ -93,8 +88,7 @@ public class PermissionServiceImpl implements PermissionService {
                 permissions.getTotalElements(),
                 permissions.getTotalPages(),
                 permissions.isFirst(),
-                permissions.isLast()
-        );
+                permissions.isLast());
     }
 
     @Override
@@ -129,6 +123,7 @@ public class PermissionServiceImpl implements PermissionService {
         permissionRepository.delete(permission);
     }
 
+    // Trả về danh sách các dự án mà người dùng hiện tại có quyền quản lý thành viên
     @Override
     public List<PermissionProjectResponse> getProjectsForPermissionSelection() {
         List<UUID> projectIds = permissionAccessService
@@ -137,17 +132,14 @@ public class PermissionServiceImpl implements PermissionService {
         projects.sort(
                 Comparator.comparing(
                         Projects::getProjectName,
-                        String.CASE_INSENSITIVE_ORDER
-                )
-        );
+                        String.CASE_INSENSITIVE_ORDER));
         List<PermissionProjectResponse> responses = new ArrayList<>();
 
         for (Projects project : projects) {
             responses.add(new PermissionProjectResponse(
                     project.getId(),
                     project.getProjectCode(),
-                    project.getProjectName()
-            ));
+                    project.getProjectName()));
         }
 
         return responses;
@@ -170,8 +162,7 @@ public class PermissionServiceImpl implements PermissionService {
         Projects project = findProject(request.projectId());
         permissionAccessService.requireAction(
                 project.getId(),
-                MANAGE_MEMBERS
-        );
+                MANAGE_MEMBERS);
 
         boolean duplicateCode = currentId == null
                 ? permissionRepository.existsByPermissionCodeIgnoreCase(permissionCode)
@@ -190,8 +181,7 @@ public class PermissionServiceImpl implements PermissionService {
         permissionActionService.configurePermission(
                 permission,
                 request.allowedActions(),
-                request.workScope()
-        );
+                request.workScope());
 
         if (permission.getCreatedAt() == null) {
             permission.setCreatedAt(LocalDateTime.now());
@@ -227,14 +217,12 @@ public class PermissionServiceImpl implements PermissionService {
 
         if (project == null) {
             throw new BadHttpException(
-                    "Permission is not connected to a project"
-            );
+                    "Permission is not connected to a project");
         }
 
         permissionAccessService.requireAction(
                 project.getId(),
-                MANAGE_MEMBERS
-        );
+                MANAGE_MEMBERS);
     }
 
     private Pageable createPageable(int page, String sortBy, String sortDirection) {
@@ -261,8 +249,7 @@ public class PermissionServiceImpl implements PermissionService {
 
         if (normalizedValue.length() > maxLength) {
             throw new BadHttpException(
-                    "Value must not be longer than " + maxLength + " characters"
-            );
+                    "Value must not be longer than " + maxLength + " characters");
         }
 
         return normalizedValue;
@@ -271,8 +258,7 @@ public class PermissionServiceImpl implements PermissionService {
     private void validateMaxLength(String value, String fieldName, int maxLength) {
         if (value.length() > maxLength) {
             throw new BadHttpException(
-                    fieldName + " must not be longer than " + maxLength + " characters"
-            );
+                    fieldName + " must not be longer than " + maxLength + " characters");
         }
     }
 
@@ -292,8 +278,7 @@ public class PermissionServiceImpl implements PermissionService {
                 project == null ? null : project.getId(),
                 project == null ? null : project.getProjectCode(),
                 project == null ? null : project.getProjectName(),
-                permission.getCreatedAt()
-        );
+                permission.getCreatedAt());
     }
 
     private PermissionDetailResponse toDetail(Permissions permission) {
@@ -311,7 +296,6 @@ public class PermissionServiceImpl implements PermissionService {
                 project == null ? null : project.getId(),
                 project == null ? null : project.getProjectCode(),
                 project == null ? null : project.getProjectName(),
-                permission.getCreatedAt()
-        );
+                permission.getCreatedAt());
     }
 }

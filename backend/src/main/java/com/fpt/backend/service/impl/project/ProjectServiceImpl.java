@@ -99,31 +99,18 @@ public class ProjectServiceImpl implements ProjectService {
 
     @Override
     public ProjectListResponse getProjects(ProjectListRequest request) {
-        ProjectListRequest validRequest = request;
-
-        if (validRequest == null) {
-            validRequest = new ProjectListRequest(
-                    "",
-                    "",
-                    false,
-                    0,
-                    DEFAULT_SORT_FIELD,
-                    "desc"
-            );
-        }
-
-        String search = normalize(validRequest.search());
-        String status = normalize(validRequest.status());
+        String search = normalize(request.search());
+        String status = normalize(request.status());
         Users currentUser = currentUserUtil.getCurrentUser();
         Pageable pageable = createPageable(
-                validRequest.page(),
-                validRequest.sortBy(),
-                validRequest.sortDirection()
+                request.page(),
+                request.sortBy(),
+                request.sortDirection()
         );
         Page<Projects> projects = findProjects(
                 search,
                 status,
-                validRequest.viewOnlyYourProjects(),
+                request.viewOnlyYourProjects(),
                 currentUser.getId(),
                 pageable
         );
@@ -351,6 +338,7 @@ public class ProjectServiceImpl implements ProjectService {
         return project.get();
     }
 
+    //Tìm kiếm các dự án dựa trên tìm kiếm theo từ khóa, trạng thái dự án, quyền truy cập của người dùng hiện tại và phân trang.
     private Page<Projects> findProjects(
             String search,
             String status,
