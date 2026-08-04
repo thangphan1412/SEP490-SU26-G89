@@ -39,6 +39,10 @@ public class AuthenticateController {
             System.out.println("password:"+ authenticateRequest.getPassword());
             MyUserDetail myUsersDetail = (MyUserDetail) authenticate.getPrincipal();
             Users users =  myUsersDetail.getUsers();
+            // --- THÊM ĐÚNG 2 DÒNG NÀY VÀO ĐÂY NHÉ ---
+            users.setLastActive(java.time.LocalDateTime.now());
+            userServiceImpl.save(users); // Lưu thời gian đăng nhập xuống Database
+            // ----------------------------------------
             var token  = jwtService.generateToken(myUsersDetail);
             System.out.println(">>> Login controller called");
             System.out.println(token);

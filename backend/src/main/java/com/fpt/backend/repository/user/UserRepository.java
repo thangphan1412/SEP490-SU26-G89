@@ -15,7 +15,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 @Repository
-public interface UserRepository extends JpaRepository<Users, UUID> { // Sửa UUID thành Integer
+public interface UserRepository extends JpaRepository<Users, UUID> {
         @EntityGraph(attributePaths = {
                         "userRoles",
                         "userRoles.role"
@@ -38,7 +38,7 @@ public interface UserRepository extends JpaRepository<Users, UUID> { // Sửa UU
                 "   OR LOWER(u.lastName) LIKE LOWER(CONCAT('%', :#{#filter.keyword}, '%')) " +
                 "   OR LOWER(u.email) LIKE LOWER(CONCAT('%', :#{#filter.keyword}, '%'))) " +
                 "AND (:#{#filter.role} = '' OR u.role = :#{#filter.role}) " +
-                "AND (:#{#filter.status} = '' OR u.status = :#{#filter.status}) " +
+                "AND (:#{#filter.statusEnum} IS NULL OR u.status = :#{#filter.statusEnum}) " + // ĐÃ SỬA DÒNG NÀY
                 "AND (:#{#filter.departmentName} = '' OR d.departmentName = :#{#filter.departmentName}) " +
                 "AND u.role IN :#{#filter.allowedRoles}")
         List<Users> searchAndFilterUsers(@Param("filter") UserFilterRequestDTO filter);

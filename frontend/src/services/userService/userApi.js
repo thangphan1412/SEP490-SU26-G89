@@ -15,7 +15,7 @@ export const getAllUsers = (type, keyword, role, department, status) => {
     const params = new URLSearchParams({ type });
     if (keyword) params.append("keyword", keyword);
     if (role) params.append("role", role);
-    if (department) params.append("department", department);
+    if (department) params.append("departmentName", department);
     if (status) params.append("status", status);
 
     return axios.get(`${USER_API_BASE_URL}?${params.toString()}`, {

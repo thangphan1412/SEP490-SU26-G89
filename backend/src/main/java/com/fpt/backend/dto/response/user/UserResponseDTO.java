@@ -8,6 +8,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.time.format.DateTimeFormatter;
 import java.util.UUID;
 
 @Getter
@@ -24,8 +25,17 @@ public class UserResponseDTO {
     private String role;
     private UserStatus status;
     private String departmentName;
+    private String dob;
+    private String employeeId;
+    private String lastActive;
+    private String startDate;
 
     public static UserResponseDTO fromEntity(Users user) {
+        // 2. XỬ LÝ LOGIC CẮT UUID THÀNH MÃ NHÂN VIÊN TẠI ĐÂY
+        String generateEmpId = "N/A";
+        if (user.getId() != null) {
+            generateEmpId = "UID-" + user.getId().toString().substring(0, 8).toUpperCase();
+        }
         return UserResponseDTO.builder()
                 .id(user.getId())
                 .email(user.getEmail())
@@ -33,9 +43,14 @@ public class UserResponseDTO {
                 .lastName(user.getLastName())
                 .numberPhone(user.getNumberPhone())
                 .role(user.getRole())
-                .status(user.getStatus())
+                // Truyền thẳng Enum vào đây. Nếu null thì set mặc định là Inactive
+                .status(user.getStatus() != null ? user.getStatus() : UserStatus.INACTIVE)
                 // Lấy tên department (nếu user có department)
                 .departmentName(user.getDepartment() != null ? user.getDepartment().getDepartmentName() : "N/A")
+                .dob(user.getDob()) // MAP TRƯỜNG DOB
+                .lastActive(user.getLastActive() != null ? user.getLastActive().toString() : null)
+                .startDate(user.getStartDate())
+                .employeeId(generateEmpId)
                 .build();
     }
 }

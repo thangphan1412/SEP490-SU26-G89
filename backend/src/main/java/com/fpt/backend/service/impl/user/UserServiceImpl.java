@@ -10,12 +10,16 @@ import com.fpt.backend.dto.response.authentication.RegisterResponse;
 import com.fpt.backend.dto.response.user.UserResponseDTO;
 import com.fpt.backend.dto.response.userProfile.UserProfileResponseDTO;
 import com.fpt.backend.entity.Departments;
+import com.fpt.backend.entity.Role;
+import com.fpt.backend.entity.UserRole;
 import com.fpt.backend.entity.Users;
 import com.fpt.backend.enums.UserStatus;
 import com.fpt.backend.mail.EmailService;
 import com.fpt.backend.mail.MessageInfor;
 import com.fpt.backend.repository.department.DepartmentRepository;
+import com.fpt.backend.repository.role.RoleRepository;
 import com.fpt.backend.repository.user.UserRepository;
+import com.fpt.backend.repository.userRole.UserRoleRepository;
 import com.fpt.backend.service.interfaces.user.IUserService;
 import com.fpt.backend.util.CurrentUser;
 import com.fpt.backend.util.OTPGenerator;
@@ -28,6 +32,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -48,6 +53,10 @@ public class UserServiceImpl implements IUserService {
     private DepartmentRepository departmentRepository;
     @Autowired
     private CurrentUser currentUser;
+    @Autowired
+    private RoleRepository roleRepository;
+    @Autowired
+    private UserRoleRepository userRoleRepository;
 
     @Override
     public Boolean existsByEmail(String email) {
@@ -118,6 +127,8 @@ public class UserServiceImpl implements IUserService {
                 .lastName(request.getLastName())
                 .numberPhone(request.getNumberPhone())
                 .role(request.getRole())
+                .dob(request.getDob())
+                .startDate(request.getStartDate())
                 .status(UserStatus.valueOf(request.getStatus()))
                 .build();
 
@@ -129,6 +140,23 @@ public class UserServiceImpl implements IUserService {
         }
 
         Users savedUser = userRepository.save(newUser);
+
+        // --- BỔ SUNG LOGIC LƯU BẢNG USER_ROLE Ở ĐÂY ---
+        if (request.getRole() != null && !request.getRole().isEmpty()) {
+            // 1. Tìm Role trong Database dựa vào tên Role truyền từ FE
+            Role roleEntity = roleRepository.findByRoleName(request.getRole())
+                    .orElseThrow(() -> new RuntimeException("Role không tồn tại trong hệ thống: " + request.getRole()));
+
+            // 2. Tạo record UserRole mới để nối User và Role
+            UserRole userRole = UserRole.builder()
+                    .user(savedUser)
+                    .role(roleEntity)
+                    .build();
+
+            // 3. Lưu xuống Database
+            userRoleRepository.save(userRole);
+        }
+        // ----------------------------------------------
 
         // DEBUG:
         System.out.println("====== Gửi mail không? " + request.getSendWelcomeEmail());
@@ -158,8 +186,32 @@ public class UserServiceImpl implements IUserService {
         existingUser.setFirstName(request.getFirstName());
         existingUser.setLastName(request.getLastName());
         existingUser.setNumberPhone(request.getNumberPhone());
-        existingUser.setRole(request.getRole());
+        // --- XỬ LÝ UPDATE ROLE TRONG BẢNG USER VÀ USER_ROLE ---
+        if (request.getRole() != null && !request.getRole().equals(existingUser.getRole())) {
+            existingUser.setRole(request.getRole()); // Lưu string vào bảng user
+
+            // Tìm Role mới trong bảng Role
+            Role newRoleEntity = roleRepository.findByRoleName(request.getRole())
+                    .orElseThrow(() -> new RuntimeException("Role không tồn tại: " + request.getRole()));
+
+            // Cập nhật bảng trung gian (Tìm xem user đã có record chưa, nếu có thì sửa, chưa thì tạo mới)
+            Optional<UserRole> existingUserRole = userRoleRepository.findByUser(existingUser);
+            if (existingUserRole.isPresent()) {
+                UserRole ur = existingUserRole.get();
+                ur.setRole(newRoleEntity);
+                userRoleRepository.save(ur);
+            } else {
+                UserRole newUr = UserRole.builder()
+                        .user(existingUser)
+                        .role(newRoleEntity)
+                        .build();
+                userRoleRepository.save(newUr);
+            }
+        }
+        // --------------------------------------------------------
         existingUser.setStatus(UserStatus.valueOf(request.getStatus()));
+        existingUser.setDob(request.getDob());
+        existingUser.setStartDate(request.getStartDate());
 
         // XỬ LÝ UPDATE PHÒNG BAN MỚI
         if (request.getDepartmentName() != null && !request.getDepartmentName().isEmpty()) {
@@ -260,8 +312,15 @@ public class UserServiceImpl implements IUserService {
         // 2. CHUẨN HÓA DỮ LIỆU LỌC
         if (filter.getRole() == null || "All".equalsIgnoreCase(filter.getRole())) filter.setRole("");
         if (filter.getDepartmentName() == null || "All".equalsIgnoreCase(filter.getDepartmentName())) filter.setDepartmentName("");
-        if (filter.getStatus() == null || "All".equalsIgnoreCase(filter.getStatus())) filter.setStatus("");
         filter.setKeyword(filter.getKeyword() == null ? "" : filter.getKeyword().trim());
+
+        // XỬ LÝ RIÊNG CHO ENUM STATUS
+        if (filter.getStatus() == null || "All".equalsIgnoreCase(filter.getStatus()) || filter.getStatus().isEmpty()) {
+            filter.setStatusEnum(null); // Nếu là All thì truyền null để DB không lọc
+        } else {
+            // Ép an toàn chuỗi từ FE sang Enum
+            filter.setStatusEnum(UserStatus.valueOf(filter.getStatus().toUpperCase()));
+        }
 
         // 3. GỌI REPOSITORY (Truyền object filter vào)
         List<Users> resultList = userRepository.searchAndFilterUsers(filter);

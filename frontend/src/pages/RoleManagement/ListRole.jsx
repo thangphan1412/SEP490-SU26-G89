@@ -10,7 +10,7 @@ import {
     IconTrash,
 } from "@tabler/icons-react";
 import { useNavigate } from "react-router-dom";
-import roleApi from "../../services/RoleService/roleApi.js";
+import roleApi from "../../services/roleService/roleApi.js";
 import "../../assets/styles/css/roleStyles/Roles.css";
 
 const formatDateTime = (value) => {

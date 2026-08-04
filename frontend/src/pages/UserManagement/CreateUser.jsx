@@ -13,6 +13,7 @@ import {
 // IMPORT FILE API VÀO ĐÂY
 import { createUser } from "../../services/userService/userApi.js";
 import departmentApi from "../../services/departmentService/departmentApi";
+import roleApi from "../../services/roleService/roleApi";
 
 function CreateUser() {
     const navigate = useNavigate();
@@ -26,6 +27,7 @@ function CreateUser() {
     const viewType = searchParams.get("type") || "employee";
 
     const [departmentsDB, setDepartmentsDB] = useState([]);
+    const [rolesDB, setRolesDB] = useState([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     // Tính toán Role có sẵn
@@ -36,21 +38,38 @@ function CreateUser() {
     const [user, setUser] = useState({
         firstName: "", lastName: "", email: "", initialPassword: "", confirmPassword: "",
         department: "",
+        dob: "",
         role: availableRoles[0] || "", // Mặc định lấy role đầu tiên
         position: "", phoneNumber: "", employeeId: "", startDate: "",
         status: "ACTIVE", sendWelcomeEmail: true
     });
 
     useEffect(() => {
-        const fetchDepts = async () => {
+        const fetchData = async () => {
             try {
-                const res = await departmentApi.getAllDepartments();
-                setDepartmentsDB(res.data?.data || res.data || []);
+                // Gọi API song song cho nhanh
+                const [deptRes, roleRes] = await Promise.all([
+                    departmentApi.getAllDepartments(),
+                    roleApi.getAllRoles()
+                ]);
+
+                setDepartmentsDB(deptRes.data?.data || deptRes.data || []);
+
+                // Lọc Role từ DB dựa trên mảng availableRoles
+                const allRoles = roleRes.data?.data || roleRes.data || [];
+                const filteredRoles = allRoles.filter(r => availableRoles.includes(r.roleName));
+                setRolesDB(filteredRoles);
+
+                // Gán mặc định role đầu tiên nếu có
+                if (filteredRoles.length > 0) {
+                    setUser(prev => ({ ...prev, role: filteredRoles[0].roleName }));
+                }
+
             } catch (error) {
-                console.error("Lỗi lấy danh sách department:", error);
+                console.error("Lỗi lấy dữ liệu API:", error);
             }
         };
-        fetchDepts();
+        fetchData();
 
         // ÉP BUỘC CHỌN PHÒNG BAN VÀ ROLE NẾU LÀ HeadOfDepartment
         if (currentUserRole === 'HeadOfDepartment') {
@@ -80,6 +99,8 @@ function CreateUser() {
                 email: user.email,
                 password: user.initialPassword,
                 numberPhone: user.phoneNumber,
+                dob: user.dob,
+                startDate: user.startDate,
                 role: user.role,
                 status: user.status,
                 departmentName: user.department,
@@ -142,7 +163,7 @@ function CreateUser() {
                     <div className="d-flex justify-content-between align-items-center border-bottom p-4 bg-white">
                         <div>
                             <h1 className="h3 fw-bold mb-1">Create User</h1>
-                            <p className="text-muted mb-0">Add a new employee account and assign access permissions.</p>
+                            <p className="text-muted mb-0">Add a new user account and assign access permissions.</p>
                         </div>
                         <div className="d-flex gap-2">
                             <Button variant="outline-secondary" className="fw-bold px-3"
@@ -217,13 +238,9 @@ function CreateUser() {
                             <Col md={6}>
                                 <Form.Group>
                                     <Form.Label className="small fw-bold">Department <span className="text-danger">*</span></Form.Label>
-                                    <Form.Select name="department" value={user.department} onChange={handleChange} required
-                                        // KHÓA LẠI NẾU LÀ MANAGER
-                                                 disabled={isSubmitting || currentUserRole === 'Manager'}>
+                                    <Form.Select name="department" value={user.department} onChange={handleChange} required disabled={isSubmitting || currentUserRole === 'HeadOfDepartment'}>
                                         <option value="">Select department</option>
-                                        {departmentsDB.map(d => (
-                                            <option key={d.departmentName} value={d.departmentName}>{d.departmentName}</option>
-                                        ))}
+                                        {departmentsDB.map(d => <option key={d.departmentName} value={d.departmentName}>{d.departmentName}</option>)}
                                     </Form.Select>
                                 </Form.Group>
                             </Col>
@@ -232,29 +249,34 @@ function CreateUser() {
                             <Col md={6}>
                                 <Form.Group>
                                     <Form.Label className="small fw-bold">Role <span className="text-danger">*</span></Form.Label>
-                                    <Form.Select name="role" value={user.role} onChange={handleChange} required
-                                        // NẾU CHỈ CÓ 1 ROLE (VD: MANAGER TẠO NV, HOẶC TẠO CUSTOMER), KHÓA LUÔN CHO ĐỠ BẤM
-                                                 disabled={isSubmitting || availableRoles.length === 1}>
+                                    <Form.Select name="role" value={user.role} onChange={handleChange} required disabled={isSubmitting || rolesDB.length <= 1}>
                                         <option value="">Select role</option>
-                                        {availableRoles.map(r => (
-                                            <option key={r} value={r}>{r}</option>
-                                        ))}
+                                        {rolesDB.map(r => <option key={r.id} value={r.roleName}>{r.roleName}</option>)}
                                     </Form.Select>
                                 </Form.Group>
                             </Col>
 
+                            <Col md={6}>
+                                <Form.Group>
+                                    <Form.Label className="small fw-bold">Date of Birth</Form.Label>
+                                    <Form.Control type="date" name="dob" value={user.dob} onChange={handleChange} disabled={isSubmitting} />
+                                </Form.Group>
+                            </Col>
 
-                            {/* CÁC TRƯỜNG BÊN DƯỚI ĐƯỢC GIỮ NGUYÊN (HARDCODE) THEO Ý BẠN */}
+                            {/* User ID */}
                             <Col md={6}>
-                                <Form.Group><Form.Label className="small fw-bold">Position</Form.Label><Form.Control
-                                    type="text" name="position" value={user.position} onChange={handleChange}
-                                    placeholder="Enter position" disabled={isSubmitting}/></Form.Group>
+                                <Form.Group>
+                                    <Form.Label className="small fw-bold">User ID</Form.Label>
+                                    <Form.Control
+                                        type="text"
+                                        value="Auto-generated after creation"
+                                        disabled={true}
+                                        className="bg-light text-muted fst-italic"
+                                    />
+                                </Form.Group>
                             </Col>
-                            <Col md={6}>
-                                <Form.Group><Form.Label className="small fw-bold">Employee ID</Form.Label><Form.Control
-                                    type="text" name="employeeId" value={user.employeeId} onChange={handleChange}
-                                    placeholder="Enter employee ID" disabled={isSubmitting}/></Form.Group>
-                            </Col>
+
+                            {/* Start Date */}
                             <Col md={6}>
                                 <Form.Group>
                                     <Form.Label className="small fw-bold">Start Date <span

@@ -19,4 +19,6 @@ public class UserRequestDTO {
     private String status;
     private Boolean sendWelcomeEmail;
     private String departmentName;
+    private String dob;
+    private String startDate;
 }

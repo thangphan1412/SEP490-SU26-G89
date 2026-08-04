@@ -23,6 +23,7 @@ import {
 // IMPORT HÀM GỌI API
 import { getUserById, updateUser } from "../../services/userService/userApi.js";
 import departmentApi from "../../services/departmentService/departmentApi";
+import roleApi from "../../services/roleService/roleApi";
 
 function UpdateUser({ onUpdateUser }) {
     const navigate = useNavigate();
@@ -42,6 +43,7 @@ function UpdateUser({ onUpdateUser }) {
         : ['Employee'];
 
     const [departmentsDB, setDepartmentsDB] = useState([]);
+    const [rolesDB, setRolesDB] = useState([]);
     const [isLoadingData, setIsLoadingData] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -50,24 +52,27 @@ function UpdateUser({ onUpdateUser }) {
         lastName: "",
         phoneNumber: "",
         email: "",
-        role: "", // Sẽ được API ghi đè
+        role: "",
         status: "ACTIVE",
-        employeeId: "EMP-00987",
+        employeeId: "",
         department: "",
-        startDate: "2023-06-15",
-        position: "Senior Legal Counsel",
-        accessScope: "Department Level Access",
+        startDate: "",
+        dob: "",
         sendUpdateEmail: true,
     });
 
     useEffect(() => {
         const fetchDepts = async () => {
             try {
-                // Gọi qua departmentApi
-                const res = await departmentApi.getAllDepartments();
-                setDepartmentsDB(res.data?.data || res.data || []);
+                const [deptRes, roleRes] = await Promise.all([
+                    departmentApi.getAllDepartments(),
+                    roleApi.getAllRoles()
+                ]);
+                setDepartmentsDB(deptRes.data?.data || deptRes.data || []);
+                const allRoles = roleRes.data?.data || roleRes.data || [];
+                setRolesDB(allRoles.filter(r => availableRoles.includes(r.roleName)));
             } catch (error) {
-                console.error("Lỗi lấy danh sách department:", error);
+                console.error("Lỗi lấy dữ liệu API:", error);
             }
         };
         fetchDepts();
@@ -86,8 +91,10 @@ function UpdateUser({ onUpdateUser }) {
                     phoneNumber: data.numberPhone || "",
                     role: data.role || availableRoles[0], // Lấy role từ DB, nếu không có thì lấy mặc định
                     status: data.status || "ACTIVE",
-                    // Nhớ map thêm department từ BE trả về nếu có
                     department: data.departmentName || (currentUserRole === 'HeadOfDepartment' ? currentUserDept : ""),
+                    dob: data.dob || "",
+                    employeeId: data.employeeId || "N/A",
+                    startDate: data.startDate || "",
                 }));
             } catch (error) {
                 console.error("Lỗi khi tải dữ liệu user:", error);
@@ -124,7 +131,9 @@ function UpdateUser({ onUpdateUser }) {
                 role: user.role,
                 status: user.status,
                 departmentName: user.department,
-                sendWelcomeEmail: user.sendUpdateEmail
+                sendWelcomeEmail: user.sendUpdateEmail,
+                dob: user.dob,
+                startDate: user.startDate
             };
 
             await updateUser(id, payload);
@@ -276,13 +285,13 @@ function UpdateUser({ onUpdateUser }) {
                                         </Form.Group>
                                     </Col>
 
-                                    {/* Employee ID */}
+                                    {/* User ID */}
                                     <Col md={6}>
                                         <Form.Group>
-                                            <Form.Label className="small fw-bold text-secondary">Employee ID</Form.Label>
+                                            <Form.Label className="small fw-bold text-secondary">User ID</Form.Label>
                                             <div className="position-relative">
                                                 <IconId className="position-absolute start-0 top-50 translate-middle-y ms-3 text-muted" size={18} />
-                                                <Form.Control id="employeeId" name="employeeId" type="text" value={user.employeeId} onChange={handleChange} disabled={isSubmitting} className="ps-5 py-2" />
+                                                <Form.Control name="employeeId" type="text" value={user.employeeId} disabled={true} className="ps-5 py-2 bg-light text-muted" />
                                             </div>
                                         </Form.Group>
                                     </Col>
@@ -293,12 +302,9 @@ function UpdateUser({ onUpdateUser }) {
                                             <Form.Label className="small fw-bold text-secondary">Department</Form.Label>
                                             <div className="position-relative">
                                                 <IconBuilding className="position-absolute start-0 top-50 translate-middle-y ms-3 text-muted" size={18} style={{ zIndex: 5 }} />
-                                                <Form.Select name="department" value={user.department} onChange={handleChange}
-                                                             disabled={isSubmitting || currentUserRole === 'Manager'} className="ps-5 py-2">
+                                                <Form.Select name="department" value={user.department} onChange={handleChange} disabled={isSubmitting || currentUserRole === 'HeadOfDepartment'} className="ps-5 py-2">
                                                     <option value="">Select department</option>
-                                                    {departmentsDB.map(d => (
-                                                        <option key={d.departmentName} value={d.departmentName}>{d.departmentName}</option>
-                                                    ))}
+                                                    {departmentsDB.map(d => <option key={d.departmentName} value={d.departmentName}>{d.departmentName}</option>)}
                                                 </Form.Select>
                                             </div>
                                         </Form.Group>
@@ -333,12 +339,9 @@ function UpdateUser({ onUpdateUser }) {
                                             <Form.Label className="small fw-bold text-secondary">Role</Form.Label>
                                             <div className="position-relative">
                                                 <IconShieldCheck className="position-absolute start-0 top-50 translate-middle-y ms-3 text-muted" size={18} style={{ zIndex: 5 }} />
-                                                <Form.Select name="role" value={user.role} onChange={handleChange}
-                                                             disabled={isSubmitting || availableRoles.length === 1} className="ps-5 py-2">
+                                                <Form.Select name="role" value={user.role} onChange={handleChange} disabled={isSubmitting || rolesDB.length <= 1} className="ps-5 py-2">
                                                     <option value="">Select role</option>
-                                                    {availableRoles.map(r => (
-                                                        <option key={r} value={r}>{r}</option>
-                                                    ))}
+                                                    {rolesDB.map(r => <option key={r.id} value={r.roleName}>{r.roleName}</option>)}
                                                 </Form.Select>
                                             </div>
                                         </Form.Group>
@@ -355,28 +358,13 @@ function UpdateUser({ onUpdateUser }) {
                                         </Form.Group>
                                     </Col>
 
-                                    {/* Position */}
+                                    {/* Date of Birth */}
                                     <Col md={6}>
                                         <Form.Group>
-                                            <Form.Label className="small fw-bold text-secondary">Position</Form.Label>
+                                            <Form.Label className="small fw-bold text-secondary">Date of Birth</Form.Label>
                                             <div className="position-relative">
-                                                <IconBriefcase className="position-absolute start-0 top-50 translate-middle-y ms-3 text-muted" size={18} />
-                                                <Form.Control id="position" name="position" type="text" value={user.position} onChange={handleChange} disabled={isSubmitting} className="ps-5 py-2" />
-                                            </div>
-                                        </Form.Group>
-                                    </Col>
-
-                                    {/* Access Scope */}
-                                    <Col md={6}>
-                                        <Form.Group>
-                                            <Form.Label className="small fw-bold text-secondary">Access Scope</Form.Label>
-                                            <div className="position-relative">
-                                                <IconLock className="position-absolute start-0 top-50 translate-middle-y ms-3 text-muted" size={18} style={{ zIndex: 5 }} />
-                                                <Form.Select id="accessScope" name="accessScope" value={user.accessScope} onChange={handleChange} disabled={isSubmitting} className="ps-5 py-2">
-                                                    <option value="Department Level Access">Department Level Access</option>
-                                                    <option value="Full Access">Full Access</option>
-                                                    <option value="Limited Access">Limited Access</option>
-                                                </Form.Select>
+                                                <IconCalendar className="position-absolute start-0 top-50 translate-middle-y ms-3 text-muted" size={18} />
+                                                <Form.Control type="date" name="dob" value={user.dob} onChange={handleChange} disabled={isSubmitting} className="ps-5 py-2" />
                                             </div>
                                         </Form.Group>
                                     </Col>

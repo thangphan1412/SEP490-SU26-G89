@@ -33,6 +33,11 @@ public class Users extends BaseEntity {
     private String role;
     @Column(name = "date_of_birth")
     private String dob;
+    // THÊM TRƯỜNG NÀY ĐỂ LƯU THỜI GIAN HOẠT ĐỘNG CUỐI
+    @Column(name = "last_active")
+    private java.time.LocalDateTime lastActive;
+    @Column(name = "start_date")
+    private String startDate;
 
     /// Relation
     // permissions

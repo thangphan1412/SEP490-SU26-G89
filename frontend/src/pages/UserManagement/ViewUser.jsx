@@ -22,10 +22,51 @@ import {
 // IMPORT HÀM GỌI API
 import { getUserById } from "../../services/userService/userApi.js";
 
+// --- HÀM TÍNH TOÁN THỜI GIAN "TIME AGO" (ĐÃ FIX LỆCH MÚI GIỜ UTC+7) ---
+const timeAgo = (dateString) => {
+    if (!dateString) return "Never logged in";
+
+    // MẤU CHỐT LÀ ĐÂY: Thêm chữ 'Z' vào cuối chuỗi để ép JS hiểu đây là giờ UTC (Múi giờ +0).
+    // Sau đó trình duyệt ở VN sẽ tự động cộng thêm 7 tiếng để tính toán cho chuẩn.
+    const utcDateString = dateString.endsWith('Z') ? dateString : dateString + 'Z';
+    const date = new Date(utcDateString);
+
+    if (isNaN(date.getTime())) return "Never logged in";
+
+    const now = new Date();
+    const seconds = Math.floor((now - date) / 1000);
+
+    // Xử lý trường hợp đồng hồ máy tính của bạn bị lệch chậm hơn server vài giây sinh ra số âm
+    if (seconds <= 0) return "Just now";
+
+    if (seconds < 60) return "Just now";
+
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes} min${minutes !== 1 ? 's' : ''} ago`;
+
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours} hour${hours !== 1 ? 's' : ''} ago`;
+
+    const days = Math.floor(hours / 24);
+    if (days < 7) return `${days} day${days !== 1 ? 's' : ''} ago`;
+
+    const weeks = Math.floor(days / 7);
+    if (weeks < 4) return `${weeks} week${weeks !== 1 ? 's' : ''} ago`;
+
+    const months = Math.floor(days / 30);
+    if (months < 12) return `${months} month${months !== 1 ? 's' : ''} ago`;
+
+    const years = Math.floor(days / 365);
+    return `${years} year${years !== 1 ? 's' : ''} ago`;
+};
+// --------------------------------------------------------
+
 function ViewUser() {
     const navigate = useNavigate();
     const { id } = useParams(); // Lấy ID người dùng từ đường dẫn URL
     const location = useLocation();
+
+    const currentUserRole = localStorage.getItem("role") || "";
 
     // Đọc URL xem đang ở luồng Employee hay Customer để giữ flow
     const searchParams = new URLSearchParams(location.search);
@@ -43,7 +84,6 @@ function ViewUser() {
                 // Gọi API lấy chi tiết user
                 const response = await getUserById(id);
                 const data = response.data.data;
-
                 // Gán dữ liệu thật từ BE và Hardcode các trường chưa làm ở DB
                 setUser({
                     firstName: data.firstName || "",
@@ -52,15 +92,11 @@ function ViewUser() {
                     phoneNumber: data.numberPhone || "",
                     role: data.role || "N/A",
                     status: data.status || "Inactive",
-                    // ĐÃ SỬA: Lấy Department thật từ Backend
                     department: data.departmentName || "N/A",
-
-                    // Hardcode các trường dưới đây do DB chưa có
-                    employeeId: "EMP-001248",
-                    position: "Senior Legal Counsel",
-                    accessScope: "Department Level",
-                    dateJoined: "Jan 15, 2024",
-                    lastLogin: "May 22, 2025, 09:32 AM",
+                    dob: data.dob || "N/A",
+                    employeeId: data.employeeId || "N/A",
+                    lastActive: data.lastActive || "Chưa đăng nhập",
+                    dateJoined: data.startDate || "N/A",
                 });
             } catch (error) {
                 console.error("Lỗi khi lấy dữ liệu người dùng:", error);
@@ -71,7 +107,6 @@ function ViewUser() {
                 setLoading(false);
             }
         };
-
         if (id) {
             fetchUserDetails();
         }
@@ -120,7 +155,7 @@ function ViewUser() {
                     <div className="d-flex justify-content-between align-items-center border-bottom p-4 bg-white">
                         <div>
                             <h1 className="h3 fw-bold mb-1">User Details</h1>
-                            <p className="text-muted mb-0">Review employee information, role permissions, and department assignment.</p>
+                            <p className="text-muted mb-0">Review user information, role permissions, and department assignment.</p>
                         </div>
                         <div className="d-flex gap-2">
                             {/* Nút Back giữ nguyên ngữ cảnh Type */}
@@ -151,9 +186,9 @@ function ViewUser() {
                         </div>
                     ) : user ? (
                         <>
-                            {/* --- EMPLOYEE INFORMATION CARD --- */}
+                            {/* --- User INFORMATION CARD --- */}
                             <Card className="m-4 border rounded-3 p-4">
-                                <h2 className="h5 fw-bold mb-4 text-dark">Employee Information</h2>
+                                <h2 className="h5 fw-bold mb-4 text-dark">User Information</h2>
 
                                 <Row className="g-4">
                                     {/* Cột 1: Khối Avatar */}
@@ -204,11 +239,26 @@ function ViewUser() {
                                                     <Col xs={6} className="text-dark fw-semibold">{user.phoneNumber || 'N/A'}</Col>
                                                 </Row>
                                             </div>
-                                            {/* Employee ID */}
+                                            {/* DOB */}
+                                            <div className="border-bottom border-light pb-2">
+                                                <Row className="align-items-center g-0">
+                                                    <Col xs={1} className="d-flex text-secondary"><IconCalendar size={18} /></Col>
+                                                    <Col xs={4} className="text-muted fw-medium ps-2">Date of Birth</Col>
+                                                    <Col xs={1} className="text-muted text-center">:</Col>
+                                                    <Col xs={6} className="text-dark fw-semibold">{user.dob}</Col>
+                                                </Row>
+                                            </div>
+                                        </Stack>
+                                    </Col>
+
+                                    {/* Cột 3: Thông tin chi tiết bên phải */}
+                                    <Col md={5} className="px-3">
+                                        <Stack gap={3} className="small">
+                                            {/* User ID */}
                                             <div className="border-bottom border-light pb-2">
                                                 <Row className="align-items-center g-0">
                                                     <Col xs={1} className="d-flex text-secondary"><IconId size={18} /></Col>
-                                                    <Col xs={4} className="text-muted fw-medium ps-2">Employee ID</Col>
+                                                    <Col xs={4} className="text-muted fw-medium ps-2">User ID</Col>
                                                     <Col xs={1} className="text-muted text-center">:</Col>
                                                     <Col xs={6} className="text-dark fw-semibold">{user.employeeId}</Col>
                                                 </Row>
@@ -222,21 +272,6 @@ function ViewUser() {
                                                     <Col xs={6} className="text-dark fw-semibold">{user.department}</Col>
                                                 </Row>
                                             </div>
-                                        </Stack>
-                                    </Col>
-
-                                    {/* Cột 3: Thông tin chi tiết bên phải */}
-                                    <Col md={5} className="px-3">
-                                        <Stack gap={3} className="small">
-                                            {/* Position */}
-                                            <div className="border-bottom border-light pb-2">
-                                                <Row className="align-items-center g-0">
-                                                    <Col xs={1} className="d-flex text-secondary"><IconBriefcase size={18} /></Col>
-                                                    <Col xs={4} className="text-muted fw-medium ps-2">Position</Col>
-                                                    <Col xs={1} className="text-muted text-center">:</Col>
-                                                    <Col xs={6} className="text-dark fw-semibold">{user.position}</Col>
-                                                </Row>
-                                            </div>
                                             {/* Role */}
                                             <div className="border-bottom border-light pb-2">
                                                 <Row className="align-items-center g-0">
@@ -246,22 +281,17 @@ function ViewUser() {
                                                     <Col xs={6} className="text-dark fw-semibold">{user.role}</Col>
                                                 </Row>
                                             </div>
-                                            {/* Access Scope */}
-                                            <div className="border-bottom border-light pb-2">
-                                                <Row className="align-items-center g-0">
-                                                    <Col xs={1} className="d-flex text-secondary"><IconWorld size={18} /></Col>
-                                                    <Col xs={4} className="text-muted fw-medium ps-2">Access Scope</Col>
-                                                    <Col xs={1} className="text-muted text-center">:</Col>
-                                                    <Col xs={6} className="text-dark fw-semibold">{user.accessScope}</Col>
-                                                </Row>
-                                            </div>
                                             {/* Date Joined */}
                                             <div className="border-bottom border-light pb-2">
                                                 <Row className="align-items-center g-0">
                                                     <Col xs={1} className="d-flex text-secondary"><IconCalendar size={18} /></Col>
                                                     <Col xs={4} className="text-muted fw-medium ps-2">Date Joined</Col>
                                                     <Col xs={1} className="text-muted text-center">:</Col>
-                                                    <Col xs={6} className="text-dark fw-semibold">{user.dateJoined}</Col>
+                                                    <Col xs={6} className="text-dark fw-semibold">
+                                                        {user.dateJoined !== "N/A"
+                                                            ? new Date(user.dateJoined).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                                                            : "N/A"}
+                                                    </Col>
                                                 </Row>
                                             </div>
                                             {/* Last Login */}
@@ -270,7 +300,7 @@ function ViewUser() {
                                                     <Col xs={1} className="d-flex text-secondary"><IconClock size={18} /></Col>
                                                     <Col xs={4} className="text-muted fw-medium ps-2">Last Login</Col>
                                                     <Col xs={1} className="text-muted text-center">:</Col>
-                                                    <Col xs={6} className="text-dark fw-semibold">{user.lastLogin}</Col>
+                                                    <Col xs={6} className="text-dark fw-semibold">{timeAgo(user.lastActive)}</Col>
                                                 </Row>
                                             </div>
                                         </Stack>
@@ -327,7 +357,7 @@ function ViewUser() {
                                             </div>
                                             <span className="small text-muted d-block mb-1">Recent Activity</span>
                                             <h4 className="h6 fw-bold text-dark my-1">32 Activities</h4>
-                                            <small className="text-muted text-break">Last active on {user.lastLogin}.</small>
+                                            <small className="text-muted text-break">Last active on {timeAgo(user.lastActive)}.</small>
                                         </div>
                                     </Col>
                                 </Row>

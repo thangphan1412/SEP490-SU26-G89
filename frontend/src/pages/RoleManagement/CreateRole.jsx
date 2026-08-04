@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Alert, Button, Form, Spinner } from "react-bootstrap";
 import { IconArrowLeft, IconDeviceFloppy } from "@tabler/icons-react";
 import { useNavigate } from "react-router-dom";
-import roleApi from "../../services/RoleService/roleApi.js";
+import roleApi from "../../services/roleService/roleApi.js";
 import "../../assets/styles/css/roleStyles/Roles.css";
 
 function CreateRole() {

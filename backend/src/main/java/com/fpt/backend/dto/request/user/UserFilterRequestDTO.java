@@ -1,5 +1,6 @@
 package com.fpt.backend.dto.request.user;
 
+import com.fpt.backend.enums.UserStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -19,5 +20,6 @@ public class UserFilterRequestDTO {
     private String role;
     private String departmentName;
     private String status;
+    private UserStatus statusEnum;
     private List<String> allowedRoles; // Được Service gán vào sau khi check phân quyền
 }
