@@ -3,6 +3,7 @@ package com.fpt.backend.service.impl.permission;
 import com.fpt.backend.dto.response.permission.PermissionActionResponse;
 import com.fpt.backend.entity.PermissionAction;
 import com.fpt.backend.entity.Permissions;
+import com.fpt.backend.enums.WorkScope;
 import com.fpt.backend.exception.BadHttpException;
 import com.fpt.backend.repository.permission.PermissionActionRepository;
 import com.fpt.backend.service.interfaces.permission.PermissionActionService;
@@ -34,7 +35,7 @@ public class PermissionActionServiceImpl
             throw new BadHttpException("Permission is required");
         }
 
-        Permissions.WorkScope workScope = parseWorkScope(workScopeValue);
+        WorkScope workScope = parseWorkScope(workScopeValue);
         Set<String> requestedCodes = normalizeActionCodes(
                 allowedActionCodes
         );
@@ -93,7 +94,7 @@ public class PermissionActionServiceImpl
         }
 
         permission.setActions(new LinkedHashSet<>(availableActions));
-        permission.setWorkScope(Permissions.WorkScope.FULL);
+        permission.setWorkScope(WorkScope.FULL);
     }
 
     @Override
@@ -122,7 +123,7 @@ public class PermissionActionServiceImpl
     @Override
     public String getWorkScope(Permissions permission) {
         if (permission == null || permission.getWorkScope() == null) {
-            return Permissions.WorkScope.FULL.name();
+            return WorkScope.FULL.name();
         }
 
         return permission.getWorkScope().name();
@@ -177,11 +178,11 @@ public class PermissionActionServiceImpl
         return action.getDisplayOrder();
     }
 
-    private Permissions.WorkScope parseWorkScope(String value) {
+    private WorkScope parseWorkScope(String value) {
         String normalizedValue = normalize(value);
 
         try {
-            return Permissions.WorkScope.valueOf(normalizedValue);
+            return WorkScope.valueOf(normalizedValue);
         } catch (IllegalArgumentException exception) {
             throw new BadHttpException(
                     "Work scope must be OWN or FULL"

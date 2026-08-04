@@ -6,6 +6,7 @@ import com.fpt.backend.entity.Permissions;
 import com.fpt.backend.entity.Projects;
 import com.fpt.backend.entity.UserPermission;
 import com.fpt.backend.entity.Users;
+import com.fpt.backend.enums.WorkScope;
 import com.fpt.backend.exception.BadHttpException;
 import com.fpt.backend.exception.NotFoundException;
 import com.fpt.backend.repository.permission.UserPermissionRepository;
@@ -60,7 +61,7 @@ public class PermissionAccessServiceImpl
                         );
         Set<String> allowedActions = new LinkedHashSet<>();
         Set<String> fullScopeActions = new LinkedHashSet<>();
-        Permissions.WorkScope workScope = Permissions.WorkScope.OWN;
+        WorkScope workScope = WorkScope.OWN;
 
         for (UserPermission assignment : assignedPermissions) {
             Permissions permission = assignment.getPermission();
@@ -70,8 +71,8 @@ public class PermissionAccessServiceImpl
                 continue;
             }
 
-            if (permission.getWorkScope() == Permissions.WorkScope.FULL) {
-                workScope = Permissions.WorkScope.FULL;
+            if (permission.getWorkScope() == WorkScope.FULL) {
+                workScope = WorkScope.FULL;
                 addActiveActionCodes(permission, fullScopeActions);
             }
 
