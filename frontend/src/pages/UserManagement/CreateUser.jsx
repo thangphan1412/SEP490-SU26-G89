@@ -29,9 +29,9 @@ function CreateUser() {
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     // Tính toán Role có sẵn
-    const availableRoles = (currentUserRole === 'CEO' || currentUserRole === 'Admin')
-        ? (viewType === 'customer' ? ['Customer'] : ['Manager', 'Employee'])
-        : ['Employee']; // Manager
+    const availableRoles = (currentUserRole === 'CEO' || currentUserRole === 'Administrator')
+        ? (viewType === 'customer' ? ['External Parners'] : ['HeadOfDepartment', 'Employee', 'Accountant'])
+        : ['Employee']; // Dành cho HeadOfDepartment
 
     const [user, setUser] = useState({
         firstName: "", lastName: "", email: "", initialPassword: "", confirmPassword: "",
@@ -44,7 +44,6 @@ function CreateUser() {
     useEffect(() => {
         const fetchDepts = async () => {
             try {
-                // Gọi qua departmentApi
                 const res = await departmentApi.getAllDepartments();
                 setDepartmentsDB(res.data?.data || res.data || []);
             } catch (error) {
@@ -53,7 +52,8 @@ function CreateUser() {
         };
         fetchDepts();
 
-        if (currentUserRole === 'Manager') {
+        // ÉP BUỘC CHỌN PHÒNG BAN VÀ ROLE NẾU LÀ HeadOfDepartment
+        if (currentUserRole === 'HeadOfDepartment') {
             setUser(prev => ({ ...prev, department: currentUserDept, role: 'Employee' }));
         }
     }, [currentUserRole, currentUserDept]);
@@ -102,22 +102,40 @@ function CreateUser() {
         }
     };
 
+    // 1. VIẾT HÀM KIỂM TRA QUYỀN TRUY CẬP (AUTHORIZATION CHECK)
+    const checkPermission = () => {
+        // Nếu vào tab Customer Management -> Chỉ CEO và Administrator được vào
+        if (viewType === "customer") {
+            return ['CEO', 'Administrator'].includes(currentUserRole);
+        }
+        // Nếu vào tab Employee Management -> Thêm HeadOfDepartment được vào
+        if (viewType === "employee") {
+            return ['CEO', 'Administrator', 'HeadOfDepartment'].includes(currentUserRole);
+        }
+        return false;
+    };
+
+    // 2. NẾU KHÔNG CÓ QUYỀN -> HIỂN THỊ MÀN HÌNH BÁO LỖI LUÔN, KHÔNG RENDER UI BÊN DƯỚI
+    if (!checkPermission()) {
+        return (
+            <div className="bg-light min-vh-screen d-flex align-items-center justify-content-center">
+                <Card className="p-5 text-center shadow border-0 rounded-4" style={{ maxWidth: "500px" }}>
+                    <div className="text-danger mb-3">
+                        {/* Bạn có thể dùng icon Tabler ở đây */}
+                        <svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0"></path><path d="M9 12l2 2l4 -4"></path></svg>
+                    </div>
+                    <h2 className="fw-bold mb-3 text-dark">Access Denied</h2>
+                    <h5 className="text-secondary mb-4">Bạn không có quyền truy cập vào chức năng này!</h5>
+                    <Button variant="primary" className="fw-bold px-4" onClick={() => navigate("/home_page")}>
+                        Quay lại Trang chủ
+                    </Button>
+                </Card>
+            </div>
+        );
+    }
+
     return (
         <div className="bg-light min-vh-screen">
-            {/* --- HEADER ĐỒNG BỘ --- */}
-            {/*<header className="d-flex justify-content-between align-items-center px-4 py-3 bg-white border-bottom mb-4">*/}
-            {/*    <div className="d-flex align-items-center gap-2">*/}
-            {/*        <span className="fs-4">🛡️</span>*/}
-            {/*        <div className="d-flex flex-column lh-sm">*/}
-            {/*            <strong className="text-dark">E-CONTRACT</strong>*/}
-            {/*            <small className="text-muted" style={{ fontSize: "12px" }}>Management System</small>*/}
-            {/*        </div>*/}
-            {/*    </div>*/}
-            {/*    <NavDropdown title={<span className="text-dark fw-semibold"><IconWorld size={20} className="me-1"/>English</span>} id="lang-dropdown">*/}
-            {/*        <NavDropdown.Item>English</NavDropdown.Item>*/}
-            {/*        <NavDropdown.Item>Vietnamese</NavDropdown.Item>*/}
-            {/*    </NavDropdown>*/}
-            {/*</header>*/}
 
             <Container fluid="lg" className="mb-5">
                 <Form onSubmit={handleSubmit} className="border shadow-sm rounded-4 overflow-hidden bg-white">

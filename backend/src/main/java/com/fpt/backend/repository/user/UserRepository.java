@@ -1,5 +1,6 @@
 package com.fpt.backend.repository.user;
 
+import com.fpt.backend.dto.request.user.UserFilterRequestDTO;
 import com.fpt.backend.entity.Departments;
 import com.fpt.backend.entity.Users;
 
@@ -30,20 +31,15 @@ public interface UserRepository extends JpaRepository<Users, UUID> { // Sửa UU
 
         List<Users> findByRoleAndDepartment(String role, Departments department);
 
-        // BẠN THÊM CÂU QUERY NÀY VÀO:
+
         @Query("SELECT u FROM Users u " +
-                        "LEFT JOIN FETCH u.department d " + // THÊM CHỮ 'FETCH' VÀO ĐÂY
-                        "WHERE (:keyword = '' OR LOWER(u.firstName) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
-                        "   OR LOWER(u.lastName) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
-                        "   OR LOWER(u.email) LIKE LOWER(CONCAT('%', :keyword, '%'))) " +
-                        "AND (:role = '' OR u.role = :role) " +
-                        "AND (:status = '' OR u.status = :status) " +
-                        "AND (:departmentName = '' OR d.departmentName = :departmentName) " +
-                        "AND u.role IN :allowedRoles")
-        List<Users> searchAndFilterUsers(
-                        @Param("keyword") String keyword,
-                        @Param("role") String role,
-                        @Param("status") String status,
-                        @Param("departmentName") String departmentName,
-                        @Param("allowedRoles") List<String> allowedRoles);
+                "LEFT JOIN FETCH u.department d " +
+                "WHERE (:#{#filter.keyword} = '' OR LOWER(u.firstName) LIKE LOWER(CONCAT('%', :#{#filter.keyword}, '%')) " +
+                "   OR LOWER(u.lastName) LIKE LOWER(CONCAT('%', :#{#filter.keyword}, '%')) " +
+                "   OR LOWER(u.email) LIKE LOWER(CONCAT('%', :#{#filter.keyword}, '%'))) " +
+                "AND (:#{#filter.role} = '' OR u.role = :#{#filter.role}) " +
+                "AND (:#{#filter.status} = '' OR u.status = :#{#filter.status}) " +
+                "AND (:#{#filter.departmentName} = '' OR d.departmentName = :#{#filter.departmentName}) " +
+                "AND u.role IN :#{#filter.allowedRoles}")
+        List<Users> searchAndFilterUsers(@Param("filter") UserFilterRequestDTO filter);
 }

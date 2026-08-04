@@ -1,5 +1,6 @@
 package com.fpt.backend.controller.userController;
 
+import com.fpt.backend.dto.request.user.UserFilterRequestDTO;
 import com.fpt.backend.dto.request.user.UserRequestDTO;
 import com.fpt.backend.dto.response.user.UserResponseDTO;
 import com.fpt.backend.service.interfaces.user.IUserService;
@@ -7,6 +8,7 @@ import com.fpt.backend.util.BaseResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.security.Principal;
@@ -21,20 +23,15 @@ public class UserController {
     private IUserService userService; // Khuyên dùng interface thay vì implementation (UserServiceImpl)
 
     // 1. GET ALL USERS (ListUser)
+    @PreAuthorize("hasAnyAuthority('CEO', 'Administrator', 'HeadOfDepartment')")
     @GetMapping
     public ResponseEntity<BaseResponse<List<UserResponseDTO>>> getAllUsers(
-            @RequestParam(defaultValue = "employee") String type,
-            @RequestParam(required = false) String keyword,
-            @RequestParam(required = false, defaultValue = "All") String role,
-            @RequestParam(required = false, defaultValue = "All") String department,
-            @RequestParam(required = false, defaultValue = "All") String status,
+            UserFilterRequestDTO filterDTO, // Spring tự động map ?keyword=...&role=... vào object này
             Principal principal
     ) {
         try {
-            // Truyền toàn bộ param xuống Service
-            List<UserResponseDTO> users = userService.getAllUsersFiltered(
-                    type, principal.getName(), keyword, role, department, status
-            );
+            // Chỉ cần truyền 2 tham số: Object lọc và Username hiện tại
+            List<UserResponseDTO> users = userService.getAllUsersFiltered(filterDTO, principal.getName());
 
             return ResponseEntity
                     .status(HttpStatus.OK)
@@ -46,7 +43,7 @@ public class UserController {
                     );
         } catch (Exception e) {
             return ResponseEntity
-                    .status(HttpStatus.FORBIDDEN) // Lỗi 403 (Cấm truy cập)
+                    .status(HttpStatus.FORBIDDEN)
                     .body(BaseResponse.<List<UserResponseDTO>>builder()
                             .status(HttpStatus.FORBIDDEN.value())
                             .message(e.getMessage())
@@ -56,6 +53,7 @@ public class UserController {
     }
 
     // 2. GET USER BY ID (ViewUser)
+    @PreAuthorize("hasAnyAuthority('CEO', 'Administrator', 'HeadOfDepartment')")
     @GetMapping("/{id}")
     public ResponseEntity<BaseResponse<UserResponseDTO>> getUserById(@PathVariable UUID id) {
         try {
@@ -80,6 +78,7 @@ public class UserController {
     }
 
     // 3. CREATE USER (CreateUser)
+    @PreAuthorize("hasAnyAuthority('CEO', 'Administrator', 'HeadOfDepartment')")
     @PostMapping
     public ResponseEntity<BaseResponse<UserResponseDTO>> createUser(@RequestBody UserRequestDTO request) {
         try {
@@ -104,6 +103,7 @@ public class UserController {
     }
 
     // 4. UPDATE USER (UpdateUser)
+    @PreAuthorize("hasAnyAuthority('CEO', 'Administrator', 'HeadOfDepartment')")
     @PutMapping("/{id}")
     public ResponseEntity<BaseResponse<UserResponseDTO>> updateUser(
             @PathVariable UUID id,

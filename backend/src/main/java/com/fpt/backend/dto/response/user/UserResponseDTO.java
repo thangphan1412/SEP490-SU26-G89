@@ -16,7 +16,7 @@ import java.util.UUID;
 @NoArgsConstructor
 @Builder
 public class UserResponseDTO {
-    private UUID id; // Sửa UUID thành Integer
+    private UUID id;
     private String email;
     private String firstName;
     private String lastName;

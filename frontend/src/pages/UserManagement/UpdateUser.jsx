@@ -36,9 +36,9 @@ function UpdateUser({ onUpdateUser }) {
     const searchParams = new URLSearchParams(location.search);
     const viewType = searchParams.get("type") || "employee";
 
-    // Tính toán Role có sẵn giống hệt bên Create
-    const availableRoles = (currentUserRole === 'CEO' || currentUserRole === 'Admin')
-        ? (viewType === 'customer' ? ['Customer'] : ['Manager', 'Employee'])
+    // Tính toán Role có sẵn
+    const availableRoles = (currentUserRole === 'CEO' || currentUserRole === 'Administrator')
+        ? (viewType === 'customer' ? ['External Parners'] : ['HeadOfDepartment', 'Employee', 'Accountant'])
         : ['Employee'];
 
     const [departmentsDB, setDepartmentsDB] = useState([]);
@@ -87,7 +87,7 @@ function UpdateUser({ onUpdateUser }) {
                     role: data.role || availableRoles[0], // Lấy role từ DB, nếu không có thì lấy mặc định
                     status: data.status || "ACTIVE",
                     // Nhớ map thêm department từ BE trả về nếu có
-                    department: data.departmentName || (currentUserRole === 'Manager' ? currentUserDept : ""),
+                    department: data.departmentName || (currentUserRole === 'HeadOfDepartment' ? currentUserDept : ""),
                 }));
             } catch (error) {
                 console.error("Lỗi khi tải dữ liệu user:", error);
@@ -141,22 +141,40 @@ function UpdateUser({ onUpdateUser }) {
         }
     };
 
+    // 1. VIẾT HÀM KIỂM TRA QUYỀN TRUY CẬP (AUTHORIZATION CHECK)
+    const checkPermission = () => {
+        // Nếu vào tab Customer Management -> Chỉ CEO và Administrator được vào
+        if (viewType === "customer") {
+            return ['CEO', 'Administrator'].includes(currentUserRole);
+        }
+        // Nếu vào tab Employee Management -> Thêm HeadOfDepartment được vào
+        if (viewType === "employee") {
+            return ['CEO', 'Administrator', 'HeadOfDepartment'].includes(currentUserRole);
+        }
+        return false;
+    };
+
+    // 2. NẾU KHÔNG CÓ QUYỀN -> HIỂN THỊ MÀN HÌNH BÁO LỖI LUÔN, KHÔNG RENDER UI BÊN DƯỚI
+    if (!checkPermission()) {
+        return (
+            <div className="bg-light min-vh-screen d-flex align-items-center justify-content-center">
+                <Card className="p-5 text-center shadow border-0 rounded-4" style={{ maxWidth: "500px" }}>
+                    <div className="text-danger mb-3">
+                        {/* Bạn có thể dùng icon Tabler ở đây */}
+                        <svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0"></path><path d="M9 12l2 2l4 -4"></path></svg>
+                    </div>
+                    <h2 className="fw-bold mb-3 text-dark">Access Denied</h2>
+                    <h5 className="text-secondary mb-4">Bạn không có quyền truy cập vào chức năng này!</h5>
+                    <Button variant="primary" className="fw-bold px-4" onClick={() => navigate("/home_page")}>
+                        Quay lại Trang chủ
+                    </Button>
+                </Card>
+            </div>
+        );
+    }
+
     return (
         <div className="bg-light min-vh-screen">
-            {/* --- HEADER ĐỒNG BỘ --- */}
-            {/*<header className="d-flex justify-content-between align-items-center px-4 py-3 bg-white border-bottom mb-4">*/}
-            {/*    <div className="d-flex align-items-center gap-2">*/}
-            {/*        <span className="fs-4">🛡️</span>*/}
-            {/*        <div className="d-flex flex-column lh-sm">*/}
-            {/*            <strong className="text-dark">E-CONTRACT</strong>*/}
-            {/*            <small className="text-muted" style={{ fontSize: "12px" }}>Management System</small>*/}
-            {/*        </div>*/}
-            {/*    </div>*/}
-            {/*    <NavDropdown title={<span className="text-dark fw-semibold"><IconWorld size={20} className="me-1"/>English</span>} id="lang-dropdown">*/}
-            {/*        <NavDropdown.Item>English</NavDropdown.Item>*/}
-            {/*        <NavDropdown.Item>Vietnamese</NavDropdown.Item>*/}
-            {/*    </NavDropdown>*/}
-            {/*</header>*/}
 
             {/* --- MAIN CONTENT --- */}
             <Container fluid="lg" className="mb-5">

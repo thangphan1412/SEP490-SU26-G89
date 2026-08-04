@@ -3,6 +3,7 @@ package com.fpt.backend.service.impl.user;
 import com.fpt.backend.dto.request.authentication.ChangePasswordRequest;
 import com.fpt.backend.dto.request.authentication.RegisterRequest;
 import com.fpt.backend.dto.request.authentication.ResetPasswordRequest;
+import com.fpt.backend.dto.request.user.UserFilterRequestDTO;
 import com.fpt.backend.dto.request.user.UserRequestDTO;
 import com.fpt.backend.dto.request.userProfile.UserProfileRequestDTO;
 import com.fpt.backend.dto.response.authentication.RegisterResponse;
@@ -120,7 +121,7 @@ public class UserServiceImpl implements IUserService {
                 .status(UserStatus.valueOf(request.getStatus()))
                 .build();
 
-        // THÊM ĐOẠN NÀY LÀM LOGIC LƯU DEPARTMENT
+        // LOGIC LƯU DEPARTMENT
         if (request.getDepartmentName() != null && !request.getDepartmentName().isEmpty()) {
             Departments dept = departmentRepository.findByDepartmentName(request.getDepartmentName())
                     .orElseThrow(() -> new RuntimeException("Department not found: " + request.getDepartmentName()));
@@ -129,7 +130,7 @@ public class UserServiceImpl implements IUserService {
 
         Users savedUser = userRepository.save(newUser);
 
-        // THÊM DÒNG NÀY ĐỂ DEBUG:
+        // DEBUG:
         System.out.println("====== Gửi mail không? " + request.getSendWelcomeEmail());
 
         // GỬI MAIL CHÀO MỪNG (Khi tạo mới)
@@ -160,7 +161,7 @@ public class UserServiceImpl implements IUserService {
         existingUser.setRole(request.getRole());
         existingUser.setStatus(UserStatus.valueOf(request.getStatus()));
 
-        // THÊM ĐOẠN NÀY ĐỂ XỬ LÝ UPDATE PHÒNG BAN MỚI
+        // XỬ LÝ UPDATE PHÒNG BAN MỚI
         if (request.getDepartmentName() != null && !request.getDepartmentName().isEmpty()) {
             Departments dept = departmentRepository.findByDepartmentName(request.getDepartmentName())
                     .orElseThrow(() -> new RuntimeException("Department not found: " + request.getDepartmentName()));
@@ -186,7 +187,7 @@ public class UserServiceImpl implements IUserService {
 
         Users updatedUser = userRepository.save(existingUser);
 
-        // THÊM DÒNG NÀY ĐỂ CHECK XEM BACKEND NHẬN ĐƯỢC GÌ:
+        // CHECK XEM BACKEND NHẬN ĐƯỢC GÌ:
         System.out.println("====== UPDATE USER - Có gửi mail không? " + request.getSendWelcomeEmail());
 
         // GỬI MAIL THÔNG BÁO UPDATE
@@ -216,9 +217,8 @@ public class UserServiceImpl implements IUserService {
     }
 
 
-    // Thêm hàm này vào UserServiceImpl.java
     @Override
-    public List<UserResponseDTO> getAllUsersFiltered(String type, String currentUsername, String keyword, String roleFilter, String departmentFilter, String statusFilter) {
+    public List<UserResponseDTO> getAllUsersFiltered(UserFilterRequestDTO filter, String currentUsername) {
 
         Users currentUser = userRepository.findByEmail(currentUsername)
                 .orElseThrow(() -> new RuntimeException("Current user not found"));
@@ -230,50 +230,42 @@ public class UserServiceImpl implements IUserService {
 
         List<String> allowedRoles;
 
-        // 1. BẢO MẬT: Dùng equalsIgnoreCase để không sợ lỗi viết hoa/thường ở Database
-        if ("CEO".equalsIgnoreCase(currentUserRole) || "Admin".equalsIgnoreCase(currentUserRole)) {
-            if ("customer".equalsIgnoreCase(type)) {
-                allowedRoles = List.of("Customer");
+        if ("CEO".equalsIgnoreCase(currentUserRole) || "Administrator".equalsIgnoreCase(currentUserRole)) {
+            if ("customer".equalsIgnoreCase(filter.getType())) {
+                allowedRoles = List.of("External Parners");
             } else {
-                // Sửa lại thành kiểm tra không phân biệt hoa thường (phòng khi DB viết hoa)
-                allowedRoles = List.of("Manager", "Employee", "MANAGER", "EMPLOYEE", "manager", "employee");
+                allowedRoles = List.of("HeadOfDepartment", "Employee", "Accountant");
             }
         }
-        else if ("Manager".equalsIgnoreCase(currentUserRole)) {
-            if ("employee".equalsIgnoreCase(type)) {
-                allowedRoles = List.of("Employee", "EMPLOYEE", "employee");
+        else if ("HeadOfDepartment".equalsIgnoreCase(currentUserRole)) {
+            if ("employee".equalsIgnoreCase(filter.getType())) {
+                allowedRoles = List.of("Employee", "Accountant");
 
-                // BẢO MẬT & CHỐNG LỖI 500: Kiểm tra Manager đã có phòng ban chưa
                 if (currentUser.getDepartment() != null && currentUser.getDepartment().getDepartmentName() != null) {
-                    departmentFilter = currentUser.getDepartment().getDepartmentName();
+                    filter.setDepartmentName(currentUser.getDepartment().getDepartmentName());
                 } else {
-                    // Nếu Manager bị lỗi chưa có phòng ban trong DB -> Chặn luôn để không văng lỗi hệ thống
-                    throw new RuntimeException("Access Denied: Tài khoản Manager này chưa được gán Phòng ban trong hệ thống!");
+                    throw new RuntimeException("Access Denied: Tài khoản HeadOfDepartment chưa được gán Phòng ban!");
                 }
             } else {
-                throw new RuntimeException("Access Denied: Managers cannot view customers.");
+                throw new RuntimeException("Access Denied: HeadOfDepartment cannot view External Partners.");
             }
         }
         else {
             throw new RuntimeException("Access Denied: You do not have permission.");
         }
 
-        // 2. CHUẨN HÓA DỮ LIỆU TỪ FE (Đổi null hoặc "All" thành "" để tránh lỗi SQL)
-        if (roleFilter == null || "All".equalsIgnoreCase(roleFilter)) roleFilter = "";
-        if (departmentFilter == null || "All".equalsIgnoreCase(departmentFilter)) departmentFilter = "";
-        if (statusFilter == null || "All".equalsIgnoreCase(statusFilter)) statusFilter = "";
-        if (keyword == null) keyword = ""; else keyword = keyword.trim();
+        // Gán allowedRoles vào object filter
+        filter.setAllowedRoles(allowedRoles);
 
-        // 3. GỌI DATABASE THỰC THI QUERY
-        List<Users> resultList = userRepository.searchAndFilterUsers(
-                keyword,
-                roleFilter,
-                statusFilter,
-                departmentFilter,
-                allowedRoles
-        );
+        // 2. CHUẨN HÓA DỮ LIỆU LỌC
+        if (filter.getRole() == null || "All".equalsIgnoreCase(filter.getRole())) filter.setRole("");
+        if (filter.getDepartmentName() == null || "All".equalsIgnoreCase(filter.getDepartmentName())) filter.setDepartmentName("");
+        if (filter.getStatus() == null || "All".equalsIgnoreCase(filter.getStatus())) filter.setStatus("");
+        filter.setKeyword(filter.getKeyword() == null ? "" : filter.getKeyword().trim());
 
-        // 4. TRẢ VỀ DTO
+        // 3. GỌI REPOSITORY (Truyền object filter vào)
+        List<Users> resultList = userRepository.searchAndFilterUsers(filter);
+
         return resultList.stream()
                 .map(UserResponseDTO::fromEntity)
                 .collect(Collectors.toList());
