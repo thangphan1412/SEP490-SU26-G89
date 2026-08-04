@@ -4,6 +4,7 @@ import com.fpt.backend.dto.request.project.ProjectPhaseRequest;
 import com.fpt.backend.dto.response.project.ProjectPhaseResponse;
 import com.fpt.backend.entity.Projects;
 import com.fpt.backend.entity.Timeline;
+import com.fpt.backend.enums.PhaseStatus;
 import com.fpt.backend.exception.BadHttpException;
 import com.fpt.backend.repository.phase.PhaseContractRepository;
 import com.fpt.backend.repository.phase.PhaseDeliverableRepository;
@@ -26,7 +27,7 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 public class ProjectPhaseServiceImpl implements ProjectPhaseService {
-    private static final String DEFAULT_PHASE_STATUS = "Planning";
+    private static final PhaseStatus DEFAULT_PHASE_STATUS = PhaseStatus.PLANNING;
     private static final ZoneId PROJECT_TIME_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
 
     private final PhaseRepository phaseRepository;
@@ -192,14 +193,12 @@ public class ProjectPhaseServiceImpl implements ProjectPhaseService {
                 150
         );
         String description = normalize(request.description());
-        String status = defaultIfBlank(
-                request.status(),
-                DEFAULT_PHASE_STATUS
-        );
+        PhaseStatus status = request.status() == null
+                ? DEFAULT_PHASE_STATUS
+                : request.status();
         LocalDate endDate = request.endDate();
 
         validateMaxLength(description, "Phase description", 500);
-        validateMaxLength(status, "Phase status", 30);
 
         phase.setTitle(title);
         phase.setDescription(description);
@@ -267,16 +266,6 @@ public class ProjectPhaseServiceImpl implements ProjectPhaseService {
                             + maxLength + " characters"
             );
         }
-    }
-
-    private String defaultIfBlank(String value, String defaultValue) {
-        String normalizedValue = normalize(value);
-
-        if (normalizedValue.isBlank()) {
-            return defaultValue;
-        }
-
-        return normalizedValue;
     }
 
     private String normalize(String value) {

@@ -7,7 +7,6 @@ public record PermissionListItemResponse(
         UUID id,
         String permissionName,
         String permissionCode,
-        String permissionModule,
         String permissionDescription,
         Boolean status,
         UUID projectId,

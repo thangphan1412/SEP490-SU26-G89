@@ -7,8 +7,8 @@ function SignatureTable({ signatures }) {
             <tr>
                 <th>Signature Name</th>
                 <th>Type</th>
-                <th>Used In</th>
                 <th>Status</th>
+                <th>Default</th>
                 <th>Updated At</th>
                 <th className="text-end">Actions</th>
             </tr>

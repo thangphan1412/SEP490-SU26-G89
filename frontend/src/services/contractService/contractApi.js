@@ -35,8 +35,26 @@ const contractApi = {
         return axios.put(CONTRACT_ENDPOINT + "/" + id, data);
     },
 
-    deleteContract(id) {
-        return axios.delete(CONTRACT_ENDPOINT + "/" + id);
+    transitionContract(id, data) {
+        return axios.post(
+            CONTRACT_ENDPOINT + "/" + id + "/transitions",
+            data
+        );
+    },
+
+    exportContractPdf(id) {
+        return axios.get(CONTRACT_ENDPOINT + "/" + id + "/pdf", {
+            responseType: "blob",
+            headers: {
+                "Cache-Control": "no-cache",
+            },
+        });
+    },
+
+    deleteContract(id, actor) {
+        return axios.delete(CONTRACT_ENDPOINT + "/" + id, {
+            params: actor,
+        });
     },
 };
 

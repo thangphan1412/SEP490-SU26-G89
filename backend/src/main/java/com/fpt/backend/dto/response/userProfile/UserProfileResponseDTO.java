@@ -1,6 +1,7 @@
 package com.fpt.backend.dto.response.userProfile;
 
 import com.fpt.backend.entity.Users;
+import com.fpt.backend.enums.UserStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -31,7 +32,7 @@ public class UserProfileResponseDTO {
                 .email(user.getEmail())
                 .numberPhone(user.getNumberPhone())
                 .role(user.getRole())
-                .status(user.getStatus())
+                .status(String.valueOf(user.getStatus()))
                 .build();
     }
 }

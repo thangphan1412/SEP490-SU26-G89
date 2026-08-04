@@ -1,5 +1,7 @@
 package com.fpt.backend.dto.response.project;
 
+import com.fpt.backend.enums.UserStatus;
+
 import java.time.LocalDate;
 import java.util.UUID;
 
@@ -8,7 +10,7 @@ public record ProjectUserResponse(
         String email,
         String userName,
         String role,
-        String userStatus,
+        UserStatus userStatus,
         LocalDate joinDate,
         UUID permissionId,
         String permissionName,

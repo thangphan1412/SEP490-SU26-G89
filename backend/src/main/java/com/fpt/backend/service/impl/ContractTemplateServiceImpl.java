@@ -1,6 +1,7 @@
 package com.fpt.backend.service.impl;
 
 import com.fpt.backend.dto.request.contract.ContractTemplateRequest;
+import com.fpt.backend.dto.request.contract.ContractTemplateLayout;
 import com.fpt.backend.dto.request.contract.ContractTemplateVersionRequest;
 import com.fpt.backend.dto.response.contract.ContractTemplateResponse;
 import com.fpt.backend.dto.response.contract.ContractTemplateVersionResponse;
@@ -31,6 +32,7 @@ public class ContractTemplateServiceImpl implements ContractTemplateService {
     private final ContractTemplateVersionRepository contractTemplateVersionRepository;
     private final ContractTypeRepository contractTypeRepository;
     private final ContractRepository contractRepository;
+    private final ContractTemplateLayoutMapper layoutMapper;
 
     @Override
     @Transactional(readOnly = true)
@@ -147,6 +149,11 @@ public class ContractTemplateServiceImpl implements ContractTemplateService {
                 request.templateContent(),
                 "Template content is required"
         );
+        ContractTemplateLayout layout = layoutMapper.normalize(
+                request.pageCount(),
+                request.positions(),
+                request.layoutJson()
+        );
         int nextVersionNumber =
                 contractTemplateVersionRepository.findLatestVersionNumber(contractTemplateId) + 1;
 
@@ -159,10 +166,10 @@ public class ContractTemplateServiceImpl implements ContractTemplateService {
                         : request.versionName().trim()
         );
         version.setTemplateContent(content);
-        version.setLayoutJson(normalizeToNull(request.layoutJson()));
         version.setChangeNote(normalizeToNull(request.changeNote()));
         version.setCreatedBy(normalizeToNull(request.createdBy()));
         version.setCreatedAt(LocalDateTime.now());
+        layoutMapper.applyToVersion(version, layout);
 
         ContractTemplateVersions savedVersion =
                 contractTemplateVersionRepository.save(version);
@@ -264,7 +271,9 @@ public class ContractTemplateServiceImpl implements ContractTemplateService {
                 version.getLayoutJson(),
                 version.getChangeNote(),
                 version.getCreatedBy(),
-                version.getCreatedAt()
+                version.getCreatedAt(),
+                version.getPageCount() == null ? 1 : version.getPageCount(),
+                layoutMapper.toResponses(version)
         );
     }
 

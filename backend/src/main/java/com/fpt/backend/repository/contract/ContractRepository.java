@@ -4,10 +4,13 @@ import com.fpt.backend.entity.Contracts;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -55,4 +58,36 @@ public interface ContractRepository extends JpaRepository<Contracts, UUID> {
             ORDER BY contract.contractStatus
             """)
     List<String> findDistinctContractStatuses();
+
+    @Query("""
+            SELECT contract.id
+            FROM Contracts contract
+            WHERE UPPER(COALESCE(contract.contractStatus, '')) = UPPER(:activeStatus)
+                AND contract.expirationDate IS NOT NULL
+                AND contract.expirationDate < :today
+            """)
+    List<UUID> findExpiredActiveContractIds(
+            @Param("activeStatus") String activeStatus,
+            @Param("today") LocalDate today
+    );
+
+    @Modifying(flushAutomatically = true)
+    @Query("""
+            UPDATE Contracts contract
+            SET contract.contractStatus = :endedStatus,
+                contract.contractStatusUpdatedAt = :endedAt,
+                contract.contractEndedAt = :endedAt,
+                contract.contractCancellationReason = NULL
+            WHERE contract.id = :contractId
+                AND UPPER(COALESCE(contract.contractStatus, '')) = UPPER(:activeStatus)
+                AND contract.expirationDate IS NOT NULL
+                AND contract.expirationDate < :today
+            """)
+    int markExpiredContractEnded(
+            @Param("contractId") UUID contractId,
+            @Param("activeStatus") String activeStatus,
+            @Param("endedStatus") String endedStatus,
+            @Param("today") LocalDate today,
+            @Param("endedAt") LocalDateTime endedAt
+    );
 }

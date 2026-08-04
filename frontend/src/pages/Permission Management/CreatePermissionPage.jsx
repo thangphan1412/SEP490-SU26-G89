@@ -10,12 +10,12 @@ import {
 import "../../assets/styles/css/permissionStyles/CreatePermissionPage.css";
 import {
   createPermission,
+  listPermissionActions,
   listPermissionProjects,
 } from "../../services/permissionService/permissionApi.js";
 import PermissionFormField from "../../components/permissionComponents/PermissionFormField.jsx";
 import PermissionPage from "../../components/permissionComponents/PermissionPage.jsx";
 import {
-  permissionActionOptions,
   permissionWorkScopeOptions,
 } from "../../components/permissionComponents/permissionModuleOptions.js";
 import {
@@ -43,6 +43,7 @@ function CreatePermissionPage() {
     projectId: requestedProjectId,
   });
   const [projects, setProjects] = useState([]);
+  const [actionOptions, setActionOptions] = useState([]);
   const [loadingOptions, setLoadingOptions] = useState(true);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
@@ -53,12 +54,14 @@ function CreatePermissionPage() {
 
     async function loadOptions() {
       try {
-        const projectPayload = await listPermissionProjects(
-          requestController.signal
-        );
+        const [projectPayload, actionPayload] = await Promise.all([
+          listPermissionProjects(requestController.signal),
+          listPermissionActions(requestController.signal),
+        ]);
 
         if (isActive) {
           setProjects(Array.isArray(projectPayload) ? projectPayload : []);
+          setActionOptions(Array.isArray(actionPayload) ? actionPayload : []);
         }
       } catch (requestError) {
         if (!isActive) {
@@ -66,7 +69,7 @@ function CreatePermissionPage() {
         }
 
         console.error("Unable to load permission options:", requestError);
-        setError("Unable to load projects. Please try again later.");
+        setError("Unable to load permission options. Please try again later.");
       } finally {
         if (isActive) {
           setLoadingOptions(false);
@@ -186,7 +189,9 @@ function CreatePermissionPage() {
       {returnProjectId ? "Back to project" : "Back to list"}
     </Button>
   );
-  const noOptions = !loadingOptions && projects.length === 0;
+  const noProjects = !loadingOptions && projects.length === 0;
+  const noActions = !loadingOptions && actionOptions.length === 0;
+  const noOptions = noProjects || noActions;
 
   return (
     <PermissionPage
@@ -196,9 +201,14 @@ function CreatePermissionPage() {
     >
       <Form className="permission-create-form" onSubmit={handleSubmit}>
         {error && <Alert variant="danger">{error}</Alert>}
-        {noOptions && (
+        {noProjects && (
           <Alert variant="warning">
             At least one project is required before a permission can be created.
+          </Alert>
+        )}
+        {noActions && (
+          <Alert variant="warning">
+            No active permission actions are available in the database.
           </Alert>
         )}
 
@@ -323,14 +333,15 @@ function CreatePermissionPage() {
             </div>
 
             <div className="permission-create-action-grid">
-              {permissionActionOptions.map((option) => (
+              {actionOptions.map((option) => (
                 <Form.Check
-                  key={option.value}
-                  id={`create-permission-action-${option.value.toLowerCase()}`}
+                  key={option.id || option.actionCode}
+                  id={`create-permission-action-${option.actionCode.toLowerCase()}`}
                   type="checkbox"
-                  label={option.label}
-                  checked={permission.allowedActions.includes(option.value)}
-                  onChange={() => toggleAllowedAction(option.value)}
+                  label={option.actionName || option.actionCode}
+                  title={option.description || ""}
+                  checked={permission.allowedActions.includes(option.actionCode)}
+                  onChange={() => toggleAllowedAction(option.actionCode)}
                 />
               ))}
             </div>

@@ -1,6 +1,7 @@
 package com.fpt.backend.dto.response.user;
 
 import com.fpt.backend.entity.Users;
+import com.fpt.backend.enums.UserStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -21,7 +22,7 @@ public class UserResponseDTO {
     private String lastName;
     private String numberPhone;
     private String role;
-    private String status;
+    private UserStatus status;
     private String departmentName;
 
     public static UserResponseDTO fromEntity(Users user) {

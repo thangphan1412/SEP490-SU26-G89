@@ -1,11 +1,17 @@
 package com.fpt.backend.dto.response.signature;
 
-import java.time.LocalDate;
+import com.fpt.backend.dto.response.electronicSignature.ListElectronicResponse;
+import lombok.*;
 
+import java.time.LocalDate;
+import java.util.List;
+
+@Setter
+@Getter
+@AllArgsConstructor
+@NoArgsConstructor
+@Builder
 public class SignatureListResponse {
     private String signatureName;
-    private String signatureType;
-    private String usedIn;
-    private String status;
-    private LocalDate signatureDate;
+    private ListElectronicResponse electronic;
 }

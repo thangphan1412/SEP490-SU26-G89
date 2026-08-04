@@ -1,5 +1,6 @@
 package com.fpt.backend.entity;
 
+import com.fpt.backend.enums.PhaseStatus;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -30,8 +31,9 @@ public class Timeline extends BaseEntity {
     @Column(name = "end_date", nullable = false)
     private Date endDate;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 30)
-    private String status;
+    private PhaseStatus status;
 
     @Column(name = "progress")
     private Double progress;
@@ -40,19 +42,12 @@ public class Timeline extends BaseEntity {
     @JoinColumn(name = "project_id", nullable = false)
     private Projects project;
 
-    /*
-     * Giữ nguyên TimelineTask.
-     */
     @OneToMany(mappedBy = "timeline")
     private List<TimelineTask> timelineTasks = new ArrayList<>();
 
     @OneToMany(mappedBy = "timeline")
     private List<Deliverable> deliverables = new ArrayList<>();
 
-    /*
-     * Xóa Timeline sẽ chỉ xóa các liên kết,
-     * không xóa Contracts.
-     */
     @OneToMany(mappedBy = "timeline", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<TimelineContract> timelineContracts = new ArrayList<>();
 }

@@ -142,7 +142,7 @@ function CreateProject({ onCreateProject }) {
                     description: "",
                     startDate: nextStartDate,
                     endDate: currentProject.projectEndDate,
-                    status: "Planning",
+                    status: "PLANNING",
                 },
             ],
         }));

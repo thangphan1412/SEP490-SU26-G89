@@ -11,6 +11,7 @@ import com.fpt.backend.dto.response.user.UserResponseDTO;
 import com.fpt.backend.dto.response.userProfile.UserProfileResponseDTO;
 import com.fpt.backend.entity.Departments;
 import com.fpt.backend.entity.Users;
+import com.fpt.backend.enums.UserStatus;
 import com.fpt.backend.mail.EmailService;
 import com.fpt.backend.mail.MessageInfor;
 import com.fpt.backend.repository.department.DepartmentRepository;
@@ -117,7 +118,7 @@ public class UserServiceImpl implements IUserService {
                 .lastName(request.getLastName())
                 .numberPhone(request.getNumberPhone())
                 .role(request.getRole())
-                .status(request.getStatus() != null ? request.getStatus() : "ACTIVE")
+                .status(UserStatus.valueOf(request.getStatus()))
                 .build();
 
         // LOGIC LƯU DEPARTMENT
@@ -158,7 +159,7 @@ public class UserServiceImpl implements IUserService {
         existingUser.setLastName(request.getLastName());
         existingUser.setNumberPhone(request.getNumberPhone());
         existingUser.setRole(request.getRole());
-        existingUser.setStatus(request.getStatus());
+        existingUser.setStatus(UserStatus.valueOf(request.getStatus()));
 
         // XỬ LÝ UPDATE PHÒNG BAN MỚI
         if (request.getDepartmentName() != null && !request.getDepartmentName().isEmpty()) {

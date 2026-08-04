@@ -2,18 +2,22 @@ package com.fpt.backend.service.impl.permission;
 
 import com.fpt.backend.dto.request.permission.PermissionListRequest;
 import com.fpt.backend.dto.request.permission.PermissionRequest;
+import com.fpt.backend.dto.response.permission.PermissionActionResponse;
 import com.fpt.backend.dto.response.permission.PermissionDetailResponse;
 import com.fpt.backend.dto.response.permission.PermissionListItemResponse;
 import com.fpt.backend.dto.response.permission.PermissionListResponse;
 import com.fpt.backend.dto.response.permission.PermissionProjectResponse;
 import com.fpt.backend.entity.Permissions;
 import com.fpt.backend.entity.Projects;
+import com.fpt.backend.enums.PermissionModule;
 import com.fpt.backend.exception.BadHttpException;
 import com.fpt.backend.exception.NotFoundException;
 import com.fpt.backend.repository.permission.PermissionRepository;
 import com.fpt.backend.repository.project.ProjectRepository;
-import com.fpt.backend.service.interfaces.permission.PermissionModuleService;
+import com.fpt.backend.service.interfaces.permission.PermissionActionService;
+import com.fpt.backend.service.interfaces.permission.PermissionAccessService;
 import com.fpt.backend.service.interfaces.permission.PermissionService;
+import com.fpt.backend.util.CurrentUser;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -24,6 +28,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
@@ -36,11 +41,12 @@ import java.util.UUID;
 public class PermissionServiceImpl implements PermissionService {
     private static final int PAGE_SIZE = 7;
     private static final String DEFAULT_SORT_FIELD = "createdAt";
+    private static final String MANAGE_MEMBERS =
+            PermissionModule.MANAGE_MEMBERS.getActionCode();
     private static final Set<String> SORT_FIELDS = Set.of(
             "id",
             "permissionName",
             "permissionCode",
-            "permissionModule",
             "permissionDescription",
             "status",
             "projectName",
@@ -49,7 +55,9 @@ public class PermissionServiceImpl implements PermissionService {
 
     private final PermissionRepository permissionRepository;
     private final ProjectRepository projectRepository;
-    private final PermissionModuleService permissionModuleService;
+    private final PermissionActionService permissionActionService;
+    private final PermissionAccessService permissionAccessService;
+    private final CurrentUser currentUser;
 
     @Override
     public PermissionListResponse getPermissions(PermissionListRequest request) {
@@ -73,6 +81,8 @@ public class PermissionServiceImpl implements PermissionService {
                 search.toLowerCase(Locale.ROOT),
                 validRequest.projectId(),
                 validRequest.status(),
+                currentUser.getCurrentUser().getId(),
+                MANAGE_MEMBERS,
                 pageable
         );
 
@@ -89,7 +99,9 @@ public class PermissionServiceImpl implements PermissionService {
 
     @Override
     public PermissionDetailResponse getPermissionById(UUID id) {
-        return toDetail(findPermission(id));
+        Permissions permission = findPermission(id);
+        requireManagePermission(permission);
+        return toDetail(permission);
     }
 
     @Override
@@ -104,6 +116,7 @@ public class PermissionServiceImpl implements PermissionService {
     @Transactional
     public PermissionDetailResponse updatePermission(UUID id, PermissionRequest request) {
         Permissions permission = findPermission(id);
+        requireManagePermission(permission);
         applyRequest(permission, request, id);
         return toDetail(permissionRepository.save(permission));
     }
@@ -111,13 +124,21 @@ public class PermissionServiceImpl implements PermissionService {
     @Override
     @Transactional
     public void deletePermission(UUID id) {
-        permissionRepository.delete(findPermission(id));
+        Permissions permission = findPermission(id);
+        requireManagePermission(permission);
+        permissionRepository.delete(permission);
     }
 
     @Override
     public List<PermissionProjectResponse> getProjectsForPermissionSelection() {
-        List<Projects> projects = projectRepository.findAll(
-                Sort.by(Sort.Direction.ASC, "projectName")
+        List<UUID> projectIds = permissionAccessService
+                .getCurrentUserProjectIdsWithAction(MANAGE_MEMBERS);
+        List<Projects> projects = projectRepository.findAllById(projectIds);
+        projects.sort(
+                Comparator.comparing(
+                        Projects::getProjectName,
+                        String.CASE_INSENSITIVE_ORDER
+                )
         );
         List<PermissionProjectResponse> responses = new ArrayList<>();
 
@@ -132,6 +153,11 @@ public class PermissionServiceImpl implements PermissionService {
         return responses;
     }
 
+    @Override
+    public List<PermissionActionResponse> getAvailableActions() {
+        return permissionActionService.getAvailableActions();
+    }
+
     private void applyRequest(Permissions permission, PermissionRequest request, UUID currentId) {
         if (request == null) {
             throw new BadHttpException("Permission information is required");
@@ -142,6 +168,10 @@ public class PermissionServiceImpl implements PermissionService {
         String permissionDescription = normalize(request.permissionDescription());
         validateMaxLength(permissionDescription, "Permission description", 255);
         Projects project = findProject(request.projectId());
+        permissionAccessService.requireAction(
+                project.getId(),
+                MANAGE_MEMBERS
+        );
 
         boolean duplicateCode = currentId == null
                 ? permissionRepository.existsByPermissionCodeIgnoreCase(permissionCode)
@@ -157,15 +187,11 @@ public class PermissionServiceImpl implements PermissionService {
         permission.setStatus(request.status() == null || request.status());
         permission.setProject(project);
 
-        if (request.allowedActions() != null
-                || request.workScope() != null) {
-            permission.setPermissionModule(
-                    permissionModuleService.createModuleValue(
-                            request.allowedActions(),
-                            request.workScope()
-                    )
-            );
-        }
+        permissionActionService.configurePermission(
+                permission,
+                request.allowedActions(),
+                request.workScope()
+        );
 
         if (permission.getCreatedAt() == null) {
             permission.setCreatedAt(LocalDateTime.now());
@@ -194,6 +220,21 @@ public class PermissionServiceImpl implements PermissionService {
         }
 
         return project.get();
+    }
+
+    private void requireManagePermission(Permissions permission) {
+        Projects project = permission.getProject();
+
+        if (project == null) {
+            throw new BadHttpException(
+                    "Permission is not connected to a project"
+            );
+        }
+
+        permissionAccessService.requireAction(
+                project.getId(),
+                MANAGE_MEMBERS
+        );
     }
 
     private Pageable createPageable(int page, String sortBy, String sortDirection) {
@@ -246,7 +287,6 @@ public class PermissionServiceImpl implements PermissionService {
                 permission.getId(),
                 permission.getPermissionName(),
                 permission.getPermissionCode(),
-                permission.getPermissionModule(),
                 permission.getPermissionDescription(),
                 permission.getStatus(),
                 project == null ? null : project.getId(),
@@ -263,13 +303,9 @@ public class PermissionServiceImpl implements PermissionService {
                 permission.getId(),
                 permission.getPermissionName(),
                 permission.getPermissionCode(),
-                permission.getPermissionModule(),
-                permissionModuleService.getAllowedActions(
-                        permission.getPermissionModule()
-                ),
-                permissionModuleService.getWorkScope(
-                        permission.getPermissionModule()
-                ),
+                permissionActionService.getAllowedActionCodes(permission),
+                permissionActionService.getActionDetails(permission),
+                permissionActionService.getWorkScope(permission),
                 permission.getPermissionDescription(),
                 permission.getStatus(),
                 project == null ? null : project.getId(),

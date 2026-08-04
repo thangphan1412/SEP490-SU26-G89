@@ -2,6 +2,7 @@ package com.fpt.backend.dto.request.contract;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.Map;
 import java.util.UUID;
 
 public record ContractRequest(
@@ -20,6 +21,10 @@ public record ContractRequest(
         String contractLayoutJson,
         Boolean saveAsTemplateVersion,
         String templateVersionName,
-        String templateVersionNote
+        String templateVersionNote,
+        UUID previousContractId,
+        String actorName,
+        String actorRole,
+        Map<String, String> attributeValues
 ) {
 }
