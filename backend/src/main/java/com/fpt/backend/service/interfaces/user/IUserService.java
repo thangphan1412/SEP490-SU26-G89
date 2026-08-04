@@ -1,6 +1,7 @@
 package com.fpt.backend.service.interfaces.user;
 
 import com.fpt.backend.dto.request.authentication.RegisterRequest;
+import com.fpt.backend.dto.request.user.UserFilterRequestDTO;
 import com.fpt.backend.dto.request.user.UserRequestDTO;
 import com.fpt.backend.dto.request.userProfile.UserProfileRequestDTO;
 import com.fpt.backend.dto.response.authentication.RegisterResponse;
@@ -23,7 +24,7 @@ public interface IUserService {
     UserResponseDTO createUser(UserRequestDTO request);
     UserResponseDTO updateUser(UUID id, UserRequestDTO request); // Sửa thành Integer
 
-    List<UserResponseDTO> getAllUsersFiltered(String type, String currentUsername, String keyword, String role, String department, String status);
+    List<UserResponseDTO> getAllUsersFiltered(UserFilterRequestDTO filterDTO, String currentUsername);
 
     // Thêm 2 hàm cho Profile
     UserProfileResponseDTO getMyProfile(UUID userId);
