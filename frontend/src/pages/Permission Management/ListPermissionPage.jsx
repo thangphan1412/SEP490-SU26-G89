@@ -116,6 +116,7 @@ function PermissionListContent() {
     };
   }, [searchInput]);
 
+  //Load danh sách các dự án để hiển thị trong bộ lọc
   useEffect(function () {
     let isActive = true;
     const requestController = new AbortController();
@@ -144,6 +145,7 @@ function PermissionListContent() {
     };
   }, []);
 
+  //Load danh sách quyền dựa trên các bộ lọc và phân trang
   useEffect(function () {
     let isActive = true;
     const requestController = new AbortController();
