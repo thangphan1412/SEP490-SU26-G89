@@ -15,8 +15,8 @@ import {    IconContract,
             IconUserCircle
         } from '@tabler/icons-react';
 function HeaderForm(){
-    const fullName = localStorage.getItem("fullName") || "Alex Morgan";
-    const role = localStorage.getItem("role") || "Admin";
+    const fullName = localStorage.getItem("fullName") || "Guest";
+    const role = localStorage.getItem("role") || "";
 
     return(
 
@@ -52,15 +52,15 @@ function HeaderForm(){
                         )}
 
                         {/* HIỂN THỊ DỰA TRÊN ROLE */}
-                        {/* Chỉ CEO và Manager mới thấy Employee Management */}
-                        {['CEO', 'Manager', 'Admin'].includes(role) && (
+                        {/* CEO, HeadOfDepartment và Administrator mới thấy Employee Management */}
+                        {['CEO', 'HeadOfDepartment', 'Administrator'].includes(role) && (
                             <Nav.Link as={NavLink} to="/user-management/list?type=employee" className="nav-item">
                                 <IconUserPlus stroke={2} />Employee Management
                             </Nav.Link>
                         )}
 
-                        {/* Chỉ CEO mới thấy Customer Management */}
-                        {['CEO', ].includes(role) && (
+                        {/* CEO và Administrator mới thấy Customer Management */}
+                        {['CEO', 'Administrator'].includes(role) && (
                             <Nav.Link as={NavLink} to="/user-management/list?type=customer" className="nav-item">
                                 <IconUserPlus stroke={2} />Customer Management
                             </Nav.Link>
