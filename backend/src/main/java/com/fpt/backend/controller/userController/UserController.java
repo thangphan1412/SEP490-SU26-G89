@@ -42,6 +42,7 @@ public class UserController {
                             .build()
                     );
         } catch (Exception e) {
+            e.printStackTrace();
             return ResponseEntity
                     .status(HttpStatus.FORBIDDEN)
                     .body(BaseResponse.<List<UserResponseDTO>>builder()
@@ -67,6 +68,7 @@ public class UserController {
                             .build()
                     );
         } catch (Exception e) {
+            e.printStackTrace();
             return ResponseEntity
                     .status(HttpStatus.NOT_FOUND)
                     .body(BaseResponse.<UserResponseDTO>builder()
@@ -92,6 +94,7 @@ public class UserController {
                             .build()
                     );
         } catch (Exception e) {
+            e.printStackTrace();
             return ResponseEntity
                     .status(HttpStatus.BAD_REQUEST)
                     .body(BaseResponse.<UserResponseDTO>builder()
@@ -119,6 +122,7 @@ public class UserController {
                             .build()
                     );
         } catch (Exception e) {
+            e.printStackTrace();
             return ResponseEntity
                     .status(HttpStatus.BAD_REQUEST)
                     .body(BaseResponse.<UserResponseDTO>builder()

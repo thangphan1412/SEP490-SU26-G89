@@ -3,9 +3,49 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { Container, Card, Row, Col, Form, Button, Table, Pagination, Stack } from "react-bootstrap";
 import { IconWorld, IconPlus, IconSearch, IconFilter, IconRefresh, IconArrowsSort, IconEdit, IconEye } from "@tabler/icons-react";
 
+// IMPORT FILE API VÀO ĐÂY
 import { getAllUsers } from "../../services/userService/userApi.js";
-// IMPORT THÊM HÀM LẤY DEPARTMENT TỪ API CỦA BẠN
 import departmentApi from "../../services/departmentService/departmentApi";
+import roleApi from "../../services/roleService/roleApi";
+
+// --- HÀM TÍNH TOÁN THỜI GIAN "TIME AGO" (ĐÃ FIX LỆCH MÚI GIỜ UTC+7) ---
+const timeAgo = (dateString) => {
+    if (!dateString) return "Never logged in";
+
+    // MẤU CHỐT LÀ ĐÂY: Thêm chữ 'Z' vào cuối chuỗi để ép JS hiểu đây là giờ UTC (Múi giờ +0).
+    // Sau đó trình duyệt ở VN sẽ tự động cộng thêm 7 tiếng để tính toán cho chuẩn.
+    const utcDateString = dateString.endsWith('Z') ? dateString : dateString + 'Z';
+    const date = new Date(utcDateString);
+
+    if (isNaN(date.getTime())) return "Never logged in";
+
+    const now = new Date();
+    const seconds = Math.floor((now - date) / 1000);
+
+    // Xử lý trường hợp đồng hồ máy tính của bạn bị lệch chậm hơn server vài giây sinh ra số âm
+    if (seconds <= 0) return "Just now";
+
+    if (seconds < 60) return "Just now";
+
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes} min${minutes !== 1 ? 's' : ''} ago`;
+
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours} hour${hours !== 1 ? 's' : ''} ago`;
+
+    const days = Math.floor(hours / 24);
+    if (days < 7) return `${days} day${days !== 1 ? 's' : ''} ago`;
+
+    const weeks = Math.floor(days / 7);
+    if (weeks < 4) return `${weeks} week${weeks !== 1 ? 's' : ''} ago`;
+
+    const months = Math.floor(days / 30);
+    if (months < 12) return `${months} month${months !== 1 ? 's' : ''} ago`;
+
+    const years = Math.floor(days / 365);
+    return `${years} year${years !== 1 ? 's' : ''} ago`;
+};
+// --------------------------------------------------------
 
 function ListUser() {
     const navigate = useNavigate();
@@ -19,7 +59,8 @@ function ListUser() {
     const viewType = searchParams.get("type") || "employee";
 
     const [users, setUsers] = useState([]);
-    const [departmentsDB, setDepartmentsDB] = useState([]); // Lưu danh sách phòng ban từ DB
+    const [departmentsDB, setDepartmentsDB] = useState([]);
+    const [rolesDB, setRolesDB] = useState([]);
     const [loading, setLoading] = useState(true);
 
     // STATE CHO TÌM KIẾM VÀ FILTER
@@ -36,17 +77,22 @@ function ListUser() {
 
     // Lấy danh sách department khi component mount
     useEffect(() => {
-        const fetchDepts = async () => {
+        const fetchFilters = async () => {
             try {
-                // Gọi qua departmentApi
-                const res = await departmentApi.getAllDepartments();
-                setDepartmentsDB(res.data?.data || res.data || []);
+                const [deptRes, roleRes] = await Promise.all([
+                    departmentApi.getAllDepartments(),
+                    roleApi.getAllRoles()
+                ]);
+                setDepartmentsDB(deptRes.data?.data || deptRes.data || []);
+
+                const allRoles = roleRes.data?.data || roleRes.data || [];
+                setRolesDB(allRoles.filter(r => availableRoles.includes(r.roleName)));
             } catch (error) {
-                console.error("Lỗi lấy danh sách department:", error);
+                console.error("Lỗi lấy danh sách filter:", error);
             }
         };
-        fetchDepts();
-    }, []);
+        fetchFilters();
+    }, [currentUserRole, viewType]);
 
     const fetchData = async (currPage, currentKeyword, currentRole, currentDept, currentStatus) => {
         setLoading(true);
@@ -129,7 +175,7 @@ function ListUser() {
                         <Stack direction="horizontal" className="justify-content-between align-items-center mb-4">
                             <div>
                                 <h1 className="h3 fw-bold mb-1">Users</h1>
-                                <p className="text-muted mb-0">Manage employee accounts, roles, departments, and access status.</p>
+                                <p className="text-muted mb-0">Manage user accounts, roles, departments, and access status.</p>
                             </div>
                             <Button variant="primary" className="fw-bold px-3 py-2 d-flex align-items-center gap-2" onClick={() => navigate(`/user-management/create?type=${viewType}`)}>
                                 <IconPlus size={20} /> New User
@@ -180,16 +226,10 @@ function ListUser() {
                             {/* FILTER ROLE */}
                             <Col lg={2} md={6}>
                                 <Form.Label className="small fw-bold text-muted mb-1">Role</Form.Label>
-                                <Form.Select
-                                    className="py-2"
-                                    value={filterRole}
-                                    onChange={(e) => setFilterRole(e.target.value)}
-                                >
+                                <Form.Select className="py-2" value={filterRole} onChange={(e) => setFilterRole(e.target.value)}>
                                     <option value="All">All</option>
-                                    {/* Lấy mảng availableRoles đã được tính toán rất chuẩn từ trên map vào */}
-                                    {availableRoles.map(r => (
-                                        <option key={r} value={r}>{r}</option>
-                                    ))}
+                                    {/* Dùng data từ Database */}
+                                    {rolesDB.map(r => <option key={r.id} value={r.roleName}>{r.roleName}</option>)}
                                 </Form.Select>
                             </Col>
 
@@ -239,8 +279,8 @@ function ListUser() {
                                 ) : (
                                     users.map((u) => (
                                         <tr key={u.id}>
-                                            {/* Ghép First Name và Last Name */}
-                                            <td className="fw-semibold">
+                                            {/* Thêm px-3 vào tất cả các thẻ td */}
+                                            <td className="fw-semibold px-3">
                                                 <div className="d-flex align-items-center gap-2">
                                                     <div className="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" style={{ width: "32px", height: "32px", fontSize: "13px" }}>
                                                         {u.firstName?.charAt(0) || ''}{u.lastName?.charAt(0) || ''}
@@ -249,25 +289,23 @@ function ListUser() {
                                                 </div>
                                             </td>
 
-                                            {/* Dữ liệu thật từ DB */}
-                                            <td>{u.email}</td>
+                                            <td className="px-3">{u.email}</td>
 
-                                            {/* ĐÃ SỬA: Lấy Department từ DB */}
-                                            <td>{u.departmentName || "N/A"}</td>
+                                            <td className="px-3">{u.departmentName || "N/A"}</td>
 
-                                            {/* Dữ liệu thật từ DB */}
-                                            <td><span className="badge bg-light text-dark border">{u.role || "N/A"}</span></td>
-                                            <td>
+                                            <td className="px-3">
+                                                <span className="badge bg-light text-dark border">{u.role || "N/A"}</span>
+                                            </td>
+
+                                            <td className="px-3">
                                                 <span className={`badge ${u.status === 'Active' || u.status === 'ACTIVE' ? 'bg-success bg-opacity-10 text-success' : 'bg-secondary bg-opacity-10 text-secondary'} px-3 py-2 rounded-pill fw-bold`}>
                                                 ● {u.status || "INACTIVE"}
                                                 </span>
                                             </td>
 
-                                            {/* Dữ liệu Hardcode */}
-                                            <td className="text-muted small">Just now</td>
+                                            <td className="text-muted small fw-medium px-3">{timeAgo(u.lastActive)}</td>
 
-                                            {/* Actions */}
-                                            <td>
+                                            <td className="px-3">
                                                 <Button variant="link" className="p-0 me-3 text-primary" onClick={() => navigate(`/user-management/view/${u.id}`)} title="View Detail">
                                                     <IconEye size={18} />
                                                 </Button>
