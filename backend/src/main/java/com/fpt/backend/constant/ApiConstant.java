@@ -22,7 +22,7 @@
             public static final String BY_ID = "/{id}";
         }
         public static class Signatures{
-            public static final String SIGNATURES = API+"/list-electronic-signatures";
+            public static final String SIGNATURES = "/list-electronic-signatures";
             public static final String ELECTRONICSIGNATURES = "/create/electronic-signatures";
         }
     }

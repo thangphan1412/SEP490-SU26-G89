@@ -4,6 +4,7 @@ import com.cloudinary.Cloudinary;
 import com.cloudinary.utils.ObjectUtils;
 import com.fpt.backend.dto.request.electronicSignature.CreateElectronicSignatureRequest;
 import com.fpt.backend.dto.request.fileStorage.CreateFileStorageRequest;
+import com.fpt.backend.dto.response.electronicSignature.ListElectronicResponse;
 import com.fpt.backend.entity.ElectronicSignatures;
 import com.fpt.backend.entity.FileStorage;
 import com.fpt.backend.entity.UserKeys;
@@ -20,11 +21,12 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
 @Service
-public class    ElectronicSignatureServiceImpl implements IElectronicSignatureService {
+public class ElectronicSignatureServiceImpl implements IElectronicSignatureService {
     @Autowired
     private ElectronicSignatureRepository  electronicSignatureRepository;
     @Autowired
@@ -49,5 +51,11 @@ public class    ElectronicSignatureServiceImpl implements IElectronicSignatureSe
                 .build();
         return electronicSignatureRepository.save(electronicSignatures);
     }
-    
+
+    @Override
+    public List<ListElectronicResponse> getAllElectronicSignatures() {
+        Users users = currentUser.getCurrentUser();
+        return electronicSignatureRepository.getAllElectronicSignaturesById(users.getId());
+    }
+
 }
