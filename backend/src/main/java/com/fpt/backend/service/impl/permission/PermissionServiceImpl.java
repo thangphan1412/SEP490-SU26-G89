@@ -41,7 +41,7 @@ import java.util.UUID;
 public class PermissionServiceImpl implements PermissionService {
     private static final int PAGE_SIZE = 7;
     private static final String DEFAULT_SORT_FIELD = "createdAt";
-    private static final String MANAGE_MEMBERS = PermissionModule.MANAGE_MEMBERS.getActionCode();
+    private static final String MANAGE_MEMBERS = PermissionModule.MANAGE_MEMBERS.name();
     private static final Set<String> SORT_FIELDS = Set.of(
             "id",
             "permissionName",
@@ -59,24 +59,15 @@ public class PermissionServiceImpl implements PermissionService {
 
     @Override
     public PermissionListResponse getPermissions(PermissionListRequest request) {
-        PermissionListRequest validRequest = request == null
-                ? new PermissionListRequest(
-                        "",
-                        null,
-                        null,
-                        0,
-                        DEFAULT_SORT_FIELD,
-                        "desc")
-                : request;
-        String search = normalize(validRequest.search());
+        String search = normalize(request.search());
         Pageable pageable = createPageable(
-                validRequest.page(),
-                validRequest.sortBy(),
-                validRequest.sortDirection());
+                request.page(),
+                request.sortBy(),
+                request.sortDirection());
         Page<Permissions> permissions = permissionRepository.searchPermissions(
                 search.toLowerCase(Locale.ROOT),
-                validRequest.projectId(),
-                validRequest.status(),
+                request.projectId(),
+                request.status(),
                 currentUser.getCurrentUser().getId(),
                 MANAGE_MEMBERS,
                 pageable);
