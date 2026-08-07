@@ -11,6 +11,7 @@ import com.fpt.backend.entity.Users;
 import com.fpt.backend.exception.BadHttpException;
 import com.fpt.backend.repository.FileStorageRepository;
 import com.fpt.backend.repository.electronicSignature.ElectronicSignatureRepository;
+import com.fpt.backend.service.impl.CloudinaryService;
 import com.fpt.backend.service.interfaces.electronicSignature.IElectronicSignatureService;
 import com.fpt.backend.util.CurrentUser;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,26 +19,35 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.time.LocalDate;
 import java.util.Map;
 import java.util.UUID;
 
 @Service
-public class ElectronicSignatureServiceImpl implements IElectronicSignatureService {
+public class    ElectronicSignatureServiceImpl implements IElectronicSignatureService {
     @Autowired
     private ElectronicSignatureRepository  electronicSignatureRepository;
     @Autowired
     private CurrentUser  currentUser;
     @Autowired
-    private Cloudinary    cloudinary;
+    private Cloudinary  cloudinary;
+    @Autowired
+    private CloudinaryService cloudinaryService;
     @Autowired
     private FileStorageRepository fileStorageRepository;
     @Override
     public ElectronicSignatures createElectronicSignature(CreateElectronicSignatureRequest createElectronicSignatureRequest) {
         Users users = currentUser.getCurrentUser();
         MultipartFile img = createElectronicSignatureRequest.getCreateFileStorageRequests().getMultipartFile();
-        
-
-        return null;
+        FileStorage fileStorage = cloudinaryService.uploadAndSave(img, users);
+        ElectronicSignatures electronicSignatures = ElectronicSignatures.builder()
+                .electronicSignatureName(createElectronicSignatureRequest.getElectronicSignatureName())
+                .electronicSignatureType(createElectronicSignatureRequest.getElectronicSignatureType())
+                .status(createElectronicSignatureRequest.getElectronicStatus())
+                .createdAt(LocalDate.now())
+                .fileStorage(fileStorage)
+                .build();
+        return electronicSignatureRepository.save(electronicSignatures);
     }
     
 }
