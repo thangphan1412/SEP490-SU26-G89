@@ -41,12 +41,11 @@ import java.util.UUID;
 public class PhaseServiceImpl implements PhaseService {
     private static final ZoneId APP_TIME_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
     private static final String VIEW_TASKS =
-            PermissionModule.VIEW_TASKS.getActionCode();
+            PermissionModule.VIEW_TASKS.name();
     private static final String VIEW_DELIVERABLES =
-            PermissionModule.VIEW_DELIVERABLES
-                    .getActionCode();
+            PermissionModule.VIEW_DELIVERABLES.name();
     private static final String VIEW_CONTRACTS =
-            PermissionModule.VIEW_CONTRACTS.getActionCode();
+            PermissionModule.VIEW_CONTRACTS.name();
 
     private final PhaseRepository phaseRepository;
     private final PhaseTaskRepository phaseTaskRepository;

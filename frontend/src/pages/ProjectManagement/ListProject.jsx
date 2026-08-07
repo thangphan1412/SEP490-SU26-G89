@@ -23,14 +23,14 @@ import "../../assets/styles/css/projectStyles/ListProject.css";
 const PROJECT_ACCESS_DENIED_MESSAGE =
     "Bạn không được quyền xem project này!";
 
-const sortableColumns = [
-    ["Project", "projectName"],
-    ["Code", "projectCode"],
-    ["Status", "projectStatus"],
-    ["Start Date", "projectStartDate"],
-    ["End Date", "projectEndDate"],
-    ["Created By", "projectCreatedBy"],
-    ["Created At", "projectCreatedAt"],
+const PROJECT_COLUMN_LABELS = [
+    "Project",
+    "Code",
+    "Status",
+    "Start Date",
+    "End Date",
+    "Created By",
+    "Created At",
 ];
 
 function createPageNumbers(currentPage, totalPages) {
@@ -75,13 +75,8 @@ function ListProject() {
     const [page, setPage] = useState(0);
     const [totalElements, setTotalElements] = useState(0);
     const [totalPages, setTotalPages] = useState(0);
-    const [sortBy, setSortBy] = useState("projectCreatedAt");
-    const [sortDirection, setSortDirection] = useState("desc");
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
-    const [projectStatusOptions, setProjectStatusOptions] = useState(
-        PROJECT_STATUS_OPTIONS
-    );
 
     useEffect(function () {
         const debounceId = window.setTimeout(function () {
@@ -104,8 +99,6 @@ function ListProject() {
                 status: status,
                 viewOnlyYourProjects: viewOnlyYourProjects,
                 page: page,
-                sortBy: sortBy,
-                sortDirection: sortDirection,
             };
 
             try {
@@ -116,22 +109,9 @@ function ListProject() {
                     requestController.signal
                 );
 
-                const projectList = Array.isArray(payload?.items)
-                    ? payload.items
-                    : [];
-
-                const totalProjectCount = Number(payload?.totalElements) || 0;
-                const totalPageCount = Number(payload?.totalPages) || 0;
-                const responseStatuses = Array.isArray(payload?.availableStatuses)
-                    ? payload.availableStatuses
-                    : [];
-                const statusOptions = [...PROJECT_STATUS_OPTIONS];
-
-                for (const responseStatus of responseStatuses) {
-                    if (responseStatus && !statusOptions.includes(responseStatus)) {
-                        statusOptions.push(responseStatus);
-                    }
-                }
+                const projectList = payload.items;
+                const totalProjectCount = payload.totalElements;
+                const totalPageCount = payload.totalPages;
 
                 if (!isActive) {
                     return;
@@ -140,7 +120,6 @@ function ListProject() {
                 setProjects(projectList);
                 setTotalElements(totalProjectCount);
                 setTotalPages(totalPageCount);
-                setProjectStatusOptions(statusOptions);
 
                 if (totalPageCount > 0 && page >= totalPageCount) {
                     setPage(totalPageCount - 1);
@@ -155,7 +134,6 @@ function ListProject() {
                 setProjects([]);
                 setTotalElements(0);
                 setTotalPages(0);
-                setProjectStatusOptions(PROJECT_STATUS_OPTIONS);
                 setError(getApiErrorMessage(
                     error,
                     "Unable to load projects. Please try again later."
@@ -178,29 +156,9 @@ function ListProject() {
         search,
         status,
         viewOnlyYourProjects,
-        sortBy,
-        sortDirection,
     ]);
 
     const pageNumbers = createPageNumbers(page, totalPages);
-
-    function handleSort(field) {
-        setPage(0);
-
-        if (sortBy === field) {
-            setSortDirection(function (currentDirection) {
-                if (currentDirection === "asc") {
-                    return "desc";
-                }
-
-                return "asc";
-            });
-            return;
-        }
-
-        setSortBy(field);
-        setSortDirection("asc");
-    }
 
     function handleStatusChange(event) {
         setStatus(event.target.value);
@@ -231,13 +189,6 @@ function ListProject() {
         }
 
         navigate(`/project-management/view?id=${project.id}`);
-    }
-
-    function handleProjectRowKeyDown(event, project) {
-        if (event.key === "Enter" || event.key === " ") {
-            event.preventDefault();
-            openProjectDetail(project);
-        }
     }
 
     const pageAction = (
@@ -292,7 +243,7 @@ function ListProject() {
                     >
                         <option value="">All statuses</option>
 
-                        {projectStatusOptions.map((projectStatus) => (
+                        {PROJECT_STATUS_OPTIONS.map((projectStatus) => (
                             <option key={projectStatus} value={projectStatus}>
                                 {projectStatus}
                             </option>
@@ -332,26 +283,9 @@ function ListProject() {
                 <Table hover responsive={false} className="list-project-table mb-0">
                     <thead>
                         <tr>
-                            {sortableColumns.map(([label, field]) => (
-                                <th key={field} className="list-project-th">
-                                    <Button
-                                        type="button"
-                                        variant="link"
-                                        className={`list-project-sort-button ${sortBy === field
-                                            ? "list-project-sort-button--active"
-                                            : ""
-                                        }`}
-                                        onClick={() => handleSort(field)}
-                                        aria-label={`Sort by ${label}`}
-                                    >
-                                        {label}
-
-                                        <Icon
-                                            name="sort"
-                                            size={13}
-                                            color={sortBy === field ? "#1f4fff" : "#62708c"}
-                                        />
-                                    </Button>
+                            {PROJECT_COLUMN_LABELS.map((label) => (
+                                <th key={label} className="list-project-th">
+                                    {label}
                                 </th>
                             ))}
                         </tr>
@@ -361,7 +295,7 @@ function ListProject() {
                         {loading ? (
                             <tr>
                                 <td
-                                    colSpan={sortableColumns.length}
+                                    colSpan={PROJECT_COLUMN_LABELS.length}
                                     className="list-project-state-cell"
                                 >
                                     <Spinner animation="border" size="sm" />
@@ -373,7 +307,7 @@ function ListProject() {
                         ) : projects.length === 0 ? (
                             <tr>
                                 <td
-                                    colSpan={sortableColumns.length}
+                                    colSpan={PROJECT_COLUMN_LABELS.length}
                                     className="list-project-state-cell"
                                 >
                                     <span className="list-project-empty-icon">
@@ -394,12 +328,7 @@ function ListProject() {
                                 <tr
                                     key={project.id}
                                     className="list-project-row"
-                                    tabIndex={0}
-                                    role="button"
                                     onClick={() => openProjectDetail(project)}
-                                    onKeyDown={(event) =>
-                                        handleProjectRowKeyDown(event, project)
-                                    }
                                 >
                                     <td className="list-project-project-cell">
                                         <span className="project-management-icon-circle list-project-avatar">

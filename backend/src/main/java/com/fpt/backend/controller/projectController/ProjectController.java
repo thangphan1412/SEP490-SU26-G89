@@ -9,6 +9,7 @@ import com.fpt.backend.dto.response.project.ProjectEmployeeResponse;
 import com.fpt.backend.dto.response.project.ProjectListResponse;
 import com.fpt.backend.dto.response.project.ProjectPermissionConfigurationResponse;
 import com.fpt.backend.dto.response.project.ProjectRoleResponse;
+import com.fpt.backend.enums.UserStatus;
 import com.fpt.backend.service.interfaces.project.ProjectDeleteResult;
 import com.fpt.backend.service.interfaces.project.ProjectService;
 import com.fpt.backend.util.BaseResponse;
@@ -70,6 +71,15 @@ public class ProjectController {
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.noStore())
                 .body(new BaseResponse<>(roles));
+    }
+
+    @GetMapping("/user-statuses")
+    public ResponseEntity<BaseResponse<List<UserStatus>>> getUserStatusesForProjectMemberFilter() {
+        List<UserStatus> statuses = projectService.getUserStatusesForProjectMemberFilter();
+
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .body(new BaseResponse<>(statuses));
     }
 
     @GetMapping("/{projectId}/permission-configurations")

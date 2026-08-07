@@ -11,6 +11,7 @@ import com.fpt.backend.entity.Role;
 import com.fpt.backend.entity.UserPermission;
 import com.fpt.backend.entity.UserRole;
 import com.fpt.backend.entity.Users;
+import com.fpt.backend.enums.UserStatus;
 import com.fpt.backend.exception.BadHttpException;
 import com.fpt.backend.exception.NotFoundException;
 import com.fpt.backend.repository.permission.PermissionRepository;
@@ -98,6 +99,11 @@ public class ProjectMemberServiceImpl implements ProjectMemberService {
         }
 
         return responses;
+    }
+
+    @Override
+    public List<UserStatus> getUserStatusesForFilter() {
+        return List.of(UserStatus.values());
     }
 
     @Override

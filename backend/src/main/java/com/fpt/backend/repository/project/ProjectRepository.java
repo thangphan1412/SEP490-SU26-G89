@@ -8,7 +8,6 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import java.util.List;
 import java.util.UUID;
 
 @Repository
@@ -91,14 +90,5 @@ public interface ProjectRepository extends JpaRepository<Projects, UUID> {
             @Param("userId") UUID userId,
             Pageable pageable
     );
-
-    @Query("""
-            SELECT DISTINCT project.projectStatus
-            FROM Projects project
-            WHERE project.projectStatus IS NOT NULL
-                AND TRIM(project.projectStatus) <> ''
-            ORDER BY project.projectStatus
-            """)
-    List<String> findDistinctProjectStatuses();
 
 }

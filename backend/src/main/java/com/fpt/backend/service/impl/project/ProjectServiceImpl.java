@@ -17,6 +17,7 @@ import com.fpt.backend.entity.Contracts;
 import com.fpt.backend.entity.Projects;
 import com.fpt.backend.entity.Users;
 import com.fpt.backend.enums.PermissionModule;
+import com.fpt.backend.enums.UserStatus;
 import com.fpt.backend.exception.BadHttpException;
 import com.fpt.backend.exception.NotFoundException;
 import com.fpt.backend.repository.project.ProjectCleanupRepository;
@@ -46,7 +47,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -54,21 +54,17 @@ import java.util.UUID;
 @Transactional(readOnly = true)
 public class ProjectServiceImpl implements ProjectService {
     private static final int PAGE_SIZE = 7;
-    private static final String DATA_SOURCE = "DATABASE";
-    private static final String DEFAULT_SORT_FIELD = "projectCreatedAt";
     private static final String DEFAULT_PROJECT_STATUS = "Planning";
     private static final String CANCELLED_PROJECT_STATUS = "Cancelled";
     private static final String COMPLETED_PROJECT_STATUS = "Completed";
     private static final String EDIT_PROJECT =
-            PermissionModule.EDIT_PROJECT.getActionCode();
+            PermissionModule.EDIT_PROJECT.name();
     private static final String EDIT_PHASE =
-            PermissionModule.EDIT_PHASE.getActionCode();
+            PermissionModule.EDIT_PHASE.name();
     private static final String MANAGE_MEMBERS =
-            PermissionModule.MANAGE_MEMBERS.getActionCode();
+            PermissionModule.MANAGE_MEMBERS.name();
     private static final String VIEW_CONTRACTS =
-            PermissionModule.VIEW_CONTRACTS.getActionCode();
-    private static final String PROJECT_ACCESS_DENIED_MESSAGE =
-            "Bạn không được quyền xem project này!";
+            PermissionModule.VIEW_CONTRACTS.name();
     private static final List<String> CREATE_PROJECT_STATUSES = List.of(
             "Planning",
             "Active",
@@ -76,17 +72,6 @@ public class ProjectServiceImpl implements ProjectService {
     );
     private static final ZoneId PROJECT_TIME_ZONE =
             ZoneId.of("Asia/Ho_Chi_Minh");
-    private static final Set<String> SORT_FIELDS = Set.of(
-            "id",
-            "projectCode",
-            "projectName",
-            "projectStatus",
-            "projectStartDate",
-            "projectEndDate",
-            "projectCreatedBy",
-            "projectCreatedAt"
-    );
-
     private final ProjectRepository projectRepository;
     private final ProjectContractRepository projectContractRepository;
     private final ProjectMemberRepository projectMemberRepository;
@@ -97,16 +82,13 @@ public class ProjectServiceImpl implements ProjectService {
     private final PermissionAccessService permissionAccessService;
     private final CurrentUser currentUserUtil;
 
+    //Load danh sách các dự án dựa trên tìm kiếm, trạng thái dự án, quyền truy cập của người dùng hiện tại và phân trang.
     @Override
     public ProjectListResponse getProjects(ProjectListRequest request) {
         String search = normalize(request.search());
         String status = normalize(request.status());
         Users currentUser = currentUserUtil.getCurrentUser();
-        Pageable pageable = createPageable(
-                request.page(),
-                request.sortBy(),
-                request.sortDirection()
-        );
+        Pageable pageable = createPageable(request.page());
         Page<Projects> projects = findProjects(
                 search,
                 status,
@@ -114,18 +96,20 @@ public class ProjectServiceImpl implements ProjectService {
                 currentUser.getId(),
                 pageable
         );
+        List<ProjectListItemResponse> projectItems = new ArrayList<>();
+
+        for (Projects project : projects.getContent()) {
+            ProjectListItemResponse projectItem = toListItem(
+                    project,
+                    currentUser
+            );
+            projectItems.add(projectItem);
+        }
 
         return new ProjectListResponse(
-                DATA_SOURCE,
-                projects.map(project -> toListItem(project, currentUser))
-                        .getContent(),
-                projects.getNumber(),
-                projects.getSize(),
+                projectItems,
                 projects.getTotalElements(),
-                projects.getTotalPages(),
-                projects.isFirst(),
-                projects.isLast(),
-                projectRepository.findDistinctProjectStatuses()
+                projects.getTotalPages()
         );
     }
 
@@ -306,6 +290,11 @@ public class ProjectServiceImpl implements ProjectService {
     }
 
     @Override
+    public List<UserStatus> getUserStatusesForProjectMemberFilter() {
+        return projectMemberService.getUserStatusesForFilter();
+    }
+
+    @Override
     public List<ProjectPermissionConfigurationResponse>
     getProjectPermissionConfigurations(UUID projectId) {
         findProject(projectId);
@@ -372,34 +361,14 @@ public class ProjectServiceImpl implements ProjectService {
         );
     }
 
-    private Pageable createPageable(
-            int page,
-            String sortBy,
-            String sortDirection) {
+    private Pageable createPageable(int page) {
         int validPage = Math.max(page, 0);
-        String sortField = DEFAULT_SORT_FIELD;
+        Sort newestProjectFirst = Sort.by(
+                Sort.Direction.DESC,
+                "projectCreatedAt"
+        );
 
-        if (sortBy != null && SORT_FIELDS.contains(sortBy)) {
-            sortField = sortBy;
-        }
-
-        Sort.Direction direction = Sort.Direction.DESC;
-
-        if ("asc".equalsIgnoreCase(sortDirection)) {
-            direction = Sort.Direction.ASC;
-        }
-
-        Sort sort = Sort.by(direction, sortField);
-
-        if ("projectCreatedBy".equals(sortField)) {
-            sort = Sort.by(direction, "projectCreatedBy.firstName")
-                    .and(Sort.by(
-                            direction,
-                            "projectCreatedBy.lastName"
-                    ));
-        }
-
-        return PageRequest.of(validPage, PAGE_SIZE, sort);
+        return PageRequest.of(validPage, PAGE_SIZE, newestProjectFirst);
     }
 
     private void applyProjectInformation(
@@ -571,7 +540,6 @@ public class ProjectServiceImpl implements ProjectService {
                 canViewContracts
                         ? toProjectContracts(projectId)
                         : List.of(),
-                access.projectCreator(),
                 access
         );
     }
