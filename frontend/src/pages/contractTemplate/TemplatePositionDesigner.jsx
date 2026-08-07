@@ -1,15 +1,22 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
     IconCalendar,
     IconCheckbox,
+    IconEye,
     IconFileText,
+    IconPlus,
     IconSignature,
     IconTrash,
     IconUser,
 } from "@tabler/icons-react";
+import {
+    joinContractPages,
+    splitContractPages,
+} from "../ContractManagement/contractPageUtils.js";
 import { createPositionClientId } from "./templatePositionUtils.js";
 
-const FIELD_PALETTE = [
+const MAX_PAGE_COUNT = 50;
+const STANDARD_FIELDS = [
     {
         key: "contract_number",
         label: "Contract Number",
@@ -19,6 +26,7 @@ const FIELD_PALETTE = [
         systemField: true,
         required: true,
         icon: IconFileText,
+        sample: "CON-2026-0001",
     },
     {
         key: "contract_title",
@@ -29,6 +37,18 @@ const FIELD_PALETTE = [
         systemField: true,
         required: true,
         icon: IconFileText,
+        sample: "Service Supply Contract",
+    },
+    {
+        key: "project_name",
+        label: "Project Name",
+        fieldType: "TEXT",
+        valueSource: "CONTRACT",
+        signerRole: null,
+        systemField: true,
+        required: true,
+        icon: IconFileText,
+        sample: "Contract Management Project",
     },
     {
         key: "effective_date",
@@ -39,6 +59,7 @@ const FIELD_PALETTE = [
         systemField: true,
         required: true,
         icon: IconCalendar,
+        sample: "08/08/2026",
     },
     {
         key: "expiration_date",
@@ -49,9 +70,21 @@ const FIELD_PALETTE = [
         systemField: true,
         required: true,
         icon: IconCalendar,
+        sample: "31/12/2026",
     },
     {
-        key: "director_full_name",
+        key: "contract_value",
+        label: "Contract Value",
+        fieldType: "TEXT",
+        valueSource: "MANUAL",
+        signerRole: null,
+        systemField: true,
+        required: true,
+        icon: IconCheckbox,
+        sample: "150,000,000 VND",
+    },
+    {
+        key: "director_name",
         label: "Director Full Name",
         fieldType: "TEXT",
         valueSource: "CURRENT_SIGNER",
@@ -59,6 +92,7 @@ const FIELD_PALETTE = [
         systemField: true,
         required: true,
         icon: IconUser,
+        sample: "Nguyen Van Director",
     },
     {
         key: "director_signature",
@@ -69,9 +103,10 @@ const FIELD_PALETTE = [
         systemField: true,
         required: true,
         icon: IconSignature,
+        sample: "[Director signature appears after signing]",
     },
     {
-        key: "partner_full_name",
+        key: "partner_name",
         label: "Partner Full Name",
         fieldType: "TEXT",
         valueSource: "CURRENT_SIGNER",
@@ -79,6 +114,7 @@ const FIELD_PALETTE = [
         systemField: true,
         required: true,
         icon: IconUser,
+        sample: "Tran Thi Partner",
     },
     {
         key: "partner_signature",
@@ -89,560 +125,733 @@ const FIELD_PALETTE = [
         systemField: true,
         required: true,
         icon: IconSignature,
-    },
-    {
-        key: "manual_field",
-        label: "Manual Field",
-        fieldType: "TEXT",
-        valueSource: "MANUAL",
-        signerRole: null,
-        systemField: false,
-        required: false,
-        icon: IconCheckbox,
+        sample: "[Partner signature appears after signing]",
     },
 ];
 
+const FIELD_BY_KEY = new Map(
+    STANDARD_FIELDS.map((field) => [field.key, field])
+);
+const PLACEHOLDER_PATTERN = /\{\{\s*([a-z][a-z0-9_]*)\s*}}/gi;
+
 function TemplatePositionDesigner({
-    content,
+    content = "",
     pageCount = 1,
     positions = [],
     onChange,
+    onContentChange,
 }) {
     const [currentPage, setCurrentPage] = useState(1);
-    const [selectedId, setSelectedId] = useState(null);
-    const canvasRef = useRef(null);
-    const pointerActionRef = useRef(null);
-    const contentPages = useMemo(
-        () => String(content || "").split(/<!--\s*pagebreak\s*-->/i),
+    const editorRef = useRef(null);
+    const selectionRef = useRef(null);
+    const pages = useMemo(
+        () => splitContractPages(content, pageCount),
+        [content, pageCount]
+    );
+    const totalPages = pages.length;
+    const activePage = Math.min(currentPage, totalPages);
+    const pageContent = pages[activePage - 1] || "";
+    const pageUsedKeys = useMemo(
+        () => extractPlaceholderKeys(pageContent),
+        [pageContent]
+    );
+    const allUsedKeys = useMemo(
+        () => extractPlaceholderKeys(content),
         [content]
     );
-    const activePage = clamp(currentPage, 1, pageCount);
-    const selectedPosition = positions.find(
-        (position) => position.clientId === selectedId
+    const manualFields = useMemo(
+        () => uniqueManualFields(positions),
+        [positions]
     );
-    const currentPositions = positions.filter(
-        (position) => Number(position.pageNumber) === activePage
+    const previewContent = useMemo(
+        () => buildPreview(pageContent, positions),
+        [pageContent, positions]
     );
 
-    const emitPositions = (nextPositions, nextPageCount = pageCount) => {
-        onChange({
-            pageCount: nextPageCount,
-            positions: nextPositions,
-        });
-    };
-
-    const addField = (definition, dropX = 0.08, dropY = 0.08) => {
-        const width = definition.fieldType === "SIGNATURE" ? 0.3 : 0.25;
-        const height = definition.fieldType === "SIGNATURE" ? 0.09 : 0.055;
-        const field = {
-            clientId: createPositionClientId(),
-            attributeKey: definition.key,
-            fieldLabel: definition.label,
-            pageNumber: activePage,
-            xPosition: clamp(dropX, 0, 1 - width),
-            yPosition: clamp(dropY, 0, 1 - height),
-            width,
-            height,
-            fieldType: definition.fieldType,
-            valueSource: definition.valueSource,
-            signerRole: definition.signerRole,
-            systemField: definition.systemField,
-            required: definition.required,
-        };
-
-        emitPositions([...positions, field]);
-        setSelectedId(field.clientId);
-    };
-
-    const updateField = (clientId, patch) => {
-        emitPositions(
-            positions.map((position) =>
-                position.clientId === clientId
-                    ? { ...position, ...patch }
-                    : position
-            )
+    useEffect(() => {
+        const canonicalContent = joinContractPages(pages);
+        const synchronizedPositions = synchronizePositionsWithPages(
+            pages,
+            positions
         );
-    };
 
-    const removeSelectedField = () => {
-        if (!selectedId) {
-            return;
+        if (canonicalContent !== content) {
+            onContentChange(canonicalContent);
         }
-        emitPositions(
-            positions.filter((position) => position.clientId !== selectedId)
-        );
-        setSelectedId(null);
-    };
-
-    const handlePageCountChange = (event) => {
-        const nextPageCount = clamp(
-            Number.parseInt(event.target.value, 10) || 1,
-            1,
-            50
-        );
-        const nextPositions = positions.map((position) => ({
-            ...position,
-            pageNumber: Math.min(position.pageNumber, nextPageCount),
-        }));
-        emitPositions(nextPositions, nextPageCount);
-        setCurrentPage((page) => Math.min(page, nextPageCount));
-    };
-
-    const handlePaletteDragStart = (event, fieldKey) => {
-        event.dataTransfer.effectAllowed = "copy";
-        event.dataTransfer.setData(
-            "application/x-contract-template-field",
-            fieldKey
-        );
-    };
-
-    const handleCanvasDrop = (event) => {
-        event.preventDefault();
-        const fieldKey = event.dataTransfer.getData(
-            "application/x-contract-template-field"
-        );
-        const definition = FIELD_PALETTE.find((field) => field.key === fieldKey);
-        const canvas = canvasRef.current;
-
-        if (!definition || !canvas) {
-            return;
-        }
-
-        const bounds = canvas.getBoundingClientRect();
-        addField(
-            definition,
-            (event.clientX - bounds.left) / bounds.width - 0.12,
-            (event.clientY - bounds.top) / bounds.height - 0.03
-        );
-    };
-
-    const beginPointerAction = (event, position, mode) => {
-        event.preventDefault();
-        event.stopPropagation();
-        event.currentTarget.setPointerCapture(event.pointerId);
-        pointerActionRef.current = {
-            clientId: position.clientId,
-            mode,
-            pointerId: event.pointerId,
-            startClientX: event.clientX,
-            startClientY: event.clientY,
-            original: { ...position },
-        };
-        setSelectedId(position.clientId);
-    };
-
-    const continuePointerAction = (event) => {
-        const action = pointerActionRef.current;
-        const canvas = canvasRef.current;
-        if (!action || !canvas || action.pointerId !== event.pointerId) {
-            return;
-        }
-
-        const bounds = canvas.getBoundingClientRect();
-        const deltaX = (event.clientX - action.startClientX) / bounds.width;
-        const deltaY = (event.clientY - action.startClientY) / bounds.height;
-        const original = action.original;
-
-        if (action.mode === "resize") {
-            updateField(action.clientId, {
-                width: roundCoordinate(clamp(
-                    original.width + deltaX,
-                    0.06,
-                    1 - original.xPosition
-                )),
-                height: roundCoordinate(clamp(
-                    original.height + deltaY,
-                    0.035,
-                    1 - original.yPosition
-                )),
+        if (
+            synchronizedPositions !== positions
+            || Number(pageCount) !== totalPages
+        ) {
+            onChange({
+                pageCount: totalPages,
+                positions: synchronizedPositions,
             });
+        }
+    }, [content, onChange, onContentChange, pageCount, pages, positions, totalPages]);
+
+    const commitPages = (nextPages, nextPositions = positions) => {
+        const normalizedPages = nextPages.length > 0 ? nextPages : [""];
+        const nextPageCount = normalizedPages.length;
+        const synchronizedPositions = synchronizePositionsWithPages(
+            normalizedPages,
+            nextPositions
+        );
+
+        onContentChange(joinContractPages(normalizedPages));
+        if (
+            synchronizedPositions !== positions
+            || Number(pageCount) !== nextPageCount
+        ) {
+            onChange({
+                pageCount: nextPageCount,
+                positions: synchronizedPositions,
+            });
+        }
+    };
+
+    const updateCurrentPageContent = (
+        nextPageContent,
+        nextPositions = positions
+    ) => {
+        const nextPages = [...pages];
+        nextPages[activePage - 1] = nextPageContent;
+        commitPages(nextPages, nextPositions);
+    };
+
+    const selectPage = (pageNumber) => {
+        selectionRef.current = null;
+        setCurrentPage(pageNumber);
+    };
+
+    const addPage = () => {
+        if (totalPages >= MAX_PAGE_COUNT) {
             return;
         }
 
-        updateField(action.clientId, {
-            xPosition: roundCoordinate(clamp(
-                original.xPosition + deltaX,
-                0,
-                1 - original.width
-            )),
-            yPosition: roundCoordinate(clamp(
-                original.yPosition + deltaY,
-                0,
-                1 - original.height
-            )),
-        });
+        const nextPages = [...pages, ""];
+        selectionRef.current = null;
+        commitPages(nextPages);
+        setCurrentPage(nextPages.length);
     };
 
-    const endPointerAction = (event) => {
-        if (pointerActionRef.current?.pointerId === event.pointerId) {
-            pointerActionRef.current = null;
-        }
-    };
-
-    const updateSelectedGeometry = (name, percentValue) => {
-        if (!selectedPosition) {
+    const removeCurrentPage = () => {
+        if (totalPages === 1) {
             return;
         }
 
-        const normalizedValue = (Number(percentValue) || 0) / 100;
-        const maximum = name === "xPosition"
-            ? 1 - selectedPosition.width
-            : name === "yPosition"
-              ? 1 - selectedPosition.height
-              : name === "width"
-                ? 1 - selectedPosition.xPosition
-                : 1 - selectedPosition.yPosition;
-        const minimum = ["width", "height"].includes(name) ? 0.01 : 0;
-        updateField(selectedId, {
-            [name]: roundCoordinate(clamp(normalizedValue, minimum, maximum)),
+        const hasPageData = pageContent.trim()
+            || positions.some(
+                (position) => Number(position.pageNumber) === activePage
+            );
+        if (
+            hasPageData
+            && !window.confirm(
+                `Remove Page ${activePage} and all fields placed on it?`
+            )
+        ) {
+            return;
+        }
+
+        const nextPages = pages.filter(
+            (_page, index) => index !== activePage - 1
+        );
+        const nextPositions = positions
+            .filter(
+                (position) => Number(position.pageNumber) !== activePage
+            )
+            .map((position) => ({
+                ...position,
+                pageNumber: Number(position.pageNumber) > activePage
+                    ? Number(position.pageNumber) - 1
+                    : Number(position.pageNumber),
+            }));
+
+        selectionRef.current = null;
+        commitPages(nextPages, nextPositions);
+        setCurrentPage(Math.min(activePage, nextPages.length));
+    };
+
+    const insertPlaceholder = (field, sourcePositions = positions) => {
+        const token = `{{${field.key}}}`;
+        const savedSelection = selectionRef.current;
+        const start = Math.min(
+            savedSelection?.start ?? pageContent.length,
+            pageContent.length
+        );
+        const end = Math.min(
+            savedSelection?.end ?? pageContent.length,
+            pageContent.length
+        );
+        const prefix = pageContent.slice(0, start);
+        const suffix = pageContent.slice(end);
+        const needsLeadingBreak = start === pageContent.length
+            && pageContent.length > 0
+            && !pageContent.endsWith("\n");
+        const insertion = `${needsLeadingBreak ? "\n" : ""}${token}`;
+        const nextPageContent = `${prefix}${insertion}${suffix}`;
+        const nextPositions = ensurePagePosition(
+            sourcePositions,
+            field,
+            activePage
+        );
+        const caretPosition = start + insertion.length;
+
+        updateCurrentPageContent(nextPageContent, nextPositions);
+        selectionRef.current = {
+            start: caretPosition,
+            end: caretPosition,
+        };
+        window.requestAnimationFrame(() => {
+            editorRef.current?.focus();
+            editorRef.current?.setSelectionRange(caretPosition, caretPosition);
         });
+    };
+
+    const addManualField = () => {
+        const attributeKey = createUniqueManualKey(positions);
+        const field = {
+            key: attributeKey,
+            label: "Custom Field",
+            fieldType: "TEXT",
+            valueSource: "MANUAL",
+            signerRole: null,
+            systemField: false,
+            required: false,
+        };
+        const nextPositions = [
+            ...positions,
+            createAutomaticPosition(
+                field,
+                activePage,
+                positions.length
+            ),
+        ];
+
+        insertPlaceholder(field, nextPositions);
+    };
+
+    const updateManualField = (attributeKey, patch) => {
+        const currentField = positions.find(
+            (position) => position.attributeKey === attributeKey
+        );
+        if (!currentField) {
+            return;
+        }
+
+        const normalizedPatch = { ...patch };
+        if (Object.hasOwn(patch, "attributeKey")) {
+            normalizedPatch.attributeKey = normalizeAttributeKey(
+                patch.attributeKey
+            );
+            if (!normalizedPatch.attributeKey) {
+                return;
+            }
+        }
+
+        const nextPositions = positions.map((position) =>
+            position.attributeKey === attributeKey
+                ? { ...position, ...normalizedPatch }
+                : position
+        );
+        let nextContent = content;
+
+        if (
+            normalizedPatch.attributeKey
+            && normalizedPatch.attributeKey !== attributeKey
+        ) {
+            nextContent = replacePlaceholderKey(
+                content,
+                attributeKey,
+                normalizedPatch.attributeKey
+            );
+        }
+
+        onContentChange(nextContent);
+        onChange({ pageCount: totalPages, positions: nextPositions });
+    };
+
+    const removeManualField = (field) => {
+        const nextPositions = positions.filter(
+            (position) => position.attributeKey !== field.attributeKey
+        );
+        const nextContent = removePlaceholder(content, field.attributeKey);
+
+        onContentChange(nextContent);
+        onChange({ pageCount: totalPages, positions: nextPositions });
     };
 
     return (
-        <section className="template-position-designer">
-            <header className="template-designer-header">
+        <section className="template-simple-editor">
+            <header className="template-simple-editor-header">
                 <div>
-                    <h3>Template Position Designer</h3>
+                    <h3>Build Template Content</h3>
                     <p>
-                        Drag fields onto a page. Coordinates are saved to this
-                        version only and use normalized page values.
+                        Each tab is a contract page. Add the same name or signature
+                        field to every page where it must appear after signing.
                     </p>
                 </div>
-                <label className="template-page-count-control">
-                    Pages
-                    <input
-                        type="number"
-                        min="1"
-                        max="50"
-                        value={pageCount}
-                        onChange={handlePageCountChange}
-                    />
-                </label>
+                <span className="template-simple-field-count">
+                    {totalPages} page(s) · {allUsedKeys.size} field type(s)
+                </span>
             </header>
 
-            <div className="template-designer-grid">
-                <aside className="template-field-palette">
-                    <div className="template-designer-panel-heading">
-                        <strong>Available fields</strong>
-                        <small>Drag or click to add</small>
-                    </div>
-                    <div className="template-field-palette-list">
-                        {FIELD_PALETTE.map((field) => {
-                            const FieldIcon = field.icon;
+            <div className="template-simple-editor-body">
+                <div className="template-page-navigation">
+                    <div className="template-page-tabs" role="tablist">
+                        {pages.map((_page, index) => {
+                            const pageNumber = index + 1;
                             return (
                                 <button
-                                    key={field.key}
                                     type="button"
-                                    draggable
-                                    className="template-palette-field"
-                                    onDragStart={(event) =>
-                                        handlePaletteDragStart(event, field.key)
+                                    role="tab"
+                                    aria-selected={activePage === pageNumber}
+                                    className={
+                                        activePage === pageNumber ? "active" : ""
                                     }
-                                    onClick={() => addField(field)}
+                                    key={pageNumber}
+                                    onClick={() => selectPage(pageNumber)}
                                 >
-                                    <FieldIcon size={18} />
+                                    Page {pageNumber}
+                                </button>
+                            );
+                        })}
+                    </div>
+                    <div className="template-page-actions">
+                        <button
+                            type="button"
+                            onClick={addPage}
+                            disabled={totalPages >= MAX_PAGE_COUNT}
+                        >
+                            <IconPlus size={16} />
+                            Add page
+                        </button>
+                        <button
+                            type="button"
+                            className="danger"
+                            onClick={removeCurrentPage}
+                            disabled={totalPages === 1}
+                        >
+                            <IconTrash size={16} />
+                            Remove page
+                        </button>
+                    </div>
+                </div>
+
+                <div className="template-page-guidance">
+                    Page {activePage} of {totalPages}. PDF export starts each tab
+                    on a new page; normal overflow can still continue to another
+                    physical PDF page.
+                </div>
+
+                <div className="template-insert-panel">
+                    <div className="template-section-heading">
+                        <strong>Insert a dynamic field on Page {activePage}</strong>
+                        <small>
+                            No dragging or coordinates required. Reuse signer fields
+                            on as many pages as needed.
+                        </small>
+                    </div>
+                    <div className="template-insert-grid">
+                        {STANDARD_FIELDS.map((field) => {
+                            const FieldIcon = field.icon;
+                            const isUsed = pageUsedKeys.has(field.key);
+                            return (
+                                <button
+                                    type="button"
+                                    className={`template-insert-button${
+                                        isUsed ? " used" : ""
+                                    }`}
+                                    key={field.key}
+                                    onClick={() => insertPlaceholder(field)}
+                                    title={`Insert {{${field.key}}} on Page ${activePage}`}
+                                >
+                                    <FieldIcon size={17} />
                                     <span>
                                         <strong>{field.label}</strong>
                                         <small>
-                                            {field.signerRole || field.valueSource}
+                                            {isUsed
+                                                ? `Used on Page ${activePage}`
+                                                : `{{${field.key}}}`}
                                         </small>
                                     </span>
                                 </button>
                             );
                         })}
                     </div>
-                    <div className="template-privacy-note">
-                        Only field keys and positions are saved. Signer names and
-                        signatures are inserted from the signing account later.
-                    </div>
-                </aside>
-
-                <div className="template-page-workspace">
-                    <div className="template-page-toolbar">
-                        <button
-                            type="button"
-                            disabled={activePage <= 1}
-                            onClick={() => setCurrentPage((page) => page - 1)}
-                        >
-                            Previous
-                        </button>
-                        <span>
-                            Page <strong>{activePage}</strong> / {pageCount}
-                        </span>
-                        <button
-                            type="button"
-                            disabled={activePage >= pageCount}
-                            onClick={() => setCurrentPage((page) => page + 1)}
-                        >
-                            Next
-                        </button>
-                    </div>
-                    <div className="template-page-scroll">
-                        <div
-                            ref={canvasRef}
-                            className="template-page-canvas"
-                            onClick={() => setSelectedId(null)}
-                            onDragOver={(event) => {
-                                event.preventDefault();
-                                event.dataTransfer.dropEffect = "copy";
-                            }}
-                            onDrop={handleCanvasDrop}
-                        >
-                            <pre className="template-page-content">
-                                {contentPages[activePage - 1]
-                                    || (activePage === 1
-                                        ? "Enter template content above."
-                                        : `Page ${activePage}`)}
-                            </pre>
-                            {currentPositions.map((position) => (
-                                <div
-                                    key={position.clientId}
-                                    className={[
-                                        "template-position-field",
-                                        position.fieldType === "SIGNATURE"
-                                            ? "signature"
-                                            : "",
-                                        position.clientId === selectedId
-                                            ? "selected"
-                                            : "",
-                                    ].filter(Boolean).join(" ")}
-                                    style={{
-                                        left: `${position.xPosition * 100}%`,
-                                        top: `${position.yPosition * 100}%`,
-                                        width: `${position.width * 100}%`,
-                                        height: `${position.height * 100}%`,
-                                    }}
-                                    onClick={(event) => event.stopPropagation()}
-                                    onPointerDown={(event) =>
-                                        beginPointerAction(event, position, "move")
-                                    }
-                                    onPointerMove={continuePointerAction}
-                                    onPointerUp={endPointerAction}
-                                    onPointerCancel={endPointerAction}
-                                >
-                                    <span>{position.fieldLabel}</span>
-                                    <small>
-                                        {position.signerRole || position.valueSource}
-                                    </small>
-                                    <button
-                                        type="button"
-                                        className="template-position-resize"
-                                        aria-label={`Resize ${position.fieldLabel}`}
-                                        onPointerDown={(event) =>
-                                            beginPointerAction(
-                                                event,
-                                                position,
-                                                "resize"
-                                            )
-                                        }
-                                        onPointerMove={(event) => {
-                                            event.stopPropagation();
-                                            continuePointerAction(event);
-                                        }}
-                                        onPointerUp={(event) => {
-                                            event.stopPropagation();
-                                            endPointerAction(event);
-                                        }}
-                                        onPointerCancel={(event) => {
-                                            event.stopPropagation();
-                                            endPointerAction(event);
-                                        }}
-                                    />
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                    <small className="template-page-break-hint">
-                        Use &lt;!-- pagebreak --&gt; in the content to preview
-                        different text on each page.
-                    </small>
                 </div>
 
-                <aside className="template-field-inspector">
-                    <div className="template-designer-panel-heading">
-                        <strong>Field settings</strong>
-                        <small>{positions.length} field(s) in version</small>
+                <div className="template-content-preview-grid">
+                    <div className="template-content-pane">
+                        <div className="template-section-heading">
+                            <strong>Page {activePage} content</strong>
+                            <small>
+                                Place the cursor where a value should appear, then
+                                choose a field above.
+                            </small>
+                        </div>
+                        <textarea
+                            ref={editorRef}
+                            id="templateContent"
+                            className="form-control template-content-textarea"
+                            value={pageContent}
+                            onChange={(event) => {
+                                selectionRef.current = {
+                                    start: event.target.selectionStart,
+                                    end: event.target.selectionEnd,
+                                };
+                                updateCurrentPageContent(event.target.value);
+                            }}
+                            onSelect={(event) => {
+                                selectionRef.current = {
+                                    start: event.target.selectionStart,
+                                    end: event.target.selectionEnd,
+                                };
+                            }}
+                            placeholder={`Write the reusable content for Page ${activePage}...`}
+                            required={activePage === 1}
+                        />
                     </div>
-                    {!selectedPosition ? (
-                        <div className="template-inspector-empty">
-                            Select a field on the page to edit its key, source,
-                            role and dimensions.
+
+                    <div className="template-preview-pane">
+                        <div className="template-section-heading template-preview-heading">
+                            <span>
+                                <IconEye size={18} />
+                                <strong>Page {activePage} preview</strong>
+                            </span>
+                            <small>Sample values only</small>
+                        </div>
+                        <div className="template-content-preview">
+                            {previewContent || (
+                                <span className="template-preview-empty">
+                                    Start writing to preview Page {activePage}.
+                                </span>
+                            )}
+                        </div>
+                    </div>
+                </div>
+
+                <section className="template-manual-fields">
+                    <div className="template-manual-fields-header">
+                        <div className="template-section-heading">
+                            <strong>Fields entered when creating a contract</strong>
+                            <small>
+                                One input value can be reused on multiple pages.
+                            </small>
+                        </div>
+                        <button
+                            type="button"
+                            className="template-add-manual-button"
+                            onClick={addManualField}
+                        >
+                            <IconPlus size={17} />
+                            Add custom field
+                        </button>
+                    </div>
+
+                    {manualFields.length === 0 ? (
+                        <div className="template-manual-empty">
+                            Insert Contract Value above or add a custom field if
+                            the employee must enter extra information.
                         </div>
                     ) : (
-                        <div className="template-inspector-form">
-                            <InspectorInput
-                                label="Label"
-                                value={selectedPosition.fieldLabel}
-                                onChange={(value) =>
-                                    updateField(selectedId, { fieldLabel: value })
-                                }
-                            />
-                            <InspectorInput
-                                label="Attribute Key"
-                                value={selectedPosition.attributeKey}
-                                onChange={(value) =>
-                                    updateField(selectedId, {
-                                        attributeKey: value
-                                            .toLowerCase()
-                                            .replace(/[^a-z0-9_]/g, "_"),
-                                    })
-                                }
-                            />
-                            <InspectorSelect
-                                label="Field Type"
-                                value={selectedPosition.fieldType}
-                                options={["TEXT", "DATE", "SIGNATURE", "CHECKBOX"]}
-                                onChange={(fieldType) =>
-                                    updateField(selectedId, {
-                                        fieldType,
-                                        valueSource: fieldType === "SIGNATURE"
-                                            ? "CURRENT_SIGNER"
-                                            : selectedPosition.valueSource,
-                                        signerRole: fieldType === "SIGNATURE"
-                                            && !selectedPosition.signerRole
-                                            ? "DIRECTOR"
-                                            : selectedPosition.signerRole,
-                                    })
-                                }
-                            />
-                            <InspectorSelect
-                                label="Value Source"
-                                value={selectedPosition.valueSource}
-                                options={["CONTRACT", "CURRENT_SIGNER", "MANUAL"]}
-                                disabled={selectedPosition.fieldType === "SIGNATURE"}
-                                onChange={(valueSource) =>
-                                    updateField(selectedId, {
-                                        valueSource,
-                                        signerRole: valueSource === "CURRENT_SIGNER"
-                                            ? selectedPosition.signerRole || "DIRECTOR"
-                                            : null,
-                                    })
-                                }
-                            />
-                            <InspectorSelect
-                                label="Signer Role"
-                                value={selectedPosition.signerRole || "NONE"}
-                                options={
-                                    selectedPosition.fieldType === "SIGNATURE"
-                                    || selectedPosition.valueSource === "CURRENT_SIGNER"
-                                        ? ["DIRECTOR", "PARTNER"]
-                                        : ["NONE", "DIRECTOR", "PARTNER"]
-                                }
-                                onChange={(signerRole) =>
-                                    updateField(selectedId, {
-                                        signerRole: signerRole === "NONE"
-                                            ? null
-                                            : signerRole,
-                                    })
-                                }
-                            />
-                            <InspectorInput
-                                label="Page"
-                                type="number"
-                                min="1"
-                                max={pageCount}
-                                value={selectedPosition.pageNumber}
-                                onChange={(value) => {
-                                    const pageNumber = clamp(
-                                        Number.parseInt(value, 10) || 1,
-                                        1,
-                                        pageCount
-                                    );
-                                    updateField(selectedId, { pageNumber });
-                                    setCurrentPage(pageNumber);
-                                }}
-                            />
-                            <div className="template-geometry-grid">
-                                {[
-                                    ["X %", "xPosition"],
-                                    ["Y %", "yPosition"],
-                                    ["Width %", "width"],
-                                    ["Height %", "height"],
-                                ].map(([label, name]) => (
-                                    <InspectorInput
-                                        key={name}
-                                        label={label}
-                                        type="number"
-                                        min="0"
-                                        max="100"
-                                        step="0.1"
-                                        value={roundPercent(
-                                            selectedPosition[name] * 100
-                                        )}
-                                        onChange={(value) =>
-                                            updateSelectedGeometry(name, value)
-                                        }
-                                    />
-                                ))}
-                            </div>
-                            <label className="template-inspector-checkbox">
-                                <input
-                                    type="checkbox"
-                                    checked={selectedPosition.required}
-                                    onChange={(event) =>
-                                        updateField(selectedId, {
-                                            required: event.target.checked,
-                                        })
+                        <div className="template-manual-field-list">
+                            {manualFields.map((field) => (
+                                <ManualFieldRow
+                                    key={field.attributeKey}
+                                    field={field}
+                                    pageNumbers={findFieldPages(
+                                        pages,
+                                        field.attributeKey
+                                    )}
+                                    currentPage={activePage}
+                                    onChange={(patch) =>
+                                        updateManualField(
+                                            field.attributeKey,
+                                            patch
+                                        )
                                     }
+                                    onInsert={() =>
+                                        insertPlaceholder(
+                                            positionToField(field)
+                                        )
+                                    }
+                                    onRemove={() => removeManualField(field)}
                                 />
-                                Required field
-                            </label>
-                            <button
-                                type="button"
-                                className="template-remove-position"
-                                onClick={removeSelectedField}
-                            >
-                                <IconTrash size={17} />
-                                Remove field
-                            </button>
+                            ))}
                         </div>
                     )}
-                </aside>
+                </section>
             </div>
         </section>
     );
 }
 
-function InspectorInput({ label, onChange, ...inputProps }) {
+function ManualFieldRow({
+    field,
+    pageNumbers,
+    currentPage,
+    onChange,
+    onInsert,
+    onRemove,
+}) {
+    const isBuiltIn = field.attributeKey === "contract_value";
+
     return (
-        <label className="template-inspector-control">
-            <span>{label}</span>
-            <input
-                {...inputProps}
-                onChange={(event) => onChange(event.target.value)}
-            />
-        </label>
+        <div className="template-manual-field-row">
+            <label>
+                <span>Label</span>
+                <input
+                    value={field.fieldLabel}
+                    onChange={(event) =>
+                        onChange({ fieldLabel: event.target.value })
+                    }
+                />
+                <small className="template-manual-page-usage">
+                    {pageNumbers.length > 0
+                        ? `Used on page(s): ${pageNumbers.join(", ")}`
+                        : "Not inserted in content"}
+                </small>
+            </label>
+            <label>
+                <span>Attribute key</span>
+                <input
+                    value={field.attributeKey}
+                    readOnly={isBuiltIn}
+                    onChange={(event) =>
+                        onChange({ attributeKey: event.target.value })
+                    }
+                />
+            </label>
+            <label>
+                <span>Input type</span>
+                <select
+                    value={field.fieldType}
+                    onChange={(event) =>
+                        onChange({ fieldType: event.target.value })
+                    }
+                >
+                    <option value="TEXT">Text</option>
+                    <option value="DATE">Date</option>
+                    <option value="CHECKBOX">Checkbox</option>
+                </select>
+            </label>
+            <label className="template-manual-required">
+                <input
+                    type="checkbox"
+                    checked={Boolean(field.required)}
+                    onChange={(event) =>
+                        onChange({ required: event.target.checked })
+                    }
+                />
+                Required
+            </label>
+            <div className="template-manual-actions">
+                <button type="button" onClick={onInsert}>
+                    Insert on Page {currentPage}
+                </button>
+                <button
+                    type="button"
+                    className="danger"
+                    onClick={onRemove}
+                    aria-label={`Remove ${field.fieldLabel}`}
+                >
+                    <IconTrash size={16} />
+                </button>
+            </div>
+        </div>
     );
 }
 
-function InspectorSelect({ label, options, onChange, ...selectProps }) {
-    return (
-        <label className="template-inspector-control">
-            <span>{label}</span>
-            <select
-                {...selectProps}
-                onChange={(event) => onChange(event.target.value)}
-            >
-                {options.map((option) => (
-                    <option key={option} value={option}>
-                        {option.replaceAll("_", " ")}
-                    </option>
-                ))}
-            </select>
-        </label>
+function synchronizePositionsWithPages(pages, positions) {
+    const definitions = new Map();
+    positions.forEach((position) => {
+        if (!definitions.has(position.attributeKey)) {
+            definitions.set(position.attributeKey, positionToField(position));
+        }
+    });
+    STANDARD_FIELDS.forEach((field) => definitions.set(field.key, field));
+
+    let nextPositions = positions;
+    pages.forEach((pageContent, pageIndex) => {
+        const pageNumber = pageIndex + 1;
+        extractPlaceholderKeys(pageContent).forEach((key) => {
+            const definition = definitions.get(key);
+            if (
+                definition
+                && !nextPositions.some(
+                    (position) =>
+                        position.attributeKey === key
+                        && Number(position.pageNumber) === pageNumber
+                )
+            ) {
+                nextPositions = [
+                    ...nextPositions,
+                    createAutomaticPosition(
+                        definition,
+                        pageNumber,
+                        nextPositions.length
+                    ),
+                ];
+            }
+        });
+    });
+
+    return nextPositions;
+}
+
+function ensurePagePosition(positions, field, pageNumber) {
+    if (
+        positions.some(
+            (position) =>
+                position.attributeKey === field.key
+                && Number(position.pageNumber) === pageNumber
+        )
+    ) {
+        return positions;
+    }
+
+    return [
+        ...positions,
+        createAutomaticPosition(field, pageNumber, positions.length),
+    ];
+}
+
+function createAutomaticPosition(field, pageNumber, index) {
+    const isSignature = field.fieldType === "SIGNATURE";
+    const height = isSignature ? 0.08 : 0.05;
+
+    return {
+        clientId: createPositionClientId(),
+        attributeKey: field.key,
+        fieldLabel: field.label,
+        pageNumber,
+        xPosition: 0.08,
+        yPosition: Math.min(0.08 + (index % 10) * 0.075, 1 - height),
+        width: isSignature ? 0.36 : 0.84,
+        height,
+        fieldType: field.fieldType,
+        valueSource: field.valueSource,
+        signerRole: field.signerRole || null,
+        systemField: Boolean(field.systemField),
+        required: Boolean(field.required),
+    };
+}
+
+function positionToField(position) {
+    return {
+        key: position.attributeKey,
+        label: position.fieldLabel,
+        fieldType: position.fieldType,
+        valueSource: position.valueSource,
+        signerRole: position.signerRole || null,
+        systemField: Boolean(position.systemField),
+        required: Boolean(position.required),
+    };
+}
+
+function uniqueManualFields(positions) {
+    const fields = new Map();
+    positions
+        .filter((position) => position.valueSource === "MANUAL")
+        .forEach((position) => {
+            if (!fields.has(position.attributeKey)) {
+                fields.set(position.attributeKey, position);
+            }
+        });
+    return [...fields.values()];
+}
+
+function findFieldPages(pages, attributeKey) {
+    return pages
+        .map((pageContent, index) =>
+            extractPlaceholderKeys(pageContent).has(attributeKey)
+                ? index + 1
+                : null
+        )
+        .filter(Boolean);
+}
+
+function extractPlaceholderKeys(content) {
+    const keys = new Set();
+    String(content || "").replace(
+        PLACEHOLDER_PATTERN,
+        (_match, key) => {
+            keys.add(key.toLowerCase());
+            return _match;
+        }
+    );
+    return keys;
+}
+
+function buildPreview(content, positions) {
+    const positionByKey = new Map(
+        positions.map((position) => [position.attributeKey, position])
+    );
+
+    return String(content || "").replace(
+        PLACEHOLDER_PATTERN,
+        (_match, rawKey) => {
+            const key = rawKey.toLowerCase();
+            const standardField = FIELD_BY_KEY.get(key);
+            if (standardField) {
+                return standardField.sample;
+            }
+
+            const position = positionByKey.get(key);
+            return `[${position?.fieldLabel || humanizeKey(key)}]`;
+        }
     );
 }
 
-function clamp(value, minimum, maximum) {
-    return Math.min(Math.max(value, minimum), maximum);
+function createUniqueManualKey(positions) {
+    const existingKeys = new Set(
+        positions.map((position) => position.attributeKey)
+    );
+    let sequence = 1;
+    let candidate = "custom_field";
+
+    while (existingKeys.has(candidate)) {
+        sequence += 1;
+        candidate = `custom_field_${sequence}`;
+    }
+
+    return candidate;
 }
 
-function roundCoordinate(value) {
-    return Math.round(Number(value) * 10000) / 10000;
+function normalizeAttributeKey(value) {
+    return String(value || "")
+        .toLowerCase()
+        .replace(/[^a-z0-9_]/g, "_")
+        .replace(/_+/g, "_")
+        .replace(/^_+/, "");
 }
 
-function roundPercent(value) {
-    return Math.round(Number(value) * 10) / 10;
+function replacePlaceholderKey(content, previousKey, nextKey) {
+    const pattern = new RegExp(
+        `\\{\\{\\s*${escapeRegExp(previousKey)}\\s*}}`,
+        "gi"
+    );
+    return String(content || "").replace(pattern, `{{${nextKey}}}`);
+}
+
+function removePlaceholder(content, key) {
+    const pattern = new RegExp(
+        `\\{\\{\\s*${escapeRegExp(key)}\\s*}}`,
+        "gi"
+    );
+    return String(content || "").replace(pattern, "");
+}
+
+function escapeRegExp(value) {
+    return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function humanizeKey(key) {
+    return String(key || "")
+        .split("_")
+        .filter(Boolean)
+        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(" ");
 }
 
 export default TemplatePositionDesigner;

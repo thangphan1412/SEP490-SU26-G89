@@ -195,9 +195,19 @@ export function PagePanel({ title, description, action, children }) {
     );
 }
 
-export function PrimaryButton({ children, onClick, type = "button" }) {
+export function PrimaryButton({
+    children,
+    onClick,
+    type = "button",
+    disabled = false,
+}) {
     return (
-        <button type={type} style={styles.primaryButton} onClick={onClick}>
+        <button
+            type={type}
+            style={styles.primaryButton}
+            onClick={onClick}
+            disabled={disabled}
+        >
             {children}
         </button>
     );

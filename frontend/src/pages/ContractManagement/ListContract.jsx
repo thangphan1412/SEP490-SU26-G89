@@ -14,8 +14,11 @@ import contractApi from "../../services/contractService/contractApi.js";
 import contractTypeApi from "../../services/contractTypeService/contractTypeApi.js";
 import contractTemplateApi from "../../services/contractTemplateService/contractTemplateApi.js";
 import ContractForm from "./ContractForm.jsx";
+import { splitContractPages } from "./contractPageUtils.js";
 import {
     CONTRACT_STATUS,
+    CONTRACT_PROJECT_ACTION,
+    canCreateReplacementContract,
     canExportContractPdf,
     canManageNewContract,
     createEmptyContract,
@@ -222,11 +225,10 @@ function ListContract() {
     const openEditModal = (contract) => {
         if (!canManageNewContract(
             contract,
-            currentActor.actorRole,
-            currentActor.actorName
+            CONTRACT_PROJECT_ACTION.EDIT
         )) {
             setErrorMessage(
-                "Only the creator or an Admin can edit a contract while it is NEW."
+                "You do not have permission to edit this NEW contract."
             );
             return;
         }
@@ -238,12 +240,9 @@ function ListContract() {
     };
 
     const openReplacementModal = (contract) => {
-        if (
-            normalizeContractStatus(contract?.contractStatus)
-            !== CONTRACT_STATUS.CANCELLED
-        ) {
+        if (!canCreateReplacementContract(contract)) {
             setErrorMessage(
-                "Only a CANCELLED contract can be used to create a replacement."
+                "A replacement requires a CANCELLED contract and CREATE_CONTRACTS permission."
             );
             return;
         }
@@ -489,7 +488,7 @@ function ListContract() {
         setErrorMessage("");
 
         try {
-            await contractApi.deleteContract(contract.id, currentActor);
+            await contractApi.deleteContract(contract.id);
             setReloadKey((current) => current + 1);
         } catch (error) {
             setErrorMessage(
@@ -555,13 +554,18 @@ function ListContract() {
                     <h1>Contracts</h1>
                     <p>
                         Manage contracts from NEW through approval, signing and
-                        the active lifecycle with role-based actions.
+                        the active lifecycle with project-based permissions.
                     </p>
                 </div>
                 <Button
                     className="contract-primary-button"
                     onClick={openCreateModal}
-                    disabled={loadingOptions}
+                    disabled={loadingOptions || projects.length === 0}
+                    title={
+                        !loadingOptions && projects.length === 0
+                            ? "You need CREATE_CONTRACTS permission in a project."
+                            : "Create a contract"
+                    }
                 >
                     <IconPlus size={20} />
                     New Contract
@@ -683,8 +687,7 @@ function ListContract() {
                                             <TaskBadge
                                                 task={getRoleContractTask(
                                                     contract,
-                                                    currentActor.actorRole,
-                                                    currentActor.actorName
+                                                    currentActor.actorRole
                                                 )}
                                             />
                                         </td>
@@ -721,8 +724,7 @@ function ListContract() {
                                                     disabled={
                                                         !canManageNewContract(
                                                             contract,
-                                                            currentActor.actorRole,
-                                                            currentActor.actorName
+                                                            CONTRACT_PROJECT_ACTION.EDIT
                                                         )
                                                     }
                                                     onClick={() =>
@@ -737,8 +739,7 @@ function ListContract() {
                                                         deletingId === contract.id
                                                         || !canManageNewContract(
                                                             contract,
-                                                            currentActor.actorRole,
-                                                            currentActor.actorName
+                                                            CONTRACT_PROJECT_ACTION.DELETE
                                                         )
                                                     }
                                                     onClick={() =>
@@ -883,8 +884,7 @@ function ContractModal({
     const availableActions = isView
         ? getAvailableContractActions(
             contract,
-            currentActor.actorRole,
-            currentActor.actorName
+            currentActor.actorRole
         )
         : [];
 
@@ -915,8 +915,7 @@ function ContractModal({
                         <Button variant="outline-secondary" onClick={onClose}>
                             Close
                         </Button>
-                        {normalizeContractStatus(contract?.contractStatus)
-                            === CONTRACT_STATUS.CANCELLED && (
+                        {canCreateReplacementContract(contract) && (
                             <Button
                                 variant="outline-primary"
                                 onClick={onCreateReplacement}
@@ -941,8 +940,7 @@ function ContractModal({
                         )}
                         {canManageNewContract(
                             contract,
-                            currentActor.actorRole,
-                            currentActor.actorName
+                            CONTRACT_PROJECT_ACTION.EDIT
                         ) && (
                             <Button onClick={onEdit}>
                                 <IconPencil size={18} />
@@ -969,6 +967,7 @@ function ContractModal({
                             creatorReadOnly={Boolean(
                                 localStorage.getItem("fullName")
                             )}
+                            projectReadOnly={mode === "edit"}
                         />
                     </Modal.Body>
                     <Modal.Footer>
@@ -1004,8 +1003,10 @@ function ContractDetails({
 
     const currentTask = getRoleContractTask(
         contract,
-        currentActor.actorRole,
-        currentActor.actorName
+        currentActor.actorRole
+    );
+    const completedPages = splitContractPages(
+        contract.renderedContractContent || contract.contractContent
     );
 
     return (
@@ -1028,8 +1029,9 @@ function ContractDetails({
                     <div>
                         <h3>Available workflow actions</h3>
                         <p>
-                            Only valid actions for {currentActor.actorRole} are
-                            displayed. The backend validates every transition.
+                            Only actions allowed by your project permission and
+                            role are displayed. The backend validates every
+                            transition.
                         </p>
                     </div>
                     <div className="contract-workflow-action-buttons">
@@ -1144,9 +1146,14 @@ function ContractDetails({
             </div>
             <div className="contract-content-preview">
                 <h3>Completed Contract Content</h3>
-                <pre>{contract.renderedContractContent
-                    || contract.contractContent
-                    || "No content."}</pre>
+                <div className="contract-document-pages">
+                    {completedPages.map((pageContent, index) => (
+                        <section className="contract-document-page" key={index}>
+                            <span>Page {index + 1}</span>
+                            <pre>{pageContent || "No content on this page."}</pre>
+                        </section>
+                    ))}
+                </div>
             </div>
             <ContractHistory history={contract.statusHistory} />
         </>

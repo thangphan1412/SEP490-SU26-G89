@@ -4,11 +4,13 @@ import com.fpt.backend.dto.request.contract.ContractListRequest;
 import com.fpt.backend.dto.request.contract.ContractRequest;
 import com.fpt.backend.dto.request.contract.ContractTemplateLayout;
 import com.fpt.backend.dto.request.contract.ContractTransitionRequest;
+import com.fpt.backend.dto.response.contract.ContractAccessResponse;
 import com.fpt.backend.dto.response.contract.ContractListResponse;
 import com.fpt.backend.dto.response.contract.ContractPdfResponse;
 import com.fpt.backend.dto.response.contract.ContractProjectOptionResponse;
 import com.fpt.backend.dto.response.contract.ContractResponse;
 import com.fpt.backend.dto.response.contract.ContractStatusHistoryResponse;
+import com.fpt.backend.dto.response.project.ProjectAccessResponse;
 import com.fpt.backend.entity.ContractAttributeValues;
 import com.fpt.backend.entity.ContractPositions;
 import com.fpt.backend.entity.ContractStatusHistory;
@@ -17,6 +19,7 @@ import com.fpt.backend.entity.ContractTemplates;
 import com.fpt.backend.entity.ContractTypes;
 import com.fpt.backend.entity.Contracts;
 import com.fpt.backend.entity.Projects;
+import com.fpt.backend.entity.Users;
 import com.fpt.backend.enums.ContractAction;
 import com.fpt.backend.enums.ContractStatus;
 import com.fpt.backend.exception.BadHttpException;
@@ -29,6 +32,8 @@ import com.fpt.backend.repository.contract.ContractTemplateVersionRepository;
 import com.fpt.backend.repository.contract.ContractTypeRepository;
 import com.fpt.backend.repository.project.ProjectRepository;
 import com.fpt.backend.service.interfaces.ContractService;
+import com.fpt.backend.service.interfaces.permission.PermissionAccessService;
+import com.fpt.backend.util.CurrentUser;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -36,11 +41,15 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.Period;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -56,6 +65,7 @@ public class ContractServiceImpl implements ContractService {
     private static final String DATA_SOURCE = "DATABASE";
     private static final String DEFAULT_SORT_FIELD = "id";
     private static final String ADMIN_ROLE = "ADMIN";
+    private static final UUID NO_MATCH_PROJECT_ID = new UUID(0L, 0L);
 
     private static final Set<String> SORT_FIELDS = Set.of(
             "id",
@@ -78,6 +88,8 @@ public class ContractServiceImpl implements ContractService {
     private final ContractTemplateLayoutMapper layoutMapper;
     private final ContractDocumentRenderer documentRenderer;
     private final ContractPdfGenerator pdfGenerator;
+    private final PermissionAccessService permissionAccessService;
+    private final CurrentUser currentUser;
 
     @Override
     @Transactional(readOnly = true)
@@ -90,7 +102,18 @@ public class ContractServiceImpl implements ContractService {
                 request.sortDirection()
         );
 
-        Page<Contracts> contracts = findContracts(search, status, pageable);
+        Users user = currentUser.getCurrentUser();
+        List<UUID> viewableProjectIds = permissionAccessService
+                .getCurrentUserProjectIdsWithAction(
+                        ContractProjectActions.VIEW
+                );
+        Page<Contracts> contracts = findContracts(
+                search,
+                status,
+                pageable,
+                user,
+                viewableProjectIds
+        );
         List<String> availableStatuses = Arrays.stream(ContractStatus.values())
                 .map(Enum::name)
                 .toList();
@@ -111,11 +134,21 @@ public class ContractServiceImpl implements ContractService {
     @Override
     @Transactional(readOnly = true)
     public List<ContractProjectOptionResponse> getProjectOptions() {
-        return projectRepository.findAll(Sort.by(
-                        Sort.Direction.ASC,
-                        "projectName"
-                ))
+        List<UUID> projectIds = permissionAccessService
+                .getCurrentUserProjectIdsWithAction(
+                        ContractProjectActions.CREATE
+                );
+
+        if (projectIds.isEmpty()) {
+            return List.of();
+        }
+
+        return projectRepository.findAllById(projectIds)
                 .stream()
+                .sorted(Comparator.comparing(
+                        project -> normalize(project.getProjectName()),
+                        String.CASE_INSENSITIVE_ORDER
+                ))
                 .map(project -> new ContractProjectOptionResponse(
                         project.getId(),
                         project.getProjectCode(),
@@ -127,15 +160,31 @@ public class ContractServiceImpl implements ContractService {
     @Override
     @Transactional(readOnly = true)
     public ContractResponse getContractById(UUID id) {
-        return toResponse(findContract(id));
+        Contracts contract = findContract(id);
+        requireContractAction(
+                contract,
+                ContractProjectActions.VIEW,
+                currentUser.getCurrentUser()
+        );
+        return toResponse(contract);
     }
 
     @Override
     @Transactional
     public ContractResponse createContract(ContractRequest request) {
-        validateCreateActor(request);
+        if (request == null) {
+            throw new BadHttpException("Contract information is required");
+        }
+
+        Users actor = currentUser.getCurrentUser();
+        permissionAccessService.requireAction(
+                request.projectId(),
+                ContractProjectActions.CREATE
+        );
         Contracts contract = new Contracts();
         applyEditableFields(contract, request, true);
+        contract.setContractCreatedByUser(actor);
+        contract.setContractCreateBy(getUserDisplayName(actor));
 
         LocalDateTime now = LocalDateTime.now();
         contract.setContractStatus(ContractStatus.NEW.name());
@@ -156,7 +205,7 @@ public class ContractServiceImpl implements ContractService {
                 ContractStatus.NEW,
                 "CREATE",
                 savedContract.getContractCreateBy(),
-                "CREATOR",
+                normalizeRole(actor.getRole()),
                 savedContract.getPreviousContract() == null
                         ? "Contract created"
                         : "Replacement contract created",
@@ -170,13 +219,14 @@ public class ContractServiceImpl implements ContractService {
     @Transactional
     public ContractResponse updateContract(UUID id, ContractRequest request) {
         Contracts contract = findContract(id);
-        requireStatus(contract, ContractStatus.NEW, "Only NEW contracts can be edited");
-        validateNewContractOwner(
+        Users actor = currentUser.getCurrentUser();
+        requireContractAction(
                 contract,
-                request.actorName(),
-                request.actorRole(),
-                "edit"
+                ContractProjectActions.EDIT,
+                actor
         );
+        requireStatus(contract, ContractStatus.NEW, "Only NEW contracts can be edited");
+        validateProjectUnchanged(contract, request);
         applyEditableFields(contract, request, false);
         Contracts savedContract = contractRepository.save(contract);
         if (request.attributeValues() != null) {
@@ -196,10 +246,11 @@ public class ContractServiceImpl implements ContractService {
         }
 
         Contracts contract = findContract(id);
+        Users actor = currentUser.getCurrentUser();
         ContractStatus currentStatus = readStatus(contract);
         ContractAction action = readAction(request.action());
-        String actorName = requireText(request.actorName(), "Actor name is required");
-        String actorRole = normalizeRole(request.actorRole());
+        String actorName = getUserDisplayName(actor);
+        String actorRole = normalizeRole(actor.getRole());
 
         if (currentStatus.isTerminal()) {
             throw new BadHttpException(
@@ -208,8 +259,12 @@ public class ContractServiceImpl implements ContractService {
         }
 
         validateActionStatus(action, currentStatus);
+        requireContractAction(
+                contract,
+                permissionForWorkflowAction(action, currentStatus),
+                actor
+        );
         validateRole(action, currentStatus, actorRole);
-        validateCreatorAction(contract, action, currentStatus, actorName, actorRole);
 
         if (action == ContractAction.CANCEL || action == ContractAction.REJECT) {
             requireText(request.comment(), "A cancellation or rejection reason is required");
@@ -256,6 +311,17 @@ public class ContractServiceImpl implements ContractService {
     @Transactional(readOnly = true)
     public ContractPdfResponse exportContractPdf(UUID id) {
         Contracts contract = findContract(id);
+        Users actor = currentUser.getCurrentUser();
+        requireContractAction(
+                contract,
+                ContractProjectActions.VIEW,
+                actor
+        );
+        requireContractAction(
+                contract,
+                ContractProjectActions.EXPORT,
+                actor
+        );
         ContractStatus status = readStatus(contract);
         if (status != ContractStatus.ACTIVE && status != ContractStatus.ENDED) {
             throw new BadHttpException(
@@ -281,10 +347,14 @@ public class ContractServiceImpl implements ContractService {
 
     @Override
     @Transactional
-    public void deleteContract(UUID id, String actorName, String actorRole) {
+    public void deleteContract(UUID id) {
         Contracts contract = findContract(id);
+        requireContractAction(
+                contract,
+                ContractProjectActions.DELETE,
+                currentUser.getCurrentUser()
+        );
         requireStatus(contract, ContractStatus.NEW, "Only NEW contracts can be deleted");
-        validateNewContractOwner(contract, actorName, actorRole, "delete");
         contractAttributeValueRepository.deleteAllByContractId(contract.getId());
         contractRepository.delete(contract);
     }
@@ -292,21 +362,108 @@ public class ContractServiceImpl implements ContractService {
     private Page<Contracts> findContracts(
             String search,
             String status,
-            Pageable pageable
+            Pageable pageable,
+            Users user,
+            List<UUID> projectIds
     ) {
-        if (search.isBlank() && status.isBlank()) {
-            return contractRepository.findAll(pageable);
+        if (projectIds.isEmpty()) {
+            return Page.empty(pageable);
         }
 
-        if (search.isBlank()) {
-            return contractRepository.findByContractStatusIgnoreCase(status, pageable);
+        List<UUID> fullScopeProjectIds = new ArrayList<>();
+        for (UUID projectId : projectIds) {
+            ProjectAccessResponse access = permissionAccessService
+                    .getCurrentUserAccess(projectId);
+            if (permissionAccessService.hasFullWorkScope(
+                    access,
+                    ContractProjectActions.VIEW
+            )) {
+                fullScopeProjectIds.add(projectId);
+            }
         }
 
-        return contractRepository.searchContracts(
+        if (fullScopeProjectIds.isEmpty()) {
+            fullScopeProjectIds = List.of(NO_MATCH_PROJECT_ID);
+        }
+
+        return contractRepository.searchAccessibleContracts(
+                projectIds,
+                fullScopeProjectIds,
+                user.getId(),
+                getUserDisplayName(user).toLowerCase(Locale.ROOT),
                 search.toLowerCase(Locale.ROOT),
                 status.toLowerCase(Locale.ROOT),
                 pageable
         );
+    }
+
+    private void requireContractAction(
+            Contracts contract,
+            String actionCode,
+            Users user
+    ) {
+        if (contract.getProject() == null
+                || contract.getProject().getId() == null) {
+            throw new BadHttpException(
+                    "The contract must belong to a project"
+            );
+        }
+
+        ProjectAccessResponse access = permissionAccessService
+                .getCurrentUserAccess(contract.getProject().getId());
+
+        if (!permissionAccessService.hasAction(access, actionCode)) {
+            throw forbidden(
+                    "You do not have permission to perform " + actionCode
+                            + " in this project"
+            );
+        }
+
+        if (permissionAccessService.hasFullWorkScope(access, actionCode)
+                || isContractOwner(contract, user)) {
+            return;
+        }
+
+        throw forbidden(
+                "Permission " + actionCode
+                        + " is limited to contracts you created"
+        );
+    }
+
+    private String permissionForWorkflowAction(
+            ContractAction action,
+            ContractStatus currentStatus
+    ) {
+        return switch (action) {
+            case SUBMIT -> ContractProjectActions.SUBMIT;
+            case APPROVE_INTERNAL -> ContractProjectActions.APPROVE;
+            case SIGN_DIRECTOR, SIGN_PARTNER -> ContractProjectActions.SIGN;
+            case CANCEL -> ContractProjectActions.CANCEL;
+            case REJECT -> currentStatus
+                    == ContractStatus.PENDING_INTERNAL_APPROVAL
+                    ? ContractProjectActions.APPROVE
+                    : ContractProjectActions.SIGN;
+        };
+    }
+
+    private void validateProjectUnchanged(
+            Contracts contract,
+            ContractRequest request
+    ) {
+        if (request == null) {
+            throw new BadHttpException("Contract information is required");
+        }
+
+        UUID currentProjectId = contract.getProject() == null
+                ? null
+                : contract.getProject().getId();
+
+        if (currentProjectId == null
+                || !currentProjectId.equals(request.projectId())) {
+            throw new BadHttpException(
+                    "A contract cannot be moved to another project"
+            );
+        }
     }
 
     private void applyEditableFields(
@@ -351,9 +508,6 @@ public class ContractServiceImpl implements ContractService {
         contract.setContractTitle(request.contractTitle().trim());
         contract.setEffectiveDate(request.effectiveDate());
         contract.setExpirationDate(request.expirationDate());
-        if (creating) {
-            contract.setContractCreateBy(normalizeToNull(request.contractCreatedBy()));
-        }
         contract.setProject(project);
         contract.setContractType(contractType);
         contract.setContractTemplate(template);
@@ -497,28 +651,6 @@ public class ContractServiceImpl implements ContractService {
                     Set.of("CEO", "DIRECTOR", "PARTNER", "EXTERNAL_PARTNER");
             case ENDED, CANCELLED -> Set.of();
         };
-    }
-
-    private void validateCreatorAction(
-            Contracts contract,
-            ContractAction action,
-            ContractStatus currentStatus,
-            String actorName,
-            String actorRole
-    ) {
-        if (currentStatus != ContractStatus.NEW
-                || (action != ContractAction.SUBMIT
-                && action != ContractAction.CANCEL)
-                || ADMIN_ROLE.equals(actorRole)
-                || isBlank(contract.getContractCreateBy())) {
-            return;
-        }
-
-        if (!contract.getContractCreateBy().trim().equalsIgnoreCase(actorName.trim())) {
-            throw new BadHttpException(
-                    "Only the contract creator can submit or cancel a NEW contract"
-            );
-        }
     }
 
     private Boolean validateSignerAge(LocalDate dateOfBirth) {
@@ -678,7 +810,7 @@ public class ContractServiceImpl implements ContractService {
         );
         version.setTemplateContent(content);
         version.setChangeNote(normalizeToNull(request.templateVersionNote()));
-        version.setCreatedBy(normalizeToNull(request.contractCreatedBy()));
+        version.setCreatedBy(getUserDisplayName(currentUser.getCurrentUser()));
         version.setCreatedAt(LocalDateTime.now());
 
         ContractTemplateLayout layout;
@@ -773,11 +905,16 @@ public class ContractServiceImpl implements ContractService {
             return List.of();
         }
 
-        return version.getPositions().stream()
+        Map<String, ContractPositions> uniquePositions = new LinkedHashMap<>();
+        version.getPositions().stream()
                 .filter(position -> "MANUAL".equalsIgnoreCase(
                         position.getValueSource()
                 ))
-                .toList();
+                .forEach(position -> uniquePositions.putIfAbsent(
+                        normalizeAttributeKey(position.getAttributeKey()),
+                        position
+                ));
+        return List.copyOf(uniquePositions.values());
     }
 
     private Map<String, String> normalizeAttributeValues(
@@ -814,10 +951,6 @@ public class ContractServiceImpl implements ContractService {
             throw new BadHttpException("Contract title is required");
         }
 
-        if (isBlank(request.contractCreatedBy())) {
-            throw new BadHttpException("Contract creator is required");
-        }
-
         if (request.effectiveDate() == null) {
             throw new BadHttpException("Effective date is required");
         }
@@ -838,54 +971,6 @@ public class ContractServiceImpl implements ContractService {
                 .orElseThrow(() -> new NotFoundException(
                         "Contract not found with id: " + id
                 ));
-    }
-
-    private void validateCreateActor(ContractRequest request) {
-        if (request == null) {
-            throw new BadHttpException("Contract information is required");
-        }
-
-        String actorName = requireText(request.actorName(), "Actor name is required");
-        String actorRole = normalizeRole(request.actorRole());
-        String creatorName = requireText(
-                request.contractCreatedBy(),
-                "Contract creator is required"
-        );
-
-        if (!actorName.equalsIgnoreCase(creatorName)) {
-            throw new BadHttpException(
-                    "The signed-in user must be the contract creator"
-            );
-        }
-
-        if (!Set.of("EMPLOYEE", "MANAGER", "CEO", "DIRECTOR", ADMIN_ROLE)
-                .contains(actorRole)) {
-            throw new BadHttpException(
-                    "Role " + actorRole + " cannot create contracts"
-            );
-        }
-    }
-
-    private void validateNewContractOwner(
-            Contracts contract,
-            String actorName,
-            String actorRole,
-            String operation
-    ) {
-        String normalizedActorName = requireText(actorName, "Actor name is required");
-        String normalizedActorRole = normalizeRole(actorRole);
-
-        if (ADMIN_ROLE.equals(normalizedActorRole)) {
-            return;
-        }
-
-        if (isBlank(contract.getContractCreateBy())
-                || !contract.getContractCreateBy().trim()
-                .equalsIgnoreCase(normalizedActorName)) {
-            throw new BadHttpException(
-                    "Only the contract creator can " + operation + " a NEW contract"
-            );
-        }
     }
 
     private void requireStatus(
@@ -957,11 +1042,24 @@ public class ContractServiceImpl implements ContractService {
         boolean pdfAvailable = (status == ContractStatus.ACTIVE
                 || status == ContractStatus.ENDED)
                 && renderedDocument.fullySigned();
+        Users user = currentUser.getCurrentUser();
+        ProjectAccessResponse projectAccess = permissionAccessService
+                .getCurrentUserAccess(project.getId());
+        ContractAccessResponse contractAccess = new ContractAccessResponse(
+                projectAccess.projectId(),
+                projectAccess.currentUserId(),
+                projectAccess.projectCreator(),
+                projectAccess.projectMember(),
+                projectAccess.allowedActions(),
+                projectAccess.fullScopeActions(),
+                projectAccess.workScope(),
+                isContractOwner(contract, user)
+        );
 
         return new ContractResponse(
                 contract.getId(),
-                project != null ? project.getId() : null,
-                project != null ? project.getProjectName() : null,
+                project.getId(),
+                project.getProjectName(),
                 contractType != null ? contractType.getId() : null,
                 contractType != null ? contractType.getContractTypeCode() : null,
                 contractType != null ? contractType.getContractTypeName() : null,
@@ -991,7 +1089,8 @@ public class ContractServiceImpl implements ContractService {
                 contract.getContractCancellationReason(),
                 previousContract != null ? previousContract.getId() : null,
                 previousContract != null ? previousContract.getContractNumber() : null,
-                history
+                history,
+                contractAccess
         );
     }
 
@@ -1044,6 +1143,41 @@ public class ContractServiceImpl implements ContractService {
         return role.toUpperCase(Locale.ROOT)
                 .replace('-', '_')
                 .replace(' ', '_');
+    }
+
+    private boolean isContractOwner(Contracts contract, Users user) {
+        if (contract == null || user == null || user.getId() == null) {
+            return false;
+        }
+
+        Users creator = contract.getContractCreatedByUser();
+        if (creator != null && creator.getId() != null) {
+            return creator.getId().equals(user.getId());
+        }
+
+        return !isBlank(contract.getContractCreateBy())
+                && contract.getContractCreateBy().trim().equalsIgnoreCase(
+                        getUserDisplayName(user)
+                );
+    }
+
+    private String getUserDisplayName(Users user) {
+        if (user == null) {
+            throw new BadHttpException("User is not authenticated");
+        }
+
+        String fullName = (normalize(user.getFirstName()) + " "
+                + normalize(user.getLastName())).trim();
+
+        if (!fullName.isBlank()) {
+            return fullName;
+        }
+
+        return requireText(user.getEmail(), "Authenticated user name is unavailable");
+    }
+
+    private ResponseStatusException forbidden(String message) {
+        return new ResponseStatusException(HttpStatus.FORBIDDEN, message);
     }
 
     private String normalizeContent(String value) {

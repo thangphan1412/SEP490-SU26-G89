@@ -26,5 +26,5 @@ public interface ContractService {
 
     ContractPdfResponse exportContractPdf(UUID id);
 
-    void deleteContract(UUID id, String actorName, String actorRole);
+    void deleteContract(UUID id);
 }

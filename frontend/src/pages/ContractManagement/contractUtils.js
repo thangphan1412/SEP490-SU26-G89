@@ -21,6 +21,18 @@ export const CONTRACT_ACTION = Object.freeze({
     REJECT: "REJECT",
 });
 
+export const CONTRACT_PROJECT_ACTION = Object.freeze({
+    VIEW: "VIEW_CONTRACTS",
+    CREATE: "CREATE_CONTRACTS",
+    EDIT: "EDIT_CONTRACTS",
+    DELETE: "DELETE_CONTRACTS",
+    SUBMIT: "SUBMIT_CONTRACTS",
+    APPROVE: "APPROVE_CONTRACTS",
+    SIGN: "SIGN_CONTRACTS",
+    CANCEL: "CANCEL_CONTRACTS",
+    EXPORT: "EXPORT_CONTRACTS",
+});
+
 const ACTION_DETAILS = Object.freeze({
     [CONTRACT_ACTION.SUBMIT]: {
         label: "Submit for approval",
@@ -252,8 +264,13 @@ export function normalizeContractStatus(status) {
 export function canExportContractPdf(contract) {
     const status = normalizeContractStatus(contract?.contractStatus);
 
-    return Boolean(contract?.pdfAvailable)
+    const completed = Boolean(contract?.pdfAvailable)
         || [CONTRACT_STATUS.ACTIVE, CONTRACT_STATUS.ENDED].includes(status);
+
+    return completed && canUseContractProjectAction(
+        contract,
+        CONTRACT_PROJECT_ACTION.EXPORT
+    );
 }
 
 export function formatContractStatus(status) {
@@ -277,20 +294,51 @@ export function isContractEditable(contract) {
         === CONTRACT_STATUS.NEW;
 }
 
-export function canManageNewContract(contract, role, actorName) {
+export function canManageNewContract(
+    contract,
+    actionCode = CONTRACT_PROJECT_ACTION.EDIT
+) {
     if (!isContractEditable(contract)) {
         return false;
     }
 
-    const normalizedRole = normalizeContractRole(role);
-    if (normalizedRole === "ADMIN") {
-        return true;
+    return canUseContractProjectAction(contract, actionCode);
+}
+
+export function hasContractProjectAction(contract, actionCode) {
+    const requiredAction = normalizeProjectAction(actionCode);
+    const allowedActions = contract?.currentUserAccess?.allowedActions;
+
+    return Array.isArray(allowedActions)
+        && allowedActions.some(
+            (allowedAction) => normalizeProjectAction(allowedAction)
+                === requiredAction
+        );
+}
+
+export function canUseContractProjectAction(contract, actionCode) {
+    if (!hasContractProjectAction(contract, actionCode)) {
+        return false;
     }
 
-    return Boolean(actorName)
-        && Boolean(contract?.contractCreatedBy)
-        && actorName.trim().toLowerCase()
-            === contract.contractCreatedBy.trim().toLowerCase();
+    const requiredAction = normalizeProjectAction(actionCode);
+    const fullScopeActions = contract?.currentUserAccess?.fullScopeActions;
+    const fullScope = Array.isArray(fullScopeActions)
+        && fullScopeActions.some(
+            (fullScopeAction) => normalizeProjectAction(fullScopeAction)
+                === requiredAction
+        );
+
+    return fullScope || Boolean(contract?.currentUserAccess?.currentUserOwner);
+}
+
+export function canCreateReplacementContract(contract) {
+    return normalizeContractStatus(contract?.contractStatus)
+        === CONTRACT_STATUS.CANCELLED
+        && hasContractProjectAction(
+            contract,
+            CONTRACT_PROJECT_ACTION.CREATE
+        );
 }
 
 export function getContractActionDetails(action) {
@@ -301,11 +349,10 @@ export function getContractActionDetails(action) {
     };
 }
 
-export function getAvailableContractActions(contract, role, actorName) {
+export function getAvailableContractActions(contract, role) {
     const status = normalizeContractStatus(contract?.contractStatus);
     const normalizedRole = normalizeContractRole(role);
     const isAdmin = normalizedRole === "ADMIN";
-    const canManageNew = canManageNewContract(contract, role, actorName);
 
     if (status === CONTRACT_STATUS.ENDED
         || status === CONTRACT_STATUS.CANCELLED) {
@@ -313,15 +360,20 @@ export function getAvailableContractActions(contract, role, actorName) {
     }
 
     if (status === CONTRACT_STATUS.NEW) {
-        if (!canManageNew) {
-            return [];
-        }
-
         if (
             isAdmin
             || ["EMPLOYEE", "MANAGER", "CEO", "DIRECTOR"].includes(normalizedRole)
         ) {
-            return [CONTRACT_ACTION.SUBMIT, CONTRACT_ACTION.CANCEL];
+            return [
+                canUseContractProjectAction(
+                    contract,
+                    CONTRACT_PROJECT_ACTION.SUBMIT
+                ) && CONTRACT_ACTION.SUBMIT,
+                canUseContractProjectAction(
+                    contract,
+                    CONTRACT_PROJECT_ACTION.CANCEL
+                ) && CONTRACT_ACTION.CANCEL,
+            ].filter(Boolean);
         }
     }
 
@@ -329,14 +381,24 @@ export function getAvailableContractActions(contract, role, actorName) {
         status === CONTRACT_STATUS.PENDING_INTERNAL_APPROVAL
         && (isAdmin || normalizedRole === "MANAGER")
     ) {
-        return [CONTRACT_ACTION.APPROVE_INTERNAL, CONTRACT_ACTION.REJECT];
+        return canUseContractProjectAction(
+            contract,
+            CONTRACT_PROJECT_ACTION.APPROVE
+        )
+            ? [CONTRACT_ACTION.APPROVE_INTERNAL, CONTRACT_ACTION.REJECT]
+            : [];
     }
 
     if (
         status === CONTRACT_STATUS.PENDING_DIRECTOR_SIGNATURE
         && (isAdmin || ["CEO", "DIRECTOR"].includes(normalizedRole))
     ) {
-        return [CONTRACT_ACTION.SIGN_DIRECTOR, CONTRACT_ACTION.REJECT];
+        return canUseContractProjectAction(
+            contract,
+            CONTRACT_PROJECT_ACTION.SIGN
+        )
+            ? [CONTRACT_ACTION.SIGN_DIRECTOR, CONTRACT_ACTION.REJECT]
+            : [];
     }
 
     if (
@@ -346,7 +408,12 @@ export function getAvailableContractActions(contract, role, actorName) {
             || ["PARTNER", "EXTERNAL", "EXTERNAL_PARTNER"].includes(normalizedRole)
         )
     ) {
-        return [CONTRACT_ACTION.SIGN_PARTNER, CONTRACT_ACTION.REJECT];
+        return canUseContractProjectAction(
+            contract,
+            CONTRACT_PROJECT_ACTION.SIGN
+        )
+            ? [CONTRACT_ACTION.SIGN_PARTNER, CONTRACT_ACTION.REJECT]
+            : [];
     }
 
     if (
@@ -358,16 +425,21 @@ export function getAvailableContractActions(contract, role, actorName) {
             )
         )
     ) {
-        return [CONTRACT_ACTION.CANCEL];
+        return canUseContractProjectAction(
+            contract,
+            CONTRACT_PROJECT_ACTION.CANCEL
+        )
+            ? [CONTRACT_ACTION.CANCEL]
+            : [];
     }
 
     return [];
 }
 
-export function getRoleContractTask(contract, role, actorName) {
+export function getRoleContractTask(contract, role) {
     const status = normalizeContractStatus(contract?.contractStatus);
     const normalizedRole = normalizeContractRole(role);
-    const actions = getAvailableContractActions(contract, role, actorName);
+    const actions = getAvailableContractActions(contract, role);
 
     if (status === CONTRACT_STATUS.CANCELLED) {
         return { label: "Contract cancelled", status: "CANCELLED" };
@@ -377,10 +449,26 @@ export function getRoleContractTask(contract, role, actorName) {
         return { label: "Contract completed", status: "COMPLETED" };
     }
 
+    if (actions.length > 0) {
+        const actionTaskByStatus = {
+            [CONTRACT_STATUS.NEW]: "Prepare and submit",
+            [CONTRACT_STATUS.PENDING_INTERNAL_APPROVAL]:
+                "Internal review required",
+            [CONTRACT_STATUS.PENDING_DIRECTOR_SIGNATURE]:
+                "Director signature required",
+            [CONTRACT_STATUS.PENDING_PARTNER_SIGNATURE]:
+                "Partner signature required",
+            [CONTRACT_STATUS.ACTIVE]: "Monitor active contract",
+        };
+
+        return {
+            label: actionTaskByStatus[status] || "Workflow action required",
+            status: "ACTION_REQUIRED",
+        };
+    }
+
     if (normalizedRole === "ADMIN") {
-        return actions.length > 0
-            ? { label: "Workflow action required", status: "ACTION_REQUIRED" }
-            : { label: "Monitor contract", status: "IN_PROGRESS" };
+        return { label: "Monitor contract", status: "IN_PROGRESS" };
     }
 
     if (normalizedRole === "EMPLOYEE") {
@@ -397,7 +485,9 @@ export function getRoleContractTask(contract, role, actorName) {
             return { label: "Waiting for submission", status: "WAITING" };
         }
         if (status === CONTRACT_STATUS.PENDING_INTERNAL_APPROVAL) {
-            return { label: "Internal review required", status: "ACTION_REQUIRED" };
+            return actions.length > 0
+                ? { label: "Internal review required", status: "ACTION_REQUIRED" }
+                : { label: "No approval permission", status: "READ_ONLY" };
         }
         return { label: "Internal review completed", status: "COMPLETED" };
     }
@@ -410,7 +500,9 @@ export function getRoleContractTask(contract, role, actorName) {
             return { label: "Waiting for internal approval", status: "WAITING" };
         }
         if (status === CONTRACT_STATUS.PENDING_DIRECTOR_SIGNATURE) {
-            return { label: "Director signature required", status: "ACTION_REQUIRED" };
+            return actions.length > 0
+                ? { label: "Director signature required", status: "ACTION_REQUIRED" }
+                : { label: "No signature permission", status: "READ_ONLY" };
         }
         return { label: "Monitor contract lifecycle", status: "IN_PROGRESS" };
     }
@@ -426,7 +518,9 @@ export function getRoleContractTask(contract, role, actorName) {
             return { label: "Waiting for company signature", status: "WAITING" };
         }
         if (status === CONTRACT_STATUS.PENDING_PARTNER_SIGNATURE) {
-            return { label: "Partner signature required", status: "ACTION_REQUIRED" };
+            return actions.length > 0
+                ? { label: "Partner signature required", status: "ACTION_REQUIRED" }
+                : { label: "No signature permission", status: "READ_ONLY" };
         }
         return { label: "Monitor active contract", status: "IN_PROGRESS" };
     }
@@ -493,4 +587,8 @@ export async function loadProjectOptions() {
     const payload = unwrapApiResponse(response);
 
     return Array.isArray(payload) ? payload : [];
+}
+
+function normalizeProjectAction(value) {
+    return String(value || "").trim().toUpperCase();
 }

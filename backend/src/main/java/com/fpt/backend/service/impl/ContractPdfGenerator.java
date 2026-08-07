@@ -18,9 +18,15 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Pattern;
 
 @Component
 public class ContractPdfGenerator {
+    private static final String DOCUMENT_TITLE = "HỢP ĐỒNG ĐIỆN TỬ";
+    private static final Pattern PAGE_BREAK_PATTERN = Pattern.compile(
+            "^<!--\\s*pagebreak\\s*-->$",
+            Pattern.CASE_INSENSITIVE
+    );
     private static final DateTimeFormatter DATE_FORMATTER =
             DateTimeFormatter.ofPattern("dd/MM/yyyy");
     private static final DateTimeFormatter DATE_TIME_FORMATTER =
@@ -42,7 +48,7 @@ public class ContractPdfGenerator {
                     boldFont,
                     contract
             )) {
-                writer.writeTitle("HỢP ĐỒNG ĐIỆN TỬ");
+                writer.writeTitle();
                 writer.writeMetadata("Số hợp đồng", contract.getContractNumber());
                 writer.writeMetadata("Tên hợp đồng", contract.getContractTitle());
                 writer.writeMetadata(
@@ -144,9 +150,9 @@ public class ContractPdfGenerator {
             newPage();
         }
 
-        private void writeTitle(String title) throws IOException {
+        private void writeTitle() throws IOException {
             ensureSpace(40f);
-            for (String line : wrap(title, boldFont, 18f, BODY_WIDTH)) {
+            for (String line : wrap(DOCUMENT_TITLE, boldFont, 18f)) {
                 float textWidth = textWidth(line, boldFont, 18f);
                 drawText(
                         line,
@@ -184,14 +190,15 @@ public class ContractPdfGenerator {
             String normalized = content == null ? "" : content.replace("\r", "");
             for (String rawLine : normalized.split("\n", -1)) {
                 String line = rawLine.strip();
+                if (PAGE_BREAK_PATTERN.matcher(line).matches()) {
+                    newPage();
+                    continue;
+                }
+
                 if (line.isEmpty()) {
                     ensureSpace(10f);
                     cursorY -= 9f;
                     continue;
-                }
-
-                if (line.toUpperCase().startsWith("ĐẠI DIỆN BÊN A")) {
-                    break;
                 }
 
                 if (isDocumentTitle(line)) {
@@ -281,7 +288,7 @@ public class ContractPdfGenerator {
                 float leading,
                 float afterSpacing
         ) throws IOException {
-            List<String> lines = wrap(text, font, fontSize, BODY_WIDTH);
+            List<String> lines = wrap(text, font, fontSize);
             ensureSpace((lines.size() * leading) + afterSpacing);
             for (String line : lines) {
                 float width = textWidth(line, font, fontSize);
@@ -304,7 +311,7 @@ public class ContractPdfGenerator {
                 float leading,
                 float afterSpacing
         ) throws IOException {
-            List<String> lines = wrap(text, font, fontSize, BODY_WIDTH);
+            List<String> lines = wrap(text, font, fontSize);
             for (String line : lines) {
                 ensureSpace(leading + afterSpacing);
                 drawText(line, font, fontSize, MARGIN, cursorY);
@@ -316,8 +323,7 @@ public class ContractPdfGenerator {
         private List<String> wrap(
                 String text,
                 PDFont font,
-                float fontSize,
-                float maxWidth
+                float fontSize
         ) throws IOException {
             String normalized = safe(text).replace('\t', ' ').trim();
             if (normalized.isEmpty()) {
@@ -330,7 +336,7 @@ public class ContractPdfGenerator {
                 String candidate = current.isEmpty()
                         ? word
                         : current + " " + word;
-                if (textWidth(candidate, font, fontSize) <= maxWidth) {
+                if (textWidth(candidate, font, fontSize) <= BODY_WIDTH) {
                     current.setLength(0);
                     current.append(candidate);
                 } else {
