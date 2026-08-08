@@ -21,6 +21,6 @@ public class CalculateRSA {
             throw new IllegalArgumentException("e not valid");
         }
         BigInteger privateExponent = publicExponent.modInverse(phi);
-
+          
     }
 }
