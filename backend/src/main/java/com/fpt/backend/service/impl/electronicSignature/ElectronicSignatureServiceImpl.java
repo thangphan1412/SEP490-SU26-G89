@@ -4,6 +4,7 @@ import com.cloudinary.Cloudinary;
 import com.cloudinary.utils.ObjectUtils;
 import com.fpt.backend.dto.request.electronicSignature.CreateElectronicSignatureRequest;
 import com.fpt.backend.dto.request.fileStorage.CreateFileStorageRequest;
+import com.fpt.backend.dto.response.electronicSignature.ElectronicSignatureDetailResponse;
 import com.fpt.backend.dto.response.electronicSignature.ListElectronicResponse;
 import com.fpt.backend.entity.ElectronicSignatures;
 import com.fpt.backend.entity.FileStorage;
@@ -56,6 +57,12 @@ public class ElectronicSignatureServiceImpl implements IElectronicSignatureServi
     public List<ListElectronicResponse> getAllElectronicSignatures() {
         Users users = currentUser.getCurrentUser();
         return electronicSignatureRepository.getAllElectronicSignaturesById(users.getId());
+    }
+
+    @Override
+    public ElectronicSignatureDetailResponse getElectronicSignatureDetail(UUID electronicSignatureId) {
+        Users user = currentUser.getCurrentUser();
+        return electronicSignatureRepository.getElectronicSignaturesById(user.getId(),electronicSignatureId);
     }
 
 }
