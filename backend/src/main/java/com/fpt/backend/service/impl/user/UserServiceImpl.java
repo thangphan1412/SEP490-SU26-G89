@@ -4,7 +4,8 @@ import com.fpt.backend.dto.request.authentication.ChangePasswordRequest;
 import com.fpt.backend.dto.request.authentication.RegisterRequest;
 import com.fpt.backend.dto.request.authentication.ResetPasswordRequest;
 import com.fpt.backend.dto.request.user.UserFilterRequestDTO;
-import com.fpt.backend.dto.request.user.UserRequestDTO;
+import com.fpt.backend.dto.request.user.UserCreateRequestDTO;
+import com.fpt.backend.dto.request.user.UserUpdateRequestDTO;
 import com.fpt.backend.dto.request.userProfile.UserProfileRequestDTO;
 import com.fpt.backend.dto.response.authentication.RegisterResponse;
 import com.fpt.backend.dto.response.user.UserResponseDTO;
@@ -24,10 +25,11 @@ import com.fpt.backend.service.interfaces.user.IUserService;
 import com.fpt.backend.util.CurrentUser;
 import com.fpt.backend.util.OTPGenerator;
 import com.fpt.backend.util.ValidateEmail;
-import org.apache.catalina.User;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -110,15 +112,53 @@ public class UserServiceImpl implements IUserService {
     public UserResponseDTO getUserById(UUID id) {
         Users user = userRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("User not found with id: " + id));
+
+        // --- BẮT ĐẦU: TẤM KHIÊN BẢO VỆ XEM CHI TIẾT ---
+        Users loggedInUser = currentUser.getCurrentUser();
+        if ("HeadOfDepartment".equalsIgnoreCase(loggedInUser.getRole())) {
+            String myDept = loggedInUser.getDepartment() != null ? loggedInUser.getDepartment().getDepartmentName() : "";
+            String targetDept = user.getDepartment() != null ? user.getDepartment().getDepartmentName() : "";
+
+            if (!myDept.equals(targetDept)) {
+                throw new RuntimeException("Access Denied: Bạn không được phép xem thông tin nhân viên phòng ban khác!");
+            }
+        }
+        // --- KẾT THÚC TẤM KHIÊN ---
+
         return UserResponseDTO.fromEntity(user);
     }
 
     // 3. Create User
     @Override
-    public UserResponseDTO createUser(UserRequestDTO request) {
+    public UserResponseDTO createUser(UserCreateRequestDTO request) {
+
+        // --- CHẶN PASSWORD RỖNG LÚC TẠO MỚI ---
+        if (request.getPassword() == null || request.getPassword().isEmpty()) {
+            throw new RuntimeException("Lỗi: Mật khẩu không được để trống khi tạo tài khoản mới!");
+        }
+        // ---------------------------------------------------------
+
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new RuntimeException("Email is already in use!");
         }
+
+        // --- BẮT ĐẦU: TẤM KHIÊN BẢO VỆ PHÂN QUYỀN TẠO MỚI ---
+        Users loggedInUser = currentUser.getCurrentUser();
+        String currentRole = loggedInUser.getRole();
+
+        if ("HeadOfDepartment".equalsIgnoreCase(currentRole)) {
+            // 1. Chỉ được tạo nhân viên cấp dưới
+            if (!List.of("Employee", "Accountant").contains(request.getRole())) {
+                throw new RuntimeException("Access Denied: Bạn không có quyền tạo tài khoản chức vụ " + request.getRole());
+            }
+
+            // 2. Chỉ được tạo nhân viên trong cùng phòng ban của mình
+            String myDept = loggedInUser.getDepartment() != null ? loggedInUser.getDepartment().getDepartmentName() : "";
+            if (!myDept.equals(request.getDepartmentName())) {
+                throw new RuntimeException("Access Denied: Bạn chỉ được phép tạo nhân viên trong phòng " + myDept);
+            }
+        }
+        // --- KẾT THÚC TẤM KHIÊN ---
 
         Users newUser = Users.builder()
                 .email(request.getEmail())
@@ -129,7 +169,7 @@ public class UserServiceImpl implements IUserService {
                 .role(request.getRole())
                 .dob(request.getDob())
                 .startDate(request.getStartDate())
-                .status(UserStatus.valueOf(request.getStatus()))
+                .status(request.getStatus())
                 .build();
 
         // LOGIC LƯU DEPARTMENT
@@ -179,9 +219,32 @@ public class UserServiceImpl implements IUserService {
 
     // 4. Update User
     @Override
-    public UserResponseDTO updateUser(UUID id, UserRequestDTO request) {
+    public UserResponseDTO updateUser(UUID id, UserUpdateRequestDTO request) {
         Users existingUser = userRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("User not found with id: " + id));
+
+        // --- BẮT ĐẦU: TẤM KHIÊN BẢO VỆ PHÂN QUYỀN CẬP NHẬT ---
+        Users loggedInUser = currentUser.getCurrentUser();
+        if ("HeadOfDepartment".equalsIgnoreCase(loggedInUser.getRole())) {
+
+            // 1. Phải là người trong cùng phòng ban mới được sửa
+            String myDept = loggedInUser.getDepartment() != null ? loggedInUser.getDepartment().getDepartmentName() : "";
+            String targetDept = existingUser.getDepartment() != null ? existingUser.getDepartment().getDepartmentName() : "";
+            if (!myDept.equals(targetDept)) {
+                throw new RuntimeException("Access Denied: Bạn không có quyền sửa thông tin nhân viên của phòng ban khác!");
+            }
+
+            // 2. Không được phép "nâng quyền" nhân viên lên thành CEO hay Admin
+            if (!List.of("Employee", "Accountant").contains(request.getRole())) {
+                throw new RuntimeException("Access Denied: Bạn không được phép cấp quyền " + request.getRole() + " cho nhân viên!");
+            }
+
+            // 3. Không được phép "đá" nhân viên này sang phòng ban khác
+            if (!myDept.equals(request.getDepartmentName())) {
+                throw new RuntimeException("Access Denied: Bạn không được phép chuyển nhân viên này sang phòng ban khác!");
+            }
+        }
+        // --- KẾT THÚC TẤM KHIÊN ---
 
         existingUser.setFirstName(request.getFirstName());
         existingUser.setLastName(request.getLastName());
@@ -209,7 +272,7 @@ public class UserServiceImpl implements IUserService {
             }
         }
         // --------------------------------------------------------
-        existingUser.setStatus(UserStatus.valueOf(request.getStatus()));
+        existingUser.setStatus(request.getStatus());
         existingUser.setDob(request.getDob());
         existingUser.setStartDate(request.getStartDate());
 
@@ -270,7 +333,7 @@ public class UserServiceImpl implements IUserService {
 
 
     @Override
-    public List<UserResponseDTO> getAllUsersFiltered(UserFilterRequestDTO filter, String currentUsername) {
+    public Page<UserResponseDTO> getAllUsersFiltered(UserFilterRequestDTO filter, String currentUsername, int page, int size) {
 
         Users currentUser = userRepository.findByEmail(currentUsername)
                 .orElseThrow(() -> new RuntimeException("Current user not found"));
@@ -322,12 +385,14 @@ public class UserServiceImpl implements IUserService {
             filter.setStatusEnum(UserStatus.valueOf(filter.getStatus().toUpperCase()));
         }
 
-        // 3. GỌI REPOSITORY (Truyền object filter vào)
-        List<Users> resultList = userRepository.searchAndFilterUsers(filter);
+        // Tạo đối tượng Pageable (Sắp xếp theo ngày tạo mới nhất hoặc ID)
+        Pageable pageable = PageRequest.of(page, size, Sort.by("id").descending());
 
-        return resultList.stream()
-                .map(UserResponseDTO::fromEntity)
-                .collect(Collectors.toList());
+        // Gọi Repository trả về Page
+        Page<Users> resultPage = userRepository.searchAndFilterUsers(filter, pageable);
+
+        // Map từ Page<Users> sang Page<UserResponseDTO>
+        return resultPage.map(UserResponseDTO::fromEntity);
     }
 
 

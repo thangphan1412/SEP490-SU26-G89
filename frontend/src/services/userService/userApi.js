@@ -10,9 +10,8 @@ const getAuthHeader = () => {
 };
 
 // ĐÃ SỬA: Bổ sung tham số "type" và AuthHeader
-export const getAllUsers = (type, keyword, role, department, status) => {
-    // Tự động build chuỗi query param (VD: ?type=employee&keyword=abc&role=All...)
-    const params = new URLSearchParams({ type });
+export const getAllUsers = (type, keyword, role, department, status, page = 0, size = 10) => {
+    const params = new URLSearchParams({ type, page, size });
     if (keyword) params.append("keyword", keyword);
     if (role) params.append("role", role);
     if (department) params.append("departmentName", department);

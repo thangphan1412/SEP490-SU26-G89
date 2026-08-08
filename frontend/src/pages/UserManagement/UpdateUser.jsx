@@ -244,7 +244,7 @@ function UpdateUser({ onUpdateUser }) {
                                     {/* First Name */}
                                     <Col md={6}>
                                         <Form.Group>
-                                            <Form.Label className="small fw-bold text-secondary">First Name</Form.Label>
+                                            <Form.Label className="small fw-bold text-secondary">First Name <span className="text-danger">*</span></Form.Label>
                                             <div className="position-relative">
                                                 <IconUser className="position-absolute start-0 top-50 translate-middle-y ms-3 text-muted" size={18} />
                                                 <Form.Control id="firstName" name="firstName" type="text" required value={user.firstName} onChange={handleChange} disabled={isSubmitting} className="ps-5 py-2" />
@@ -255,7 +255,7 @@ function UpdateUser({ onUpdateUser }) {
                                     {/* Last Name */}
                                     <Col md={6}>
                                         <Form.Group>
-                                            <Form.Label className="small fw-bold text-secondary">Last Name</Form.Label>
+                                            <Form.Label className="small fw-bold text-secondary">Last Name <span className="text-danger">*</span></Form.Label>
                                             <div className="position-relative">
                                                 <IconUser className="position-absolute start-0 top-50 translate-middle-y ms-3 text-muted" size={18} />
                                                 <Form.Control id="lastName" name="lastName" type="text" required value={user.lastName} onChange={handleChange} disabled={isSubmitting} className="ps-5 py-2" />
@@ -266,10 +266,19 @@ function UpdateUser({ onUpdateUser }) {
                                     {/* Phone Number */}
                                     <Col md={6}>
                                         <Form.Group>
-                                            <Form.Label className="small fw-bold text-secondary">Phone Number</Form.Label>
+                                            <Form.Label className="small fw-bold text-secondary">Phone Number <span className="text-danger">*</span></Form.Label>
                                             <div className="position-relative">
                                                 <IconPhone className="position-absolute start-0 top-50 translate-middle-y ms-3 text-muted" size={18} />
-                                                <Form.Control id="phoneNumber" name="phoneNumber" type="text" value={user.phoneNumber} onChange={handleChange} disabled={isSubmitting} className="ps-5 py-2" />
+                                                <Form.Control
+                                                    id="phoneNumber"
+                                                    name="phoneNumber"
+                                                    type="tel"
+                                                    value={user.phoneNumber}
+                                                    onChange={handleChange}
+                                                    disabled={isSubmitting}
+                                                    className="ps-5 py-2"
+                                                    required
+                                                />
                                             </div>
                                         </Form.Group>
                                     </Col>
@@ -277,7 +286,7 @@ function UpdateUser({ onUpdateUser }) {
                                     {/* Email Address */}
                                     <Col md={6}>
                                         <Form.Group>
-                                            <Form.Label className="small fw-bold text-secondary">Email Address</Form.Label>
+                                            <Form.Label className="small fw-bold text-secondary">Email Address <span className="text-danger">*</span></Form.Label>
                                             <div className="position-relative">
                                                 <IconMail className="position-absolute start-0 top-50 translate-middle-y ms-3 text-muted" size={18} />
                                                 <Form.Control id="email" name="email" type="email" required value={user.email} onChange={handleChange} disabled={isSubmitting} className="ps-5 py-2" />
@@ -285,7 +294,7 @@ function UpdateUser({ onUpdateUser }) {
                                         </Form.Group>
                                     </Col>
 
-                                    {/* User ID */}
+                                    {/* User ID - KHÔNG CÓ DẤU SAO ĐỎ */}
                                     <Col md={6}>
                                         <Form.Group>
                                             <Form.Label className="small fw-bold text-secondary">User ID</Form.Label>
@@ -299,10 +308,10 @@ function UpdateUser({ onUpdateUser }) {
                                     {/* DROPDOWN DEPARTMENT */}
                                     <Col md={6}>
                                         <Form.Group>
-                                            <Form.Label className="small fw-bold text-secondary">Department</Form.Label>
+                                            <Form.Label className="small fw-bold text-secondary">Department <span className="text-danger">*</span></Form.Label>
                                             <div className="position-relative">
                                                 <IconBuilding className="position-absolute start-0 top-50 translate-middle-y ms-3 text-muted" size={18} style={{ zIndex: 5 }} />
-                                                <Form.Select name="department" value={user.department} onChange={handleChange} disabled={isSubmitting || currentUserRole === 'HeadOfDepartment'} className="ps-5 py-2">
+                                                <Form.Select name="department" value={user.department} onChange={handleChange} required disabled={isSubmitting || currentUserRole === 'HeadOfDepartment'} className="ps-5 py-2">
                                                     <option value="">Select department</option>
                                                     {departmentsDB.map(d => <option key={d.departmentName} value={d.departmentName}>{d.departmentName}</option>)}
                                                 </Form.Select>
@@ -313,7 +322,7 @@ function UpdateUser({ onUpdateUser }) {
                                     {/* Start Date */}
                                     <Col md={6}>
                                         <Form.Group>
-                                            <Form.Label className="small fw-bold text-secondary">Start Date</Form.Label>
+                                            <Form.Label className="small fw-bold text-secondary">Start Date <span className="text-danger">*</span></Form.Label>
                                             <div className="position-relative">
                                                 <IconCalendar
                                                     className="position-absolute start-0 top-50 translate-middle-y ms-3 text-muted"
@@ -336,10 +345,10 @@ function UpdateUser({ onUpdateUser }) {
                                     {/* DROPDOWN ROLE */}
                                     <Col md={6}>
                                         <Form.Group>
-                                            <Form.Label className="small fw-bold text-secondary">Role</Form.Label>
+                                            <Form.Label className="small fw-bold text-secondary">Role <span className="text-danger">*</span></Form.Label>
                                             <div className="position-relative">
                                                 <IconShieldCheck className="position-absolute start-0 top-50 translate-middle-y ms-3 text-muted" size={18} style={{ zIndex: 5 }} />
-                                                <Form.Select name="role" value={user.role} onChange={handleChange} disabled={isSubmitting || rolesDB.length <= 1} className="ps-5 py-2">
+                                                <Form.Select name="role" value={user.role} onChange={handleChange} required disabled={isSubmitting || rolesDB.length <= 1} className="ps-5 py-2">
                                                     <option value="">Select role</option>
                                                     {rolesDB.map(r => <option key={r.id} value={r.roleName}>{r.roleName}</option>)}
                                                 </Form.Select>
@@ -350,8 +359,8 @@ function UpdateUser({ onUpdateUser }) {
                                     {/* Status */}
                                     <Col md={6}>
                                         <Form.Group>
-                                            <Form.Label className="small fw-bold text-secondary">Status</Form.Label>
-                                            <Form.Select id="status" name="status" value={user.status} onChange={handleChange} disabled={isSubmitting} className="py-2">
+                                            <Form.Label className="small fw-bold text-secondary">Status <span className="text-danger">*</span></Form.Label>
+                                            <Form.Select id="status" name="status" value={user.status} onChange={handleChange} required disabled={isSubmitting} className="py-2">
                                                 <option value="ACTIVE">Active</option>
                                                 <option value="INACTIVE">Inactive</option>
                                             </Form.Select>
@@ -361,10 +370,18 @@ function UpdateUser({ onUpdateUser }) {
                                     {/* Date of Birth */}
                                     <Col md={6}>
                                         <Form.Group>
-                                            <Form.Label className="small fw-bold text-secondary">Date of Birth</Form.Label>
+                                            <Form.Label className="small fw-bold text-secondary">Date of Birth <span className="text-danger">*</span></Form.Label>
                                             <div className="position-relative">
                                                 <IconCalendar className="position-absolute start-0 top-50 translate-middle-y ms-3 text-muted" size={18} />
-                                                <Form.Control type="date" name="dob" value={user.dob} onChange={handleChange} disabled={isSubmitting} className="ps-5 py-2" />
+                                                <Form.Control
+                                                    type="date"
+                                                    name="dob"
+                                                    value={user.dob}
+                                                    onChange={handleChange}
+                                                    disabled={isSubmitting}
+                                                    className="ps-5 py-2"
+                                                    required
+                                                />
                                             </div>
                                         </Form.Group>
                                     </Col>

@@ -4,6 +4,8 @@ import com.fpt.backend.dto.request.user.UserFilterRequestDTO;
 import com.fpt.backend.entity.Departments;
 import com.fpt.backend.entity.Users;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -38,8 +40,8 @@ public interface UserRepository extends JpaRepository<Users, UUID> {
                 "   OR LOWER(u.lastName) LIKE LOWER(CONCAT('%', :#{#filter.keyword}, '%')) " +
                 "   OR LOWER(u.email) LIKE LOWER(CONCAT('%', :#{#filter.keyword}, '%'))) " +
                 "AND (:#{#filter.role} = '' OR u.role = :#{#filter.role}) " +
-                "AND (:#{#filter.statusEnum} IS NULL OR u.status = :#{#filter.statusEnum}) " + // ĐÃ SỬA DÒNG NÀY
+                "AND (:#{#filter.statusEnum} IS NULL OR u.status = :#{#filter.statusEnum}) " +
                 "AND (:#{#filter.departmentName} = '' OR d.departmentName = :#{#filter.departmentName}) " +
                 "AND u.role IN :#{#filter.allowedRoles}")
-        List<Users> searchAndFilterUsers(@Param("filter") UserFilterRequestDTO filter);
+        Page<Users> searchAndFilterUsers(@Param("filter") UserFilterRequestDTO filter, Pageable pageable);
 }

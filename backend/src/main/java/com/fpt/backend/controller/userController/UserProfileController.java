@@ -6,6 +6,7 @@ import com.fpt.backend.entity.Users;
 import com.fpt.backend.service.interfaces.user.IUserService;
 import com.fpt.backend.util.BaseResponse;
 import com.fpt.backend.util.CurrentUser;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -51,7 +52,7 @@ public class UserProfileController {
 
     // 2. Cập nhật thông tin cá nhân
     @PutMapping
-    public ResponseEntity<BaseResponse<UserProfileResponseDTO>> updateMyProfile(@RequestBody UserProfileRequestDTO request) {
+    public ResponseEntity<BaseResponse<UserProfileResponseDTO>> updateMyProfile(@Valid @RequestBody UserProfileRequestDTO request) {
         try {
             // Lấy user đang đăng nhập để tránh việc user này truyền ID cập nhật cho user khác
             Users currentUser = currentUserUtil.getCurrentUser();

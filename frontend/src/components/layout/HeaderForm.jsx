@@ -86,7 +86,8 @@ function HeaderForm(){
                         </span>
                      }  id="basic-nav-dropdown">
 
-                        <NavDropdown.Item as={NavLink} to="/user-profile/view">Dashboard</NavDropdown.Item>
+                        <NavDropdown.Item as={NavLink} to="#Dashboard">Dashboard</NavDropdown.Item>
+                         <NavDropdown.Item as={NavLink} to="/user-profile/view">My profile</NavDropdown.Item>
                         <NavDropdown.Item as={NavLink} to="/company-profile/view">
                             Company profile
                         </NavDropdown.Item>
