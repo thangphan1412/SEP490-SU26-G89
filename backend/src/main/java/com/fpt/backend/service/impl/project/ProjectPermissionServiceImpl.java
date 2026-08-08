@@ -8,9 +8,8 @@ import com.fpt.backend.entity.Projects;
 import com.fpt.backend.exception.BadHttpException;
 import com.fpt.backend.exception.NotFoundException;
 import com.fpt.backend.repository.permission.PermissionRepository;
-import com.fpt.backend.repository.permission.UserPermissionRepository;
-import com.fpt.backend.service.interfaces.permission.PermissionActionService;
-import com.fpt.backend.service.interfaces.project.ProjectPermissionService;
+import com.fpt.backend.service.interfaces.permission.IPermissionActionService;
+import com.fpt.backend.service.interfaces.project.IProjectPermissionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -24,13 +23,12 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 public class ProjectPermissionServiceImpl
-        implements ProjectPermissionService {
+        implements IProjectPermissionService {
     private static final String FULL_ACCESS_PERMISSION_NAME =
             "Project Full Access";
     private static final String FULL_ACCESS_PERMISSION_CODE_PREFIX = "PFA_";
     private final PermissionRepository permissionRepository;
-    private final PermissionActionService permissionActionService;
-    private final UserPermissionRepository userPermissionRepository;
+    private final IPermissionActionService permissionActionService;
 
     @Override
     public UUID createProjectFullAccessPermission(Projects project) {
@@ -128,7 +126,6 @@ public class ProjectPermissionServiceImpl
 
     @Override
     public void deleteProjectData(UUID projectId) {
-        userPermissionRepository.deleteByProjectId(projectId);
         List<Permissions> permissions =
                 permissionRepository.findByProjectId(projectId);
         permissionRepository.deleteAll(permissions);

@@ -6,7 +6,7 @@ import com.fpt.backend.entity.Permissions;
 import com.fpt.backend.enums.WorkScope;
 import com.fpt.backend.exception.BadHttpException;
 import com.fpt.backend.repository.permission.PermissionActionRepository;
-import com.fpt.backend.service.interfaces.permission.PermissionActionService;
+import com.fpt.backend.service.interfaces.permission.IPermissionActionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,7 +23,7 @@ import java.util.Set;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class PermissionActionServiceImpl
-        implements PermissionActionService {
+        implements IPermissionActionService {
     private final PermissionActionRepository permissionActionRepository;
 
     @Override

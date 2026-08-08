@@ -20,9 +20,9 @@ import com.fpt.backend.repository.phase.PhaseDeliverableRepository;
 import com.fpt.backend.repository.phase.PhaseRepository;
 import com.fpt.backend.repository.phase.PhaseTaskRepository;
 import com.fpt.backend.repository.project.ProjectRepository;
-import com.fpt.backend.service.interfaces.phase.PhaseProgressService;
-import com.fpt.backend.service.interfaces.phase.PhaseService;
-import com.fpt.backend.service.interfaces.permission.PermissionAccessService;
+import com.fpt.backend.service.interfaces.phase.IPhaseProgressService;
+import com.fpt.backend.service.interfaces.phase.IPhaseService;
+import com.fpt.backend.service.interfaces.permission.IPermissionAccessService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -38,7 +38,7 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
-public class PhaseServiceImpl implements PhaseService {
+public class PhaseServiceImpl implements IPhaseService {
     private static final ZoneId APP_TIME_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
     private static final String VIEW_TASKS =
             PermissionModule.VIEW_TASKS.name();
@@ -52,8 +52,8 @@ public class PhaseServiceImpl implements PhaseService {
     private final PhaseDeliverableRepository phaseDeliverableRepository;
     private final PhaseContractRepository phaseContractRepository;
     private final ProjectRepository projectRepository;
-    private final PhaseProgressService phaseProgressService;
-    private final PermissionAccessService permissionAccessService;
+    private final IPhaseProgressService phaseProgressService;
+    private final IPermissionAccessService permissionAccessService;
 
     @Override
     public List<PhaseListItemResponse> getPhasesByProjectId(UUID projectId) {

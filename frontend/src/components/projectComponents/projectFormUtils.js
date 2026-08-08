@@ -115,11 +115,18 @@ export function calculatePhaseStartDatesForDisplay(
   const updatedPhases = [];
 
   for (const phase of phases) {
-    updatedPhases.push({
+    const updatedPhase = {
       ...phase,
-      startDate: expectedStartDate,
-    });
-    expectedStartDate = phase.endDate ? addOneDay(phase.endDate) : "";
+    };
+
+    updatedPhase.startDate = expectedStartDate;
+    updatedPhases.push(updatedPhase);
+
+    if (phase.endDate) {
+      expectedStartDate = addOneDay(phase.endDate);
+    } else {
+      expectedStartDate = "";
+    }
   }
 
   return updatedPhases;

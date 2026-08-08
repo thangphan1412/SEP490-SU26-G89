@@ -11,7 +11,7 @@ import com.fpt.backend.dto.response.project.ProjectPermissionConfigurationRespon
 import com.fpt.backend.dto.response.project.ProjectRoleResponse;
 import com.fpt.backend.enums.UserStatus;
 import com.fpt.backend.service.interfaces.project.ProjectDeleteResult;
-import com.fpt.backend.service.interfaces.project.ProjectService;
+import com.fpt.backend.service.interfaces.project.IProjectService;
 import com.fpt.backend.util.BaseResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.CacheControl;
@@ -34,7 +34,7 @@ import java.util.UUID;
 @RequestMapping("/api/projects")
 @RequiredArgsConstructor
 public class ProjectController {
-    private final ProjectService projectService;
+    private final IProjectService projectService;
 
     @GetMapping({"", "/list"})
     public ResponseEntity<BaseResponse<ProjectListResponse>> getProjects(
