@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.processing.Pattern;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Entity
@@ -35,9 +36,26 @@ public class Users extends BaseEntity {
     private String dob;
     // THÊM TRƯỜNG NÀY ĐỂ LƯU THỜI GIAN HOẠT ĐỘNG CUỐI
     @Column(name = "last_active")
-    private java.time.LocalDateTime lastActive;
+    private LocalDateTime lastActive;
     @Column(name = "start_date")
     private String startDate;
+
+    @Column(name = "created_at", updatable = false)
+    private LocalDateTime createdAt;
+
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
+
+    @PrePersist
+    protected void onCreate() {
+        this.createdAt = LocalDateTime.now(java.time.ZoneId.of("Asia/Ho_Chi_Minh"));
+        this.updatedAt = LocalDateTime.now(java.time.ZoneId.of("Asia/Ho_Chi_Minh"));
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        this.updatedAt = LocalDateTime.now(java.time.ZoneId.of("Asia/Ho_Chi_Minh"));
+    }
 
     /// Relation
     // permissions

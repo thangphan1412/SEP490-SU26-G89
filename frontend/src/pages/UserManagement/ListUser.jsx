@@ -94,16 +94,22 @@ function ListUser() {
         fetchFilters();
     }, [currentUserRole, viewType]);
 
-    const fetchData = async (currPage, currentKeyword, currentRole, currentDept, currentStatus) => {
+
+    const fetchData = async (currPage, currentKeyword, currentRole, currentDept, currentStatus, currentSize = pagination.size) => {
         setLoading(true);
         try {
-            // TRUYỀN TOÀN BỘ PARAM XUỐNG API ĐỂ BACKEND LÀM VIỆC
-            const response = await getAllUsers(viewType, currentKeyword, currentRole, currentDept, currentStatus);
-            const data = response.data?.data || [];
+            const response = await getAllUsers(viewType, currentKeyword, currentRole, currentDept, currentStatus, currPage, currentSize);
 
-            // FRONTEND GIỜ CHỈ CẦN HIỂN THỊ, KHÔNG CẦN .filter() NỮA CHÚT NÀO HẾT
-            setUsers(data);
-            setPagination(prev => ({ ...prev, page: currPage, totalElements: data.length }));
+            const pageData = response.data?.data;
+            const usersList = pageData?.content || [];
+
+            setUsers(usersList);
+            setPagination(prev => ({
+                ...prev,
+                page: currPage,
+                size: currentSize,
+                totalElements: pageData?.totalElements || 0
+            }));
 
         } catch (error) {
             console.error("Lỗi khi tải danh sách:", error);
@@ -123,12 +129,12 @@ function ListUser() {
     }, [viewType]);
 
     // Xử lý nút Search & Refresh
-    const handleSearch = () => fetchData(0, searchTerm, filterRole, filterDept, filterStatus);
+    const handleSearch = () => fetchData(0, searchTerm, filterRole, filterDept, filterStatus, pagination.size);
     const handleRefresh = () => {
         setSearchTerm(""); setFilterRole("All"); setFilterStatus("All");
         const defaultDept = currentUserRole === 'HeadOfDepartment' ? currentUserDept : "All";
         setFilterDept(defaultDept);
-        fetchData(0, "", "All", defaultDept, "All");
+        fetchData(0, "", "All", defaultDept, "All", pagination.size);
     };
 
     // 1. VIẾT HÀM KIỂM TRA QUYỀN TRUY CẬP (AUTHORIZATION CHECK)
@@ -322,15 +328,41 @@ function ListUser() {
 
                         {/* Footer & Pagination */}
                         <Stack direction="horizontal" className="justify-content-between align-items-center text-muted small">
-                            <span>Showing {users.length > 0 ? 1 : 0} to {users.length} of {pagination.totalElements} results</span>
+                            <span>
+                                {/* Tính toán hiển thị: Showing 1 to 10 of 100 */}
+                                Showing {users.length > 0 ? (pagination.page * pagination.size) + 1 : 0} to {(pagination.page * pagination.size) + users.length} of {pagination.totalElements} results
+                            </span>
                             <div className="d-flex align-items-center gap-2">
                                 <Pagination className="mb-0">
-                                    <Pagination.Prev disabled />
-                                    <Pagination.Item active>1</Pagination.Item>
-                                    <Pagination.Next disabled />
+                                    <Pagination.Prev
+                                        disabled={pagination.page === 0 || loading}
+                                        onClick={() => fetchData(pagination.page - 1, searchTerm, filterRole, filterDept, filterStatus, pagination.size)}
+                                    />
+
+                                    <Pagination.Item active>{pagination.page + 1}</Pagination.Item>
+
+                                    <Pagination.Next
+                                        // Khóa nút Next nếu (trang hiện tại + 1) * số lượng >= tổng số phần tử
+                                        disabled={(pagination.page + 1) * pagination.size >= pagination.totalElements || loading}
+                                        onClick={() => fetchData(pagination.page + 1, searchTerm, filterRole, filterDept, filterStatus, pagination.size)}
+                                    />
                                 </Pagination>
-                                <Form.Select size="sm" style={{ width: "110px" }}>
-                                    <option>10 / page</option>
+
+                                {/* GẮN SỰ KIỆN ONCHANGE CHO DROPDOWN */}
+                                <Form.Select
+                                    size="sm"
+                                    style={{ width: "110px" }}
+                                    value={pagination.size}
+                                    onChange={(e) => {
+                                        const newSize = parseInt(e.target.value, 10);
+                                        // Gọi lại data ở trang 0 với Size mới
+                                        fetchData(0, searchTerm, filterRole, filterDept, filterStatus, newSize);
+                                    }}
+                                >
+                                    <option value={10}>10 / page</option>
+                                    <option value={20}>20 / page</option>
+                                    <option value={50}>50 / page</option>
+                                    <option value={100}>100 / page</option>
                                 </Form.Select>
                             </div>
                         </Stack>

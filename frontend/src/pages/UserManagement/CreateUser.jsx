@@ -211,9 +211,17 @@ function CreateUser() {
                             </Col>
                             <Col md={6}>
                                 <Form.Group>
-                                    <Form.Label className="small fw-bold">Phone Number</Form.Label><Form.Control
-                                    type="text" name="phoneNumber" value={user.phoneNumber} onChange={handleChange}
-                                    placeholder="Enter phone number" disabled={isSubmitting}/></Form.Group>
+                                    <Form.Label className="small fw-bold">Phone Number <span className="text-danger">*</span></Form.Label>
+                                    <Form.Control
+                                        type="text"
+                                        name="phoneNumber"
+                                        value={user.phoneNumber}
+                                        onChange={handleChange}
+                                        placeholder="Enter phone number"
+                                        disabled={isSubmitting}
+                                        required
+                                    />
+                                </Form.Group>
                             </Col>
                             <Col md={6}>
                                 <Form.Group>
@@ -258,8 +266,15 @@ function CreateUser() {
 
                             <Col md={6}>
                                 <Form.Group>
-                                    <Form.Label className="small fw-bold">Date of Birth</Form.Label>
-                                    <Form.Control type="date" name="dob" value={user.dob} onChange={handleChange} disabled={isSubmitting} />
+                                    <Form.Label className="small fw-bold">Date of Birth <span className="text-danger">*</span></Form.Label>
+                                    <Form.Control
+                                        type="date"
+                                        name="dob"
+                                        value={user.dob}
+                                        onChange={handleChange}
+                                        disabled={isSubmitting}
+                                        required
+                                    />
                                 </Form.Group>
                             </Col>
 
