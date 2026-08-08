@@ -1,7 +1,7 @@
 package com.fpt.backend.service.impl.phase;
 
 import com.fpt.backend.repository.phase.PhaseTaskRepository;
-import com.fpt.backend.service.interfaces.phase.PhaseProgressService;
+import com.fpt.backend.service.interfaces.phase.IPhaseProgressService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -11,7 +11,7 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
-public class PhaseProgressServiceImpl implements PhaseProgressService {
+public class PhaseProgressServiceImpl implements IPhaseProgressService {
     private final PhaseTaskRepository phaseTaskRepository;
 
     @Override

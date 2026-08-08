@@ -6,7 +6,7 @@ import com.fpt.backend.dto.response.phase.PhaseListItemResponse;
 import java.util.List;
 import java.util.UUID;
 
-public interface PhaseService {
+public interface IPhaseService {
     List<PhaseListItemResponse> getPhasesByProjectId(UUID projectId);
 
     PhaseDetailResponse getPhaseById(UUID phaseId);

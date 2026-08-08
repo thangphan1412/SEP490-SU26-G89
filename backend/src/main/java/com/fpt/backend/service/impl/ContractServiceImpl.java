@@ -32,7 +32,7 @@ import com.fpt.backend.repository.contract.ContractTemplateVersionRepository;
 import com.fpt.backend.repository.contract.ContractTypeRepository;
 import com.fpt.backend.repository.project.ProjectRepository;
 import com.fpt.backend.service.interfaces.ContractService;
-import com.fpt.backend.service.interfaces.permission.PermissionAccessService;
+import com.fpt.backend.service.interfaces.permission.IPermissionAccessService;
 import com.fpt.backend.util.CurrentUser;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -88,7 +88,7 @@ public class ContractServiceImpl implements ContractService {
     private final ContractTemplateLayoutMapper layoutMapper;
     private final ContractDocumentRenderer documentRenderer;
     private final ContractPdfGenerator pdfGenerator;
-    private final PermissionAccessService permissionAccessService;
+    private final IPermissionAccessService permissionAccessService;
     private final CurrentUser currentUser;
 
     @Override

@@ -35,7 +35,7 @@ const initialProject = {
     members: [],
 };
 
-function CreateProject({ onCreateProject }) {
+function CreateProject() {
     const navigate = useNavigate();
     const [project, setProject] = useState(initialProject);
     const [employees, setEmployees] = useState([]);
@@ -102,11 +102,45 @@ function CreateProject({ onCreateProject }) {
 
     function handleChange(event) {
         const { name, value } = event.target;
+
+        if (
+            name === "projectStartDate"
+            && value
+            && project.projectEndDate
+            && value > project.projectEndDate
+        ) {
+            setSubmitError("Project start date must not be after its end date.");
+            return;
+        }
+
+        if (name === "projectEndDate" && !project.projectStartDate) {
+            setSubmitError("Select the project start date before selecting its end date.");
+            return;
+        }
+
+        if (
+            name === "projectEndDate"
+            && value
+            && value < project.projectStartDate
+        ) {
+            setSubmitError("Project end date must not be before its start date.");
+            return;
+        }
+
+        if (name === "projectStartDate" || name === "projectEndDate") {
+            setSubmitError("");
+        }
+
         setProject(function (currentProject) {
             let phases = currentProject.phases;
+            let projectEndDate = currentProject.projectEndDate;
 
             if (name === "projectStartDate" && phases.length > 0) {
                 phases = calculatePhaseStartDatesForDisplay(phases, value);
+            }
+
+            if (name === "projectStartDate" && !value) {
+                projectEndDate = "";
             }
 
             if (name === "projectEndDate" && phases.length > 0) {
@@ -121,18 +155,18 @@ function CreateProject({ onCreateProject }) {
                 });
             }
 
-            return { ...currentProject, [name]: value, phases };
+            return {
+                ...currentProject,
+                projectEndDate,
+                [name]: value,
+                phases,
+            };
         });
     }
 
     function addPhase() {
         if (!project.projectStartDate || !project.projectEndDate) {
             setSubmitError("Select the project start date and end date before adding phases.");
-            return;
-        }
-
-        if (project.projectEndDate < project.projectStartDate) {
-            setSubmitError("Project end date must not be before its start date.");
             return;
         }
 
@@ -266,7 +300,6 @@ function CreateProject({ onCreateProject }) {
 
     async function handleSubmit(event) {
         event.preventDefault();
-
         try {
             setSaving(true);
             setSubmitError("");
@@ -286,10 +319,6 @@ function CreateProject({ onCreateProject }) {
                 })),
                 members: project.members,
             });
-
-            if (typeof onCreateProject === "function") {
-                onCreateProject(createdProject);
-            }
 
             let destination = "/project-management/list";
 
@@ -541,12 +570,12 @@ function CreateProject({ onCreateProject }) {
 
                         <Form.Group as={Col} md={6} controlId="projectStartDate">
                             <Form.Label className="project-management-field-label">Start Date</Form.Label>
-                            <Form.Control required type="date" name="projectStartDate" value={project.projectStartDate} onChange={handleChange} className="project-management-input" />
+                            <Form.Control required type="date" name="projectStartDate" max={project.projectEndDate} value={project.projectStartDate} onChange={handleChange} className="project-management-input" />
                         </Form.Group>
 
                         <Form.Group as={Col} md={6} controlId="projectEndDate">
                             <Form.Label className="project-management-field-label">End Date</Form.Label>
-                            <Form.Control required type="date" min={project.projectStartDate} name="projectEndDate" value={project.projectEndDate} onChange={handleChange} className="project-management-input" />
+                            <Form.Control required disabled={!project.projectStartDate} type="date" min={project.projectStartDate} name="projectEndDate" value={project.projectEndDate} onChange={handleChange} className="project-management-input" />
                         </Form.Group>
 
                         <Form.Group as={Col} md={6} controlId="projectStatus">

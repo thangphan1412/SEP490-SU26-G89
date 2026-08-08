@@ -12,7 +12,7 @@ import com.fpt.backend.exception.NotFoundException;
 import com.fpt.backend.repository.permission.UserPermissionRepository;
 import com.fpt.backend.repository.project.ProjectMemberRepository;
 import com.fpt.backend.repository.project.ProjectRepository;
-import com.fpt.backend.service.interfaces.permission.PermissionAccessService;
+import com.fpt.backend.service.interfaces.permission.IPermissionAccessService;
 import com.fpt.backend.util.CurrentUser;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -32,7 +32,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class PermissionAccessServiceImpl
-        implements PermissionAccessService {
+        implements IPermissionAccessService {
     private static final String ACCESS_DENIED_MESSAGE =
             "You do not have permission to use this function";
 

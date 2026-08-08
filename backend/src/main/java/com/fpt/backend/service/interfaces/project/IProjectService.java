@@ -14,7 +14,7 @@ import com.fpt.backend.enums.UserStatus;
 import java.util.List;
 import java.util.UUID;
 
-public interface ProjectService {
+public interface IProjectService {
     ProjectListResponse getProjects(ProjectListRequest request);
 
     ProjectDetailResponse getProjectById(UUID id);

@@ -7,7 +7,7 @@ import com.fpt.backend.entity.Projects;
 import java.util.List;
 import java.util.UUID;
 
-public interface ProjectPhaseService {
+public interface IProjectPhaseService {
     void syncPhases(
             Projects project,
             List<ProjectPhaseRequest> phaseRequests

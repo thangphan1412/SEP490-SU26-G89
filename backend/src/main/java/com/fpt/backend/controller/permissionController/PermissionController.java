@@ -6,7 +6,7 @@ import com.fpt.backend.dto.response.permission.PermissionActionResponse;
 import com.fpt.backend.dto.response.permission.PermissionDetailResponse;
 import com.fpt.backend.dto.response.permission.PermissionListResponse;
 import com.fpt.backend.dto.response.permission.PermissionProjectResponse;
-import com.fpt.backend.service.interfaces.permission.PermissionService;
+import com.fpt.backend.service.interfaces.permission.IPermissionService;
 import com.fpt.backend.util.BaseResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.CacheControl;
@@ -29,7 +29,7 @@ import java.util.UUID;
 @RequestMapping("/api/permissions")
 @RequiredArgsConstructor
 public class PermissionController {
-    private final PermissionService permissionService;
+    private final IPermissionService permissionService;
 
     @GetMapping({"", "/list"})
     public ResponseEntity<BaseResponse<PermissionListResponse>> getPermissions(

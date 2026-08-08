@@ -25,11 +25,11 @@ import com.fpt.backend.repository.project.ProjectContractRepository;
 import com.fpt.backend.repository.project.ProjectMemberRepository;
 import com.fpt.backend.repository.project.ProjectRepository;
 import com.fpt.backend.service.interfaces.project.ProjectDeleteResult;
-import com.fpt.backend.service.interfaces.permission.PermissionAccessService;
-import com.fpt.backend.service.interfaces.project.ProjectMemberService;
-import com.fpt.backend.service.interfaces.project.ProjectPermissionService;
-import com.fpt.backend.service.interfaces.project.ProjectPhaseService;
-import com.fpt.backend.service.interfaces.project.ProjectService;
+import com.fpt.backend.service.interfaces.permission.IPermissionAccessService;
+import com.fpt.backend.service.interfaces.project.IProjectMemberService;
+import com.fpt.backend.service.interfaces.project.IProjectPermissionService;
+import com.fpt.backend.service.interfaces.project.IProjectPhaseService;
+import com.fpt.backend.service.interfaces.project.IProjectService;
 import com.fpt.backend.util.CurrentUser;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -52,7 +52,7 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
-public class ProjectServiceImpl implements ProjectService {
+public class ProjectServiceImpl implements IProjectService {
     private static final int PAGE_SIZE = 7;
     private static final String DEFAULT_PROJECT_STATUS = "Planning";
     private static final String CANCELLED_PROJECT_STATUS = "Cancelled";
@@ -76,10 +76,10 @@ public class ProjectServiceImpl implements ProjectService {
     private final ProjectContractRepository projectContractRepository;
     private final ProjectMemberRepository projectMemberRepository;
     private final ProjectCleanupRepository projectCleanupRepository;
-    private final ProjectPhaseService projectPhaseService;
-    private final ProjectMemberService projectMemberService;
-    private final ProjectPermissionService projectPermissionService;
-    private final PermissionAccessService permissionAccessService;
+    private final IProjectPhaseService projectPhaseService;
+    private final IProjectMemberService projectMemberService;
+    private final IProjectPermissionService projectPermissionService;
+    private final IPermissionAccessService permissionAccessService;
     private final CurrentUser currentUserUtil;
 
     //Load danh sách các dự án dựa trên tìm kiếm, trạng thái dự án, quyền truy cập của người dùng hiện tại và phân trang.
@@ -402,20 +402,7 @@ public class ProjectServiceImpl implements ProjectService {
 
         validateMaxLength(description, "Project description", 255);
         validateMaxLength(status, "Project status", 50);
-
-        if (startDate == null) {
-            throw new BadHttpException("Start date is required");
-        }
-
-        if (endDate == null) {
-            throw new BadHttpException("End date is required");
-        }
-
-        if (endDate.isBefore(startDate)) {
-            throw new BadHttpException(
-                    "End date must not be before start date"
-            );
-        }
+        validateProjectDateRange(startDate, endDate);
 
         boolean duplicateCode;
 
@@ -440,6 +427,24 @@ public class ProjectServiceImpl implements ProjectService {
         project.setProjectEndDate(endDate);
         project.setProjectDescription(description);
         project.setProjectStatus(status);
+    }
+
+    private void validateProjectDateRange(
+            LocalDate startDate,
+            LocalDate endDate) {
+        if (startDate == null) {
+            throw new BadHttpException("Start date is required");
+        }
+
+        if (endDate == null) {
+            throw new BadHttpException("End date is required");
+        }
+
+        if (startDate.isAfter(endDate)) {
+            throw new BadHttpException(
+                    "Start date must not be after end date"
+            );
+        }
     }
 
     private String getCreateProjectStatus(String status) {
