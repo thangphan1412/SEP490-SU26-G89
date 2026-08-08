@@ -10,7 +10,7 @@ import com.fpt.backend.dto.response.permission.PermissionProjectResponse;
 import java.util.List;
 import java.util.UUID;
 
-public interface PermissionService {
+public interface IPermissionService {
     PermissionListResponse getPermissions(PermissionListRequest request);
 
     PermissionDetailResponse getPermissionById(UUID id);

@@ -15,6 +15,7 @@ import java.time.LocalDate;
 @AllArgsConstructor
 @NoArgsConstructor
 public class ListElectronicResponse {
+    private String signatureName;
     @Enumerated(EnumType.STRING)
     private ElectronicSignatureType type;
     @Enumerated(EnumType.STRING)

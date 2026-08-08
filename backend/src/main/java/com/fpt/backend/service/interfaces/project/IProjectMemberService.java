@@ -5,14 +5,17 @@ import com.fpt.backend.dto.response.project.ProjectEmployeeResponse;
 import com.fpt.backend.dto.response.project.ProjectRoleResponse;
 import com.fpt.backend.dto.response.project.ProjectUserResponse;
 import com.fpt.backend.entity.Projects;
+import com.fpt.backend.enums.UserStatus;
 
 import java.util.List;
 import java.util.UUID;
 
-public interface ProjectMemberService {
+public interface IProjectMemberService {
     List<ProjectEmployeeResponse> getEmployeesForSelection();
 
     List<ProjectRoleResponse> getRolesForFilter();
+
+    List<UserStatus> getUserStatusesForFilter();
 
     void syncMembers(
             Projects project,

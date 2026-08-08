@@ -3,10 +3,7 @@ package com.fpt.backend.entity;
 import com.fpt.backend.enums.ElectronicSignatureType;
 import com.fpt.backend.enums.ElectronicStatus;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -16,6 +13,7 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 @Entity
+@Builder
 @Table(name = "electronic_signature")
 public class ElectronicSignatures extends BaseEntity {
    @Column(name = "electronic_signature_name")

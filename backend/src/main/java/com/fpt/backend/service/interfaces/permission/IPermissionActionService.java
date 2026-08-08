@@ -5,7 +5,7 @@ import com.fpt.backend.entity.Permissions;
 
 import java.util.List;
 
-public interface PermissionActionService {
+public interface IPermissionActionService {
     void configurePermission(
             Permissions permission,
             List<String> allowedActionCodes,

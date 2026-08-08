@@ -39,6 +39,7 @@ public record ContractResponse(
         String contractCancellationReason,
         UUID previousContractId,
         String previousContractNumber,
-        List<ContractStatusHistoryResponse> statusHistory
+        List<ContractStatusHistoryResponse> statusHistory,
+        ContractAccessResponse currentUserAccess
 ) {
 }

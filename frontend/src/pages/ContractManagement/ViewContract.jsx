@@ -10,6 +10,8 @@ import {
     styles,
 } from "./ContractComponents.jsx";
 import {
+    CONTRACT_PROJECT_ACTION,
+    canManageNewContract,
     formatContractDate,
     formatContractDateTime,
     formatContractStatus,
@@ -81,25 +83,37 @@ function ViewContract() {
         }
     };
 
-    const action = contract ? (
+    const canDelete = canManageNewContract(
+        contract,
+        CONTRACT_PROJECT_ACTION.DELETE
+    );
+    const canEdit = canManageNewContract(
+        contract,
+        CONTRACT_PROJECT_ACTION.EDIT
+    );
+    const action = contract && (canDelete || canEdit) ? (
         <div style={styles.actions}>
-            <button
-                type="button"
-                style={localStyles.deleteButton}
-                onClick={handleDelete}
-                disabled={deleting}
-            >
-                {deleting ? "Deleting..." : "Delete"}
-            </button>
+            {canDelete && (
+                <button
+                    type="button"
+                    style={localStyles.deleteButton}
+                    onClick={handleDelete}
+                    disabled={deleting}
+                >
+                    {deleting ? "Deleting..." : "Delete"}
+                </button>
+            )}
 
-            <PrimaryButton
-                onClick={() =>
-                    navigate(`/contract-management/update/${contract.id}`)
-                }
-            >
-                <Icon name="edit" size={20} color="#ffffff" />
-                Edit Contract
-            </PrimaryButton>
+            {canEdit && (
+                <PrimaryButton
+                    onClick={() =>
+                        navigate(`/contract-management/update/${contract.id}`)
+                    }
+                >
+                    <Icon name="edit" size={20} color="#ffffff" />
+                    Edit Contract
+                </PrimaryButton>
+            )}
         </div>
     ) : null;
 

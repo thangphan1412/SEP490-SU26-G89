@@ -8,7 +8,7 @@ import com.fpt.backend.entity.Projects;
 import java.util.List;
 import java.util.UUID;
 
-public interface ProjectPermissionService {
+public interface IProjectPermissionService {
     UUID createProjectFullAccessPermission(Projects project);
 
     List<ProjectPermissionConfigurationResponse> getConfigurations(

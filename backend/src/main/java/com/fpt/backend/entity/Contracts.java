@@ -13,6 +13,7 @@ import java.util.List;
 @Getter
 @Entity
 @Builder
+@SuppressWarnings("JpaDataSourceORMInspection")
 @Table(name = "contracts")
 public class Contracts extends BaseEntity {
     @Column(name = "contract_number")
@@ -27,6 +28,12 @@ public class Contracts extends BaseEntity {
     private LocalDate expirationDate;
     @Column(name = "contract_created_by")
     private String contractCreateBy;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(
+            name = "contract_created_by_user_id",
+            foreignKey = @ForeignKey(name = "FK_contracts_created_by_user")
+    )
+    private Users contractCreatedByUser;
     @Column(name = "contract_created_at")
     private LocalDateTime contractCreatedAt;
     @Column(name = "contract_status_updated_at")

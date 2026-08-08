@@ -117,10 +117,8 @@ public class ContractController {
 
     @DeleteMapping("/{id}")
     public ResponseEntity<BaseResponse<Void>> deleteContract(
-            @PathVariable UUID id,
-            @RequestParam String actorName,
-            @RequestParam String actorRole) {
-        contractService.deleteContract(id, actorName, actorRole);
+            @PathVariable UUID id) {
+        contractService.deleteContract(id);
         return ResponseEntity.ok(new BaseResponse<>(
                 HttpStatus.OK.value(),
                 "Deleted",

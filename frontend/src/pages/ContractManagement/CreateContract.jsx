@@ -127,6 +127,7 @@ function CreateContract() {
                     />
 
                     <PrimaryButton
+                        disabled={submitting || (!loadingProjects && projects.length === 0)}
                         onClick={() => {
                             if (!submitting) {
                                 formRef.current?.requestSubmit();
@@ -154,7 +155,9 @@ function CreateContract() {
                     </div>
                 ) : (
                     <InfoAlert>
-                        The contract will be saved through the backend Contract API.
+                        {projects.length === 0 && !loadingProjects
+                            ? "You need CREATE_CONTRACTS permission in a project before creating a contract."
+                            : "Only projects where you have CREATE_CONTRACTS permission are shown."}
                     </InfoAlert>
                 )}
             </form>

@@ -10,8 +10,8 @@ import com.fpt.backend.repository.phase.PhaseContractRepository;
 import com.fpt.backend.repository.phase.PhaseDeliverableRepository;
 import com.fpt.backend.repository.phase.PhaseRepository;
 import com.fpt.backend.repository.phase.PhaseTaskRepository;
-import com.fpt.backend.service.interfaces.phase.PhaseProgressService;
-import com.fpt.backend.service.interfaces.project.ProjectPhaseService;
+import com.fpt.backend.service.interfaces.phase.IPhaseProgressService;
+import com.fpt.backend.service.interfaces.project.IProjectPhaseService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -26,7 +26,7 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
-public class ProjectPhaseServiceImpl implements ProjectPhaseService {
+public class ProjectPhaseServiceImpl implements IProjectPhaseService {
     private static final PhaseStatus DEFAULT_PHASE_STATUS = PhaseStatus.PLANNING;
     private static final ZoneId PROJECT_TIME_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
 
@@ -34,7 +34,7 @@ public class ProjectPhaseServiceImpl implements ProjectPhaseService {
     private final PhaseTaskRepository phaseTaskRepository;
     private final PhaseDeliverableRepository phaseDeliverableRepository;
     private final PhaseContractRepository phaseContractRepository;
-    private final PhaseProgressService phaseProgressService;
+    private final IPhaseProgressService phaseProgressService;
 
     @Override
     public void syncPhases(

@@ -9,11 +9,12 @@ import com.fpt.backend.dto.response.project.ProjectEmployeeResponse;
 import com.fpt.backend.dto.response.project.ProjectListResponse;
 import com.fpt.backend.dto.response.project.ProjectPermissionConfigurationResponse;
 import com.fpt.backend.dto.response.project.ProjectRoleResponse;
+import com.fpt.backend.enums.UserStatus;
 
 import java.util.List;
 import java.util.UUID;
 
-public interface ProjectService {
+public interface IProjectService {
     ProjectListResponse getProjects(ProjectListRequest request);
 
     ProjectDetailResponse getProjectById(UUID id);
@@ -27,6 +28,8 @@ public interface ProjectService {
     List<ProjectEmployeeResponse> getEmployeesForProjectSelection();
 
     List<ProjectRoleResponse> getRolesForProjectMemberFilter();
+
+    List<UserStatus> getUserStatusesForProjectMemberFilter();
 
     List<ProjectPermissionConfigurationResponse> getProjectPermissionConfigurations(UUID projectId);
 

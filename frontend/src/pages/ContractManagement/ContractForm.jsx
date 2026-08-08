@@ -1,4 +1,12 @@
+import { useMemo, useState } from "react";
+import { IconPlus, IconTrash } from "@tabler/icons-react";
 import { formatContractStatus } from "./contractUtils.js";
+import {
+    joinContractPages,
+    splitContractPages,
+} from "./contractPageUtils.js";
+
+const MAX_CONTRACT_PAGE_COUNT = 50;
 
 function ContractForm({
     contract,
@@ -9,6 +17,7 @@ function ContractForm({
     loadingProjects = false,
     loadingContractOptions = false,
     creatorReadOnly = false,
+    projectReadOnly = false,
 }) {
     const containsCurrentProject = projects.some(
         (project) => project.id === contract.projectId
@@ -72,7 +81,7 @@ function ContractForm({
                     name="projectId"
                     value={contract.projectId}
                     onChange={onChange}
-                    disabled={loadingProjects}
+                    disabled={loadingProjects || projectReadOnly}
                     required
                 >
                     <option value="">
@@ -215,20 +224,14 @@ function ContractForm({
                 )}
 
                 <div className="contract-form-full">
-                    <label htmlFor="contractContent" className="contract-form-label">
-                        Contract Content
-                    </label>
-                    <textarea
-                        id="contractContent"
-                        name="contractContent"
+                    <PagedContractContentEditor
                         value={contract.contractContent}
                         onChange={onChange}
-                        className="form-control contract-content-editor"
-                        placeholder="Enter or edit the reusable contract content..."
                     />
                     <div className="form-text">
                         Selecting a saved version copies its content here. Editing
-                        this field does not overwrite that version.
+                        a page does not overwrite that version. Each page tab is
+                        exported as a separate PDF page.
                     </div>
                 </div>
 
@@ -281,6 +284,116 @@ function ContractForm({
                     </div>
                 )}
         </div>
+    );
+}
+
+function PagedContractContentEditor({ value, onChange }) {
+    const [currentPage, setCurrentPage] = useState(1);
+    const pages = useMemo(() => splitContractPages(value), [value]);
+    const activePage = Math.min(currentPage, pages.length);
+
+    const emitPages = (nextPages) => {
+        onChange({
+            target: {
+                name: "contractContent",
+                value: joinContractPages(nextPages),
+            },
+        });
+    };
+
+    const updateCurrentPage = (nextContent) => {
+        const nextPages = [...pages];
+        nextPages[activePage - 1] = nextContent;
+        emitPages(nextPages);
+    };
+
+    const addPage = () => {
+        if (pages.length >= MAX_CONTRACT_PAGE_COUNT) {
+            return;
+        }
+        const nextPages = [...pages, ""];
+        emitPages(nextPages);
+        setCurrentPage(nextPages.length);
+    };
+
+    const removePage = () => {
+        if (pages.length === 1) {
+            return;
+        }
+        if (
+            pages[activePage - 1].trim()
+            && !window.confirm(`Remove Contract Page ${activePage}?`)
+        ) {
+            return;
+        }
+
+        const nextPages = pages.filter(
+            (_page, index) => index !== activePage - 1
+        );
+        emitPages(nextPages);
+        setCurrentPage(Math.min(activePage, nextPages.length));
+    };
+
+    return (
+        <section className="contract-paged-content-editor">
+            <div className="contract-paged-content-heading">
+                <div>
+                    <span className="contract-form-label">Contract Content</span>
+                    <small>
+                        Edit one logical contract page at a time.
+                    </small>
+                </div>
+                <strong>{pages.length} page(s)</strong>
+            </div>
+            <div className="template-page-navigation">
+                <div className="template-page-tabs" role="tablist">
+                    {pages.map((_page, index) => {
+                        const pageNumber = index + 1;
+                        return (
+                            <button
+                                type="button"
+                                role="tab"
+                                aria-selected={activePage === pageNumber}
+                                className={
+                                    activePage === pageNumber ? "active" : ""
+                                }
+                                key={pageNumber}
+                                onClick={() => setCurrentPage(pageNumber)}
+                            >
+                                Page {pageNumber}
+                            </button>
+                        );
+                    })}
+                </div>
+                <div className="template-page-actions">
+                    <button
+                        type="button"
+                        onClick={addPage}
+                        disabled={pages.length >= MAX_CONTRACT_PAGE_COUNT}
+                    >
+                        <IconPlus size={16} />
+                        Add page
+                    </button>
+                    <button
+                        type="button"
+                        className="danger"
+                        onClick={removePage}
+                        disabled={pages.length === 1}
+                    >
+                        <IconTrash size={16} />
+                        Remove page
+                    </button>
+                </div>
+            </div>
+            <textarea
+                id="contractContent"
+                name="contractContent"
+                value={pages[activePage - 1] || ""}
+                onChange={(event) => updateCurrentPage(event.target.value)}
+                className="form-control contract-content-editor"
+                placeholder={`Enter or edit Contract Page ${activePage}...`}
+            />
+        </section>
     );
 }
 

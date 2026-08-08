@@ -371,6 +371,46 @@
   line-height: 1.55;
 }
 
+.contract-paged-content-editor {
+  padding: 14px;
+  border: 1px solid #d9e2f0;
+  border-radius: 9px;
+  background: #f8faff;
+}
+
+.contract-paged-content-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 12px;
+}
+
+.contract-paged-content-heading .contract-form-label {
+  margin: 0;
+}
+
+.contract-paged-content-heading small {
+  display: block;
+  margin-top: 3px;
+  color: #748098;
+  font-size: 10px;
+}
+
+.contract-paged-content-heading > strong {
+  color: #3457b1;
+  font-size: 11px;
+}
+
+.contract-paged-content-editor .template-page-navigation {
+  margin-bottom: 12px;
+}
+
+.contract-paged-content-editor .contract-content-editor.form-control {
+  min-height: 280px;
+  background: #ffffff;
+}
+
 .contract-layout-details {
   padding: 12px 14px;
   border: 1px solid #dbe3ee;
@@ -1266,6 +1306,458 @@
   background: #fff7f7;
 }
 
+.template-simple-editor {
+  overflow: hidden;
+  border: 1px solid #d9e2f0;
+  border-radius: 12px;
+  background: #ffffff;
+}
+
+.template-simple-editor-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 17px 18px;
+  border-bottom: 1px solid #e1e7f0;
+  background: #f7f9fd;
+}
+
+.template-simple-editor-header h3,
+.template-simple-editor-header p,
+.template-section-heading strong,
+.template-section-heading small {
+  margin: 0;
+}
+
+.template-simple-editor-header h3 {
+  color: #17213d;
+  font-size: 17px;
+  font-weight: 800;
+}
+
+.template-simple-editor-header p {
+  max-width: 760px;
+  margin-top: 4px;
+  color: #67748e;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.template-simple-field-count {
+  flex: 0 0 auto;
+  padding: 6px 10px;
+  border: 1px solid #cbd9ff;
+  border-radius: 999px;
+  color: #2450d6;
+  background: #edf3ff;
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.template-simple-editor-body {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 18px;
+}
+
+.template-page-navigation {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e2e8f1;
+}
+
+.template-page-tabs {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  gap: 7px;
+  overflow-x: auto;
+  padding: 2px 2px 5px;
+}
+
+.template-page-tabs button,
+.template-page-actions button {
+  display: inline-flex;
+  min-height: 36px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border: 1px solid #cfdae9;
+  border-radius: 7px;
+  color: #4d5a73;
+  background: #ffffff;
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.template-page-tabs button.active {
+  border-color: #2450f5;
+  color: #ffffff;
+  background: #2450f5;
+}
+
+.template-page-actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 7px;
+}
+
+.template-page-actions button:hover:not(:disabled),
+.template-page-tabs button:hover:not(.active) {
+  border-color: #7c98ea;
+  color: #244dc7;
+  background: #f4f7ff;
+}
+
+.template-page-actions button.danger {
+  border-color: #efc1c1;
+  color: #b42318;
+  background: #fff8f8;
+}
+
+.template-page-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.template-page-guidance {
+  margin-top: -10px;
+  padding: 9px 11px;
+  border: 1px solid #cfe0ff;
+  border-radius: 7px;
+  color: #36578e;
+  background: #f3f7ff;
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.template-section-heading {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.template-section-heading strong {
+  color: #202c48;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.template-section-heading small {
+  color: #748098;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.template-insert-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 11px;
+}
+
+.template-insert-button {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 10px;
+  border: 1px solid #d9e2ef;
+  border-radius: 8px;
+  color: #2d3a56;
+  background: #ffffff;
+  text-align: left;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.template-insert-button:hover {
+  border-color: #6f90f5;
+  background: #f3f6ff;
+}
+
+.template-insert-button.used {
+  border-color: #b9caff;
+  color: #244dc7;
+  background: #f6f8ff;
+}
+
+.template-insert-button > svg {
+  flex: 0 0 auto;
+}
+
+.template-insert-button > span {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.template-insert-button strong,
+.template-insert-button small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.template-insert-button strong {
+  font-size: 11px;
+}
+
+.template-insert-button small {
+  color: #74819a;
+  font-size: 9px;
+}
+
+.template-content-preview-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 14px;
+}
+
+.template-content-pane,
+.template-preview-pane {
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid #dfe6f0;
+  border-radius: 9px;
+  background: #fbfcff;
+}
+
+.contract-template-page-previews {
+  display: grid;
+  gap: 10px;
+  margin: 0 16px 16px;
+}
+
+.contract-template-page-previews section {
+  overflow: hidden;
+  border: 1px solid #e1e7f0;
+  border-radius: 7px;
+  background: #fbfcff;
+}
+
+.contract-template-page-previews section > span {
+  display: block;
+  padding: 7px 11px;
+  border-bottom: 1px solid #e5eaf2;
+  color: #4f6190;
+  background: #f2f5fb;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.contract-template-page-previews pre {
+  margin: 0;
+  padding: 14px;
+}
+
+.template-content-textarea.form-control {
+  min-height: 390px;
+  margin-top: 10px;
+  padding: 14px;
+  resize: vertical;
+  color: #25324d;
+  background: #ffffff;
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.template-preview-heading {
+  min-height: 39px;
+}
+
+.template-preview-heading > span {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.template-content-preview {
+  min-height: 390px;
+  max-height: 560px;
+  margin-top: 10px;
+  overflow-y: auto;
+  padding: 24px;
+  border: 1px solid #dce3ed;
+  background: #ffffff;
+  box-shadow: 0 6px 18px rgba(31, 46, 75, 0.06);
+  color: #26334d;
+  font-family: "Times New Roman", serif;
+  font-size: 13px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.contract-document-pages {
+  display: grid;
+  gap: 14px;
+}
+
+.contract-document-page {
+  overflow: hidden;
+  border: 1px solid #dfe6f0;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 5px 16px rgba(31, 46, 75, 0.05);
+}
+
+.contract-document-page > span {
+  display: block;
+  padding: 8px 12px;
+  border-bottom: 1px solid #e4e9f1;
+  color: #52658f;
+  background: #f4f7fc;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.contract-document-page > pre {
+  min-height: 140px;
+  padding: 18px;
+}
+
+.template-preview-empty {
+  color: #8a95a8;
+  font-family: inherit;
+  font-style: italic;
+}
+
+.template-manual-fields {
+  padding: 14px;
+  border: 1px solid #dfe6f0;
+  border-radius: 9px;
+  background: #fbfcff;
+}
+
+.template-manual-fields-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.template-add-manual-button {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 11px;
+  border: 1px solid #b9caff;
+  border-radius: 7px;
+  color: #234fd3;
+  background: #ffffff;
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.template-manual-empty {
+  margin-top: 12px;
+  padding: 13px;
+  border: 1px dashed #cbd6e5;
+  border-radius: 8px;
+  color: #748098;
+  background: #ffffff;
+  font-size: 11px;
+}
+
+.template-manual-field-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.template-manual-field-row {
+  display: grid;
+  grid-template-columns: 1.2fr 1.1fr 0.75fr auto minmax(150px, auto);
+  gap: 10px;
+  align-items: end;
+  padding: 11px;
+  border: 1px solid #dfe6f0;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.template-manual-field-row > label:not(.template-manual-required) {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.template-manual-field-row label > span {
+  color: #66728a;
+  font-size: 10px;
+  font-weight: 750;
+}
+
+.template-manual-page-usage {
+  color: #65779b;
+  font-size: 9px;
+  line-height: 1.35;
+}
+
+.template-manual-field-row input:not([type="checkbox"]),
+.template-manual-field-row select {
+  width: 100%;
+  min-height: 35px;
+  padding: 6px 8px;
+  border: 1px solid #ccd7e7;
+  border-radius: 6px;
+  color: #273550;
+  background: #ffffff;
+  font-size: 11px;
+}
+
+.template-manual-field-row input[readonly] {
+  background: #f1f4f8;
+}
+
+.template-manual-required {
+  display: flex;
+  min-height: 35px;
+  align-items: center;
+  gap: 6px;
+  color: #4f5c74;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.template-manual-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.template-manual-actions button {
+  display: inline-flex;
+  min-height: 35px;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 10px;
+  border: 1px solid #b9caff;
+  border-radius: 6px;
+  color: #244dc7;
+  background: #f7f9ff;
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.template-manual-actions button.danger {
+  padding-inline: 8px;
+  border-color: #efc1c1;
+  color: #b42318;
+  background: #fff8f8;
+}
+
 .contract-version-position-summary {
   display: flex;
   flex-wrap: wrap;
@@ -1285,6 +1777,14 @@
 @media (max-width: 1250px) {
   .template-designer-grid {
     grid-template-columns: 190px minmax(440px, 1fr) 220px;
+  }
+
+  .template-insert-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .template-manual-field-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
@@ -1330,6 +1830,10 @@
 
   .template-field-inspector {
     border-top: 1px solid #d9e2f0;
+  }
+
+  .template-content-preview-grid {
+    grid-template-columns: 1fr;
   }
 
   .contract-detail-full {
@@ -1404,5 +1908,35 @@
 
   .template-page-workspace {
     padding: 10px 4px;
+  }
+
+  .template-simple-editor-header,
+  .template-manual-fields-header,
+  .template-page-navigation {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .template-simple-field-count,
+  .template-add-manual-button {
+    align-self: flex-start;
+  }
+
+  .template-page-actions {
+    width: 100%;
+  }
+
+  .template-page-actions button {
+    flex: 1 1 0;
+  }
+
+  .template-insert-grid,
+  .template-manual-field-row {
+    grid-template-columns: 1fr;
+  }
+
+  .template-content-textarea.form-control,
+  .template-content-preview {
+    min-height: 300px;
   }
 }

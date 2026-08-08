@@ -11,6 +11,7 @@ import com.fpt.backend.entity.Role;
 import com.fpt.backend.entity.UserPermission;
 import com.fpt.backend.entity.UserRole;
 import com.fpt.backend.entity.Users;
+import com.fpt.backend.enums.UserStatus;
 import com.fpt.backend.exception.BadHttpException;
 import com.fpt.backend.exception.NotFoundException;
 import com.fpt.backend.repository.permission.PermissionRepository;
@@ -19,7 +20,7 @@ import com.fpt.backend.repository.project.ProjectMemberRepository;
 import com.fpt.backend.repository.project.ProjectUserRoleRepository;
 import com.fpt.backend.repository.role.RoleRepository;
 import com.fpt.backend.repository.user.UserRepository;
-import com.fpt.backend.service.interfaces.project.ProjectMemberService;
+import com.fpt.backend.service.interfaces.project.IProjectMemberService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
@@ -38,7 +39,7 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
-public class ProjectMemberServiceImpl implements ProjectMemberService {
+public class ProjectMemberServiceImpl implements IProjectMemberService {
     private static final ZoneId DATABASE_TIME_ZONE = ZoneId.of("UTC");
     private static final ZoneId PROJECT_TIME_ZONE =
             ZoneId.of("Asia/Ho_Chi_Minh");
@@ -98,6 +99,11 @@ public class ProjectMemberServiceImpl implements ProjectMemberService {
         }
 
         return responses;
+    }
+
+    @Override
+    public List<UserStatus> getUserStatusesForFilter() {
+        return List.of(UserStatus.values());
     }
 
     @Override

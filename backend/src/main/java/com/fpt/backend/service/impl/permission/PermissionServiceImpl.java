@@ -14,9 +14,9 @@ import com.fpt.backend.exception.BadHttpException;
 import com.fpt.backend.exception.NotFoundException;
 import com.fpt.backend.repository.permission.PermissionRepository;
 import com.fpt.backend.repository.project.ProjectRepository;
-import com.fpt.backend.service.interfaces.permission.PermissionActionService;
-import com.fpt.backend.service.interfaces.permission.PermissionAccessService;
-import com.fpt.backend.service.interfaces.permission.PermissionService;
+import com.fpt.backend.service.interfaces.permission.IPermissionActionService;
+import com.fpt.backend.service.interfaces.permission.IPermissionAccessService;
+import com.fpt.backend.service.interfaces.permission.IPermissionService;
 import com.fpt.backend.util.CurrentUser;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -38,10 +38,10 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
-public class PermissionServiceImpl implements PermissionService {
+public class PermissionServiceImpl implements IPermissionService {
     private static final int PAGE_SIZE = 7;
     private static final String DEFAULT_SORT_FIELD = "createdAt";
-    private static final String MANAGE_MEMBERS = PermissionModule.MANAGE_MEMBERS.getActionCode();
+    private static final String MANAGE_MEMBERS = PermissionModule.MANAGE_MEMBERS.name();
     private static final Set<String> SORT_FIELDS = Set.of(
             "id",
             "permissionName",
@@ -53,30 +53,21 @@ public class PermissionServiceImpl implements PermissionService {
 
     private final PermissionRepository permissionRepository;
     private final ProjectRepository projectRepository;
-    private final PermissionActionService permissionActionService;
-    private final PermissionAccessService permissionAccessService;
+    private final IPermissionActionService permissionActionService;
+    private final IPermissionAccessService permissionAccessService;
     private final CurrentUser currentUser;
 
     @Override
     public PermissionListResponse getPermissions(PermissionListRequest request) {
-        PermissionListRequest validRequest = request == null
-                ? new PermissionListRequest(
-                        "",
-                        null,
-                        null,
-                        0,
-                        DEFAULT_SORT_FIELD,
-                        "desc")
-                : request;
-        String search = normalize(validRequest.search());
+        String search = normalize(request.search());
         Pageable pageable = createPageable(
-                validRequest.page(),
-                validRequest.sortBy(),
-                validRequest.sortDirection());
+                request.page(),
+                request.sortBy(),
+                request.sortDirection());
         Page<Permissions> permissions = permissionRepository.searchPermissions(
                 search.toLowerCase(Locale.ROOT),
-                validRequest.projectId(),
-                validRequest.status(),
+                request.projectId(),
+                request.status(),
                 currentUser.getCurrentUser().getId(),
                 MANAGE_MEMBERS,
                 pageable);

@@ -16,13 +16,9 @@ import java.util.UUID;
 
 @Repository
 public interface ContractRepository extends JpaRepository<Contracts, UUID> {
-    Page<Contracts> findByContractStatusIgnoreCase(String contractStatus, Pageable pageable);
-
     long countByContractTypeId(UUID contractTypeId);
 
     long countByContractTemplateId(UUID contractTemplateId);
-
-    long countByContractTemplateVersionId(UUID contractTemplateVersionId);
 
     @Query("""
             SELECT contract
@@ -30,8 +26,20 @@ public interface ContractRepository extends JpaRepository<Contracts, UUID> {
             LEFT JOIN contract.project project
             LEFT JOIN contract.contractType contractType
             LEFT JOIN contract.contractTemplate contractTemplate
-            WHERE (
-                LOWER(COALESCE(contract.contractNumber, '')) LIKE CONCAT('%', CONCAT(:search, '%'))
+            LEFT JOIN contract.contractCreatedByUser creator
+            WHERE project.id IN (:projectIds)
+            AND (
+                project.id IN (:fullScopeProjectIds)
+                OR creator.id = :currentUserId
+                OR (
+                    contract.contractCreatedByUser IS NULL
+                    AND LOWER(TRIM(COALESCE(contract.contractCreateBy, '')))
+                        = :currentUserName
+                )
+            )
+            AND (
+                :search = ''
+                OR LOWER(COALESCE(contract.contractNumber, '')) LIKE CONCAT('%', CONCAT(:search, '%'))
                 OR LOWER(COALESCE(contract.contractTitle, '')) LIKE CONCAT('%', CONCAT(:search, '%'))
                 OR LOWER(COALESCE(contract.contractCreateBy, '')) LIKE CONCAT('%', CONCAT(:search, '%'))
                 OR LOWER(COALESCE(project.projectName, '')) LIKE CONCAT('%', CONCAT(:search, '%'))
@@ -44,20 +52,15 @@ public interface ContractRepository extends JpaRepository<Contracts, UUID> {
                 OR LOWER(COALESCE(contract.contractStatus, '')) = :status
             )
             """)
-    Page<Contracts> searchContracts(
+    Page<Contracts> searchAccessibleContracts(
+            @Param("projectIds") List<UUID> projectIds,
+            @Param("fullScopeProjectIds") List<UUID> fullScopeProjectIds,
+            @Param("currentUserId") UUID currentUserId,
+            @Param("currentUserName") String currentUserName,
             @Param("search") String search,
             @Param("status") String status,
             Pageable pageable
     );
-
-    @Query("""
-            SELECT DISTINCT contract.contractStatus
-            FROM Contracts contract
-            WHERE contract.contractStatus IS NOT NULL
-                AND TRIM(contract.contractStatus) <> ''
-            ORDER BY contract.contractStatus
-            """)
-    List<String> findDistinctContractStatuses();
 
     @Query("""
             SELECT contract.id

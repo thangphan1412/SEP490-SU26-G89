@@ -1,6 +1,6 @@
-import axios from "axios";
+import axiosClient from "../../config/api/axiosClient.js";
 
-const CONTRACT_ENDPOINT = "http://localhost:8080/api/v1/contracts";
+const CONTRACT_ENDPOINT = "/contracts";
 
 const noCacheConfig = {
     headers: {
@@ -10,40 +10,40 @@ const noCacheConfig = {
 
 const contractApi = {
     getAllContracts(params) {
-        return axios.get(CONTRACT_ENDPOINT + "/list", {
+        return axiosClient.get(CONTRACT_ENDPOINT + "/list", {
             ...noCacheConfig,
             params,
         });
     },
 
     getProjectOptions() {
-        return axios.get(
+        return axiosClient.get(
             CONTRACT_ENDPOINT + "/project-options",
             noCacheConfig
         );
     },
 
     getContractById(id) {
-        return axios.get(CONTRACT_ENDPOINT + "/" + id, noCacheConfig);
+        return axiosClient.get(CONTRACT_ENDPOINT + "/" + id, noCacheConfig);
     },
 
     createContract(data) {
-        return axios.post(CONTRACT_ENDPOINT, data);
+        return axiosClient.post(CONTRACT_ENDPOINT, data);
     },
 
     updateContract(id, data) {
-        return axios.put(CONTRACT_ENDPOINT + "/" + id, data);
+        return axiosClient.put(CONTRACT_ENDPOINT + "/" + id, data);
     },
 
     transitionContract(id, data) {
-        return axios.post(
+        return axiosClient.post(
             CONTRACT_ENDPOINT + "/" + id + "/transitions",
             data
         );
     },
 
     exportContractPdf(id) {
-        return axios.get(CONTRACT_ENDPOINT + "/" + id + "/pdf", {
+        return axiosClient.get(CONTRACT_ENDPOINT + "/" + id + "/pdf", {
             responseType: "blob",
             headers: {
                 "Cache-Control": "no-cache",
@@ -51,10 +51,8 @@ const contractApi = {
         });
     },
 
-    deleteContract(id, actor) {
-        return axios.delete(CONTRACT_ENDPOINT + "/" + id, {
-            params: actor,
-        });
+    deleteContract(id) {
+        return axiosClient.delete(CONTRACT_ENDPOINT + "/" + id);
     },
 };
 

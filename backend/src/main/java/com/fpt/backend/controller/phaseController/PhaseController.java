@@ -2,7 +2,7 @@ package com.fpt.backend.controller.phaseController;
 
 import com.fpt.backend.dto.response.phase.PhaseDetailResponse;
 import com.fpt.backend.dto.response.phase.PhaseListItemResponse;
-import com.fpt.backend.service.interfaces.phase.PhaseService;
+import com.fpt.backend.service.interfaces.phase.IPhaseService;
 import com.fpt.backend.util.BaseResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.CacheControl;
@@ -19,7 +19,7 @@ import java.util.UUID;
 @RequestMapping("/api/phases")
 @RequiredArgsConstructor
 public class PhaseController {
-    private final PhaseService phaseService;
+    private final IPhaseService phaseService;
 
     @GetMapping("/project/{projectId}")
     public ResponseEntity<BaseResponse<List<PhaseListItemResponse>>> getPhasesByProject(

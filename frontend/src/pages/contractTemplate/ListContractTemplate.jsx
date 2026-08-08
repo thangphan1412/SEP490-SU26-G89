@@ -16,6 +16,7 @@ import {
     getApiErrorMessage,
     unwrapApiResponse,
 } from "../ContractManagement/contractUtils.js";
+import { splitContractPages } from "../ContractManagement/contractPageUtils.js";
 import TemplatePositionDesigner from "./TemplatePositionDesigner.jsx";
 import {
     cloneVersionPositions,
@@ -228,6 +229,13 @@ function ListContractTemplate() {
         }));
     };
 
+    const handleVersionContentChange = (templateContent) => {
+        setVersionForm((current) => ({
+            ...current,
+            templateContent,
+        }));
+    };
+
     const handleTemplateSubmit = async (event) => {
         event.preventDefault();
 
@@ -302,7 +310,26 @@ function ListContractTemplate() {
         );
         if (invalidPosition) {
             setModalError(
-                "Every layout field needs a label and a lowercase attribute key."
+                "Every custom field needs a label and a lowercase attribute key."
+            );
+            return;
+        }
+
+        const definitionsByKey = new Map();
+        const conflictingPosition = versionForm.positions.find((position) => {
+            const attributeKey = position.attributeKey.trim().toLowerCase();
+            const definition = [
+                position.fieldType,
+                position.valueSource,
+                position.signerRole || "",
+            ].join("|");
+            const savedDefinition = definitionsByKey.get(attributeKey);
+            definitionsByKey.set(attributeKey, definition);
+            return savedDefinition && savedDefinition !== definition;
+        });
+        if (conflictingPosition) {
+            setModalError(
+                "A field reused on multiple pages must keep the same type and value source."
             );
             return;
         }
@@ -577,6 +604,7 @@ function ListContractTemplate() {
                 submitting={submitting}
                 onChange={handleVersionChange}
                 onLayoutChange={handleLayoutChange}
+                onContentChange={handleVersionContentChange}
                 onClose={closeVersionModal}
                 onSubmit={handleVersionSubmit}
             />
@@ -716,20 +744,24 @@ function TemplateModal({
                                             </span>
                                             <span>
                                                 {version.positions?.length || 0}{" "}
-                                                positioned field(s)
+                                                dynamic field(s)
                                             </span>
-                                            <span>Normalized coordinates</span>
+                                            <span>Values filled automatically</span>
                                         </div>
-                                        <pre>
-                                            {version.templateContent ||
-                                                "No content."}
-                                        </pre>
-                                        {version.layoutJson && (
-                                            <details className="contract-layout-preview">
-                                                <summary>Layout data</summary>
-                                                <pre>{version.layoutJson}</pre>
-                                            </details>
-                                        )}
+                                        <div className="contract-template-page-previews">
+                                            {splitContractPages(
+                                                version.templateContent,
+                                                version.pageCount
+                                            ).map((pageContent, index) => (
+                                                <section key={index}>
+                                                    <span>Page {index + 1}</span>
+                                                    <pre>
+                                                        {pageContent ||
+                                                            "No content on this page."}
+                                                    </pre>
+                                                </section>
+                                            ))}
+                                        </div>
                                     </details>
                                 ))
                             ) : (
@@ -868,6 +900,7 @@ function VersionModal({
     submitting,
     onChange,
     onLayoutChange,
+    onContentChange,
     onClose,
     onSubmit,
 }) {
@@ -889,8 +922,9 @@ function VersionModal({
                 <Modal.Body>
                     <Alert variant="info">
                         This creates V{(template?.latestVersion || 0) + 1}. Existing
-                        versions remain unchanged. The latest version content and
-                        positions are copied as the starting point.
+                        versions remain unchanged. Start from the latest content,
+                        insert dynamic fields, and check the example preview before
+                        saving.
                     </Alert>
                     {error && <Alert variant="danger">{error}</Alert>}
                     <div className="contract-form-grid">
@@ -926,27 +960,12 @@ function VersionModal({
                             />
                         </div>
                         <div className="contract-form-full">
-                            <label
-                                htmlFor="templateContent"
-                                className="contract-form-label"
-                            >
-                                Template Content
-                            </label>
-                            <textarea
-                                id="templateContent"
-                                name="templateContent"
-                                className="form-control contract-content-editor"
-                                value={form.templateContent}
-                                onChange={onChange}
-                                required
-                            />
-                        </div>
-                        <div className="contract-form-full">
                             <TemplatePositionDesigner
                                 content={form.templateContent}
                                 pageCount={form.pageCount}
                                 positions={form.positions}
                                 onChange={onLayoutChange}
+                                onContentChange={onContentChange}
                             />
                         </div>
                     </div>

@@ -11,6 +11,8 @@ import {
 } from "./ContractComponents.jsx";
 import ContractForm from "./ContractForm.jsx";
 import {
+    CONTRACT_PROJECT_ACTION,
+    canManageNewContract,
     getApiErrorMessage,
     loadProjectOptions,
     mapContractToForm,
@@ -43,9 +45,18 @@ function UpdateContract() {
                 ]);
 
                 if (active) {
-                    setContract(
-                        mapContractToForm(unwrapApiResponse(contractResponse))
-                    );
+                    const contractPayload = unwrapApiResponse(contractResponse);
+                    if (!canManageNewContract(
+                        contractPayload,
+                        CONTRACT_PROJECT_ACTION.EDIT
+                    )) {
+                        setContract(null);
+                        setErrorMessage(
+                            "You do not have permission to edit this NEW contract."
+                        );
+                    } else {
+                        setContract(mapContractToForm(contractPayload));
+                    }
                     setProjects(projectItems);
                 }
             } catch (error) {
@@ -152,6 +163,7 @@ function UpdateContract() {
                         onChange={handleChange}
                         projects={projects}
                         creatorReadOnly
+                        projectReadOnly
                     />
 
                     {errorMessage ? (

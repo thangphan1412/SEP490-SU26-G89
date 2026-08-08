@@ -22,6 +22,5 @@ public class CreateElectronicSignatureRequest {
     private boolean isDefault;
     @Enumerated(EnumType.STRING)
     private ElectronicStatus  electronicStatus;
-    private LocalDate createdAt;
     private CreateFileStorageRequest createFileStorageRequests;
 }

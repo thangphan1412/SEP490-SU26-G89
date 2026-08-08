@@ -5,7 +5,7 @@ import com.fpt.backend.dto.response.project.ProjectAccessResponse;
 import java.util.List;
 import java.util.UUID;
 
-public interface PermissionAccessService {
+public interface IPermissionAccessService {
     ProjectAccessResponse getCurrentUserAccess(UUID projectId);
 
     void requireAction(UUID projectId, String actionCode);

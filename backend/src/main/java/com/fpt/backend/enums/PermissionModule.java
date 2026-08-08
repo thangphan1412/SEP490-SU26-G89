@@ -1,9 +1,5 @@
 package com.fpt.backend.enums;
 
-/**
- * Action codes used by permission checks.
- * Action metadata is stored in permission_action_catalog.
- */
 public enum PermissionModule {
     VIEW_TASKS,
     CREATE_TASKS,
@@ -16,9 +12,5 @@ public enum PermissionModule {
     VIEW_CONTRACTS,
     EDIT_PROJECT,
     EDIT_PHASE,
-    MANAGE_MEMBERS;
-
-    public String getActionCode() {
-        return name();
-    }
+    MANAGE_MEMBERS
 }
