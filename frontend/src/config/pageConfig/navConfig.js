@@ -8,8 +8,8 @@ export const navConfig = [
         children: [
             { label: "Signature List", path: "/signature-management/list" },
             { label: "Create Signature", path: "/signature-management/create-signature" },
-            { label: "View Signature", path: "" },
-            { label: "Update Signature", path: "" },
+            { label: "View Signature", path: "/signature-management/detail/:id" },
+            { label: "Update Signature", path: "/signature-management/update/:id" },
         ],
     },
 
