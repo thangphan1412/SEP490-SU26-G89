@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { ArrowLeft, Save, PenLine } from "lucide-react";
+import Card from "../../components/signature/createSignature/Card.jsx";
+import Field from "../../components/signature/createSignature/Field.jsx";
+import SignatureCanvas from "../../components/signature/createSignature/SignatureCanvasCard.jsx";
 
-import Card from "./Card";
-import Field from "./Field";
-import SignatureCanvas from "./SignatureCanvas";
+
 
 function UpdateSignature({ onCancel, onSave }) {
     // ============================================

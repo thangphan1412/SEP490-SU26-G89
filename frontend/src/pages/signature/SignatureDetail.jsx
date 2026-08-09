@@ -1,7 +1,7 @@
 import { PenLine, Edit3 } from "lucide-react";
 import {Card} from "react-bootstrap";
 import Field from "../../components/signature/createSignature/Field.jsx";
-
+import PropTypes from "prop-types";
 
 
 function SignatureCanvas(props) {

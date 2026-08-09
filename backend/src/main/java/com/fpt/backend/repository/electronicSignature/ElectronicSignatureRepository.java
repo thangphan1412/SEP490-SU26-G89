@@ -15,7 +15,8 @@ import java.util.UUID;
 public interface ElectronicSignatureRepository extends JpaRepository<ElectronicSignatures, UUID> {
 @Query("""
     select new com.fpt.backend.dto.response.electronicSignature.ListElectronicResponse(
-        es.electronicSignatureName,
+        es.id,
+            es.electronicSignatureName,
         es.electronicSignatureType,
         es.status,
         es.isDefault,
@@ -29,7 +30,8 @@ public interface ElectronicSignatureRepository extends JpaRepository<ElectronicS
 
     @Query("""
         select new com.fpt.backend.dto.response.electronicSignature.ElectronicSignatureDetailResponse(
-                es.electronicSignatureName ,
+                
+                        es.electronicSignatureName ,
                         es.electronicSignatureType,
                                 es.status,
                                         es.isDefault,

@@ -47,6 +47,7 @@ public class ElectronicSignatureServiceImpl implements IElectronicSignatureServi
                 .electronicSignatureName(createElectronicSignatureRequest.getElectronicSignatureName())
                 .electronicSignatureType(createElectronicSignatureRequest.getElectronicSignatureType())
                 .status(createElectronicSignatureRequest.getElectronicStatus())
+                .isDefault(createElectronicSignatureRequest.isDefault())
                 .createdAt(LocalDate.now())
                 .fileStorage(fileStorage)
                 .build();

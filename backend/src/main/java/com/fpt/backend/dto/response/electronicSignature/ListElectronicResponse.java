@@ -8,6 +8,7 @@ import lombok.*;
 import org.hibernate.loader.ast.spi.Loadable;
 
 import java.time.LocalDate;
+import java.util.UUID;
 
 @Builder
 @Setter
@@ -15,6 +16,7 @@ import java.time.LocalDate;
 @AllArgsConstructor
 @NoArgsConstructor
 public class ListElectronicResponse {
+    private UUID id;
     private String signatureName;
     @Enumerated(EnumType.STRING)
     private ElectronicSignatureType type;
