@@ -46,6 +46,12 @@ public interface UserPermissionRepository extends JpaRepository<UserPermission, 
                 AND permission.status = true
                 AND action.status = true
                 AND UPPER(action.actionCode) = :actionCode
+                AND EXISTS (
+                    SELECT member.id
+                    FROM ProjectMember member
+                    WHERE member.project.id = permission.project.id
+                        AND member.user.id = :userId
+                )
             ORDER BY permission.project.id
             """)
     List<UUID> findProjectIdsByUserAndAction(

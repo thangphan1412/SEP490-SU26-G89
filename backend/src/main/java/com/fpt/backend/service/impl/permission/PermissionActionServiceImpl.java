@@ -6,7 +6,6 @@ import com.fpt.backend.entity.Permissions;
 import com.fpt.backend.enums.WorkScope;
 import com.fpt.backend.exception.BadHttpException;
 import com.fpt.backend.repository.permission.PermissionActionRepository;
-import com.fpt.backend.service.interfaces.permission.IPermissionActionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,11 +21,9 @@ import java.util.Set;
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
-public class PermissionActionServiceImpl
-        implements IPermissionActionService {
+public class PermissionActionServiceImpl {
     private final PermissionActionRepository permissionActionRepository;
 
-    @Override
     public void configurePermission(
             Permissions permission,
             List<String> allowedActionCodes,
@@ -78,7 +75,6 @@ public class PermissionActionServiceImpl
         permission.setWorkScope(workScope);
     }
 
-    @Override
     public void configureFullAccess(Permissions permission) {
         if (permission == null) {
             throw new BadHttpException("Permission is required");
@@ -97,7 +93,6 @@ public class PermissionActionServiceImpl
         permission.setWorkScope(WorkScope.FULL);
     }
 
-    @Override
     public List<String> getAllowedActionCodes(Permissions permission) {
         List<String> actionCodes = new ArrayList<>();
 
@@ -108,7 +103,6 @@ public class PermissionActionServiceImpl
         return actionCodes;
     }
 
-    @Override
     public List<PermissionActionResponse> getActionDetails(
             Permissions permission) {
         List<PermissionActionResponse> responses = new ArrayList<>();
@@ -120,7 +114,6 @@ public class PermissionActionServiceImpl
         return responses;
     }
 
-    @Override
     public String getWorkScope(Permissions permission) {
         if (permission == null || permission.getWorkScope() == null) {
             return WorkScope.FULL.name();
@@ -129,7 +122,6 @@ public class PermissionActionServiceImpl
         return permission.getWorkScope().name();
     }
 
-    @Override
     public List<PermissionActionResponse> getAvailableActions() {
         List<PermissionActionResponse> responses = new ArrayList<>();
 

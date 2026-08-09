@@ -15,7 +15,6 @@ import com.fpt.backend.repository.permission.PermissionRepository;
 import com.fpt.backend.repository.permission.UserPermissionRepository;
 import com.fpt.backend.repository.project.ProjectMemberRepository;
 import com.fpt.backend.repository.user.UserRepository;
-import com.fpt.backend.service.interfaces.project.IProjectMemberService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
@@ -34,7 +33,7 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
-public class ProjectMemberServiceImpl implements IProjectMemberService {
+public class ProjectMemberServiceImpl {
     private static final ZoneId DATABASE_TIME_ZONE = ZoneId.of("UTC");
     private static final ZoneId PROJECT_TIME_ZONE =
             ZoneId.of("Asia/Ho_Chi_Minh");
@@ -45,7 +44,6 @@ public class ProjectMemberServiceImpl implements IProjectMemberService {
     private final UserRepository userRepository;
 
     //Lấy danh sách nhân viên để chọn khi tạo dự án
-    @Override
     public List<ProjectEmployeeResponse> getEmployeesForSelection() {
         List<Users> users = userRepository.findAll(
                 Sort.by(
@@ -71,12 +69,10 @@ public class ProjectMemberServiceImpl implements IProjectMemberService {
     }
 
     //Lấy danh sách trạng thái người dùng để lọc khi xem danh sách thành viên dự án
-    @Override
     public List<UserStatus> getUserStatusesForFilter() {
         return List.of(UserStatus.values());
     }
 
-    @Override
     public void syncMembers(
             Projects project,
             List<ProjectMemberRequest> memberRequests,
@@ -124,7 +120,6 @@ public class ProjectMemberServiceImpl implements IProjectMemberService {
         }
     }
 
-    @Override
     public List<ProjectUserResponse> getProjectUsers(UUID projectId) {
         Map<UUID, ProjectMember> memberByUserId = new LinkedHashMap<>();
         Map<UUID, Users> userById = new LinkedHashMap<>();
@@ -161,7 +156,6 @@ public class ProjectMemberServiceImpl implements IProjectMemberService {
         return users;
     }
 
-    @Override
     public void deleteProjectData(UUID projectId) {
         projectMemberRepository.deleteByProjectId(projectId);
     }

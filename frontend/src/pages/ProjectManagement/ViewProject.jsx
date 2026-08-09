@@ -197,10 +197,16 @@ function ViewProject() {
     }
 
     const filteredContracts = projectContracts.filter(contractMatchesFilters);
-    const completedProject = isCompletedProjectStatus(
-        project?.projectStatus
-    );
-    const access = project?.currentUserAccess;
+
+    let projectStatus = "";
+    let access = null;
+
+    if (project) {
+        projectStatus = project.projectStatus;
+        access = project.currentUserAccess;
+    }
+
+    const completedProject = isCompletedProjectStatus(projectStatus);
     const canEditProject = hasProjectAction(
         access,
         PROJECT_ACTIONS.EDIT_PROJECT

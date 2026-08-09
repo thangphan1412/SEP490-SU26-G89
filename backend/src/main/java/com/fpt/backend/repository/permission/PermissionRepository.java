@@ -55,6 +55,12 @@ public interface PermissionRepository extends JpaRepository<Permissions, UUID> {
             AND (:projectId IS NULL OR project.id = :projectId)
             AND (:status IS NULL OR permission.status = :status)
             AND EXISTS (
+                SELECT member.id
+                FROM ProjectMember member
+                WHERE member.project.id = project.id
+                    AND member.user.id = :currentUserId
+            )
+            AND EXISTS (
                 SELECT userPermission.id
                 FROM UserPermission userPermission
                 JOIN userPermission.permission assignedPermission

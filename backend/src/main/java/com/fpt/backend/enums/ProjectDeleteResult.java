@@ -1,4 +1,4 @@
-package com.fpt.backend.service.interfaces.project;
+package com.fpt.backend.enums;
 
 public enum ProjectDeleteResult {
     DELETED_PERMANENTLY,

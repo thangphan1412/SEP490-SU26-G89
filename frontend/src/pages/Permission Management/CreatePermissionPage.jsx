@@ -48,6 +48,7 @@ function CreatePermissionPage() {
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
+  // Lấy danh sách các dự án và hành động được phép khi component được mount
   useEffect(function () {
     let isActive = true;
     const requestController = new AbortController();

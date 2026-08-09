@@ -8,8 +8,7 @@ import com.fpt.backend.entity.Projects;
 import com.fpt.backend.exception.BadHttpException;
 import com.fpt.backend.exception.NotFoundException;
 import com.fpt.backend.repository.permission.PermissionRepository;
-import com.fpt.backend.service.interfaces.permission.IPermissionActionService;
-import com.fpt.backend.service.interfaces.project.IProjectPermissionService;
+import com.fpt.backend.service.impl.permission.PermissionActionServiceImpl;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -22,15 +21,13 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
-public class ProjectPermissionServiceImpl
-        implements IProjectPermissionService {
+public class ProjectPermissionServiceImpl {
     private static final String FULL_ACCESS_PERMISSION_NAME =
             "Project Full Access";
     private static final String FULL_ACCESS_PERMISSION_CODE_PREFIX = "PFA_";
     private final PermissionRepository permissionRepository;
-    private final IPermissionActionService permissionActionService;
+    private final PermissionActionServiceImpl permissionActionService;
 
-    @Override
     public UUID createProjectFullAccessPermission(Projects project) {
         if (project == null || project.getId() == null) {
             throw new BadHttpException(
@@ -55,7 +52,6 @@ public class ProjectPermissionServiceImpl
         return permissionRepository.save(permission).getId();
     }
 
-    @Override
     public List<ProjectPermissionConfigurationResponse> getConfigurations(
             UUID projectId) {
         List<Permissions> permissions =
@@ -70,7 +66,6 @@ public class ProjectPermissionServiceImpl
         return responses;
     }
 
-    @Override
     public ProjectPermissionConfigurationResponse configure(
             Projects project,
             UUID permissionId,
@@ -99,7 +94,6 @@ public class ProjectPermissionServiceImpl
         return toConfiguration(permissionRepository.save(permission));
     }
 
-    @Override
     public List<ProjectPermissionOptionResponse> getOptions(UUID projectId) {
         List<Permissions> permissions = new ArrayList<>(
                 permissionRepository.findByProjectId(projectId)
@@ -124,7 +118,6 @@ public class ProjectPermissionServiceImpl
         return responses;
     }
 
-    @Override
     public void deleteProjectData(UUID projectId) {
         List<Permissions> permissions =
                 permissionRepository.findByProjectId(projectId);
