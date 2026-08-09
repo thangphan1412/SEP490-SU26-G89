@@ -1,23 +1,28 @@
 import axiosClient from "../../config/api/axiosClient.js";
 
-const electronicSignatureService ={
-    getAllElectronicSignature(data){
-        return axiosClient.get("list-electronic-signatures", data)
+const electronicSignatureService = {
+
+    getAllElectronicSignature() {
+        return axiosClient.get("list-electronic-signatures");
     },
+
     getElectronicSignatureById(id) {
         return axiosClient.get(`electronic-by/${id}`);
     },
 
-    createElectronicSignature(formData) {
-    return axiosClient.post(
-        "create/electronic-signatures",
-        formData,
-        {
-            headers: {
-                "Content-Type": "multipart/form-data",
-            },
-        }
-    );
-},
-}
-export default electronicSignatureService
+    createElectronicSignature(data) {
+        return axiosClient.post(
+            "create/electronic-signatures",
+            data
+        );
+    },
+
+    updateElectronicSignature(id, data) {
+        return axiosClient.put(
+            `update/electronic-by/${id}`,
+            data
+        );
+    }
+};
+
+export default electronicSignatureService;

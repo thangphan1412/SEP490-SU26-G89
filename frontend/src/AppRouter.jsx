@@ -239,6 +239,10 @@ function AppRouter() {
                     path="/signature-management/update/:id"
                     element={<UpdateSignature/>}
                 />
+                <Route
+                    path="/signatures/:id/edit"
+                    element={<UpdateSignature />}
+                />
             </Route>
 
 

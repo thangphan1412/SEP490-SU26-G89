@@ -25,5 +25,6 @@
             public static final String SIGNATURES = "/list-electronic-signatures";
             public static final String ELECTRONICSIGNATURES = "/create/electronic-signatures";
             public static final String ELECTRONICBYID = "/electronic-by/{id}";
+            public static final String UPDATEELECTRONICSIGNATURE = "update/electronic-by/{id}";
         }
     }

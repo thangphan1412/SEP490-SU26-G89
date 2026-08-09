@@ -2,6 +2,7 @@ package com.fpt.backend.controller.signatureController;
 
 import com.fpt.backend.constant.ApiConstant;
 import com.fpt.backend.dto.request.electronicSignature.CreateElectronicSignatureRequest;
+import com.fpt.backend.dto.request.electronicSignature.UpdateElectronicSignatureRequest;
 import com.fpt.backend.dto.request.fileStorage.CreateFileStorageRequest;
 import com.fpt.backend.dto.response.electronicSignature.CreateElectronicSignature;
 import com.fpt.backend.dto.response.electronicSignature.ElectronicSignatureDetailResponse;
@@ -47,5 +48,24 @@ public class ElectronicSignatureController {
     @GetMapping(ApiConstant.Signatures.ELECTRONICBYID)
     public ResponseEntity<BaseResponse<ElectronicSignatureDetailResponse>> getElectronicById(@PathVariable("id") UUID electronicSignatureId) {
         return ResponseEntity.ok(new BaseResponse<>(electronicSignatureService.getElectronicSignatureDetail(electronicSignatureId)));
+    }
+    @PutMapping(ApiConstant.Signatures.UPDATEELECTRONICSIGNATURE)
+    public ResponseEntity<BaseResponse<?>> updateElectronicSignature(
+            @PathVariable("id") UUID electronicSignatureId,
+            @ModelAttribute UpdateElectronicSignatureRequest request,
+            @RequestParam(value = "multipartFile", required = false) MultipartFile multipartFile
+    ) {
+        electronicSignatureService.updateElectronicSignature(
+                electronicSignatureId,
+                request,
+                multipartFile
+        );
+
+        return ResponseEntity
+                .ok(
+                        new BaseResponse<>(
+                                "Signature updated successfully"
+                        )
+                );
     }
 }
