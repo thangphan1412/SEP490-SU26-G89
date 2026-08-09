@@ -181,7 +181,7 @@
 }
 
 .view-project-member-table.table {
-    min-width: 1060px;
+    min-width: 900px;
 }
 
 .view-project-table.table > :not(caption) > * > * {

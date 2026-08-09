@@ -2,7 +2,6 @@ package com.fpt.backend.service.interfaces.project;
 
 import com.fpt.backend.dto.request.project.ProjectMemberRequest;
 import com.fpt.backend.dto.response.project.ProjectEmployeeResponse;
-import com.fpt.backend.dto.response.project.ProjectRoleResponse;
 import com.fpt.backend.dto.response.project.ProjectUserResponse;
 import com.fpt.backend.entity.Projects;
 import com.fpt.backend.enums.UserStatus;
@@ -12,8 +11,6 @@ import java.util.UUID;
 
 public interface IProjectMemberService {
     List<ProjectEmployeeResponse> getEmployeesForSelection();
-
-    List<ProjectRoleResponse> getRolesForFilter();
 
     List<UserStatus> getUserStatusesForFilter();
 

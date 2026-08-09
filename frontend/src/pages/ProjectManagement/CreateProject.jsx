@@ -17,7 +17,6 @@ import {
     getApiErrorMessage,
     getEmployeeDescription,
     getEmployeeName,
-    getEmployeeRoleNames,
     getEmployeeSearchText,
     CREATE_PROJECT_STATUS_OPTIONS as statusOptions,
     PHASE_STATUS_OPTIONS as phaseStatusOptions,
@@ -388,7 +387,6 @@ function CreateProject() {
                     <small>{employee.email || "No email"}</small>
                 </span>
                 <span className="create-project-modal-user-meta">
-                    <small>{getEmployeeRoleNames(employee).join(", ") || "No assigned role"}</small>
                     <small>{employee.status || "Unknown"}</small>
                 </span>
             </label>

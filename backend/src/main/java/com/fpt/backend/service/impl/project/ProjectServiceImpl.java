@@ -12,7 +12,6 @@ import com.fpt.backend.dto.response.project.ProjectEmployeeResponse;
 import com.fpt.backend.dto.response.project.ProjectListItemResponse;
 import com.fpt.backend.dto.response.project.ProjectListResponse;
 import com.fpt.backend.dto.response.project.ProjectPermissionConfigurationResponse;
-import com.fpt.backend.dto.response.project.ProjectRoleResponse;
 import com.fpt.backend.entity.Contracts;
 import com.fpt.backend.entity.Projects;
 import com.fpt.backend.entity.Users;
@@ -284,11 +283,7 @@ public class ProjectServiceImpl implements IProjectService {
         return projectMemberService.getEmployeesForSelection();
     }
 
-    @Override
-    public List<ProjectRoleResponse> getRolesForProjectMemberFilter() {
-        return projectMemberService.getRolesForFilter();
-    }
-
+    //Lấy enum danh sách trạng thái người dùng để lọc thành viên dự án.
     @Override
     public List<UserStatus> getUserStatusesForProjectMemberFilter() {
         return projectMemberService.getUserStatusesForFilter();
