@@ -38,6 +38,7 @@ import TotalAgreements from "./pages/Dashboard/TotalAgreements.jsx";
 import PendingSignatureAgreements from "./pages/Dashboard/PendingSignatureAgreements.jsx";
 import ContractStatisticalReports from "./pages/Dashboard/ContractStatisticalReports.jsx";
 import SignatureList from "./pages/signature/SignatureList.jsx";
+import CreateSignaturePage from "./pages/signature/CreateSignaturePage.jsx";
 
 function AppRouter() {
     return (
@@ -223,6 +224,10 @@ function AppRouter() {
                 <Route
                     path="/signature-management/list"
                     element={<SignatureList />}
+                />
+                <Route
+                    path="/signature-management/create-signature"
+                    element={<CreateSignaturePage/>}
                 />
             </Route>
 
