@@ -3,7 +3,6 @@ import { Alert, Button, Card, Col, Form, Modal, Row, Stack } from "react-bootstr
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
     listProjectEmployees,
-    listProjectRoles,
     updateProject,
     viewProject,
 } from "../../services/projectService/projectApi.js";
@@ -20,11 +19,9 @@ import {
     addOneDay,
     calculatePhaseStartDatesForDisplay,
     createClientId,
-    employeeHasRole,
     getApiErrorMessage,
     getEmployeeDescription,
     getEmployeeName,
-    getEmployeeRoleNames,
     getEmployeeSearchText,
     getFilterOptions,
     isCompletedProjectStatus,
@@ -40,11 +37,9 @@ function UpdateProject({ onUpdateProject }) {
     const [project, setProject] = useState(null);
     const [access, setAccess] = useState(null);
     const [employees, setEmployees] = useState([]);
-    const [memberRoleOptions, setMemberRoleOptions] = useState([]);
     const [permissionOptions, setPermissionOptions] = useState([]);
     const [showMemberModal, setShowMemberModal] = useState(false);
     const [memberSearch, setMemberSearch] = useState("");
-    const [memberRoleFilter, setMemberRoleFilter] = useState("");
     const [memberStatusFilter, setMemberStatusFilter] = useState("");
     const [pendingMemberIds, setPendingMemberIds] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -91,13 +86,11 @@ function UpdateProject({ onUpdateProject }) {
                 }
 
                 let employeeData = [];
-                let roleData = [];
 
                 if (canManageMembers) {
-                    [employeeData, roleData] = await Promise.all([
-                        listProjectEmployees(requestController.signal),
-                        listProjectRoles(requestController.signal),
-                    ]);
+                    employeeData = await listProjectEmployees(
+                        requestController.signal
+                    );
                 }
 
                 if (!isActive) {
@@ -128,7 +121,6 @@ function UpdateProject({ onUpdateProject }) {
                     })),
                 });
                 setEmployees(mergeEmployees(employeeData, projectUsers));
-                setMemberRoleOptions(Array.isArray(roleData) ? roleData : []);
 
                 const projectPermissions = Array.isArray(projectData?.availablePermissions)
                     ? projectData.availablePermissions.filter((permission) => permission.id)
@@ -273,7 +265,6 @@ function UpdateProject({ onUpdateProject }) {
 
     function openMemberModal() {
         setMemberSearch("");
-        setMemberRoleFilter("");
         setMemberStatusFilter("");
         setPendingMemberIds([]);
         setShowMemberModal(true);
@@ -393,10 +384,9 @@ function UpdateProject({ onUpdateProject }) {
 
     function employeeMatchesFilters(employee) {
         const matchesSearch = getEmployeeSearchText(employee).includes(normalizedMemberSearch);
-        const matchesRole = !memberRoleFilter || employeeHasRole(employee, memberRoleFilter);
         const matchesStatus = !memberStatusFilter || employee.status === memberStatusFilter;
 
-        return matchesSearch && matchesRole && matchesStatus;
+        return matchesSearch && matchesStatus;
     }
 
     const visibleAvailableEmployees = availableEmployees.filter(employeeMatchesFilters);
@@ -427,7 +417,6 @@ function UpdateProject({ onUpdateProject }) {
                     <small>{employee.email || "No email"}</small>
                 </span>
                 <span className="update-project-modal-user-meta">
-                    <small>{getEmployeeRoleNames(employee).join(", ") || "No assigned role"}</small>
                     <small>{employee.status || "Unknown"}</small>
                 </span>
             </label>
@@ -682,23 +671,9 @@ function UpdateProject({ onUpdateProject }) {
                             <Form.Control
                                 value={memberSearch}
                                 onChange={(event) => setMemberSearch(event.target.value)}
-                                placeholder="Search by name, email, role..."
+                                placeholder="Search by name or email..."
                                 className="update-project-modal-filter-input"
                             />
-                        </Form.Group>
-
-                        <Form.Group controlId="add-member-role-filter">
-                            <Form.Label className="project-management-field-label">Role</Form.Label>
-                            <Form.Select
-                                value={memberRoleFilter}
-                                onChange={(event) => setMemberRoleFilter(event.target.value)}
-                                className="update-project-modal-filter-input"
-                            >
-                                <option value="">All roles</option>
-                                {memberRoleOptions.map((role) => (
-                                    <option key={role.id} value={role.id}>{role.roleName}</option>
-                                ))}
-                            </Form.Select>
                         </Form.Group>
 
                         <Form.Group controlId="add-member-status-filter">
@@ -782,7 +757,6 @@ function mergeEmployees(employeeData, projectUsers) {
                 id: user.userId,
                 email: user.email,
                 userName: user.userName,
-                roles: [],
                 status: user.userStatus,
             });
         }

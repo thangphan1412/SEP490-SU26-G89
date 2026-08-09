@@ -8,9 +8,8 @@ import com.fpt.backend.dto.response.project.ProjectDetailResponse;
 import com.fpt.backend.dto.response.project.ProjectEmployeeResponse;
 import com.fpt.backend.dto.response.project.ProjectListResponse;
 import com.fpt.backend.dto.response.project.ProjectPermissionConfigurationResponse;
-import com.fpt.backend.dto.response.project.ProjectRoleResponse;
+import com.fpt.backend.enums.ProjectDeleteResult;
 import com.fpt.backend.enums.UserStatus;
-import com.fpt.backend.service.interfaces.project.ProjectDeleteResult;
 import com.fpt.backend.service.interfaces.project.IProjectService;
 import com.fpt.backend.util.BaseResponse;
 import lombok.RequiredArgsConstructor;
@@ -62,15 +61,6 @@ public class ProjectController {
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.noStore())
                 .body(new BaseResponse<>(employees));
-    }
-
-    @GetMapping("/roles")
-    public ResponseEntity<BaseResponse<List<ProjectRoleResponse>>> getRolesForProjectMemberFilter() {
-        List<ProjectRoleResponse> roles = projectService.getRolesForProjectMemberFilter();
-
-        return ResponseEntity.ok()
-                .cacheControl(CacheControl.noStore())
-                .body(new BaseResponse<>(roles));
     }
 
     @GetMapping("/user-statuses")

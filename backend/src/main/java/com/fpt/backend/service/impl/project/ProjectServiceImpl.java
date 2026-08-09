@@ -12,11 +12,11 @@ import com.fpt.backend.dto.response.project.ProjectEmployeeResponse;
 import com.fpt.backend.dto.response.project.ProjectListItemResponse;
 import com.fpt.backend.dto.response.project.ProjectListResponse;
 import com.fpt.backend.dto.response.project.ProjectPermissionConfigurationResponse;
-import com.fpt.backend.dto.response.project.ProjectRoleResponse;
 import com.fpt.backend.entity.Contracts;
 import com.fpt.backend.entity.Projects;
 import com.fpt.backend.entity.Users;
 import com.fpt.backend.enums.PermissionModule;
+import com.fpt.backend.enums.ProjectDeleteResult;
 import com.fpt.backend.enums.UserStatus;
 import com.fpt.backend.exception.BadHttpException;
 import com.fpt.backend.exception.NotFoundException;
@@ -24,11 +24,7 @@ import com.fpt.backend.repository.project.ProjectCleanupRepository;
 import com.fpt.backend.repository.project.ProjectContractRepository;
 import com.fpt.backend.repository.project.ProjectMemberRepository;
 import com.fpt.backend.repository.project.ProjectRepository;
-import com.fpt.backend.service.interfaces.project.ProjectDeleteResult;
 import com.fpt.backend.service.interfaces.permission.IPermissionAccessService;
-import com.fpt.backend.service.interfaces.project.IProjectMemberService;
-import com.fpt.backend.service.interfaces.project.IProjectPermissionService;
-import com.fpt.backend.service.interfaces.project.IProjectPhaseService;
 import com.fpt.backend.service.interfaces.project.IProjectService;
 import com.fpt.backend.util.CurrentUser;
 import lombok.RequiredArgsConstructor;
@@ -76,9 +72,9 @@ public class ProjectServiceImpl implements IProjectService {
     private final ProjectContractRepository projectContractRepository;
     private final ProjectMemberRepository projectMemberRepository;
     private final ProjectCleanupRepository projectCleanupRepository;
-    private final IProjectPhaseService projectPhaseService;
-    private final IProjectMemberService projectMemberService;
-    private final IProjectPermissionService projectPermissionService;
+    private final ProjectPhaseServiceImpl projectPhaseService;
+    private final ProjectMemberServiceImpl projectMemberService;
+    private final ProjectPermissionServiceImpl projectPermissionService;
     private final IPermissionAccessService permissionAccessService;
     private final CurrentUser currentUserUtil;
 
@@ -113,6 +109,7 @@ public class ProjectServiceImpl implements IProjectService {
         );
     }
 
+    //Lấy chi tiết dự án dựa trên ID dự án và quyền truy cập của người dùng hiện tại.
     @Override
     public ProjectDetailResponse getProjectById(UUID id) {
         Projects project = findProject(id);
@@ -284,11 +281,7 @@ public class ProjectServiceImpl implements IProjectService {
         return projectMemberService.getEmployeesForSelection();
     }
 
-    @Override
-    public List<ProjectRoleResponse> getRolesForProjectMemberFilter() {
-        return projectMemberService.getRolesForFilter();
-    }
-
+    //Lấy enum danh sách trạng thái người dùng để lọc thành viên dự án.
     @Override
     public List<UserStatus> getUserStatusesForProjectMemberFilter() {
         return projectMemberService.getUserStatusesForFilter();
@@ -317,6 +310,7 @@ public class ProjectServiceImpl implements IProjectService {
         );
     }
 
+    //Tìm kiếm dự án dựa trên ID dự án. Nếu không tìm thấy, ném NotFoundException.
     private Projects findProject(UUID id) {
         Optional<Projects> project = projectRepository.findById(id);
 
@@ -492,8 +486,8 @@ public class ProjectServiceImpl implements IProjectService {
     private ProjectListItemResponse toListItem(
             Projects project,
             Users currentUser) {
-        boolean canView = isProjectCreator(project, currentUser)
-                || projectMemberRepository.countByProjectIdAndUserId(
+        boolean canView = projectMemberRepository
+                .countByProjectIdAndUserId(
                         project.getId(),
                         currentUser.getId()
                 ) > 0;
@@ -573,15 +567,6 @@ public class ProjectServiceImpl implements IProjectService {
         }
 
         return responses;
-    }
-
-    private boolean isProjectCreator(
-            Projects project,
-            Users currentUser) {
-        Users projectCreator = project.getProjectCreatedBy();
-
-        return projectCreator != null
-                && projectCreator.getId().equals(currentUser.getId());
     }
 
     private String getUserName(Users currentUser) {

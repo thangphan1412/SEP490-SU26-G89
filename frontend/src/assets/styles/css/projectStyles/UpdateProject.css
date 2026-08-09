@@ -289,7 +289,7 @@
 
 .update-project-modal-filter-grid {
     display: grid;
-    grid-template-columns: minmax(220px, 2fr) minmax(145px, 1fr) minmax(145px, 1fr);
+    grid-template-columns: minmax(220px, 2fr) minmax(145px, 1fr);
     align-items: end;
     gap: 12px;
 }

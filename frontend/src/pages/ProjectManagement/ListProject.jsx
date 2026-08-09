@@ -178,6 +178,7 @@ function ListProject() {
         setPage(0);
     }
 
+    // Kiểm tra quyền truy cập dự án và điều hướng đến trang chi tiết dự án nếu được phép
     function openProjectDetail(project) {
         if (!project?.id) {
             return;

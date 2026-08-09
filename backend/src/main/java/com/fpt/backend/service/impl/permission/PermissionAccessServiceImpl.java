@@ -49,7 +49,7 @@ public class PermissionAccessServiceImpl
         boolean projectMember = projectMemberRepository
                 .countByProjectIdAndUserId(projectId, user.getId()) > 0;
 
-        if (!projectCreator && !projectMember) {
+        if (!projectMember) {
             throw forbidden("You cannot access this project");
         }
 
@@ -139,6 +139,7 @@ public class PermissionAccessServiceImpl
         return false;
     }
 
+    //Danh sách các dự án mà người dùng hiện tại có quyền thực hiện một hành động cụ thể
     @Override
     public List<UUID> getCurrentUserProjectIdsWithAction(
             String actionCode) {

@@ -165,7 +165,6 @@ function ViewProject() {
         const values = [
             user.userName,
             user.email,
-            user.role,
             user.userStatus,
             user.permissionName,
             user.permissionCode,
@@ -198,10 +197,16 @@ function ViewProject() {
     }
 
     const filteredContracts = projectContracts.filter(contractMatchesFilters);
-    const completedProject = isCompletedProjectStatus(
-        project?.projectStatus
-    );
-    const access = project?.currentUserAccess;
+
+    let projectStatus = "";
+    let access = null;
+
+    if (project) {
+        projectStatus = project.projectStatus;
+        access = project.currentUserAccess;
+    }
+
+    const completedProject = isCompletedProjectStatus(projectStatus);
     const canEditProject = hasProjectAction(
         access,
         PROJECT_ACTIONS.EDIT_PROJECT
@@ -391,7 +396,7 @@ function ViewProject() {
                                 <Form.Control
                                     className="view-project-filter-input"
                                     value={userSearch}
-                                    placeholder="Search by name, email, role, or permission..."
+                                    placeholder="Search by name, email, status, or permission..."
                                     onChange={(event) => setUserSearch(event.target.value)}
                                 />
                             </Form.Group>
@@ -409,7 +414,6 @@ function ViewProject() {
                                     <tr>
                                         <th className="view-project-th">Member</th>
                                         <th className="view-project-th">Email</th>
-                                        <th className="view-project-th">Role</th>
                                         <th className="view-project-th">User Status</th>
                                         <th className="view-project-th">Permission</th>
                                         <th className="view-project-th">Join Date</th>
@@ -417,15 +421,14 @@ function ViewProject() {
                                 </thead>
                                 <tbody>
                                     {projectUsers.length === 0 ? (
-                                        <EmptyRow colSpan={6} message="No members are assigned to this project." />
+                                        <EmptyRow colSpan={5} message="No members are assigned to this project." />
                                     ) : filteredUsers.length === 0 ? (
-                                        <EmptyRow colSpan={6} message="No members match your search." />
+                                        <EmptyRow colSpan={5} message="No members match your search." />
                                     ) : (
                                         filteredUsers.map((user) => (
                                             <tr key={user.userId} className="view-project-row">
                                                 <td className="view-project-td view-project-user-name">{showValue(user.userName)}</td>
                                                 <td className="view-project-td">{showValue(user.email)}</td>
-                                                <td className="view-project-td">{showValue(user.role)}</td>
                                                 <td className="view-project-td"><StatusBadge status={user.userStatus} /></td>
                                                 <td className="view-project-td">
                                                     <div className="view-project-permission-cell">

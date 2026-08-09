@@ -2,14 +2,11 @@ package com.fpt.backend.service.impl.project;
 
 import com.fpt.backend.dto.request.project.ProjectMemberRequest;
 import com.fpt.backend.dto.response.project.ProjectEmployeeResponse;
-import com.fpt.backend.dto.response.project.ProjectRoleResponse;
 import com.fpt.backend.dto.response.project.ProjectUserResponse;
 import com.fpt.backend.entity.Permissions;
 import com.fpt.backend.entity.ProjectMember;
 import com.fpt.backend.entity.Projects;
-import com.fpt.backend.entity.Role;
 import com.fpt.backend.entity.UserPermission;
-import com.fpt.backend.entity.UserRole;
 import com.fpt.backend.entity.Users;
 import com.fpt.backend.enums.UserStatus;
 import com.fpt.backend.exception.BadHttpException;
@@ -17,10 +14,7 @@ import com.fpt.backend.exception.NotFoundException;
 import com.fpt.backend.repository.permission.PermissionRepository;
 import com.fpt.backend.repository.permission.UserPermissionRepository;
 import com.fpt.backend.repository.project.ProjectMemberRepository;
-import com.fpt.backend.repository.project.ProjectUserRoleRepository;
-import com.fpt.backend.repository.role.RoleRepository;
 import com.fpt.backend.repository.user.UserRepository;
-import com.fpt.backend.service.interfaces.project.IProjectMemberService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
@@ -39,19 +33,17 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
-public class ProjectMemberServiceImpl implements IProjectMemberService {
+public class ProjectMemberServiceImpl {
     private static final ZoneId DATABASE_TIME_ZONE = ZoneId.of("UTC");
     private static final ZoneId PROJECT_TIME_ZONE =
             ZoneId.of("Asia/Ho_Chi_Minh");
 
     private final ProjectMemberRepository projectMemberRepository;
-    private final ProjectUserRoleRepository projectUserRoleRepository;
     private final UserPermissionRepository userPermissionRepository;
     private final PermissionRepository permissionRepository;
-    private final RoleRepository roleRepository;
     private final UserRepository userRepository;
 
-    @Override
+    //Lấy danh sách nhân viên để chọn khi tạo dự án
     public List<ProjectEmployeeResponse> getEmployeesForSelection() {
         List<Users> users = userRepository.findAll(
                 Sort.by(
@@ -61,24 +53,14 @@ public class ProjectMemberServiceImpl implements IProjectMemberService {
                         "email"
                 )
         );
-        Map<UUID, List<ProjectRoleResponse>> rolesByUserId =
-                findRolesByUserId();
         List<ProjectEmployeeResponse> employees = new ArrayList<>();
 
         for (Users user : users) {
-            List<ProjectRoleResponse> userRoles =
-                    rolesByUserId.get(user.getId());
-
-            if (userRoles == null) {
-                userRoles = List.of();
-            }
-
             employees.add(new ProjectEmployeeResponse(
                     user.getId(),
                     user.getEmail(),
                     user.getFirstName(),
                     user.getLastName(),
-                    userRoles,
                     user.getStatus()
             ));
         }
@@ -86,27 +68,11 @@ public class ProjectMemberServiceImpl implements IProjectMemberService {
         return employees;
     }
 
-    @Override
-    public List<ProjectRoleResponse> getRolesForFilter() {
-        List<Role> roles = roleRepository.findAllForSelection();
-        List<ProjectRoleResponse> responses = new ArrayList<>();
-
-        for (Role role : roles) {
-            responses.add(new ProjectRoleResponse(
-                    role.getId(),
-                    role.getRoleName()
-            ));
-        }
-
-        return responses;
-    }
-
-    @Override
+    //Lấy danh sách trạng thái người dùng để lọc khi xem danh sách thành viên dự án
     public List<UserStatus> getUserStatusesForFilter() {
         return List.of(UserStatus.values());
     }
 
-    @Override
     public void syncMembers(
             Projects project,
             List<ProjectMemberRequest> memberRequests,
@@ -154,7 +120,6 @@ public class ProjectMemberServiceImpl implements IProjectMemberService {
         }
     }
 
-    @Override
     public List<ProjectUserResponse> getProjectUsers(UUID projectId) {
         Map<UUID, ProjectMember> memberByUserId = new LinkedHashMap<>();
         Map<UUID, Users> userById = new LinkedHashMap<>();
@@ -191,7 +156,6 @@ public class ProjectMemberServiceImpl implements IProjectMemberService {
         return users;
     }
 
-    @Override
     public void deleteProjectData(UUID projectId) {
         projectMemberRepository.deleteByProjectId(projectId);
     }
@@ -239,45 +203,6 @@ public class ProjectMemberServiceImpl implements IProjectMemberService {
         }
 
         return existingMemberByUserId;
-    }
-
-    private Map<UUID, List<ProjectRoleResponse>> findRolesByUserId() {
-        List<UserRole> userRoles =
-                projectUserRoleRepository.findAllWithUserAndRole();
-        Map<UUID, List<ProjectRoleResponse>> rolesByUserId =
-                new LinkedHashMap<>();
-
-        for (UserRole userRole : userRoles) {
-            UUID userId = userRole.getUser().getId();
-            Role role = userRole.getRole();
-            List<ProjectRoleResponse> roles = rolesByUserId.get(userId);
-
-            if (roles == null) {
-                roles = new ArrayList<>();
-                rolesByUserId.put(userId, roles);
-            }
-
-            if (!containsRole(roles, role.getId())) {
-                roles.add(new ProjectRoleResponse(
-                        role.getId(),
-                        role.getRoleName()
-                ));
-            }
-        }
-
-        return rolesByUserId;
-    }
-
-    private boolean containsRole(
-            List<ProjectRoleResponse> roles,
-            UUID roleId) {
-        for (ProjectRoleResponse existingRole : roles) {
-            if (existingRole.id().equals(roleId)) {
-                return true;
-            }
-        }
-
-        return false;
     }
 
     private Users findUser(UUID userId) {
@@ -331,7 +256,6 @@ public class ProjectMemberServiceImpl implements IProjectMemberService {
                 user.getId(),
                 user.getEmail(),
                 getUserName(user),
-                user.getRole(),
                 user.getStatus(),
                 joinDate,
                 permissionId,

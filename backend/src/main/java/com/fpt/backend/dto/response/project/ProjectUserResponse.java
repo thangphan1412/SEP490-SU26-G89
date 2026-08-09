@@ -9,7 +9,6 @@ public record ProjectUserResponse(
         UUID userId,
         String email,
         String userName,
-        String role,
         UserStatus userStatus,
         LocalDate joinDate,
         UUID permissionId,
