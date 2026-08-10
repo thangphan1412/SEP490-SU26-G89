@@ -21,7 +21,7 @@ import java.util.Set;
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
-public class PermissionActionServiceImpl {
+public class PermissionActionService {
     private final PermissionActionRepository permissionActionRepository;
 
     public void configurePermission(

@@ -51,7 +51,7 @@ public class PhaseServiceImpl implements IPhaseService {
     private final PhaseDeliverableRepository phaseDeliverableRepository;
     private final PhaseContractRepository phaseContractRepository;
     private final ProjectRepository projectRepository;
-    private final PhaseProgressServiceImpl phaseProgressService;
+    private final PhaseProgressService phaseProgressService;
     private final IPermissionAccessService permissionAccessService;
 
     @Override
@@ -60,7 +60,7 @@ public class PhaseServiceImpl implements IPhaseService {
             throw new NotFoundException("Project not found");
         }
 
-        permissionAccessService.getCurrentUserAccess(projectId);
+        permissionAccessService.requireProjectAccess(projectId);
 
         List<Timeline> phases = phaseRepository.findByProjectId(projectId);
         List<PhaseListItemResponse> responses = new ArrayList<>();

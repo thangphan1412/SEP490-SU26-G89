@@ -45,16 +45,13 @@ function UpdatePermissionPage() {
   const [saving, setSaving] = useState(false);
 
   useEffect(function () {
-    let isActive = true;
     const requestController = new AbortController();
 
     async function loadPage() {
       if (!permissionId) {
-        if (isActive) {
-          setError("Permission id is missing. Please choose a permission from the list.");
-          setLoadFailed(true);
-          setLoading(false);
-        }
+        setError("Permission id is missing. Please choose a permission from the list.");
+        setLoadFailed(true);
+        setLoading(false);
         return;
       }
 
@@ -68,24 +65,26 @@ function UpdatePermissionPage() {
           listPermissionActions(requestController.signal),
         ]);
 
-        if (isActive) {
-          setPermission({
-            permissionName: permissionPayload?.permissionName || "",
-            permissionCode: permissionPayload?.permissionCode || "",
-            permissionDescription: permissionPayload?.permissionDescription || "",
-            projectId: permissionPayload?.projectId ? String(permissionPayload.projectId) : "",
-            status: permissionPayload?.status ?? true,
-            allowedActions: Array.isArray(permissionPayload?.allowedActions)
-              ? permissionPayload.allowedActions
-              : [],
-            workScope: permissionPayload?.workScope === "OWN" ? "OWN" : "FULL",
-            createdAt: permissionPayload?.createdAt || null,
-          });
-          setProjects(Array.isArray(projectPayload) ? projectPayload : []);
-          setActionOptions(Array.isArray(actionPayload) ? actionPayload : []);
+        if (requestController.signal.aborted) {
+          return;
         }
+
+        setPermission({
+          permissionName: permissionPayload?.permissionName || "",
+          permissionCode: permissionPayload?.permissionCode || "",
+          permissionDescription: permissionPayload?.permissionDescription || "",
+          projectId: permissionPayload?.projectId ? String(permissionPayload.projectId) : "",
+          status: permissionPayload?.status ?? true,
+          allowedActions: Array.isArray(permissionPayload?.allowedActions)
+            ? permissionPayload.allowedActions
+            : [],
+          workScope: permissionPayload?.workScope === "OWN" ? "OWN" : "FULL",
+          createdAt: permissionPayload?.createdAt || null,
+        });
+        setProjects(Array.isArray(projectPayload) ? projectPayload : []);
+        setActionOptions(Array.isArray(actionPayload) ? actionPayload : []);
       } catch (requestError) {
-        if (!isActive) {
+        if (requestController.signal.aborted) {
           return;
         }
 
@@ -96,7 +95,7 @@ function UpdatePermissionPage() {
         ));
         setLoadFailed(true);
       } finally {
-        if (isActive) {
+        if (!requestController.signal.aborted) {
           setLoading(false);
         }
       }
@@ -105,7 +104,6 @@ function UpdatePermissionPage() {
     loadPage();
 
     return function () {
-      isActive = false;
       requestController.abort();
     };
   }, [permissionId]);

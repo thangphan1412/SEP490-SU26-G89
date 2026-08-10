@@ -118,7 +118,6 @@ function PermissionListContent() {
 
   //Load danh sách các dự án để hiển thị trong bộ lọc
   useEffect(function () {
-    let isActive = true;
     const requestController = new AbortController();
 
     async function loadFilterOptions() {
@@ -127,27 +126,29 @@ function PermissionListContent() {
           requestController.signal
         );
 
-        if (isActive) {
-          setProjects(Array.isArray(projectPayload) ? projectPayload : []);
+        if (requestController.signal.aborted) {
+          return;
         }
+
+        setProjects(Array.isArray(projectPayload) ? projectPayload : []);
       } catch (requestError) {
-        if (isActive) {
-          console.error("Unable to load permission filters:", requestError);
+        if (requestController.signal.aborted) {
+          return;
         }
+
+        console.error("Unable to load permission filters:", requestError);
       }
     }
 
     loadFilterOptions();
 
     return function () {
-      isActive = false;
       requestController.abort();
     };
   }, []);
 
   //Load danh sách quyền dựa trên các bộ lọc và phân trang
   useEffect(function () {
-    let isActive = true;
     const requestController = new AbortController();
 
     async function loadPermissions() {
@@ -168,7 +169,7 @@ function PermissionListContent() {
         const items = Array.isArray(payload?.items) ? payload.items : [];
         const responseTotalPages = Number(payload?.totalPages) || 0;
 
-        if (!isActive) {
+        if (requestController.signal.aborted) {
           return;
         }
 
@@ -179,7 +180,7 @@ function PermissionListContent() {
           setPage(responseTotalPages - 1);
         }
       } catch (requestError) {
-        if (!isActive) {
+        if (requestController.signal.aborted) {
           return;
         }
 
@@ -191,7 +192,7 @@ function PermissionListContent() {
           "Unable to load permissions. Please try again later."
         ));
       } finally {
-        if (isActive) {
+        if (!requestController.signal.aborted) {
           setLoading(false);
         }
       }
@@ -200,7 +201,6 @@ function PermissionListContent() {
     loadPermissions();
 
     return function () {
-      isActive = false;
       requestController.abort();
     };
   }, [deleteVersion, page, projectId, search, sortBy, sortDirection, status]);

@@ -8,7 +8,6 @@ import com.fpt.backend.entity.ProjectMember;
 import com.fpt.backend.entity.Projects;
 import com.fpt.backend.entity.UserPermission;
 import com.fpt.backend.entity.Users;
-import com.fpt.backend.enums.UserStatus;
 import com.fpt.backend.exception.BadHttpException;
 import com.fpt.backend.exception.NotFoundException;
 import com.fpt.backend.repository.permission.PermissionRepository;
@@ -33,7 +32,7 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
-public class ProjectMemberServiceImpl {
+public class ProjectMemberService {
     private static final ZoneId DATABASE_TIME_ZONE = ZoneId.of("UTC");
     private static final ZoneId PROJECT_TIME_ZONE =
             ZoneId.of("Asia/Ho_Chi_Minh");
@@ -66,11 +65,6 @@ public class ProjectMemberServiceImpl {
         }
 
         return employees;
-    }
-
-    //Lấy danh sách trạng thái người dùng để lọc khi xem danh sách thành viên dự án
-    public List<UserStatus> getUserStatusesForFilter() {
-        return List.of(UserStatus.values());
     }
 
     public void syncMembers(
@@ -121,20 +115,13 @@ public class ProjectMemberServiceImpl {
     }
 
     public List<ProjectUserResponse> getProjectUsers(UUID projectId) {
-        Map<UUID, ProjectMember> memberByUserId = new LinkedHashMap<>();
-        Map<UUID, Users> userById = new LinkedHashMap<>();
+        List<ProjectMember> projectMembers =
+                projectMemberRepository.findByProjectId(projectId);
         Map<UUID, Permissions> permissionByUserId = new LinkedHashMap<>();
-
-        for (ProjectMember member : projectMemberRepository.findByProjectId(projectId)) {
-            Users user = member.getUser();
-            memberByUserId.putIfAbsent(user.getId(), member);
-            userById.putIfAbsent(user.getId(), user);
-        }
 
         for (UserPermission userPermission
                 : userPermissionRepository.findByProjectId(projectId)) {
             Users user = userPermission.getUser();
-            userById.putIfAbsent(user.getId(), user);
             permissionByUserId.putIfAbsent(
                     user.getId(),
                     userPermission.getPermission()
@@ -143,8 +130,8 @@ public class ProjectMemberServiceImpl {
 
         List<ProjectUserResponse> users = new ArrayList<>();
 
-        for (Users user : userById.values()) {
-            ProjectMember member = memberByUserId.get(user.getId());
+        for (ProjectMember member : projectMembers) {
+            Users user = member.getUser();
             Permissions permission = permissionByUserId.get(user.getId());
             users.add(toProjectUser(user, member, permission));
         }
@@ -240,11 +227,7 @@ public class ProjectMemberServiceImpl {
         UUID permissionId = null;
         String permissionName = "Not assigned";
         String permissionCode = null;
-        LocalDate joinDate = null;
-
-        if (member != null) {
-            joinDate = toProjectJoinDate(member.getJoinDate());
-        }
+        LocalDate joinDate = toProjectJoinDate(member.getJoinDate());
 
         if (permission != null) {
             permissionId = permission.getId();
@@ -331,4 +314,5 @@ public class ProjectMemberServiceImpl {
     private String normalize(String value) {
         return value == null ? "" : value.trim();
     }
+
 }
