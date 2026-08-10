@@ -12,6 +12,9 @@ import com.fpt.backend.dto.response.project.ProjectEmployeeResponse;
 import com.fpt.backend.dto.response.project.ProjectListItemResponse;
 import com.fpt.backend.dto.response.project.ProjectListResponse;
 import com.fpt.backend.dto.response.project.ProjectPermissionConfigurationResponse;
+import com.fpt.backend.dto.response.project.ProjectPermissionOptionResponse;
+import com.fpt.backend.dto.response.project.ProjectPhaseResponse;
+import com.fpt.backend.dto.response.project.ProjectUserResponse;
 import com.fpt.backend.entity.Contracts;
 import com.fpt.backend.entity.Projects;
 import com.fpt.backend.entity.Users;
@@ -72,9 +75,9 @@ public class ProjectServiceImpl implements IProjectService {
     private final ProjectContractRepository projectContractRepository;
     private final ProjectMemberRepository projectMemberRepository;
     private final ProjectCleanupRepository projectCleanupRepository;
-    private final ProjectPhaseServiceImpl projectPhaseService;
-    private final ProjectMemberServiceImpl projectMemberService;
-    private final ProjectPermissionServiceImpl projectPermissionService;
+    private final ProjectPhaseService projectPhaseService;
+    private final ProjectMemberService projectMemberService;
+    private final ProjectPermissionService projectPermissionService;
     private final IPermissionAccessService permissionAccessService;
     private final CurrentUser currentUserUtil;
 
@@ -284,7 +287,7 @@ public class ProjectServiceImpl implements IProjectService {
     //Lấy enum danh sách trạng thái người dùng để lọc thành viên dự án.
     @Override
     public List<UserStatus> getUserStatusesForProjectMemberFilter() {
-        return projectMemberService.getUserStatusesForFilter();
+        return List.of(UserStatus.values());
     }
 
     @Override
@@ -518,6 +521,20 @@ public class ProjectServiceImpl implements IProjectService {
                 access,
                 VIEW_CONTRACTS
         );
+        List<ProjectPhaseResponse> phases =
+                projectPhaseService.getProjectPhases(projectId);
+        List<ProjectUserResponse> users = List.of();
+        List<ProjectPermissionOptionResponse> permissionOptions = List.of();
+        List<ProjectContractResponse> contracts = List.of();
+
+        if (canManageMembers) {
+            users = projectMemberService.getProjectUsers(projectId);
+            permissionOptions = projectPermissionService.getOptions(projectId);
+        }
+
+        if (canViewContracts) {
+            contracts = toProjectContracts(projectId);
+        }
 
         return new ProjectDetailResponse(
                 projectId,
@@ -529,16 +546,10 @@ public class ProjectServiceImpl implements IProjectService {
                 project.getProjectEndDate(),
                 getUserName(project.getProjectCreatedBy()),
                 project.getProjectCreatedAt(),
-                projectPhaseService.getProjectPhases(projectId),
-                canManageMembers
-                        ? projectMemberService.getProjectUsers(projectId)
-                        : List.of(),
-                canManageMembers
-                        ? projectPermissionService.getOptions(projectId)
-                        : List.of(),
-                canViewContracts
-                        ? toProjectContracts(projectId)
-                        : List.of(),
+                phases,
+                users,
+                permissionOptions,
+                contracts,
                 access
         );
     }

@@ -17,7 +17,6 @@ function PermissionConfigureModal({ show, projectId, projectName, onHide }) {
       return undefined;
     }
 
-    let isActive = true;
     const requestController = new AbortController();
 
     async function loadPermissions() {
@@ -35,11 +34,13 @@ function PermissionConfigureModal({ show, projectId, projectName, onHide }) {
           requestController.signal
         );
 
-        if (isActive) {
-          setPermissions(Array.isArray(payload) ? payload : []);
+        if (requestController.signal.aborted) {
+          return;
         }
+
+        setPermissions(Array.isArray(payload) ? payload : []);
       } catch (requestError) {
-        if (!isActive) {
+        if (requestController.signal.aborted) {
           return;
         }
 
@@ -47,7 +48,7 @@ function PermissionConfigureModal({ show, projectId, projectName, onHide }) {
         setPermissions([]);
         setError(getErrorMessage(requestError));
       } finally {
-        if (isActive) {
+        if (!requestController.signal.aborted) {
           setLoading(false);
         }
       }
@@ -56,7 +57,6 @@ function PermissionConfigureModal({ show, projectId, projectName, onHide }) {
     loadPermissions();
 
     return function () {
-      isActive = false;
       requestController.abort();
     };
   }, [projectId, show]);

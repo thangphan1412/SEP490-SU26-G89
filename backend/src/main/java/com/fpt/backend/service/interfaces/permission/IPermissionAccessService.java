@@ -8,6 +8,8 @@ import java.util.UUID;
 public interface IPermissionAccessService {
     ProjectAccessResponse getCurrentUserAccess(UUID projectId);
 
+    void requireProjectAccess(UUID projectId);
+
     void requireAction(UUID projectId, String actionCode);
 
     boolean hasAction(

@@ -90,7 +90,6 @@ function ListProject() {
     }, [searchInput]);
 
     useEffect(function () {
-        let isActive = true;
         const requestController = new AbortController();
 
         async function loadProjects() {
@@ -113,7 +112,7 @@ function ListProject() {
                 const totalProjectCount = payload.totalElements;
                 const totalPageCount = payload.totalPages;
 
-                if (!isActive) {
+                if (requestController.signal.aborted) {
                     return;
                 }
 
@@ -125,7 +124,7 @@ function ListProject() {
                     setPage(totalPageCount - 1);
                 }
             } catch (error) {
-                if (!isActive) {
+                if (requestController.signal.aborted) {
                     return;
                 }
 
@@ -139,7 +138,7 @@ function ListProject() {
                     "Unable to load projects. Please try again later."
                 ));
             } finally {
-                if (isActive) {
+                if (!requestController.signal.aborted) {
                     setLoading(false);
                 }
             }
@@ -148,7 +147,6 @@ function ListProject() {
         loadProjects();
 
         return function () {
-            isActive = false;
             requestController.abort();
         };
     }, [
@@ -192,6 +190,7 @@ function ListProject() {
         navigate(`/project-management/view?id=${project.id}`);
     }
 
+    //Chuyển hướng đến trang tạo dự án khi nhấn nút "Create Project"
     const pageAction = (
         <PrimaryButton onClick={() => navigate("/project-management/create")}>
             <Icon name="plus" size={19} color="#fff" />

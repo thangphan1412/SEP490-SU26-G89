@@ -52,7 +52,7 @@ public class PermissionServiceImpl implements IPermissionService {
 
     private final PermissionRepository permissionRepository;
     private final ProjectRepository projectRepository;
-    private final PermissionActionServiceImpl permissionActionService;
+    private final PermissionActionService permissionActionService;
     private final IPermissionAccessService permissionAccessService;
     private final CurrentUser currentUser;
 

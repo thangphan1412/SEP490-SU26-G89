@@ -10,7 +10,7 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
-public class PhaseProgressServiceImpl {
+public class PhaseProgressService {
     private final PhaseTaskRepository phaseTaskRepository;
 
     public double calculateProgress(UUID phaseId) {

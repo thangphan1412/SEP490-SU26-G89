@@ -50,7 +50,6 @@ function CreatePermissionPage() {
 
   // Lấy danh sách các dự án và hành động được phép khi component được mount
   useEffect(function () {
-    let isActive = true;
     const requestController = new AbortController();
 
     async function loadOptions() {
@@ -60,19 +59,21 @@ function CreatePermissionPage() {
           listPermissionActions(requestController.signal),
         ]);
 
-        if (isActive) {
-          setProjects(Array.isArray(projectPayload) ? projectPayload : []);
-          setActionOptions(Array.isArray(actionPayload) ? actionPayload : []);
+        if (requestController.signal.aborted) {
+          return;
         }
+
+        setProjects(Array.isArray(projectPayload) ? projectPayload : []);
+        setActionOptions(Array.isArray(actionPayload) ? actionPayload : []);
       } catch (requestError) {
-        if (!isActive) {
+        if (requestController.signal.aborted) {
           return;
         }
 
         console.error("Unable to load permission options:", requestError);
         setError("Unable to load permission options. Please try again later.");
       } finally {
-        if (isActive) {
+        if (!requestController.signal.aborted) {
           setLoadingOptions(false);
         }
       }
@@ -81,7 +82,6 @@ function CreatePermissionPage() {
     loadOptions();
 
     return function () {
-      isActive = false;
       requestController.abort();
     };
   }, []);

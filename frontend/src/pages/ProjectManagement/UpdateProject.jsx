@@ -48,7 +48,6 @@ function UpdateProject({ onUpdateProject }) {
     const [saving, setSaving] = useState(false);
 
     useEffect(function () {
-        let isActive = true;
         const requestController = new AbortController();
 
         async function loadPageData() {
@@ -63,6 +62,11 @@ function UpdateProject({ onUpdateProject }) {
                     projectId,
                     requestController.signal
                 );
+
+                if (requestController.signal.aborted) {
+                    return;
+                }
+
                 const projectAccess = projectData?.currentUserAccess;
                 const canManageMembers = hasProjectAction(
                     projectAccess,
@@ -93,7 +97,7 @@ function UpdateProject({ onUpdateProject }) {
                     );
                 }
 
-                if (!isActive) {
+                if (requestController.signal.aborted) {
                     return;
                 }
 
@@ -128,7 +132,7 @@ function UpdateProject({ onUpdateProject }) {
                 setPermissionOptions(projectPermissions);
                 setLoadError("");
             } catch (error) {
-                if (!isActive) {
+                if (requestController.signal.aborted) {
                     return;
                 }
 
@@ -137,7 +141,7 @@ function UpdateProject({ onUpdateProject }) {
                 setAccess(null);
                 setLoadError("Unable to load this project. Please try again later.");
             } finally {
-                if (isActive) {
+                if (!requestController.signal.aborted) {
                     setLoading(false);
                 }
             }
@@ -146,7 +150,6 @@ function UpdateProject({ onUpdateProject }) {
         loadPageData();
 
         return function () {
-            isActive = false;
             requestController.abort();
         };
     }, [projectId]);

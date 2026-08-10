@@ -68,27 +68,21 @@ function ViewProject() {
     );
 
     useEffect(function () {
-        let isActive = true;
         const requestController = new AbortController();
 
         async function loadProject() {
-            if (!projectId) {
-                setProject(null);
-                setError("Project id is missing. Please choose a project from the list.");
-                setLoading(false);
-                return;
-            }
-
             try {
                 setLoading(true);
                 setError("");
                 const payload = await viewProject(projectId, requestController.signal);
 
-                if (isActive) {
-                    setProject(payload);
+                if (requestController.signal.aborted) {
+                    return;
                 }
+
+                setProject(payload);
             } catch (apiError) {
-                if (!isActive) {
+                if (requestController.signal.aborted) {
                     return;
                 }
 
@@ -101,7 +95,7 @@ function ViewProject() {
                     setError("Unable to load this project. Please try again later.");
                 }
             } finally {
-                if (isActive) {
+                if (!requestController.signal.aborted) {
                     setLoading(false);
                 }
             }
@@ -110,7 +104,6 @@ function ViewProject() {
         loadProject();
 
         return function () {
-            isActive = false;
             requestController.abort();
         };
     }, [projectId]);

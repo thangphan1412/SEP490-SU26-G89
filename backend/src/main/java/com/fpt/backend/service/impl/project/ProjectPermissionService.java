@@ -8,7 +8,7 @@ import com.fpt.backend.entity.Projects;
 import com.fpt.backend.exception.BadHttpException;
 import com.fpt.backend.exception.NotFoundException;
 import com.fpt.backend.repository.permission.PermissionRepository;
-import com.fpt.backend.service.impl.permission.PermissionActionServiceImpl;
+import com.fpt.backend.service.impl.permission.PermissionActionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -21,12 +21,12 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
-public class ProjectPermissionServiceImpl {
+public class ProjectPermissionService {
     private static final String FULL_ACCESS_PERMISSION_NAME =
             "Project Full Access";
     private static final String FULL_ACCESS_PERMISSION_CODE_PREFIX = "PFA_";
     private final PermissionRepository permissionRepository;
-    private final PermissionActionServiceImpl permissionActionService;
+    private final PermissionActionService permissionActionService;
 
     public UUID createProjectFullAccessPermission(Projects project) {
         if (project == null || project.getId() == null) {
@@ -70,7 +70,11 @@ public class ProjectPermissionServiceImpl {
             Projects project,
             UUID permissionId,
             ProjectPermissionConfigurationRequest request) {
-        validateConfigurationRequest(request);
+        if (request == null) {
+            throw new BadHttpException(
+                    "Permission configuration is required"
+            );
+        }
 
         Optional<Permissions> optionalPermission =
                 permissionRepository.findByIdAndProjectId(
@@ -125,15 +129,6 @@ public class ProjectPermissionServiceImpl {
         permissionRepository.flush();
     }
 
-    private void validateConfigurationRequest(
-            ProjectPermissionConfigurationRequest request) {
-        if (request == null) {
-            throw new BadHttpException(
-                    "Permission configuration is required"
-            );
-        }
-    }
-
     private ProjectPermissionConfigurationResponse toConfiguration(
             Permissions permission) {
         return new ProjectPermissionConfigurationResponse(
@@ -166,4 +161,5 @@ public class ProjectPermissionServiceImpl {
     private String normalize(String value) {
         return value == null ? "" : value.trim();
     }
+
 }
