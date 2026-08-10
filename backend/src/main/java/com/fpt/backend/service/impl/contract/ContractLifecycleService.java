@@ -1,4 +1,4 @@
-package com.fpt.backend.service.impl;
+package com.fpt.backend.service.impl.contract;
 
 import com.fpt.backend.entity.ContractStatusHistory;
 import com.fpt.backend.entity.Contracts;

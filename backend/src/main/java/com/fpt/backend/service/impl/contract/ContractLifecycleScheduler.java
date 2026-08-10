@@ -1,4 +1,4 @@
-package com.fpt.backend.service.impl;
+package com.fpt.backend.service.impl.contract;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

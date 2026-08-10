@@ -1,4 +1,4 @@
-package com.fpt.backend.service.impl;
+package com.fpt.backend.service.impl.contract;
 
 import com.fpt.backend.dto.request.contract.ContractListRequest;
 import com.fpt.backend.dto.request.contract.ContractRequest;
@@ -31,7 +31,7 @@ import com.fpt.backend.repository.contract.ContractTemplateRepository;
 import com.fpt.backend.repository.contract.ContractTemplateVersionRepository;
 import com.fpt.backend.repository.contract.ContractTypeRepository;
 import com.fpt.backend.repository.project.ProjectRepository;
-import com.fpt.backend.service.interfaces.ContractService;
+import com.fpt.backend.service.interfaces.contract.ContractService;
 import com.fpt.backend.service.interfaces.permission.IPermissionAccessService;
 import com.fpt.backend.util.CurrentUser;
 import lombok.RequiredArgsConstructor;

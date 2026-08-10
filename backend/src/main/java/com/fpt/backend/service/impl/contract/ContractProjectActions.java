@@ -1,4 +1,4 @@
-package com.fpt.backend.service.impl;
+package com.fpt.backend.service.impl.contract;
 
 /**
  * Permission action codes owned by the Contract Management module.

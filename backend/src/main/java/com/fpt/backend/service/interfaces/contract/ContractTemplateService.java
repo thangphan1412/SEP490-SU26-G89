@@ -1,4 +1,4 @@
-package com.fpt.backend.service.interfaces;
+package com.fpt.backend.service.interfaces.contract;
 
 import com.fpt.backend.dto.request.contract.ContractTemplateRequest;
 import com.fpt.backend.dto.request.contract.ContractTemplateVersionRequest;

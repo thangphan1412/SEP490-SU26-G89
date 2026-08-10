@@ -1,4 +1,4 @@
-package com.fpt.backend.service.impl;
+package com.fpt.backend.service.impl.contract;
 
 import com.fpt.backend.dto.request.contract.ContractPositionRequest;
 import com.fpt.backend.dto.request.contract.ContractTemplateLayout;

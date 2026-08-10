@@ -1,4 +1,4 @@
-package com.fpt.backend.service.impl;
+package com.fpt.backend.service.impl.contract;
 
 import com.fpt.backend.dto.request.contract.ContractTypeRequest;
 import com.fpt.backend.dto.response.contract.ContractTypeResponse;
@@ -8,7 +8,7 @@ import com.fpt.backend.exception.NotFoundException;
 import com.fpt.backend.repository.contract.ContractRepository;
 import com.fpt.backend.repository.contract.ContractTemplateRepository;
 import com.fpt.backend.repository.contract.ContractTypeRepository;
-import com.fpt.backend.service.interfaces.ContractTypeService;
+import com.fpt.backend.service.interfaces.contract.ContractTypeService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

@@ -1,4 +1,4 @@
-package com.fpt.backend.service.impl;
+package com.fpt.backend.service.impl.contract;
 
 import com.fpt.backend.dto.request.contract.ContractTemplateRequest;
 import com.fpt.backend.dto.request.contract.ContractTemplateLayout;
@@ -14,7 +14,7 @@ import com.fpt.backend.repository.contract.ContractRepository;
 import com.fpt.backend.repository.contract.ContractTemplateRepository;
 import com.fpt.backend.repository.contract.ContractTemplateVersionRepository;
 import com.fpt.backend.repository.contract.ContractTypeRepository;
-import com.fpt.backend.service.interfaces.ContractTemplateService;
+import com.fpt.backend.service.interfaces.contract.ContractTemplateService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
