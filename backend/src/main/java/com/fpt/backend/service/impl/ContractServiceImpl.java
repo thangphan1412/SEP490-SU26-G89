@@ -47,6 +47,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.Period;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -273,7 +274,7 @@ public class ContractServiceImpl implements ContractService {
         Boolean signerAgeVerified = null;
         if (action == ContractAction.SIGN_DIRECTOR
                 || action == ContractAction.SIGN_PARTNER) {
-            signerAgeVerified = validateSignerAge(request.signerDateOfBirth());
+            signerAgeVerified = validateSignerAge(actor.getDob());
 
             if (!signerAgeVerified) {
                 String ageFailureReason =
@@ -322,22 +323,11 @@ public class ContractServiceImpl implements ContractService {
                 ContractProjectActions.EXPORT,
                 actor
         );
-        ContractStatus status = readStatus(contract);
-        if (status != ContractStatus.ACTIVE && status != ContractStatus.ENDED) {
-            throw new BadHttpException(
-                    "A completed PDF is available only after both parties sign"
-            );
-        }
 
         List<ContractStatusHistory> history = loadHistory(contract.getId());
         Map<String, String> attributeValues = readAttributeValues(contract.getId());
         ContractDocumentRenderer.RenderedDocument renderedDocument =
                 documentRenderer.render(contract, history, attributeValues);
-        if (!renderedDocument.fullySigned()) {
-            throw new BadHttpException(
-                    "Both Director and Partner signatures are required before PDF export"
-            );
-        }
 
         return new ContractPdfResponse(
                 createPdfFileName(contract),
@@ -653,10 +643,19 @@ public class ContractServiceImpl implements ContractService {
         };
     }
 
-    private Boolean validateSignerAge(LocalDate dateOfBirth) {
-        if (dateOfBirth == null) {
+    private Boolean validateSignerAge(String storedDateOfBirth) {
+        if (storedDateOfBirth == null || storedDateOfBirth.isBlank()) {
             throw new BadHttpException(
-                    "Signer date of birth is required before signing"
+                    "Your account date of birth is required before signing"
+            );
+        }
+
+        LocalDate dateOfBirth;
+        try {
+            dateOfBirth = LocalDate.parse(storedDateOfBirth.trim());
+        } catch (DateTimeParseException exception) {
+            throw new BadHttpException(
+                    "Your account date of birth must use YYYY-MM-DD format before signing"
             );
         }
 
@@ -1039,9 +1038,7 @@ public class ContractServiceImpl implements ContractService {
         Map<String, String> attributeValues = readAttributeValues(contract.getId());
         ContractDocumentRenderer.RenderedDocument renderedDocument =
                 documentRenderer.render(contract, historyEntities, attributeValues);
-        boolean pdfAvailable = (status == ContractStatus.ACTIVE
-                || status == ContractStatus.ENDED)
-                && renderedDocument.fullySigned();
+        boolean pdfAvailable = contract.getId() != null;
         Users user = currentUser.getCurrentUser();
         ProjectAccessResponse projectAccess = permissionAccessService
                 .getCurrentUserAccess(project.getId());
