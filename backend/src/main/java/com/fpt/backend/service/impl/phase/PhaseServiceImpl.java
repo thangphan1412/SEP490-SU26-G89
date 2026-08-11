@@ -28,10 +28,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -78,7 +81,8 @@ public class PhaseServiceImpl implements IPhaseService {
         phaseStatusService.refreshProjectStatuses(project.getId());
         phase = findPhase(phaseId);
 
-        if (phase.getStatus() != PhaseStatus.IN_PROGRESS) {
+        if (phase.getStatus() != PhaseStatus.IN_PROGRESS
+                && !access.canViewAllProjectData()) {
             throw new BadHttpException(
                     "Only an IN_PROGRESS phase can be accessed"
             );
@@ -177,27 +181,49 @@ public class PhaseServiceImpl implements IPhaseService {
     private List<PhaseContractResponse> getVisibleContracts(
             UUID phaseId,
             ProjectAccessResponse access) {
-        List<PhaseContractResponse> responses = new ArrayList<>();
-
         if (!permissionAccessService.hasAction(access, "VIEW_CONTRACTS")) {
-            return responses;
+            return new ArrayList<>();
         }
 
+        Map<UUID, PhaseContractResponse> contractsById = new LinkedHashMap<>();
+
+        // Keep contracts that use the older timeline_contract relationship.
         for (TimelineContract phaseContract
                 : phaseContractRepository.findByPhaseId(phaseId)) {
             Contracts contract = phaseContract.getContract();
-            responses.add(new PhaseContractResponse(
+            contractsById.put(
                     contract.getId(),
-                    contract.getContractNumber(),
-                    contract.getContractTitle(),
-                    contract.getContractStatus(),
-                    contract.getEffectiveDate(),
-                    contract.getExpirationDate(),
-                    phaseContract.getLinkedAt()
-            ));
+                    toContractResponse(contract, phaseContract.getLinkedAt())
+            );
         }
 
-        return responses;
+        // New contracts are linked to a phase through their selected task.
+        for (Contracts contract
+                : phaseContractRepository.findByTaskPhaseId(phaseId)) {
+            contractsById.putIfAbsent(
+                    contract.getId(),
+                    toContractResponse(
+                            contract,
+                            contract.getContractCreatedAt()
+                    )
+            );
+        }
+
+        return new ArrayList<>(contractsById.values());
+    }
+
+    private PhaseContractResponse toContractResponse(
+            Contracts contract,
+            LocalDateTime linkedAt) {
+        return new PhaseContractResponse(
+                contract.getId(),
+                contract.getContractNumber(),
+                contract.getContractTitle(),
+                contract.getContractStatus(),
+                contract.getEffectiveDate(),
+                contract.getExpirationDate(),
+                linkedAt
+        );
     }
 
     private PhaseTaskResponse toTaskResponse(TimelineTask task) {

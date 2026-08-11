@@ -1,5 +1,6 @@
 package com.fpt.backend.repository.task;
 
+import com.fpt.backend.entity.Contracts;
 import com.fpt.backend.entity.TimelineTask;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -43,4 +44,12 @@ public interface TaskRepository extends JpaRepository<TimelineTask, UUID> {
             WHERE task.id = :taskId
             """)
     Optional<TimelineTask> findDetailById(@Param("taskId") UUID taskId);
+
+    @Query("""
+            SELECT contract
+            FROM Contracts contract
+            WHERE contract.timelineTask.id = :taskId
+            ORDER BY contract.contractCreatedAt, contract.id
+            """)
+    List<Contracts> findContractsByTaskId(@Param("taskId") UUID taskId);
 }

@@ -76,20 +76,20 @@ function ViewPhase() {
   const contracts = Array.isArray(phase?.contracts) ? phase.contracts : [];
   const progress = normalizeProgress(phase?.progress);
   const access = phase?.currentUserAccess;
+  const phaseIsInProgress = phase?.status === "IN_PROGRESS";
   const canViewTasks = hasProjectAction(
     access,
     PROJECT_ACTIONS.VIEW_TASKS
   );
-  const canManageTasks = hasProjectAction(
-    access,
-    PROJECT_ACTIONS.EDIT_TASKS
-  );
+  const canManageTasks = phaseIsInProgress
+    && hasProjectAction(access, PROJECT_ACTIONS.EDIT_TASKS);
   const canAccessTasks = canViewTasks || canManageTasks;
   const canViewDeliverables = hasProjectAction(
     access,
     PROJECT_ACTIONS.VIEW_DELIVERABLES
   );
-  const canManageDeliverables = canViewDeliverables
+  const canManageDeliverables = phaseIsInProgress
+    && canViewDeliverables
     && hasAnyProjectAction(access, [
       PROJECT_ACTIONS.CREATE_DELIVERABLES,
       PROJECT_ACTIONS.EDIT_DELIVERABLES,
@@ -99,7 +99,8 @@ function ViewPhase() {
     access,
     PROJECT_ACTIONS.VIEW_CONTRACTS
   );
-  const canManageContracts = canViewContracts
+  const canManageContracts = phaseIsInProgress
+    && canViewContracts
     && hasAnyProjectAction(access, [
       PROJECT_ACTIONS.CREATE_CONTRACTS,
       PROJECT_ACTIONS.EDIT_CONTRACTS,

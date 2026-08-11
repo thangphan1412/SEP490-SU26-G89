@@ -18,7 +18,6 @@ import {
     getEmployeeDescription,
     getEmployeeName,
     getEmployeeSearchText,
-    CREATE_PROJECT_STATUS_OPTIONS as statusOptions,
 } from "../../components/projectComponents/projectFormUtils.js";
 import "../../assets/styles/css/projectStyles/CreateProject.css";
 
@@ -28,7 +27,6 @@ const initialProject = {
     projectStartDate: "",
     projectEndDate: "",
     projectDescription: "",
-    projectStatus: "Planning",
     phases: [],
     members: [],
 };
@@ -46,6 +44,12 @@ function CreateProject() {
     const [employeeError, setEmployeeError] = useState("");
     const [submitError, setSubmitError] = useState("");
     const [saving, setSaving] = useState(false);
+    const todayDate = getTodayDate();
+    let minimumEndDate = todayDate;
+
+    if (project.projectStartDate > todayDate) {
+        minimumEndDate = project.projectStartDate;
+    }
 
     //Tải tài liệu phục vụ add member
     useEffect(function () {
@@ -113,6 +117,15 @@ function CreateProject() {
 
         if (name === "projectEndDate" && !project.projectStartDate) {
             setSubmitError("Select the project start date before selecting its end date.");
+            return;
+        }
+
+        if (
+            name === "projectEndDate"
+            && value
+            && value < getTodayDate()
+        ) {
+            setSubmitError("Project end date must not be before today.");
             return;
         }
 
@@ -297,6 +310,15 @@ function CreateProject() {
 
     async function handleSubmit(event) {
         event.preventDefault();
+
+        if (
+            project.projectEndDate
+            && project.projectEndDate < getTodayDate()
+        ) {
+            setSubmitError("Project end date must not be before today.");
+            return;
+        }
+
         try {
             setSaving(true);
             setSubmitError("");
@@ -306,7 +328,6 @@ function CreateProject() {
                 projectStartDate: project.projectStartDate,
                 projectEndDate: project.projectEndDate,
                 projectDescription: project.projectDescription.trim(),
-                projectStatus: project.projectStatus,
                 phases: project.phases.map((phase) => ({
                     id: null,
                     title: phase.title.trim(),
@@ -564,14 +585,7 @@ function CreateProject() {
 
                         <Form.Group as={Col} md={6} controlId="projectEndDate">
                             <Form.Label className="project-management-field-label">End Date</Form.Label>
-                            <Form.Control required disabled={!project.projectStartDate} type="date" min={project.projectStartDate} name="projectEndDate" value={project.projectEndDate} onChange={handleChange} className="project-management-input" />
-                        </Form.Group>
-
-                        <Form.Group as={Col} md={6} controlId="projectStatus">
-                            <Form.Label className="project-management-field-label">Status</Form.Label>
-                            <Form.Select name="projectStatus" value={project.projectStatus} onChange={handleChange} className="project-management-input">
-                                {statusOptions.map((status) => <option key={status}>{status}</option>)}
-                            </Form.Select>
+                            <Form.Control required disabled={!project.projectStartDate} type="date" min={minimumEndDate} name="projectEndDate" value={project.projectEndDate} onChange={handleChange} className="project-management-input" />
                         </Form.Group>
 
                     </Row>
@@ -694,6 +708,15 @@ function CreateProject() {
             </Modal>
         </PagePanel>
     );
+}
+
+function getTodayDate() {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, "0");
+    const day = String(today.getDate()).padStart(2, "0");
+
+    return year + "-" + month + "-" + day;
 }
 
 export default CreateProject;

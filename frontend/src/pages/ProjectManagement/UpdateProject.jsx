@@ -25,7 +25,6 @@ import {
     getEmployeeSearchText,
     getFilterOptions,
     isCompletedProjectStatus,
-    PROJECT_STATUS_OPTIONS as projectStatusOptions,
 } from "../../components/projectComponents/projectFormUtils.js";
 import "../../assets/styles/css/projectStyles/UpdateProject.css";
 
@@ -367,9 +366,6 @@ function UpdateProject({ onUpdateProject }) {
                 projectDescription: canEditProject
                     ? project.projectDescription.trim()
                     : null,
-                projectStatus: canEditProject
-                    ? project.projectStatus
-                    : null,
                 phases: canEditProject
                     ? project.phases.map((phase) => ({
                         id: phase.id,
@@ -520,9 +516,11 @@ function UpdateProject({ onUpdateProject }) {
 
                             <Form.Group as={Col} md={6} controlId="projectStatus">
                                 <Form.Label className="project-management-field-label">Status</Form.Label>
-                                <Form.Select name="projectStatus" value={project.projectStatus} onChange={handleProjectChange} className="project-management-input">
-                                    {projectStatusOptions.map((status) => <option key={status}>{status}</option>)}
-                                </Form.Select>
+                                <Form.Control
+                                    disabled
+                                    value={project.projectStatus}
+                                    className="project-management-input update-project-readonly-input"
+                                />
                             </Form.Group>
 
                             <Form.Group as={Col} md={3} controlId="projectCreatedBy">

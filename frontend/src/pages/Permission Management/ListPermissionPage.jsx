@@ -282,12 +282,15 @@ function PermissionListContent() {
 
   const pageNumbers = createPageNumbers(page, totalPages);
   const filtersAreActive = Boolean(searchInput || projectId || status);
-  const createAction = (
+  const canCreatePermission = projects.some(
+    (project) => project.canManage === true
+  );
+  const createAction = canCreatePermission ? (
     <Button className="permission-primary-button" onClick={() => navigate("/permission/create")}>
       <IconPlus size={19} />
       Create Permission
     </Button>
-  );
+  ) : null;
 
   return (
     <PermissionPage
@@ -402,24 +405,28 @@ function PermissionListContent() {
                   </td>
                   <td className="permission-status-cell"><PermissionStatusBadge status={permission.status} /></td>
                   <td className="permission-actions-cell">
-                    <Stack direction="horizontal" className="permission-row-actions">
-                      <Button
-                        variant="light"
-                        className="permission-table-action"
-                        onClick={(event) => openPermissionEdit(event, permission.id)}
-                      >
-                        <IconEdit size={17} /> Edit
-                      </Button>
-                      <Button
-                        variant="light"
-                        className="permission-table-delete"
-                        disabled={deletingId === permission.id}
-                        onClick={(event) => handleDelete(event, permission)}
-                      >
-                        <IconTrash size={17} />
-                        {deletingId === permission.id ? "Deleting" : "Delete"}
-                      </Button>
-                    </Stack>
+                    {permission.canManage ? (
+                      <Stack direction="horizontal" className="permission-row-actions">
+                        <Button
+                          variant="light"
+                          className="permission-table-action"
+                          onClick={(event) => openPermissionEdit(event, permission.id)}
+                        >
+                          <IconEdit size={17} /> Edit
+                        </Button>
+                        <Button
+                          variant="light"
+                          className="permission-table-delete"
+                          disabled={deletingId === permission.id}
+                          onClick={(event) => handleDelete(event, permission)}
+                        >
+                          <IconTrash size={17} />
+                          {deletingId === permission.id ? "Deleting" : "Delete"}
+                        </Button>
+                      </Stack>
+                    ) : (
+                      <span>View only</span>
+                    )}
                   </td>
                 </tr>
               ))

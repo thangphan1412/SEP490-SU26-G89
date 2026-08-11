@@ -6,12 +6,6 @@ export const PROJECT_STATUS_OPTIONS = [
   "Cancelled",
 ];
 
-export const CREATE_PROJECT_STATUS_OPTIONS = [
-  "Planning",
-  "Active",
-  "On Hold",
-];
-
 export function createClientId() {
   return "phase-" + Date.now() + "-" + Math.random().toString(16).slice(2);
 }

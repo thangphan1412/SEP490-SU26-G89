@@ -12,6 +12,7 @@ public record PermissionListItemResponse(
         UUID projectId,
         String projectCode,
         String projectName,
-        LocalDateTime createdAt
+        LocalDateTime createdAt,
+        boolean canManage
 ) {
 }

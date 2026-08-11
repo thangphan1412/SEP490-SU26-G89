@@ -3,6 +3,7 @@ package com.fpt.backend.service.impl.phase;
 import com.fpt.backend.entity.Timeline;
 import com.fpt.backend.enums.PhaseStatus;
 import com.fpt.backend.repository.phase.PhaseRepository;
+import com.fpt.backend.service.impl.project.ProjectStatusService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,6 +22,7 @@ public class PhaseStatusService {
 
     private final PhaseRepository phaseRepository;
     private final PhaseProgressService phaseProgressService;
+    private final ProjectStatusService projectStatusService;
 
     public void refreshAllProjectStatuses() {
         for (UUID projectId : phaseRepository.findProjectIds()) {
@@ -38,12 +40,17 @@ public class PhaseStatusService {
             double progress = phaseProgressService.calculateProgress(
                     phase.getId()
             );
+            String projectStatus = phase.getProject().getProjectStatus();
+            boolean projectIsWaiting = "On Hold".equalsIgnoreCase(
+                    projectStatus
+            ) || "Planning".equalsIgnoreCase(projectStatus);
             PhaseStatus status = calculateStatus(
                     phase,
                     progress,
                     today,
                     index == 0,
-                    previousStatus
+                    previousStatus,
+                    projectIsWaiting
             );
 
             phase.setProgress(progress);
@@ -53,6 +60,7 @@ public class PhaseStatusService {
 
         phaseRepository.saveAll(phases);
         phaseRepository.flush();
+        projectStatusService.completeIfAllPhasesCompleted(phases);
     }
 
     private PhaseStatus calculateStatus(
@@ -60,9 +68,14 @@ public class PhaseStatusService {
             double progress,
             LocalDate today,
             boolean firstPhase,
-            PhaseStatus previousStatus) {
+            PhaseStatus previousStatus,
+            boolean projectIsWaiting) {
         if (progress >= 100D) {
             return PhaseStatus.COMPLETED;
+        }
+
+        if (projectIsWaiting) {
+            return PhaseStatus.PLANNING;
         }
 
         LocalDate startDate = toLocalDate(phase.getStartDate());

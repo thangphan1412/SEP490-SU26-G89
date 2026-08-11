@@ -59,6 +59,14 @@ export async function updateProject(projectId, project) {
   return getResponseData(response);
 }
 
+export async function approveProject(projectId) {
+  const response = await axiosClient.post(
+    `${PROJECT_API_BASE_URL}/${projectId}/approve`
+  );
+
+  return response.data?.message || "Project approved successfully";
+}
+
 export async function deleteProject(projectId) {
   const response = await axiosClient.delete(`${PROJECT_API_BASE_URL}/${projectId}`);
   return response.data?.message || "";

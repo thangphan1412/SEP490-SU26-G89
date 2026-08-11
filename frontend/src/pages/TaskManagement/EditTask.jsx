@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import { Alert, Button, Card, Container, Spinner, Table } from "react-bootstrap";
-import { IconArrowLeft, IconChecklist } from "@tabler/icons-react";
+import { IconArrowLeft, IconChecklist, IconPlus } from "@tabler/icons-react";
 import { useNavigate, useParams } from "react-router-dom";
+import TaskCreateRow from "../../components/taskComponents/TaskCreateRow.jsx";
 import TaskEditRow from "../../components/taskComponents/TaskEditRow.jsx";
 import {
+  createTask,
   getTasksByPhaseId,
   markTaskAsDone,
   updateTask,
@@ -19,6 +21,8 @@ function EditTask() {
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [showCreateRow, setShowCreateRow] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
 
   useEffect(function () {
     const requestController = new AbortController();
@@ -73,6 +77,17 @@ function EditTask() {
     return updatedTask;
   }
 
+  async function handleCreate(request) {
+    const createdTask = await createTask(phaseId, request);
+
+    setTasks(function (currentTasks) {
+      return [createdTask, ...currentTasks];
+    });
+    setShowCreateRow(false);
+    setSuccessMessage("Task created successfully.");
+    return createdTask;
+  }
+
   async function handleMarkDone(taskId) {
     const updatedTask = await markTaskAsDone(taskId);
     replaceTask(updatedTask);
@@ -112,9 +127,17 @@ function EditTask() {
         phaseStartDate={taskData.phaseStartDate}
         phaseEndDate={taskData.phaseEndDate}
         allowReassignment={taskData.fullWorkScope}
+        canApproveTasks={taskData.canApproveTasks}
         onSave={handleSave}
         onMarkDone={handleMarkDone}
+        onViewContract={viewContract}
       />
+    );
+  }
+
+  function viewContract(contractId) {
+    navigate(
+      `/contract-management/list?viewContractId=${contractId}`
     );
   }
 
@@ -128,7 +151,7 @@ function EditTask() {
             </span>
             <div>
               <h1>Edit Tasks</h1>
-              <p>Edit the tasks currently assigned to this phase.</p>
+              <p>Create and edit tasks assigned to this phase.</p>
             </div>
           </div>
           <Button
@@ -174,6 +197,33 @@ function EditTask() {
               </Alert>
             )}
 
+            {successMessage && (
+              <Alert variant="success" className="task-create-message">
+                {successMessage}
+              </Alert>
+            )}
+
+            <div className="task-list-toolbar">
+              <div>
+                <h2>Tasks</h2>
+                <span>{tasks.length} tasks</span>
+              </div>
+              {taskData.canCreateTasks && (
+                <Button
+                  type="button"
+                  variant="primary"
+                  className="task-create-button"
+                  disabled={showCreateRow}
+                  onClick={function () {
+                    setSuccessMessage("");
+                    setShowCreateRow(true);
+                  }}
+                >
+                  <IconPlus size={18} /> Create Task
+                </Button>
+              )}
+            </div>
+
             <div className="task-table-wrap">
               <Table responsive hover className="task-edit-table mb-0">
                 <thead>
@@ -183,13 +233,26 @@ function EditTask() {
                     <th>Start date</th>
                     <th>End date</th>
                     <th>Status</th>
+                    <th>Contract</th>
                     <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {tasks.length === 0 ? (
+                  {taskData.canCreateTasks && showCreateRow && (
+                    <TaskCreateRow
+                      memberOptions={taskData.memberOptions}
+                      phaseStartDate={taskData.phaseStartDate}
+                      phaseEndDate={taskData.phaseEndDate}
+                      allowReassignment={taskData.fullWorkScope}
+                      onCreate={handleCreate}
+                      onCancel={function () {
+                        setShowCreateRow(false);
+                      }}
+                    />
+                  )}
+                  {tasks.length === 0 && !showCreateRow ? (
                     <tr>
-                      <td colSpan={6} className="task-empty-row">
+                      <td colSpan={7} className="task-empty-row">
                         No editable tasks were found in this phase.
                       </td>
                     </tr>
