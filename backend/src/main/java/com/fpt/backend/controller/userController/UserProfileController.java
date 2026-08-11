@@ -1,5 +1,6 @@
 package com.fpt.backend.controller.userController;
 
+import com.fpt.backend.constant.ApiConstant;
 import com.fpt.backend.dto.request.userProfile.UserProfileRequestDTO;
 import com.fpt.backend.dto.response.userProfile.UserProfileResponseDTO;
 import com.fpt.backend.entity.Users;
@@ -13,7 +14,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/profile") // Tách ra route riêng biệt so với việc quản lý /api/users
+@RequestMapping(ApiConstant.USER.PROFILE)
 public class UserProfileController {
 
     @Autowired
