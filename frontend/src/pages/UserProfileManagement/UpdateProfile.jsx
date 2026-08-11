@@ -155,7 +155,21 @@ function UpdateProfile({ onSaveProfile }) {
             setOtpSent(false);
             setCountdown(0); // Reset bộ đếm nếu đổi xong
         } catch (error) {
-            alert("Lỗi đổi mật khẩu: " + (error.response?.data?.message || "Kiểm tra lại thông tin."));
+            console.error("Lỗi:", error);
+            const responseData = error.response?.data;
+
+            // 1. Lấy thông báo chung
+            let alertMessage = responseData?.message || "Vui lòng thử lại!";
+
+            // 2. Móc lỗi chi tiết (Nếu Backend có gửi kèm trong biến data)
+            if (responseData?.data && typeof responseData.data === 'object') {
+                // Lấy tất cả các câu chửi của Backend ghép thành nhiều dòng
+                const detailedErrors = Object.values(responseData.data).join('\n- ');
+                alertMessage += "\n\nChi tiết lỗi:\n- " + detailedErrors;
+            }
+
+            // 3. Hiển thị lên màn hình
+            alert("Có lỗi xảy ra: " + alertMessage);
         } finally {
             setIsSubmittingPwd(false);
         }

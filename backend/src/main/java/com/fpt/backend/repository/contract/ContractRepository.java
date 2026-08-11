@@ -93,4 +93,36 @@ public interface ContractRepository extends JpaRepository<Contracts, UUID> {
             @Param("today") LocalDate today,
             @Param("endedAt") LocalDateTime endedAt
     );
+
+
+    // Đếm theo trạng thái
+    long countByContractStatus(String status);
+
+    // Lấy thống kê Status cho biểu đồ
+    @Query("SELECT c.contractStatus, COUNT(c) FROM Contracts c GROUP BY c.contractStatus")
+    List<Object[]> countContractsByStatus();
+
+    // Lấy các hợp đồng sắp hết hạn (Trong vòng 30 ngày tới)
+    @Query("SELECT c FROM Contracts c WHERE c.contractStatus = 'ACTIVE' AND c.expirationDate BETWEEN :today AND :thirtyDaysLater ORDER BY c.expirationDate ASC")
+    List<Contracts> findUpcomingExpirations(@Param("today") LocalDate today, @Param("thirtyDaysLater") LocalDate thirtyDaysLater, Pageable pageable);
+
+    // Lấy số lượng hợp đồng nhóm theo Năm và Tháng
+    @Query("SELECT YEAR(c.contractCreatedAt), MONTH(c.contractCreatedAt), COUNT(c) " +
+            "FROM Contracts c " +
+            "WHERE c.contractCreatedAt >= :startDate " +
+            "GROUP BY YEAR(c.contractCreatedAt), MONTH(c.contractCreatedAt) " +
+            "ORDER BY YEAR(c.contractCreatedAt) ASC, MONTH(c.contractCreatedAt) ASC")
+    List<Object[]> countContractsByMonth(@Param("startDate") java.time.LocalDateTime startDate);
+
+    // Lấy thống kê theo Loại hợp đồng (Dành cho màn Statistical)
+    @Query("SELECT ct.contractTypeName, COUNT(c) FROM Contracts c LEFT JOIN c.contractType ct GROUP BY ct.contractTypeName")
+    List<Object[]> countContractsByType();
+
+    // Lấy danh sách hợp đồng Pending để tính toán thời gian chờ
+    @Query("SELECT p.projectName, c.contractCreatedAt FROM Contracts c LEFT JOIN c.project p WHERE c.contractStatus IN ('PENDING_DIRECTOR_SIGNATURE', 'PENDING_PARTNER_SIGNATURE')")
+    List<Object[]> getPendingSignatureDetails();
+
+    // Đếm hợp đồng đã hết hạn dựa vào ngày
+    @Query("SELECT COUNT(c) FROM Contracts c WHERE c.expirationDate < :today")
+    long countExpiredContracts(@Param("today") java.time.LocalDate today);
 }

@@ -11,6 +11,7 @@ import com.fpt.backend.dto.response.authentication.AuthenticateResponse;
 import com.fpt.backend.entity.Users;
 import com.fpt.backend.service.impl.user.UserServiceImpl;
 import com.fpt.backend.util.BaseResponse;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -99,13 +100,13 @@ public class AuthenticateController {
         return ResponseEntity.status(HttpStatus.CREATED).body(new BaseResponse<>());
     }
     @PostMapping(ApiConstant.Authentication.RESET_PASSWORD)
-    public ResponseEntity<BaseResponse<?>> resetPasswrod(@RequestBody ResetPasswordRequest resetPasswordRequest)  {
+    public ResponseEntity<BaseResponse<?>> resetPasswrod(@Valid @RequestBody ResetPasswordRequest resetPasswordRequest)  {
         userServiceImpl.resetPassword(resetPasswordRequest);
         return ResponseEntity.status(HttpStatus.CREATED).body(new BaseResponse<>());
     }
 
     @PostMapping(ApiConstant.Authentication.CHANGE_PASSWORD)
-    public ResponseEntity<BaseResponse<?>> resetPassword(@RequestBody ChangePasswordRequest changePasswordRequest)  {
+    public ResponseEntity<BaseResponse<?>> resetPassword(@Valid @RequestBody ChangePasswordRequest changePasswordRequest)  {
         userServiceImpl.changePassword(changePasswordRequest);
         return ResponseEntity.status(HttpStatus.CREATED).body(new BaseResponse<>());
     }

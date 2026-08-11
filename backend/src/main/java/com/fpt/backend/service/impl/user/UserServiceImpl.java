@@ -110,288 +110,220 @@ public class UserServiceImpl implements IUserService {
     // 2. View User
     @Override
     public UserResponseDTO getUserById(UUID id) {
-        Users user = userRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("User not found with id: " + id));
-
-        // --- BẮT ĐẦU: TẤM KHIÊN BẢO VỆ XEM CHI TIẾT ---
+        Users user = userRepository.findById(id).orElseThrow(() -> new RuntimeException("User not found with id: " + id));
         Users loggedInUser = currentUser.getCurrentUser();
-        if ("HeadOfDepartment".equalsIgnoreCase(loggedInUser.getRole())) {
-            String myDept = loggedInUser.getDepartment() != null ? loggedInUser.getDepartment().getDepartmentName() : "";
-            String targetDept = user.getDepartment() != null ? user.getDepartment().getDepartmentName() : "";
+        String currentRole = loggedInUser.getRole();
 
-            if (!myDept.equals(targetDept)) {
-                throw new RuntimeException("Access Denied: Bạn không được phép xem thông tin nhân viên phòng ban khác!");
+        // CEO / Admin xem được Kế toán, Trưởng phòng, NV, Đối tác
+        if ("CEO".equalsIgnoreCase(currentRole) || "Administrator".equalsIgnoreCase(currentRole)) {
+            if (!List.of("Accountant", "HeadOfDepartment", "Employee", "External Parners").contains(user.getRole())) {
+                throw new RuntimeException("Access Denied!");
             }
         }
-        // --- KẾT THÚC TẤM KHIÊN ---
-
+        // Accountant xem được Trưởng phòng, NV, Đối tác
+        else if ("Accountant".equalsIgnoreCase(currentRole)) {
+            if (!List.of("HeadOfDepartment", "Employee", "External Parners").contains(user.getRole())) {
+                throw new RuntimeException("Access Denied!");
+            }
+        }
+        // HeadOfDepartment chỉ xem được NV cùng phòng
+        else if ("HeadOfDepartment".equalsIgnoreCase(currentRole)) {
+            String myDept = loggedInUser.getDepartment() != null ? loggedInUser.getDepartment().getDepartmentName() : "";
+            String targetDept = user.getDepartment() != null ? user.getDepartment().getDepartmentName() : "";
+            if (!myDept.equals(targetDept) || !"Employee".equalsIgnoreCase(user.getRole())) {
+                throw new RuntimeException("Access Denied: Bạn chỉ được phép xem thông tin nhân viên cùng phòng ban!");
+            }
+        }
         return UserResponseDTO.fromEntity(user);
     }
 
     // 3. Create User
     @Override
     public UserResponseDTO createUser(UserCreateRequestDTO request) {
-
-        // --- CHẶN PASSWORD RỖNG LÚC TẠO MỚI ---
         if (request.getPassword() == null || request.getPassword().isEmpty()) {
-            throw new RuntimeException("Lỗi: Mật khẩu không được để trống khi tạo tài khoản mới!");
+            throw new RuntimeException("Lỗi: Mật khẩu không được để trống!");
         }
-        // ---------------------------------------------------------
-
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new RuntimeException("Email is already in use!");
         }
 
-        // --- BẮT ĐẦU: TẤM KHIÊN BẢO VỆ PHÂN QUYỀN TẠO MỚI ---
         Users loggedInUser = currentUser.getCurrentUser();
         String currentRole = loggedInUser.getRole();
 
-        if ("HeadOfDepartment".equalsIgnoreCase(currentRole)) {
-            // 1. Chỉ được tạo nhân viên cấp dưới
-            if (!List.of("Employee", "Accountant").contains(request.getRole())) {
-                throw new RuntimeException("Access Denied: Bạn không có quyền tạo tài khoản chức vụ " + request.getRole());
+        // 1. Phân quyền CREATE
+        if ("CEO".equalsIgnoreCase(currentRole) || "Administrator".equalsIgnoreCase(currentRole)) {
+            throw new RuntimeException("Access Denied: Chức vụ của bạn chỉ có quyền xem, không có quyền tạo tài khoản!");
+        } else if ("Accountant".equalsIgnoreCase(currentRole)) {
+            if (!List.of("HeadOfDepartment", "Employee", "External Parners").contains(request.getRole())) {
+                throw new RuntimeException("Access Denied: Bạn chỉ được tạo tài khoản HeadOfDepartment, Employee, External Parners!");
             }
-
-            // 2. Chỉ được tạo nhân viên trong cùng phòng ban của mình
+        } else if ("HeadOfDepartment".equalsIgnoreCase(currentRole)) {
+            if (!"Employee".equalsIgnoreCase(request.getRole())) {
+                throw new RuntimeException("Access Denied: Bạn chỉ được tạo tài khoản Employee!");
+            }
             String myDept = loggedInUser.getDepartment() != null ? loggedInUser.getDepartment().getDepartmentName() : "";
             if (!myDept.equals(request.getDepartmentName())) {
                 throw new RuntimeException("Access Denied: Bạn chỉ được phép tạo nhân viên trong phòng " + myDept);
             }
+        } else {
+            throw new RuntimeException("Access Denied!");
         }
-        // --- KẾT THÚC TẤM KHIÊN ---
+
+        // 2. Tấm khiên kiểm soát số lượng Role duy nhất (Create)
+        if (UserStatus.ACTIVE.equals(request.getStatus())) {
+            String roleToCheck = request.getRole();
+            if (List.of("CEO", "Administrator", "Accountant").contains(roleToCheck)) {
+                boolean isExist = userRepository.findByRole(roleToCheck).stream().anyMatch(u -> UserStatus.ACTIVE.equals(u.getStatus()));
+                if (isExist) throw new RuntimeException("Lỗi: Hệ thống chỉ cho phép có 1 tài khoản " + roleToCheck + " đang hoạt động!");
+            } else if ("HeadOfDepartment".equalsIgnoreCase(roleToCheck)) {
+                Departments dept = departmentRepository.findByDepartmentName(request.getDepartmentName()).orElseThrow(() -> new RuntimeException("Phòng ban không tồn tại"));
+                boolean isExist = userRepository.findByRoleAndDepartment(roleToCheck, dept).stream().anyMatch(u -> UserStatus.ACTIVE.equals(u.getStatus()));
+                if (isExist) throw new RuntimeException("Lỗi: Phòng ban " + request.getDepartmentName() + " đã có Trưởng phòng đang hoạt động!");
+            }
+        }
 
         Users newUser = Users.builder()
-                .email(request.getEmail())
-                .password(passwordEncoder.encode(request.getPassword()))
-                .firstName(request.getFirstName())
-                .lastName(request.getLastName())
-                .numberPhone(request.getNumberPhone())
-                .role(request.getRole())
-                .dob(request.getDob())
-                .startDate(request.getStartDate())
-                .status(request.getStatus())
-                .build();
+                .email(request.getEmail()).password(passwordEncoder.encode(request.getPassword())).firstName(request.getFirstName())
+                .lastName(request.getLastName()).numberPhone(request.getNumberPhone()).role(request.getRole())
+                .dob(request.getDob()).startDate(request.getStartDate()).status(request.getStatus()).build();
 
-        // LOGIC LƯU DEPARTMENT
         if (request.getDepartmentName() != null && !request.getDepartmentName().isEmpty()) {
-            Departments dept = departmentRepository.findByDepartmentName(request.getDepartmentName())
-                    .orElseThrow(() -> new RuntimeException("Department not found: " + request.getDepartmentName()));
+            Departments dept = departmentRepository.findByDepartmentName(request.getDepartmentName()).orElseThrow(() -> new RuntimeException("Department not found"));
             newUser.setDepartment(dept);
         }
 
         Users savedUser = userRepository.save(newUser);
 
-        // --- BỔ SUNG LOGIC LƯU BẢNG USER_ROLE Ở ĐÂY ---
         if (request.getRole() != null && !request.getRole().isEmpty()) {
-            // 1. Tìm Role trong Database dựa vào tên Role truyền từ FE
-            Role roleEntity = roleRepository.findByRoleName(request.getRole())
-                    .orElseThrow(() -> new RuntimeException("Role không tồn tại trong hệ thống: " + request.getRole()));
-
-            // 2. Tạo record UserRole mới để nối User và Role
-            UserRole userRole = UserRole.builder()
-                    .user(savedUser)
-                    .role(roleEntity)
-                    .build();
-
-            // 3. Lưu xuống Database
+            Role roleEntity = roleRepository.findByRoleName(request.getRole()).orElseThrow(() -> new RuntimeException("Role không tồn tại"));
+            UserRole userRole = UserRole.builder().user(savedUser).role(roleEntity).build();
             userRoleRepository.save(userRole);
         }
-        // ----------------------------------------------
 
-        // DEBUG:
-        System.out.println("====== Gửi mail không? " + request.getSendWelcomeEmail());
-
-        // GỬI MAIL CHÀO MỪNG (Khi tạo mới)
         if (Boolean.TRUE.equals(request.getSendWelcomeEmail())) {
             MessageInfor messageInfor = new MessageInfor();
             messageInfor.setEmail(savedUser.getEmail());
             messageInfor.setTitle("Welcome to E-CONTRACT System");
-            messageInfor.setText("Hello " + savedUser.getFirstName() + ",\n\n" +
-                    "Your account has been successfully created.\n" +
-                    "Email: " + savedUser.getEmail() + "\n" +
-                    "Password: " + request.getPassword() + "\n\n" +
-                    "Please log in and change your password as soon as possible.");
+            messageInfor.setText("Account created. Email: " + savedUser.getEmail() + " | Password: " + request.getPassword());
             emailService.sendEmail(messageInfor);
         }
-
         return UserResponseDTO.fromEntity(savedUser);
     }
 
     // 4. Update User
     @Override
     public UserResponseDTO updateUser(UUID id, UserUpdateRequestDTO request) {
-        Users existingUser = userRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("User not found with id: " + id));
-
-        // --- BẮT ĐẦU: TẤM KHIÊN BẢO VỆ PHÂN QUYỀN CẬP NHẬT ---
+        Users existingUser = userRepository.findById(id).orElseThrow(() -> new RuntimeException("User not found"));
         Users loggedInUser = currentUser.getCurrentUser();
-        if ("HeadOfDepartment".equalsIgnoreCase(loggedInUser.getRole())) {
+        String currentRole = loggedInUser.getRole();
 
-            // 1. Phải là người trong cùng phòng ban mới được sửa
+        // 1. Phân quyền UPDATE
+        if ("CEO".equalsIgnoreCase(currentRole) || "Administrator".equalsIgnoreCase(currentRole)) {
+            throw new RuntimeException("Access Denied: Bạn không có quyền chỉnh sửa tài khoản!");
+        } else if ("Accountant".equalsIgnoreCase(currentRole)) {
+            if (!List.of("HeadOfDepartment", "Employee", "External Parners").contains(existingUser.getRole()) ||
+                    !List.of("HeadOfDepartment", "Employee", "External Parners").contains(request.getRole())) {
+                throw new RuntimeException("Access Denied: Bạn chỉ được chỉnh sửa quyền của HeadOfDepartment, Employee, External Parners!");
+            }
+        } else if ("HeadOfDepartment".equalsIgnoreCase(currentRole)) {
             String myDept = loggedInUser.getDepartment() != null ? loggedInUser.getDepartment().getDepartmentName() : "";
             String targetDept = existingUser.getDepartment() != null ? existingUser.getDepartment().getDepartmentName() : "";
-            if (!myDept.equals(targetDept)) {
-                throw new RuntimeException("Access Denied: Bạn không có quyền sửa thông tin nhân viên của phòng ban khác!");
+            if (!myDept.equals(targetDept) || !"Employee".equalsIgnoreCase(existingUser.getRole())) {
+                throw new RuntimeException("Access Denied: Bạn chỉ có quyền sửa nhân viên cùng phòng ban!");
             }
-
-            // 2. Không được phép "nâng quyền" nhân viên lên thành CEO hay Admin
-            if (!List.of("Employee", "Accountant").contains(request.getRole())) {
-                throw new RuntimeException("Access Denied: Bạn không được phép cấp quyền " + request.getRole() + " cho nhân viên!");
-            }
-
-            // 3. Không được phép "đá" nhân viên này sang phòng ban khác
-            if (!myDept.equals(request.getDepartmentName())) {
-                throw new RuntimeException("Access Denied: Bạn không được phép chuyển nhân viên này sang phòng ban khác!");
+            if (!"Employee".equalsIgnoreCase(request.getRole()) || !myDept.equals(request.getDepartmentName())) {
+                throw new RuntimeException("Access Denied: Lỗi vượt quyền hoặc chuyển phòng ban trái phép!");
             }
         }
-        // --- KẾT THÚC TẤM KHIÊN ---
+
+        // 2. Tấm khiên kiểm soát số lượng Role duy nhất (Update)
+        if (UserStatus.ACTIVE.equals(request.getStatus())) {
+            String roleToCheck = request.getRole();
+            if (List.of("CEO", "Administrator", "Accountant").contains(roleToCheck)) {
+                boolean isExist = userRepository.findByRole(roleToCheck).stream()
+                        .anyMatch(u -> UserStatus.ACTIVE.equals(u.getStatus()) && !u.getId().equals(existingUser.getId()));
+                if (isExist) throw new RuntimeException("Lỗi: Hệ thống chỉ cho phép có 1 tài khoản " + roleToCheck + " đang hoạt động!");
+            } else if ("HeadOfDepartment".equalsIgnoreCase(roleToCheck)) {
+                Departments dept = departmentRepository.findByDepartmentName(request.getDepartmentName()).orElseThrow(() -> new RuntimeException("Phòng ban không tồn tại"));
+                boolean isExist = userRepository.findByRoleAndDepartment(roleToCheck, dept).stream()
+                        .anyMatch(u -> UserStatus.ACTIVE.equals(u.getStatus()) && !u.getId().equals(existingUser.getId()));
+                if (isExist) throw new RuntimeException("Lỗi: Phòng ban " + request.getDepartmentName() + " đã có Trưởng phòng đang hoạt động!");
+            }
+        }
 
         existingUser.setFirstName(request.getFirstName());
         existingUser.setLastName(request.getLastName());
         existingUser.setNumberPhone(request.getNumberPhone());
-        // --- XỬ LÝ UPDATE ROLE TRONG BẢNG USER VÀ USER_ROLE ---
+
         if (request.getRole() != null && !request.getRole().equals(existingUser.getRole())) {
-            existingUser.setRole(request.getRole()); // Lưu string vào bảng user
-
-            // Tìm Role mới trong bảng Role
-            Role newRoleEntity = roleRepository.findByRoleName(request.getRole())
-                    .orElseThrow(() -> new RuntimeException("Role không tồn tại: " + request.getRole()));
-
-            // Cập nhật bảng trung gian (Tìm xem user đã có record chưa, nếu có thì sửa, chưa thì tạo mới)
+            existingUser.setRole(request.getRole());
+            Role newRoleEntity = roleRepository.findByRoleName(request.getRole()).orElseThrow(() -> new RuntimeException("Role không tồn tại"));
             Optional<UserRole> existingUserRole = userRoleRepository.findByUser(existingUser);
             if (existingUserRole.isPresent()) {
                 UserRole ur = existingUserRole.get();
                 ur.setRole(newRoleEntity);
                 userRoleRepository.save(ur);
             } else {
-                UserRole newUr = UserRole.builder()
-                        .user(existingUser)
-                        .role(newRoleEntity)
-                        .build();
+                UserRole newUr = UserRole.builder().user(existingUser).role(newRoleEntity).build();
                 userRoleRepository.save(newUr);
             }
         }
-        // --------------------------------------------------------
+
         existingUser.setStatus(request.getStatus());
         existingUser.setDob(request.getDob());
         existingUser.setStartDate(request.getStartDate());
 
-        // XỬ LÝ UPDATE PHÒNG BAN MỚI
         if (request.getDepartmentName() != null && !request.getDepartmentName().isEmpty()) {
-            Departments dept = departmentRepository.findByDepartmentName(request.getDepartmentName())
-                    .orElseThrow(() -> new RuntimeException("Department not found: " + request.getDepartmentName()));
+            Departments dept = departmentRepository.findByDepartmentName(request.getDepartmentName()).orElseThrow(() -> new RuntimeException("Department not found"));
             existingUser.setDepartment(dept);
         }
 
-        boolean isEmailChanged = false;
-        // Kiểm tra logic nếu user đổi email
         if (!existingUser.getEmail().equals(request.getEmail())) {
-            if (userRepository.existsByEmail(request.getEmail())) {
-                throw new RuntimeException("Email is already in use by another account!");
-            }
+            if (userRepository.existsByEmail(request.getEmail())) throw new RuntimeException("Email is already in use!");
             existingUser.setEmail(request.getEmail());
-            isEmailChanged = true;
         }
 
-        boolean isPasswordChanged = false;
-        // Cập nhật và mã hóa password nếu có truyền lên
         if (request.getPassword() != null && !request.getPassword().isEmpty()) {
             existingUser.setPassword(passwordEncoder.encode(request.getPassword()));
-            isPasswordChanged = true;
         }
 
         Users updatedUser = userRepository.save(existingUser);
-
-        // CHECK XEM BACKEND NHẬN ĐƯỢC GÌ:
-        System.out.println("====== UPDATE USER - Có gửi mail không? " + request.getSendWelcomeEmail());
-
-        // GỬI MAIL THÔNG BÁO UPDATE
-        if (Boolean.TRUE.equals(request.getSendWelcomeEmail())) {
-            MessageInfor messageInfor = new MessageInfor();
-            messageInfor.setEmail(updatedUser.getEmail()); // Sẽ gửi vào mail mới nhất
-            messageInfor.setTitle("Your E-CONTRACT Account Has Been Updated");
-
-            StringBuilder emailBody = new StringBuilder("Hello " + updatedUser.getFirstName() + ",\n\nYour account information has been updated by the Administrator.\n");
-            if (isEmailChanged) {
-                emailBody.append("- Your registered email has been changed to: ").append(updatedUser.getEmail()).append("\n");
-            }
-            if (isPasswordChanged) {
-                // Lấy mật khẩu gốc từ request.getPassword() thay vì updatedUser.getPassword()
-                emailBody.append("- Your password has been reset. Your new password is: ")
-                        .append(request.getPassword())
-                        .append("\n");
-                emailBody.append("  (Please log in and change this password immediately for security reasons).\n");
-            }
-            emailBody.append("\nIf you did not request this change, please contact support immediately.");
-
-            messageInfor.setText(emailBody.toString());
-            emailService.sendEmail(messageInfor);
-        }
-
         return UserResponseDTO.fromEntity(updatedUser);
     }
 
 
     @Override
     public Page<UserResponseDTO> getAllUsersFiltered(UserFilterRequestDTO filter, String currentUsername, int page, int size) {
-
-        Users currentUser = userRepository.findByEmail(currentUsername)
-                .orElseThrow(() -> new RuntimeException("Current user not found"));
-
+        Users currentUser = userRepository.findByEmail(currentUsername).orElseThrow(() -> new RuntimeException("Current user not found"));
         String currentUserRole = currentUser.getRole();
-        if (currentUserRole == null) {
-            throw new RuntimeException("Access Denied: User role is missing.");
-        }
-
         List<String> allowedRoles;
 
+        // Phân quyền LIST USER
         if ("CEO".equalsIgnoreCase(currentUserRole) || "Administrator".equalsIgnoreCase(currentUserRole)) {
-            if ("customer".equalsIgnoreCase(filter.getType())) {
-                allowedRoles = List.of("External Parners");
-            } else {
-                allowedRoles = List.of("HeadOfDepartment", "Employee", "Accountant");
+            allowedRoles = List.of("Accountant", "HeadOfDepartment", "Employee", "External Parners");
+        } else if ("Accountant".equalsIgnoreCase(currentUserRole)) {
+            allowedRoles = List.of("HeadOfDepartment", "Employee", "External Parners");
+        } else if ("HeadOfDepartment".equalsIgnoreCase(currentUserRole)) {
+            allowedRoles = List.of("Employee");
+            if (currentUser.getDepartment() != null) {
+                filter.setDepartmentName(currentUser.getDepartment().getDepartmentName()); // Ép cứng phòng ban
             }
-        }
-        else if ("HeadOfDepartment".equalsIgnoreCase(currentUserRole)) {
-            if ("employee".equalsIgnoreCase(filter.getType())) {
-                allowedRoles = List.of("Employee", "Accountant");
-
-                if (currentUser.getDepartment() != null && currentUser.getDepartment().getDepartmentName() != null) {
-                    filter.setDepartmentName(currentUser.getDepartment().getDepartmentName());
-                } else {
-                    throw new RuntimeException("Access Denied: Tài khoản HeadOfDepartment chưa được gán Phòng ban!");
-                }
-            } else {
-                throw new RuntimeException("Access Denied: HeadOfDepartment cannot view External Partners.");
-            }
-        }
-        else {
-            throw new RuntimeException("Access Denied: You do not have permission.");
+        } else {
+            throw new RuntimeException("Access Denied!");
         }
 
-        // Gán allowedRoles vào object filter
         filter.setAllowedRoles(allowedRoles);
-
-        // 2. CHUẨN HÓA DỮ LIỆU LỌC
         if (filter.getRole() == null || "All".equalsIgnoreCase(filter.getRole())) filter.setRole("");
         if (filter.getDepartmentName() == null || "All".equalsIgnoreCase(filter.getDepartmentName())) filter.setDepartmentName("");
         filter.setKeyword(filter.getKeyword() == null ? "" : filter.getKeyword().trim());
-
-        // XỬ LÝ RIÊNG CHO ENUM STATUS
         if (filter.getStatus() == null || "All".equalsIgnoreCase(filter.getStatus()) || filter.getStatus().isEmpty()) {
-            filter.setStatusEnum(null); // Nếu là All thì truyền null để DB không lọc
+            filter.setStatusEnum(null);
         } else {
-            // Ép an toàn chuỗi từ FE sang Enum
             filter.setStatusEnum(UserStatus.valueOf(filter.getStatus().toUpperCase()));
         }
 
-        // Tạo đối tượng Pageable (Sắp xếp theo ngày tạo mới nhất hoặc ID)
         Pageable pageable = PageRequest.of(page, size, Sort.by("id").descending());
-
-        // Gọi Repository trả về Page
         Page<Users> resultPage = userRepository.searchAndFilterUsers(filter, pageable);
-
-        // Map từ Page<Users> sang Page<UserResponseDTO>
         return resultPage.map(UserResponseDTO::fromEntity);
     }
 

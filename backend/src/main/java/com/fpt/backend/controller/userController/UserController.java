@@ -25,7 +25,7 @@ public class UserController {
     private IUserService userService;
 
     // 1. GET ALL USERS (ListUser) - ĐÃ HỖ TRỢ PHÂN TRANG THỰC TẾ
-    @PreAuthorize("hasAnyAuthority('CEO', 'Administrator', 'HeadOfDepartment')")
+    @PreAuthorize("hasAnyAuthority('CEO', 'Administrator', 'Accountant', 'HeadOfDepartment')")
     @GetMapping
     public ResponseEntity<BaseResponse<Page<UserResponseDTO>>> getAllUsers(
             @ModelAttribute UserFilterRequestDTO filterDTO, // Ép Spring map URL Params vào DTO
@@ -43,7 +43,6 @@ public class UserController {
                     .build()
             );
         } catch (Exception e) {
-            e.printStackTrace();
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(BaseResponse.<Page<UserResponseDTO>>builder()
                     .status(HttpStatus.BAD_REQUEST.value())
                     .message("Lỗi xử lý: " + e.getMessage())
@@ -53,7 +52,7 @@ public class UserController {
     }
 
     // 2. GET USER BY ID (ViewUser)
-    @PreAuthorize("hasAnyAuthority('CEO', 'Administrator', 'HeadOfDepartment')")
+    @PreAuthorize("hasAnyAuthority('CEO', 'Administrator', 'Accountant', 'HeadOfDepartment')")
     @GetMapping("/{id}")
     public ResponseEntity<BaseResponse<UserResponseDTO>> getUserById(@PathVariable UUID id) {
         try {
@@ -74,7 +73,7 @@ public class UserController {
     }
 
     // 3. CREATE USER (CreateUser) - ĐÃ BẬT @Valid
-    @PreAuthorize("hasAnyAuthority('CEO', 'Administrator', 'HeadOfDepartment')")
+    @PreAuthorize("hasAnyAuthority('Accountant', 'HeadOfDepartment')")
     @PostMapping
     public ResponseEntity<BaseResponse<UserResponseDTO>> createUser(@Valid @RequestBody UserCreateRequestDTO request) {
         try {
@@ -95,7 +94,7 @@ public class UserController {
     }
 
     // 4. UPDATE USER (UpdateUser) - ĐÃ BẬT @Valid
-    @PreAuthorize("hasAnyAuthority('CEO', 'Administrator', 'HeadOfDepartment')")
+    @PreAuthorize("hasAnyAuthority('Accountant', 'HeadOfDepartment')")
     @PutMapping("/{id}")
     public ResponseEntity<BaseResponse<UserResponseDTO>> updateUser(
             @PathVariable UUID id,

@@ -67,12 +67,20 @@ export const navConfig = [
         ],
     },
     {
-        key: "employee",
-        headerLabel: "Employee Management",
+        key: "employee", // Mặc dù key cũ là employee nhưng màn hình là User
+        headerLabel: "User Management",
         matchPaths: ["/user-management"],
         children: [
-            { label: "List User", path: "/user-management/list" },
-            { label: "Create User", path: "/user-management/create" },
+            {
+                label: "List User",
+                path: "/user-management/list",
+                allowedRoles: ["CEO", "Administrator", "Accountant", "HeadOfDepartment"]
+            },
+            {
+                label: "Create User",
+                path: "/user-management/create",
+                allowedRoles: ["Accountant", "HeadOfDepartment"] // Ẩn Create đối với CEO/Admin
+            },
         ],
     },
     {
@@ -84,6 +92,35 @@ export const navConfig = [
             { label: "Update Profile", path: "/user-profile/update" },
             { label: "Company Profile", path: "/company-profile/view" },
             { label: "Update Company Profile", path: "/company-profile/update" },
+        ],
+    },
+
+    // --- THÊM KHỐI DASHBOARD VÀO ĐÂY ---
+    {
+        key: "dashboard",
+        headerLabel: "Dashboard & Analytics",
+        matchPaths: ["/dashboard"],
+        children: [
+            {
+                label: "Agreement Statistics",
+                path: "/dashboard/agreement-statistics",
+                allowedRoles: ["CEO", "Administrator", "Accountant", "HeadOfDepartment"]
+            },
+            {
+                label: "Total Agreements",
+                path: "/dashboard/total-agreements",
+                allowedRoles: ["CEO", "Administrator", "Accountant", "HeadOfDepartment"]
+            },
+            {
+                label: "Pending Signatures",
+                path: "/dashboard/pending-signature-agreements",
+                allowedRoles: ["CEO", "Administrator", "Accountant", "HeadOfDepartment"]
+            },
+            {
+                label: "Statistical Reports",
+                path: "/dashboard/contract-statistical-reports",
+                allowedRoles: ["CEO", "Administrator", "Accountant", "HeadOfDepartment"]
+            },
         ],
     },
 
