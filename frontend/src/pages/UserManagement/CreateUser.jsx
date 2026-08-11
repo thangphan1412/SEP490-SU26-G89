@@ -31,8 +31,8 @@ function CreateUser() {
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     // Tính toán Role có sẵn
-    const availableRoles = (currentUserRole === 'CEO' || currentUserRole === 'Administrator')
-        ? (viewType === 'customer' ? ['External Parners'] : ['HeadOfDepartment', 'Employee', 'Accountant'])
+    const availableRoles = ['Accountant'].includes(currentUserRole)
+        ? ['HeadOfDepartment', 'Employee', 'External Parners']
         : ['Employee']; // Dành cho HeadOfDepartment
 
     const [user, setUser] = useState({
@@ -115,9 +115,21 @@ function CreateUser() {
             navigate("/user-management/list");
 
         } catch (error) {
-            console.error("Lỗi khi tạo user:", error);
-            // Hiển thị lỗi từ BE trả về (nếu có)
-            alert("Có lỗi xảy ra: " + (error.response?.data?.message || "Vui lòng kiểm tra lại thông tin."));
+            console.error("Lỗi:", error);
+            const responseData = error.response?.data;
+
+            // 1. Lấy thông báo chung
+            let alertMessage = responseData?.message || "Vui lòng thử lại!";
+
+            // 2. Móc lỗi chi tiết (Nếu Backend có gửi kèm trong biến data)
+            if (responseData?.data && typeof responseData.data === 'object') {
+                // Lấy tất cả các câu của Backend ghép thành nhiều dòng
+                const detailedErrors = Object.values(responseData.data).join('\n- ');
+                alertMessage += "\n\nChi tiết lỗi:\n- " + detailedErrors;
+            }
+
+            // 3. Hiển thị lên màn hình
+            alert("Có lỗi xảy ra: " + alertMessage);
         } finally {
             setIsSubmitting(false);
         }
@@ -125,15 +137,7 @@ function CreateUser() {
 
     // 1. VIẾT HÀM KIỂM TRA QUYỀN TRUY CẬP (AUTHORIZATION CHECK)
     const checkPermission = () => {
-        // Nếu vào tab Customer Management -> Chỉ CEO và Administrator được vào
-        if (viewType === "customer") {
-            return ['CEO', 'Administrator'].includes(currentUserRole);
-        }
-        // Nếu vào tab Employee Management -> Thêm HeadOfDepartment được vào
-        if (viewType === "employee") {
-            return ['CEO', 'Administrator', 'HeadOfDepartment'].includes(currentUserRole);
-        }
-        return false;
+        return ['Accountant', 'HeadOfDepartment'].includes(currentUserRole);
     };
 
     // 2. NẾU KHÔNG CÓ QUYỀN -> HIỂN THỊ MÀN HÌNH BÁO LỖI LUÔN, KHÔNG RENDER UI BÊN DƯỚI

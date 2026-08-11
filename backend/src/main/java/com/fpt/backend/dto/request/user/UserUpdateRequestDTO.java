@@ -1,7 +1,6 @@
 package com.fpt.backend.dto.request.user;
 
 import com.fpt.backend.enums.UserStatus;
-import com.fpt.backend.util.minimumAge.MinimumAge;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -52,7 +51,6 @@ public class UserUpdateRequestDTO {
 
     @NotBlank(message = "Ngày sinh không được để trống")
     @Pattern(regexp = "^\\d{4}-\\d{2}-\\d{2}$", message = "Ngày sinh phải theo định dạng YYYY-MM-DD")
-    @MinimumAge(value = 18, message = "Nhân viên phải từ đủ 18 tuổi trở lên")
     private String dob;
 
     // KHÔNG CÒN @ValidStartDate Ở ĐÂY NỮA -> THẢ HỒ CHỌN QUÁ KHỨ!

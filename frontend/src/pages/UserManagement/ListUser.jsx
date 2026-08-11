@@ -71,9 +71,13 @@ function ListUser() {
     const [pagination, setPagination] = useState({ page: 0, size: 10, totalElements: 0 });
 
     // XÁC ĐỊNH DANH SÁCH ROLE ĐƯỢC PHÉP HIỂN THỊ
-    const availableRoles = (currentUserRole === 'CEO' || currentUserRole === 'Administrator')
-        ? (viewType === 'customer' ? ['External Parners'] : ['HeadOfDepartment', 'Employee', 'Accountant'])
-        : ['Employee'];
+    const availableRoles = ['CEO', 'Administrator'].includes(currentUserRole)
+        ? ['Accountant', 'HeadOfDepartment', 'Employee', 'External Parners']
+        : currentUserRole === 'Accountant'
+            ? ['HeadOfDepartment', 'Employee', 'External Parners']
+            : ['Employee'];
+
+    const canCreateAndUpdate = ['Accountant', 'HeadOfDepartment'].includes(currentUserRole);
 
     // Lấy danh sách department khi component mount
     useEffect(() => {
@@ -98,7 +102,7 @@ function ListUser() {
     const fetchData = async (currPage, currentKeyword, currentRole, currentDept, currentStatus, currentSize = pagination.size) => {
         setLoading(true);
         try {
-            const response = await getAllUsers(viewType, currentKeyword, currentRole, currentDept, currentStatus, currPage, currentSize);
+            const response = await getAllUsers("", currentKeyword, currentRole, currentDept, currentStatus, currPage, currentSize);
 
             const pageData = response.data?.data;
             const usersList = pageData?.content || [];
@@ -139,15 +143,8 @@ function ListUser() {
 
     // 1. VIẾT HÀM KIỂM TRA QUYỀN TRUY CẬP (AUTHORIZATION CHECK)
     const checkPermission = () => {
-        // Nếu vào tab Customer Management -> Chỉ CEO và Administrator được vào
-        if (viewType === "customer") {
-            return ['CEO', 'Administrator'].includes(currentUserRole);
-        }
-        // Nếu vào tab Employee Management -> Thêm HeadOfDepartment được vào
-        if (viewType === "employee") {
-            return ['CEO', 'Administrator', 'HeadOfDepartment'].includes(currentUserRole);
-        }
-        return false;
+        // Cả 4 Role đều được phép vào màn hình View
+        return ['CEO', 'Administrator', 'Accountant', 'HeadOfDepartment'].includes(currentUserRole);
     };
 
     // 2. NẾU KHÔNG CÓ QUYỀN -> HIỂN THỊ MÀN HÌNH BÁO LỖI LUÔN, KHÔNG RENDER UI BÊN DƯỚI
@@ -183,9 +180,12 @@ function ListUser() {
                                 <h1 className="h3 fw-bold mb-1">Users</h1>
                                 <p className="text-muted mb-0">Manage user accounts, roles, departments, and access status.</p>
                             </div>
-                            <Button variant="primary" className="fw-bold px-3 py-2 d-flex align-items-center gap-2" onClick={() => navigate(`/user-management/create?type=${viewType}`)}>
-                                <IconPlus size={20} /> New User
-                            </Button>
+                            {/* CHỈ ACCOUNTANT VÀ HEAD OF DEPT ĐƯỢC THẤY NÚT NEW USER */}
+                            {canCreateAndUpdate && (
+                                <Button variant="primary" className="fw-bold px-3 py-2 d-flex align-items-center gap-2" onClick={() => navigate(`/user-management/create`)}>
+                                    <IconPlus size={20} /> New User
+                                </Button>
+                            )}
                         </Stack>
 
                         {/* Toolbar / Search Filters */}
@@ -315,9 +315,12 @@ function ListUser() {
                                                 <Button variant="link" className="p-0 me-3 text-primary" onClick={() => navigate(`/user-management/view/${u.id}`)} title="View Detail">
                                                     <IconEye size={18} />
                                                 </Button>
-                                                <Button variant="link" className="p-0 text-warning" onClick={() => navigate(`/user-management/update/${u.id}`)} title="Edit User">
-                                                    <IconEdit size={18} />
-                                                </Button>
+                                                {/* CHỈ ACCOUNTANT VÀ HEAD OF DEPT ĐƯỢC THẤY NÚT EDIT */}
+                                                {canCreateAndUpdate && (
+                                                    <Button variant="link" className="p-0 text-warning" onClick={() => navigate(`/user-management/update/${u.id}`)} title="Edit User">
+                                                        <IconEdit size={18} />
+                                                    </Button>
+                                                )}
                                             </td>
                                         </tr>
                                     ))
