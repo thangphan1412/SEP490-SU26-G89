@@ -14,7 +14,6 @@ import com.fpt.backend.exception.BadHttpException;
 import com.fpt.backend.exception.NotFoundException;
 import com.fpt.backend.repository.permission.PermissionRepository;
 import com.fpt.backend.repository.project.ProjectRepository;
-import com.fpt.backend.service.interfaces.permission.IPermissionActionService;
 import com.fpt.backend.service.interfaces.permission.IPermissionAccessService;
 import com.fpt.backend.service.interfaces.permission.IPermissionService;
 import com.fpt.backend.util.CurrentUser;
@@ -53,7 +52,7 @@ public class PermissionServiceImpl implements IPermissionService {
 
     private final PermissionRepository permissionRepository;
     private final ProjectRepository projectRepository;
-    private final IPermissionActionService permissionActionService;
+    private final PermissionActionService permissionActionService;
     private final IPermissionAccessService permissionAccessService;
     private final CurrentUser currentUser;
 
@@ -120,10 +119,12 @@ public class PermissionServiceImpl implements IPermissionService {
         List<UUID> projectIds = permissionAccessService
                 .getCurrentUserProjectIdsWithAction(MANAGE_MEMBERS);
         List<Projects> projects = projectRepository.findAllById(projectIds);
+        //Sắp xếp danh sách dự án theo tên dự án (không phân biệt chữ hoa chữ thường)
         projects.sort(
                 Comparator.comparing(
                         Projects::getProjectName,
                         String.CASE_INSENSITIVE_ORDER));
+                        
         List<PermissionProjectResponse> responses = new ArrayList<>();
 
         for (Projects project : projects) {

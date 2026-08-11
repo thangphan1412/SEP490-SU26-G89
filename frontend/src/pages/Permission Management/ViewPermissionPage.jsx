@@ -38,15 +38,12 @@ function ViewPermissionPage() {
   const [deleting, setDeleting] = useState(false);
 
   useEffect(function () {
-    let isActive = true;
     const requestController = new AbortController();
 
     async function loadPermission() {
       if (!permissionId) {
-        if (isActive) {
-          setError("Permission id is missing. Please choose a permission from the list.");
-          setLoading(false);
-        }
+        setError("Permission id is missing. Please choose a permission from the list.");
+        setLoading(false);
         return;
       }
 
@@ -55,11 +52,13 @@ function ViewPermissionPage() {
         setError("");
         const payload = await viewPermission(permissionId, requestController.signal);
 
-        if (isActive) {
-          setPermission(payload || null);
+        if (requestController.signal.aborted) {
+          return;
         }
+
+        setPermission(payload || null);
       } catch (requestError) {
-        if (!isActive) {
+        if (requestController.signal.aborted) {
           return;
         }
 
@@ -70,7 +69,7 @@ function ViewPermissionPage() {
           "Unable to load permission. Please try again later."
         ));
       } finally {
-        if (isActive) {
+        if (!requestController.signal.aborted) {
           setLoading(false);
         }
       }
@@ -79,7 +78,6 @@ function ViewPermissionPage() {
     loadPermission();
 
     return function () {
-      isActive = false;
       requestController.abort();
     };
   }, [permissionId]);

@@ -36,15 +36,6 @@ export async function listProjectEmployees(signal) {
   return getResponseData(response);
 }
 
-export async function listProjectRoles(signal) {
-  const response = await axiosClient.get(
-    `${PROJECT_API_BASE_URL}/roles`,
-    { signal }
-  );
-
-  return getResponseData(response);
-}
-
 export async function listProjectUserStatuses(signal) {
   const response = await axiosClient.get(
     `${PROJECT_API_BASE_URL}/user-statuses`,

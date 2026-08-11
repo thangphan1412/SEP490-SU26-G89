@@ -6,10 +6,12 @@ import java.util.UUID;
 public record ProjectAccessResponse(
         UUID projectId,
         UUID currentUserId,
-        boolean projectCreator,
         boolean projectMember,
         List<String> allowedActions,
         List<String> fullScopeActions,
         String workScope
 ) {
+    public boolean projectCreator() {
+        return false;
+    }
 }

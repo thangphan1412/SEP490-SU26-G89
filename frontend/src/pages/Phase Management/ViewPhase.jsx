@@ -30,7 +30,6 @@ function ViewPhase() {
   const [error, setError] = useState("");
 
   useEffect(function () {
-    let isActive = true;
     const requestController = new AbortController();
 
     async function loadPhase() {
@@ -45,11 +44,13 @@ function ViewPhase() {
         setError("");
         const payload = await viewPhase(phaseId, requestController.signal);
 
-        if (isActive) {
-          setPhase(payload || null);
+        if (requestController.signal.aborted) {
+          return;
         }
+
+        setPhase(payload || null);
       } catch (requestError) {
-        if (!isActive) {
+        if (requestController.signal.aborted) {
           return;
         }
 
@@ -57,7 +58,7 @@ function ViewPhase() {
         setPhase(null);
         setError(getErrorMessage(requestError));
       } finally {
-        if (isActive) {
+        if (!requestController.signal.aborted) {
           setLoading(false);
         }
       }
@@ -66,7 +67,6 @@ function ViewPhase() {
     loadPhase();
 
     return function () {
-      isActive = false;
       requestController.abort();
     };
   }, [phaseId]);

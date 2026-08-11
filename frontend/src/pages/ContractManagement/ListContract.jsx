@@ -84,7 +84,6 @@ function ListContract() {
     const [transitionContract, setTransitionContract] = useState(null);
     const [transitionForm, setTransitionForm] = useState({
         comment: "",
-        signerDateOfBirth: "",
     });
     const [transitionError, setTransitionError] = useState("");
     const [transitioning, setTransitioning] = useState(false);
@@ -256,7 +255,7 @@ function ListContract() {
     const openTransitionModal = (contract, action) => {
         setTransitionContract(contract);
         setTransitionAction(action);
-        setTransitionForm({ comment: "", signerDateOfBirth: "" });
+        setTransitionForm({ comment: "" });
         setTransitionError("");
         setSelectedContract(null);
         setModalMode(null);
@@ -435,16 +434,6 @@ function ListContract() {
 
         if (actionDetails.requiresComment && !transitionForm.comment.trim()) {
             setTransitionError("A reason is required for this action.");
-            return;
-        }
-
-        if (
-            actionDetails.requiresSignerDateOfBirth
-            && !transitionForm.signerDateOfBirth
-        ) {
-            setTransitionError(
-                "Signer date of birth is required for the legal age check."
-            );
             return;
         }
 
@@ -1332,29 +1321,13 @@ function ContractTransitionModal({
                         {details.description}
                     </p>
 
-                    {details.requiresSignerDateOfBirth && (
-                        <>
-                            <Alert variant="warning">
-                                The birth date is used only for the 18+ check and
-                                is not stored. If the signer is under 18, this
-                                contract will automatically become CANCELLED.
-                            </Alert>
-                            <label
-                                htmlFor="signerDateOfBirth"
-                                className="contract-form-label"
-                            >
-                                Signer Date of Birth
-                            </label>
-                            <input
-                                id="signerDateOfBirth"
-                                name="signerDateOfBirth"
-                                type="date"
-                                className="form-control"
-                                value={form.signerDateOfBirth}
-                                onChange={onChange}
-                                required
-                            />
-                        </>
+                    {details.verifiesAccountDateOfBirth && (
+                        <Alert variant="warning">
+                            The signer must be at least 18 years old. Date of
+                            birth is verified automatically from the signed-in
+                            user account. If the signer is under 18, this
+                            contract will automatically become CANCELLED.
+                        </Alert>
                     )}
 
                     <label

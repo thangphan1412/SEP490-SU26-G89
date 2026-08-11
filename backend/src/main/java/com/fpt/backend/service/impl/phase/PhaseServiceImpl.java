@@ -20,7 +20,6 @@ import com.fpt.backend.repository.phase.PhaseDeliverableRepository;
 import com.fpt.backend.repository.phase.PhaseRepository;
 import com.fpt.backend.repository.phase.PhaseTaskRepository;
 import com.fpt.backend.repository.project.ProjectRepository;
-import com.fpt.backend.service.interfaces.phase.IPhaseProgressService;
 import com.fpt.backend.service.interfaces.phase.IPhaseService;
 import com.fpt.backend.service.interfaces.permission.IPermissionAccessService;
 import lombok.RequiredArgsConstructor;
@@ -52,7 +51,7 @@ public class PhaseServiceImpl implements IPhaseService {
     private final PhaseDeliverableRepository phaseDeliverableRepository;
     private final PhaseContractRepository phaseContractRepository;
     private final ProjectRepository projectRepository;
-    private final IPhaseProgressService phaseProgressService;
+    private final PhaseProgressService phaseProgressService;
     private final IPermissionAccessService permissionAccessService;
 
     @Override
@@ -61,7 +60,7 @@ public class PhaseServiceImpl implements IPhaseService {
             throw new NotFoundException("Project not found");
         }
 
-        permissionAccessService.getCurrentUserAccess(projectId);
+        permissionAccessService.requireProjectAccess(projectId);
 
         List<Timeline> phases = phaseRepository.findByProjectId(projectId);
         List<PhaseListItemResponse> responses = new ArrayList<>();

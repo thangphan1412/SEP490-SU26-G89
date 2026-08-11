@@ -7,7 +7,7 @@ import com.fpt.backend.dto.response.contract.ContractListResponse;
 import com.fpt.backend.dto.response.contract.ContractPdfResponse;
 import com.fpt.backend.dto.response.contract.ContractProjectOptionResponse;
 import com.fpt.backend.dto.response.contract.ContractResponse;
-import com.fpt.backend.service.interfaces.ContractService;
+import com.fpt.backend.service.interfaces.contract.ContractService;
 import com.fpt.backend.util.BaseResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.CacheControl;

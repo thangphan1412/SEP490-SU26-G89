@@ -46,15 +46,15 @@ const ACTION_DETAILS = Object.freeze({
     },
     [CONTRACT_ACTION.SIGN_DIRECTOR]: {
         label: "Director sign",
-        description: "Verify the director's age and confirm the director signature.",
+        description: "Verify the director's account age and confirm the director signature.",
         tone: "primary",
-        requiresSignerDateOfBirth: true,
+        verifiesAccountDateOfBirth: true,
     },
     [CONTRACT_ACTION.SIGN_PARTNER]: {
         label: "Partner sign",
-        description: "Verify the partner's age and activate the signed contract.",
+        description: "Verify the partner's account age and activate the signed contract.",
         tone: "primary",
-        requiresSignerDateOfBirth: true,
+        verifiesAccountDateOfBirth: true,
     },
     [CONTRACT_ACTION.CANCEL]: {
         label: "Cancel contract",
@@ -536,7 +536,6 @@ export function toTransitionRequest(action, form) {
         actorName: actor.actorName,
         actorRole: actor.actorRole,
         comment: form.comment.trim() || null,
-        signerDateOfBirth: form.signerDateOfBirth || null,
     };
 }
 

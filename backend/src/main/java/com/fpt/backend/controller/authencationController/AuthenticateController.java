@@ -43,28 +43,28 @@ public class AuthenticateController {
             MyUserDetail myUsersDetail = (MyUserDetail) authenticate.getPrincipal();
             Users users =  myUsersDetail.getUsers();
 
-            // ==============================================================
-            // --- 1. TẤM KHIÊN CHẶN TÀI KHOẢN BỊ KHÓA (INACTIVE) ---
-            if (!"ACTIVE".equalsIgnoreCase(users.getStatus().name())) {
-                throw new RuntimeException("Tài khoản của bạn đã bị khóa hoặc chưa được kích hoạt. Vui lòng liên hệ Admin.");
-            }
-
-            // --- 2. TẤM KHIÊN CHẶN ĐĂNG NHẬP SỚM (PRE-ONBOARDING) ---
-            if (users.getStartDate() != null && !users.getStartDate().isEmpty()) {
-                LocalDate startDate = LocalDate.parse(users.getStartDate());
-                LocalDate today = LocalDate.now();
-
-                // Nếu hôm nay (today) diễn ra TRƯỚC ngày bắt đầu (startDate)
-                if (today.isBefore(startDate)) {
-                    throw new RuntimeException("Truy cập bị từ chối: Tài khoản của bạn sẽ được kích hoạt vào ngày " + users.getStartDate());
-                }
-            }
-            // ==============================================================
-
-            // --- THÊM ĐÚNG 2 DÒNG NÀY VÀO ĐÂY NHÉ ---
-            users.setLastActive(java.time.LocalDateTime.now());
-            userServiceImpl.save(users); // Lưu thời gian đăng nhập xuống Database
-            // ----------------------------------------
+//            // ==============================================================
+//            // --- 1. TẤM KHIÊN CHẶN TÀI KHOẢN BỊ KHÓA (INACTIVE) ---
+//            if (!"ACTIVE".equalsIgnoreCase(users.getStatus().name())) {
+//                throw new RuntimeException("Tài khoản của bạn đã bị khóa hoặc chưa được kích hoạt. Vui lòng liên hệ Admin.");
+//            }
+//
+//            // --- 2. TẤM KHIÊN CHẶN ĐĂNG NHẬP SỚM (PRE-ONBOARDING) ---
+//            if (users.getStartDate() != null && !users.getStartDate().isEmpty()) {
+//                LocalDate startDate = LocalDate.parse(users.getStartDate());
+//                LocalDate today = LocalDate.now();
+//
+//                // Nếu hôm nay (today) diễn ra TRƯỚC ngày bắt đầu (startDate)
+//                if (today.isBefore(startDate)) {
+//                    throw new RuntimeException("Truy cập bị từ chối: Tài khoản của bạn sẽ được kích hoạt vào ngày " + users.getStartDate());
+//                }
+//            }
+//            // ==============================================================
+//
+//            // --- THÊM ĐÚNG 2 DÒNG NÀY VÀO ĐÂY NHÉ ---
+//            users.setLastActive(java.time.LocalDateTime.now());
+//            userServiceImpl.save(users); // Lưu thời gian đăng nhập xuống Database
+//            // ----------------------------------------
 
             var token  = jwtService.generateToken(myUsersDetail);
             System.out.println(">>> Login controller called");
@@ -74,13 +74,13 @@ public class AuthenticateController {
             authenticateResponse.setRole(users.getRole());
             authenticateResponse.setFullName(users.getFirstName()+" "+users.getLastName());
 
-            // --- THÊM ĐOẠN CODE NÀY ---
-            if (users.getDepartment() != null) {
-                authenticateResponse.setDepartmentName(users.getDepartment().getDepartmentName());
-            } else {
-                authenticateResponse.setDepartmentName(""); // Đề phòng user chưa có phòng ban
-            }
-            // ---------------------------------------
+//            // --- THÊM ĐOẠN CODE NÀY ---
+//            if (users.getDepartment() != null) {
+//                authenticateResponse.setDepartmentName(users.getDepartment().getDepartmentName());
+//            } else {
+//                authenticateResponse.setDepartmentName(""); // Đề phòng user chưa có phòng ban
+//            }
+//            // ---------------------------------------
 
             BaseResponse<AuthenticateResponse> response = new BaseResponse<>(
                     HttpStatus.CREATED.value(),

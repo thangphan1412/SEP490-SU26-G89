@@ -74,14 +74,11 @@ public interface ProjectRepository extends JpaRepository<Projects, UUID> {
                 :status = ''
                 OR LOWER(COALESCE(project.projectStatus, '')) = :status
             )
-            AND (
-                project.projectCreatedBy.id = :userId
-                OR EXISTS (
-                    SELECT member.id
-                    FROM ProjectMember member
-                    WHERE member.project.id = project.id
-                        AND member.user.id = :userId
-                )
+            AND EXISTS (
+                SELECT member.id
+                FROM ProjectMember member
+                WHERE member.project.id = project.id
+                    AND member.user.id = :userId
             )
             """)
     Page<Projects> searchViewableProjects(

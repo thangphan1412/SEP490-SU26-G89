@@ -2,7 +2,7 @@ package com.fpt.backend.controller.contractController;
 
 import com.fpt.backend.dto.request.contract.ContractTypeRequest;
 import com.fpt.backend.dto.response.contract.ContractTypeResponse;
-import com.fpt.backend.service.interfaces.ContractTypeService;
+import com.fpt.backend.service.interfaces.contract.ContractTypeService;
 import com.fpt.backend.util.BaseResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.CacheControl;

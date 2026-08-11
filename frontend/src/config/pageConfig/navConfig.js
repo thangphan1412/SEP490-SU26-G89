@@ -1,3 +1,5 @@
+import CreateSignaturePage from "../../pages/signature/CreateSignaturePage.jsx";
+
 export const navConfig = [
     {
         key: "signature",
@@ -5,11 +7,12 @@ export const navConfig = [
         matchPaths: ["/signature-management"],
         children: [
             { label: "Signature List", path: "/signature-management/list" },
-            { label: "Create Signature", path: "/user-profile/update" },
-            { label: "View Signature", path: "/company-profile/view" },
-            { label: "Update Signature", path: "/company-profile/update" },
+            { label: "Create Signature", path: "/signature-management/create-signature" },
+            { label: "View Signature", path: "/signature-management/detail/:id" },
+            { label: "Update Signature", path: "/signature-management/update/:id" },
         ],
     },
+
     {
         key: "contract",
         headerLabel: "Contract Management",

@@ -3,7 +3,6 @@ package com.fpt.backend.service.impl.permission;
 import com.fpt.backend.dto.response.project.ProjectAccessResponse;
 import com.fpt.backend.entity.PermissionAction;
 import com.fpt.backend.entity.Permissions;
-import com.fpt.backend.entity.Projects;
 import com.fpt.backend.entity.UserPermission;
 import com.fpt.backend.entity.Users;
 import com.fpt.backend.enums.WorkScope;
@@ -24,7 +23,6 @@ import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
-import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
@@ -42,17 +40,66 @@ public class PermissionAccessServiceImpl
     private final CurrentUser currentUser;
 
     @Override
-    public ProjectAccessResponse getCurrentUserAccess(UUID projectId) {
-        Projects project = findProject(projectId);
-        Users user = currentUser.getCurrentUser();
-        boolean projectCreator = isProjectCreator(project, user);
-        boolean projectMember = projectMemberRepository
-                .countByProjectIdAndUserId(projectId, user.getId()) > 0;
+    public void requireProjectAccess(UUID projectId) {
+        getCurrentUserAccess(projectId);
+    }
 
-        if (!projectCreator && !projectMember) {
-            throw forbidden("You cannot access this project");
+    @Override
+    public void requireAction(UUID projectId, String actionCode) {
+        ProjectAccessResponse access = getCurrentUserAccess(projectId);
+
+        if (!hasAction(access, actionCode)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, ACCESS_DENIED_MESSAGE + ": " + normalize(actionCode));
+        }
+    }
+
+    @Override
+    public boolean hasAction(
+            ProjectAccessResponse access,
+            String actionCode) {
+        if (access == null) {
+            return false;
         }
 
+        return containsAction(access.allowedActions(), actionCode);
+    }
+
+    @Override
+    public boolean hasFullWorkScope(
+            ProjectAccessResponse access,
+            String actionCode) {
+        if (access == null) {
+            return false;
+        }
+
+        return containsAction(access.fullScopeActions(), actionCode);
+    }
+
+    //Danh sách các dự án mà người dùng hiện tại có quyền thực hiện một hành động cụ thể
+    @Override
+    public List<UUID> getCurrentUserProjectIdsWithAction(
+            String actionCode) {
+        Users user = currentUser.getCurrentUser();
+        return userPermissionRepository.findProjectIdsByUserAndAction(
+                user.getId(),
+                normalize(actionCode)
+        );
+    }
+
+    
+    @Override
+    public ProjectAccessResponse getCurrentUserAccess(UUID projectId) {
+        validateProjectExists(projectId);
+        Users user = currentUser.getCurrentUser();
+
+        //Kiểm tra xem người dùng hiện tại có phải là thành viên của dự án hay không
+        boolean projectMember = projectMemberRepository
+                .countByProjectIdAndUserId(projectId, user.getId()) > 0;
+        if (!projectMember) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You cannot access this project");
+        }
+
+        //Lấy danh sách các quyền được gán cho người dùng hiện tại trong dự án
         List<UserPermission> assignedPermissions =
                 userPermissionRepository
                         .findActiveByUserIdAndProjectId(
@@ -82,7 +129,6 @@ public class PermissionAccessServiceImpl
         return new ProjectAccessResponse(
                 projectId,
                 user.getId(),
-                projectCreator,
                 projectMember,
                 new ArrayList<>(allowedActions),
                 new ArrayList<>(fullScopeActions),
@@ -90,29 +136,17 @@ public class PermissionAccessServiceImpl
         );
     }
 
-    @Override
-    public void requireAction(UUID projectId, String actionCode) {
-        ProjectAccessResponse access = getCurrentUserAccess(projectId);
-
-        if (!hasAction(access, actionCode)) {
-            throw forbidden(
-                    ACCESS_DENIED_MESSAGE + ": " + normalize(actionCode)
-            );
-        }
-    }
-
-    @Override
-    public boolean hasAction(
-            ProjectAccessResponse access,
+    private boolean containsAction(
+            Iterable<String> actions,
             String actionCode) {
-        if (access == null || access.allowedActions() == null) {
+        if (actions == null) {
             return false;
         }
 
         String requiredAction = normalize(actionCode);
 
-        for (String allowedAction : access.allowedActions()) {
-            if (requiredAction.equals(normalize(allowedAction))) {
+        for (String action : actions) {
+            if (requiredAction.equals(normalize(action))) {
                 return true;
             }
         }
@@ -120,47 +154,15 @@ public class PermissionAccessServiceImpl
         return false;
     }
 
-    @Override
-    public boolean hasFullWorkScope(
-            ProjectAccessResponse access,
-            String actionCode) {
-        if (access == null || access.fullScopeActions() == null) {
-            return false;
-        }
-
-        String requiredAction = normalize(actionCode);
-
-        for (String fullScopeAction : access.fullScopeActions()) {
-            if (requiredAction.equals(normalize(fullScopeAction))) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    @Override
-    public List<UUID> getCurrentUserProjectIdsWithAction(
-            String actionCode) {
-        Users user = currentUser.getCurrentUser();
-        return userPermissionRepository.findProjectIdsByUserAndAction(
-                user.getId(),
-                normalize(actionCode)
-        );
-    }
-
-    private Projects findProject(UUID projectId) {
+    //Kiểm tra xem dự án có tồn tại hay không
+    private void validateProjectExists(UUID projectId) {
         if (projectId == null) {
             throw new BadHttpException("Project is required");
         }
 
-        Optional<Projects> project = projectRepository.findById(projectId);
-
-        if (project.isEmpty()) {
+        if (!projectRepository.existsById(projectId)) {
             throw new NotFoundException("Project not found");
         }
-
-        return project.get();
     }
 
     private void addActiveActionCodes(
@@ -179,20 +181,10 @@ public class PermissionAccessServiceImpl
         }
     }
 
-    private boolean isProjectCreator(Projects project, Users user) {
-        Users creator = project.getProjectCreatedBy();
-        return creator != null
-                && creator.getId() != null
-                && creator.getId().equals(user.getId());
-    }
-
-    private ResponseStatusException forbidden(String message) {
-        return new ResponseStatusException(HttpStatus.FORBIDDEN, message);
-    }
-
     private String normalize(String value) {
         return value == null
                 ? ""
                 : value.trim().toUpperCase(Locale.ROOT);
     }
+
 }

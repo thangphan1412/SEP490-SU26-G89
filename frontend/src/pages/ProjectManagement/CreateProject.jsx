@@ -17,7 +17,6 @@ import {
     getApiErrorMessage,
     getEmployeeDescription,
     getEmployeeName,
-    getEmployeeRoleNames,
     getEmployeeSearchText,
     CREATE_PROJECT_STATUS_OPTIONS as statusOptions,
     PHASE_STATUS_OPTIONS as phaseStatusOptions,
@@ -51,7 +50,6 @@ function CreateProject() {
 
     //Tải tài liệu phục vụ add member
     useEffect(function () {
-        let isActive = true;
         const requestController = new AbortController();
 
         async function loadMemberOptions() {
@@ -61,24 +59,26 @@ function CreateProject() {
                     listProjectUserStatuses(requestController.signal),
                 ]);
 
-                if (isActive) {
-                    let validEmployees = [];
-                    let validStatuses = [];
-
-                    if (Array.isArray(employeeData)) {
-                        validEmployees = employeeData;
-                    }
-
-                    if (Array.isArray(statusData)) {
-                        validStatuses = statusData;
-                    }
-
-                    setEmployees(validEmployees);
-                    setMemberStatusOptions(validStatuses);
-                    setEmployeeError("");
+                if (requestController.signal.aborted) {
+                    return;
                 }
+
+                let validEmployees = [];
+                let validStatuses = [];
+
+                if (Array.isArray(employeeData)) {
+                    validEmployees = employeeData;
+                }
+
+                if (Array.isArray(statusData)) {
+                    validStatuses = statusData;
+                }
+
+                setEmployees(validEmployees);
+                setMemberStatusOptions(validStatuses);
+                setEmployeeError("");
             } catch (error) {
-                if (!isActive) {
+                if (requestController.signal.aborted) {
                     return;
                 }
 
@@ -86,7 +86,7 @@ function CreateProject() {
                 setEmployees([]);
                 setEmployeeError("Unable to load employees. Please try again later.");
             } finally {
-                if (isActive) {
+                if (!requestController.signal.aborted) {
                     setLoadingEmployees(false);
                 }
             }
@@ -95,7 +95,6 @@ function CreateProject() {
         loadMemberOptions();
 
         return function () {
-            isActive = false;
             requestController.abort();
         };
     }, []);
@@ -388,7 +387,6 @@ function CreateProject() {
                     <small>{employee.email || "No email"}</small>
                 </span>
                 <span className="create-project-modal-user-meta">
-                    <small>{getEmployeeRoleNames(employee).join(", ") || "No assigned role"}</small>
                     <small>{employee.status || "Unknown"}</small>
                 </span>
             </label>
