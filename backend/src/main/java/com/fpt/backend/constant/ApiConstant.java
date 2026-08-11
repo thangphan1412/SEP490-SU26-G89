@@ -43,4 +43,31 @@
         public static class Company {
             public static final String COMPANY_PROFILE = "/api/company-profile";
         }
+        public static class Project {
+            public static final String PROJECTS = "/api/projects";
+            public static final String BY_ID = "/{id}";
+            public static final String EMPLOYEES = "/employees";
+            public static final String USER_STATUSES = "/user-statuses";
+            public static final String PERMISSION_CONFIGURATIONS = "/{projectId}/permission-configurations";
+            public static final String PERMISSION_BY_ID = "/{projectId}/permissions/{permissionId}";
+            public static final String APPROVE_BY_ID = "/{id}/approve";
+        }
+        public static class Permission {
+            public static final String PERMISSIONS = "/api/permissions";
+            public static final String LIST = "/list";
+            public static final String PROJECTS = "/projects";
+            public static final String ACTIONS = "/actions";
+            public static final String BY_ID = "/{id}";
+        }
+        public static class Phase {
+            public static final String PHASES = "/api/phases";
+            public static final String BY_PROJECT_ID = "/project/{projectId}";
+            public static final String BY_ID = "/{phaseId}";
+        }
+        public static class Task {
+            public static final String TASKS = "/api/tasks";
+            public static final String BY_PHASE_ID = "/phase/{phaseId}";
+            public static final String BY_ID = "/{taskId}";
+            public static final String MARK_DONE = "/{taskId}/done";
+        }
     }

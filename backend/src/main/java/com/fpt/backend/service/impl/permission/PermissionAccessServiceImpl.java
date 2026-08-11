@@ -3,6 +3,7 @@ package com.fpt.backend.service.impl.permission;
 import com.fpt.backend.dto.response.project.ProjectAccessResponse;
 import com.fpt.backend.entity.PermissionAction;
 import com.fpt.backend.entity.Permissions;
+import com.fpt.backend.entity.Projects;
 import com.fpt.backend.entity.UserPermission;
 import com.fpt.backend.entity.Users;
 import com.fpt.backend.enums.WorkScope;
@@ -11,6 +12,7 @@ import com.fpt.backend.exception.NotFoundException;
 import com.fpt.backend.repository.permission.UserPermissionRepository;
 import com.fpt.backend.repository.project.ProjectMemberRepository;
 import com.fpt.backend.repository.project.ProjectRepository;
+import com.fpt.backend.service.impl.project.ProjectApprovalService;
 import com.fpt.backend.service.interfaces.permission.IPermissionAccessService;
 import com.fpt.backend.util.CurrentUser;
 import lombok.RequiredArgsConstructor;
@@ -36,6 +38,7 @@ public class PermissionAccessServiceImpl
     private final ProjectRepository projectRepository;
     private final ProjectMemberRepository projectMemberRepository;
     private final UserPermissionRepository userPermissionRepository;
+    private final ProjectApprovalService projectApprovalService;
     private final CurrentUser currentUser;
 
     @Override
@@ -70,12 +73,17 @@ public class PermissionAccessServiceImpl
     @Override
     public boolean hasFullWorkScope(
             ProjectAccessResponse access,
-            String ignoredActionCode) {
+            String actionCode) {
         if (access == null) {
             return false;
         }
 
-        return WorkScope.FULL.name().equalsIgnoreCase(access.workScope());
+        if (WorkScope.FULL.name().equalsIgnoreCase(access.workScope())) {
+            return true;
+        }
+
+        return access.canViewAllProjectData()
+                && isViewAction(actionCode);
     }
 
     //Danh sách các dự án mà người dùng hiện tại có quyền thực hiện một hành động cụ thể
@@ -83,6 +91,18 @@ public class PermissionAccessServiceImpl
     public List<UUID> getCurrentUserProjectIdsWithAction(
             String actionCode) {
         Users user = currentUser.getCurrentUser();
+
+        if (projectApprovalService.canReviewProjects(user)
+                && isViewAction(actionCode)) {
+            List<UUID> projectIds = new ArrayList<>();
+
+            for (Projects project : projectRepository.findAll()) {
+                projectIds.add(project.getId());
+            }
+
+            return projectIds;
+        }
+
         return userPermissionRepository.findProjectIdsByUserAndAction(
                 user.getId(),
                 actionCode
@@ -96,18 +116,28 @@ public class PermissionAccessServiceImpl
         Users user = currentUser.getCurrentUser();
 
         //Kiểm tra xem người dùng hiện tại có phải là thành viên của dự án hay không
-        boolean projectMember = projectMemberRepository.countByProjectIdAndUserId(projectId, user.getId()) > 0;
-        if (!projectMember) {
+        boolean projectMember = projectMemberRepository
+                .countByProjectIdAndUserId(
+                        projectId,
+                        user.getId()
+                ) > 0;
+        boolean executiveViewer = projectApprovalService
+                .canReviewProjects(user);
+
+        if (!projectMember && !executiveViewer) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You cannot access this project");
         }
 
         //Lấy permission được gán cho người dùng hiện tại trong dự án
-        UserPermission assignedPermission =
-                userPermissionRepository
-                        .findActiveByUserIdAndProjectId(
-                                user.getId(),
-                                projectId
-                        );
+        UserPermission assignedPermission = null;
+
+        if (projectMember) {
+            assignedPermission = userPermissionRepository
+                    .findActiveByUserIdAndProjectId(
+                            user.getId(),
+                            projectId
+                    );
+        }
         Set<String> allowedActions = new LinkedHashSet<>();
         WorkScope workScope = WorkScope.OWN;
 
@@ -124,10 +154,17 @@ public class PermissionAccessServiceImpl
             }
         }
 
+        if (executiveViewer) {
+            allowedActions.add("VIEW_TASKS");
+            allowedActions.add("VIEW_DELIVERABLES");
+            allowedActions.add("VIEW_CONTRACTS");
+        }
+
         return new ProjectAccessResponse(
                 projectId,
                 user.getId(),
                 projectMember,
+                executiveViewer,
                 new ArrayList<>(allowedActions),
                 workScope.name()
         );
@@ -180,6 +217,10 @@ public class PermissionAccessServiceImpl
                 actionCodes.add(actionCode);
             }
         }
+    }
+
+    private boolean isViewAction(String actionCode) {
+        return actionCode != null && actionCode.startsWith("VIEW_");
     }
 
 }

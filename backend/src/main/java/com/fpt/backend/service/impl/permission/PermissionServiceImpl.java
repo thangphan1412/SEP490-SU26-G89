@@ -7,22 +7,27 @@ import com.fpt.backend.dto.response.permission.PermissionDetailResponse;
 import com.fpt.backend.dto.response.permission.PermissionListItemResponse;
 import com.fpt.backend.dto.response.permission.PermissionListResponse;
 import com.fpt.backend.dto.response.permission.PermissionProjectResponse;
+import com.fpt.backend.dto.response.project.ProjectAccessResponse;
 import com.fpt.backend.entity.Permissions;
 import com.fpt.backend.entity.Projects;
+import com.fpt.backend.entity.Users;
 import com.fpt.backend.exception.BadHttpException;
 import com.fpt.backend.exception.NotFoundException;
 import com.fpt.backend.repository.permission.PermissionRepository;
 import com.fpt.backend.repository.project.ProjectRepository;
+import com.fpt.backend.service.impl.project.ProjectApprovalService;
 import com.fpt.backend.service.interfaces.permission.IPermissionAccessService;
 import com.fpt.backend.service.interfaces.permission.IPermissionService;
 import com.fpt.backend.util.CurrentUser;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -52,6 +57,7 @@ public class PermissionServiceImpl implements IPermissionService {
     private final ProjectRepository projectRepository;
     private final PermissionActionService permissionActionService;
     private final IPermissionAccessService permissionAccessService;
+    private final ProjectApprovalService projectApprovalService;
     private final CurrentUser currentUser;
 
     @Override
@@ -61,16 +67,30 @@ public class PermissionServiceImpl implements IPermissionService {
                 request.page(),
                 request.sortBy(),
                 request.sortDirection());
+        Users user = currentUser.getCurrentUser();
+        boolean canViewAllProjects = projectApprovalService
+                .canReviewProjects(user);
+        List<UUID> manageableProjectIds = permissionAccessService
+                .getCurrentUserProjectIdsWithAction("MANAGE_MEMBERS");
         Page<Permissions> permissions = permissionRepository.searchPermissions(
                 search.toLowerCase(Locale.ROOT),
                 request.projectId(),
                 request.status(),
-                currentUser.getCurrentUser().getId(),
+                user.getId(),
                 "MANAGE_MEMBERS",
+                canViewAllProjects,
                 pageable);
+        List<PermissionListItemResponse> items = new ArrayList<>();
+
+        for (Permissions permission : permissions.getContent()) {
+            Projects project = permission.getProject();
+            boolean canManage = project != null
+                    && manageableProjectIds.contains(project.getId());
+            items.add(toListItem(permission, canManage));
+        }
 
         return new PermissionListResponse(
-                permissions.map(this::toListItem).getContent(),
+                items,
                 permissions.getNumber(),
                 permissions.getSize(),
                 permissions.getTotalElements(),
@@ -82,8 +102,20 @@ public class PermissionServiceImpl implements IPermissionService {
     @Override
     public PermissionDetailResponse getPermissionById(UUID id) {
         Permissions permission = findPermission(id);
-        requireManagePermission(permission);
-        return toDetail(permission);
+        ProjectAccessResponse access = getPermissionAccess(permission);
+        boolean canManage = permissionAccessService.hasAction(
+                access,
+                "MANAGE_MEMBERS"
+        );
+
+        if (!canManage && !access.canViewAllProjectData()) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "You cannot view this permission"
+            );
+        }
+
+        return toDetail(permission, canManage);
     }
 
     @Override
@@ -91,7 +123,7 @@ public class PermissionServiceImpl implements IPermissionService {
     public PermissionDetailResponse createPermission(PermissionRequest request) {
         Permissions permission = new Permissions();
         applyRequest(permission, request, null);
-        return toDetail(permissionRepository.save(permission));
+        return toDetail(permissionRepository.save(permission), true);
     }
 
     @Override
@@ -100,7 +132,7 @@ public class PermissionServiceImpl implements IPermissionService {
         Permissions permission = findPermission(id);
         requireManagePermission(permission);
         applyRequest(permission, request, id);
-        return toDetail(permissionRepository.save(permission));
+        return toDetail(permissionRepository.save(permission), true);
     }
 
     @Override
@@ -114,9 +146,16 @@ public class PermissionServiceImpl implements IPermissionService {
     // Trả về danh sách các dự án mà người dùng hiện tại có quyền quản lý thành viên
     @Override
     public List<PermissionProjectResponse> getProjectsForPermissionSelection() {
+        Users user = currentUser.getCurrentUser();
         List<UUID> projectIds = permissionAccessService
                 .getCurrentUserProjectIdsWithAction("MANAGE_MEMBERS");
-        List<Projects> projects = projectRepository.findAllById(projectIds);
+        List<Projects> projects;
+
+        if (projectApprovalService.canReviewProjects(user)) {
+            projects = projectRepository.findAll();
+        } else {
+            projects = projectRepository.findAllById(projectIds);
+        }
         //Sắp xếp danh sách dự án theo tên dự án (không phân biệt chữ hoa chữ thường)
         projects.sort(
                 Comparator.comparing(
@@ -129,7 +168,8 @@ public class PermissionServiceImpl implements IPermissionService {
             responses.add(new PermissionProjectResponse(
                     project.getId(),
                     project.getProjectCode(),
-                    project.getProjectName()));
+                    project.getProjectName(),
+                    projectIds.contains(project.getId())));
         }
 
         return responses;
@@ -203,6 +243,21 @@ public class PermissionServiceImpl implements IPermissionService {
     }
 
     private void requireManagePermission(Permissions permission) {
+        Projects project = requirePermissionProject(permission);
+        permissionAccessService.requireAction(
+                project.getId(),
+                "MANAGE_MEMBERS");
+    }
+
+    private ProjectAccessResponse getPermissionAccess(
+            Permissions permission) {
+        Projects project = requirePermissionProject(permission);
+        return permissionAccessService.getCurrentUserAccess(
+                project.getId()
+        );
+    }
+
+    private Projects requirePermissionProject(Permissions permission) {
         Projects project = permission.getProject();
 
         if (project == null) {
@@ -210,9 +265,7 @@ public class PermissionServiceImpl implements IPermissionService {
                     "Permission is not connected to a project");
         }
 
-        permissionAccessService.requireAction(
-                project.getId(),
-                "MANAGE_MEMBERS");
+        return project;
     }
 
     private Pageable createPageable(int page, String sortBy, String sortDirection) {
@@ -256,7 +309,9 @@ public class PermissionServiceImpl implements IPermissionService {
         return value == null ? "" : value.trim();
     }
 
-    private PermissionListItemResponse toListItem(Permissions permission) {
+    private PermissionListItemResponse toListItem(
+            Permissions permission,
+            boolean canManage) {
         Projects project = permission.getProject();
 
         return new PermissionListItemResponse(
@@ -268,10 +323,13 @@ public class PermissionServiceImpl implements IPermissionService {
                 project == null ? null : project.getId(),
                 project == null ? null : project.getProjectCode(),
                 project == null ? null : project.getProjectName(),
-                permission.getCreatedAt());
+                permission.getCreatedAt(),
+                canManage);
     }
 
-    private PermissionDetailResponse toDetail(Permissions permission) {
+    private PermissionDetailResponse toDetail(
+            Permissions permission,
+            boolean canManage) {
         Projects project = permission.getProject();
 
         return new PermissionDetailResponse(
@@ -286,6 +344,7 @@ public class PermissionServiceImpl implements IPermissionService {
                 project == null ? null : project.getId(),
                 project == null ? null : project.getProjectCode(),
                 project == null ? null : project.getProjectName(),
-                permission.getCreatedAt());
+                permission.getCreatedAt(),
+                canManage);
     }
 }

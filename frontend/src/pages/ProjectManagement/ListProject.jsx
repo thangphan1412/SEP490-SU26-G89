@@ -9,7 +9,10 @@ import {
     Table,
 } from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
-import { listProjects } from "../../services/projectService/projectApi.js";
+import {
+    approveProject,
+    listProjects,
+} from "../../services/projectService/projectApi.js";
 import Icon from "../../components/projectComponents/Icon.jsx";
 import PagePanel from "../../components/projectComponents/PagePanel.jsx";
 import PrimaryButton from "../../components/projectComponents/PrimaryButton.jsx";
@@ -31,6 +34,7 @@ const PROJECT_COLUMN_LABELS = [
     "End Date",
     "Created By",
     "Created At",
+    "Actions",
 ];
 
 function createPageNumbers(currentPage, totalPages) {
@@ -77,6 +81,9 @@ function ListProject() {
     const [totalPages, setTotalPages] = useState(0);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
+    const [successMessage, setSuccessMessage] = useState("");
+    const [approvingProjectId, setApprovingProjectId] = useState(null);
+    const [reloadVersion, setReloadVersion] = useState(0);
 
     useEffect(function () {
         const debounceId = window.setTimeout(function () {
@@ -154,6 +161,7 @@ function ListProject() {
         search,
         status,
         viewOnlyYourProjects,
+        reloadVersion,
     ]);
 
     const pageNumbers = createPageNumbers(page, totalPages);
@@ -190,6 +198,36 @@ function ListProject() {
         navigate(`/project-management/view?id=${project.id}`);
     }
 
+    async function handleApproveProject(event, project) {
+        event.stopPropagation();
+
+        const confirmed = window.confirm(
+            "Approve project " + project.projectName + "?"
+        );
+
+        if (!confirmed) {
+            return;
+        }
+
+        try {
+            setApprovingProjectId(project.id);
+            setError("");
+            setSuccessMessage("");
+            const message = await approveProject(project.id);
+            setSuccessMessage(message);
+            setReloadVersion(function (currentVersion) {
+                return currentVersion + 1;
+            });
+        } catch (approveError) {
+            setError(getApiErrorMessage(
+                approveError,
+                "Unable to approve this project. Please try again later."
+            ));
+        } finally {
+            setApprovingProjectId(null);
+        }
+    }
+
     //Chuyển hướng đến trang tạo dự án khi nhấn nút "Create Project"
     const pageAction = (
         <PrimaryButton onClick={() => navigate("/project-management/create")}>
@@ -205,6 +243,11 @@ function ListProject() {
             action={pageAction}
         >
             {error && <Alert variant="danger" className="mb-3">{error}</Alert>}
+            {successMessage && (
+                <Alert variant="success" className="mb-3">
+                    {successMessage}
+                </Alert>
+            )}
 
             <div className="list-project-toolbar">
                 <InputGroup className="list-project-search-box">
@@ -373,6 +416,26 @@ function ListProject() {
 
                                     <td className="list-project-td">
                                         {project.projectCreatedAt}
+                                    </td>
+
+                                    <td className="list-project-td list-project-action-cell">
+                                        {project.canApprove ? (
+                                            <Button
+                                                type="button"
+                                                variant="success"
+                                                className="list-project-approve-button"
+                                                disabled={approvingProjectId === project.id}
+                                                onClick={(event) =>
+                                                    handleApproveProject(event, project)
+                                                }
+                                            >
+                                                {approvingProjectId === project.id
+                                                    ? "Approving..."
+                                                    : "Approve Project"}
+                                            </Button>
+                                        ) : (
+                                            <span className="list-project-no-action">-</span>
+                                        )}
                                     </td>
                                 </tr>
                             ))

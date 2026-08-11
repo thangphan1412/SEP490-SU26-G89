@@ -121,7 +121,7 @@ function ViewPermissionPage() {
       <Button className="permission-secondary-button" onClick={goBack}>
         <IconArrowLeft size={18} /> Back
       </Button>
-      {permission && (
+      {permission && permission.canManage && (
         <>
           <Button className="permission-primary-button" onClick={() => navigate(`/permission/list?edit=${permission.id}`)}>
             <IconEdit size={18} /> Edit

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Button, Form } from "react-bootstrap";
-import { IconCheck, IconDeviceFloppy } from "@tabler/icons-react";
+import { IconCheck, IconDeviceFloppy, IconEye } from "@tabler/icons-react";
 
 function TaskEditRow({
   task,
@@ -9,13 +9,17 @@ function TaskEditRow({
   phaseStartDate,
   phaseEndDate,
   allowReassignment,
+  canApproveTasks,
   onSave,
   onMarkDone,
+  onViewContract,
 }) {
   const [form, setForm] = useState(createForm(task));
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const contracts = Array.isArray(task.contracts) ? task.contracts : [];
+  const taskIsDone = form.status === "DONE";
 
   function handleChange(event) {
     const fieldName = event.target.name;
@@ -89,6 +93,7 @@ function TaskEditRow({
           name="title"
           value={form.title}
           onChange={handleChange}
+          disabled={taskIsDone}
           maxLength={255}
           aria-label="Task title"
           required
@@ -99,7 +104,7 @@ function TaskEditRow({
           name="assignedToId"
           value={form.assignedToId}
           onChange={handleChange}
-          disabled={!allowReassignment}
+          disabled={!allowReassignment || taskIsDone}
           aria-label="Task assignee"
         >
           <option value="">Unassigned</option>
@@ -114,6 +119,7 @@ function TaskEditRow({
           min={phaseStartDate}
           max={form.endDate || phaseEndDate}
           onChange={handleChange}
+          disabled={taskIsDone}
           aria-label="Task start date"
           required
         />
@@ -126,40 +132,77 @@ function TaskEditRow({
           min={form.startDate || phaseStartDate}
           max={phaseEndDate}
           onChange={handleChange}
+          disabled={taskIsDone}
           aria-label="Task end date"
           required
         />
       </td>
       <td>
-        <Form.Select
-          name="status"
-          value={form.status}
-          onChange={handleChange}
-          aria-label="Task status"
-          required
-        >
-          {statusOptions.map(renderStatusOption)}
-        </Form.Select>
+        {taskIsDone ? (
+          <Form.Control value="DONE" disabled aria-label="Task status" />
+        ) : (
+          <Form.Select
+            name="status"
+            value={form.status}
+            onChange={handleChange}
+            aria-label="Task status"
+            required
+          >
+            {statusOptions.map(renderStatusOption)}
+          </Form.Select>
+        )}
+      </td>
+      <td className="task-contract-cell">
+        {contracts.length === 0 ? (
+          <span>-</span>
+        ) : (
+          <div className="task-contract-buttons">
+            {contracts.map(function (contract) {
+              const contractLabel = contract.contractNumber
+                || contract.contractTitle
+                || "contract";
+
+              return (
+                <Button
+                  key={contract.id}
+                  type="button"
+                  size="sm"
+                  variant="outline-primary"
+                  className="task-contract-view-button"
+                  title={`View ${contractLabel}`}
+                  aria-label={`View ${contractLabel}`}
+                  onClick={function () {
+                    onViewContract(contract.id);
+                  }}
+                >
+                  <IconEye size={17} />
+                </Button>
+              );
+            })}
+          </div>
+        )}
       </td>
       <td className="task-row-actions">
         <Button
           type="button"
           size="sm"
           variant="primary"
-          disabled={saving}
+          disabled={saving || taskIsDone}
           onClick={handleSave}
         >
           <IconDeviceFloppy size={16} /> Save
         </Button>
-        <Button
-          type="button"
-          size="sm"
-          variant="success"
-          disabled={saving || form.status === "DONE"}
-          onClick={handleMarkDone}
-        >
-          <IconCheck size={16} /> Mark As Done
-        </Button>
+        {canApproveTasks && !taskIsDone && (
+          <Button
+            type="button"
+            size="sm"
+            variant="success"
+            disabled={saving}
+            onClick={handleMarkDone}
+          >
+            <IconCheck size={16} /> Mark As Done
+          </Button>
+        )}
         {message && <span className="task-row-success">{message}</span>}
         {error && <span className="task-row-error">{error}</span>}
       </td>

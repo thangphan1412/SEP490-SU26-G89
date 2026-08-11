@@ -230,6 +230,22 @@
     font-weight: 800;
 }
 
+.list-project-action-cell {
+    min-width: 155px;
+}
+
+.list-project-approve-button.btn {
+    min-width: 130px;
+    padding: 8px 12px;
+    border-radius: 7px;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.list-project-no-action {
+    color: #98a2b3;
+}
+
 .list-project-table .list-project-state-cell {
     height: 280px;
     color: #66738c;

@@ -1,10 +1,13 @@
 package com.fpt.backend.service.impl.task;
 
+import com.fpt.backend.dto.request.task.TaskCreateRequest;
 import com.fpt.backend.dto.request.task.TaskUpdateRequest;
 import com.fpt.backend.dto.response.project.ProjectAccessResponse;
+import com.fpt.backend.dto.response.task.TaskContractResponse;
 import com.fpt.backend.dto.response.task.TaskItemResponse;
 import com.fpt.backend.dto.response.task.TaskManagementResponse;
 import com.fpt.backend.dto.response.task.TaskMemberOptionResponse;
+import com.fpt.backend.entity.Contracts;
 import com.fpt.backend.entity.ProjectMember;
 import com.fpt.backend.entity.Projects;
 import com.fpt.backend.entity.Timeline;
@@ -39,6 +42,11 @@ import java.util.UUID;
 @Transactional(readOnly = true)
 public class TaskServiceImpl implements ITaskService {
     private static final ZoneId APP_TIME_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
+    private static final List<TaskStatus> EDITABLE_TASK_STATUSES = List.of(
+            TaskStatus.TODO,
+            TaskStatus.IN_PROGRESS,
+            TaskStatus.ON_HOLD
+    );
 
     private final TaskRepository taskRepository;
     private final PhaseRepository phaseRepository;
@@ -62,6 +70,18 @@ public class TaskServiceImpl implements ITaskService {
                 access,
                 "EDIT_TASKS"
         );
+        boolean canViewContracts = permissionAccessService.hasAction(
+                access,
+                "VIEW_CONTRACTS"
+        );
+        boolean canCreateTasks = permissionAccessService.hasAction(
+                access,
+                "CREATE_TASKS"
+        );
+        boolean canApproveTasks = permissionAccessService.hasAction(
+                access,
+                "APPROVE_TASKS"
+        );
 
         List<TimelineTask> tasks;
 
@@ -82,9 +102,53 @@ public class TaskServiceImpl implements ITaskService {
                 project.getId(),
                 project.getProjectName(),
                 fullWorkScope,
-                List.of(TaskStatus.values()),
+                canCreateTasks,
+                canApproveTasks,
+                EDITABLE_TASK_STATUSES,
                 getMemberOptions(project.getId(), access, fullWorkScope),
-                toTaskResponses(tasks)
+                toTaskResponses(tasks, canViewContracts)
+        );
+    }
+
+    @Override
+    @Transactional
+    public TaskItemResponse createTask(
+            UUID phaseId,
+            TaskCreateRequest request) {
+        Timeline phase = findPhase(phaseId);
+        UUID projectId = phase.getProject().getId();
+        ProjectAccessResponse access = requireCreateTaskAccess(projectId);
+
+        phaseStatusService.refreshProjectStatuses(projectId);
+        phase = findPhase(phaseId);
+        validatePhaseIsInProgress(phase);
+
+        boolean fullWorkScope = permissionAccessService.hasFullWorkScope(
+                access,
+                "CREATE_TASKS"
+        );
+
+        validateDates(request.startDate(), request.endDate(), phase);
+        Users assignedUser = findAssignedUser(
+                projectId,
+                request.assignedToId()
+        );
+        validateAssignee(access, assignedUser, fullWorkScope);
+
+        TimelineTask task = new TimelineTask();
+        task.setTitle(request.title().trim());
+        task.setStartDate(java.sql.Date.valueOf(request.startDate()));
+        task.setEndDate(java.sql.Date.valueOf(request.endDate()));
+        task.setStatus(TaskStatus.TODO.name());
+        task.setTimeline(phase);
+        task.setAssignedTo(assignedUser);
+
+        TimelineTask createdTask = taskRepository.save(task);
+        taskRepository.flush();
+        phaseStatusService.refreshProjectStatuses(projectId);
+        return toTaskResponse(
+                createdTask,
+                permissionAccessService.hasAction(access, "VIEW_CONTRACTS")
         );
     }
 
@@ -101,7 +165,9 @@ public class TaskServiceImpl implements ITaskService {
         phaseStatusService.refreshProjectStatuses(projectId);
         task = findTask(taskId);
         phase = task.getTimeline();
+        validateTaskIsEditable(task);
         validatePhaseIsInProgress(phase);
+        validateEditableStatus(request.status());
 
         boolean fullWorkScope = permissionAccessService.hasFullWorkScope(
                 access,
@@ -109,7 +175,11 @@ public class TaskServiceImpl implements ITaskService {
         );
 
         validateTaskAccess(task, access, fullWorkScope);
-        validateDates(request, phase);
+        validateDates(
+                request.startDate(),
+                request.endDate(),
+                phase
+        );
 
         Users assignedUser = findAssignedUser(
                 phase.getProject().getId(),
@@ -126,7 +196,10 @@ public class TaskServiceImpl implements ITaskService {
         TimelineTask updatedTask = taskRepository.save(task);
         taskRepository.flush();
         phaseStatusService.refreshProjectStatuses(projectId);
-        return toTaskResponse(updatedTask);
+        return toTaskResponse(
+                updatedTask,
+                permissionAccessService.hasAction(access, "VIEW_CONTRACTS")
+        );
     }
 
     @Override
@@ -136,8 +209,16 @@ public class TaskServiceImpl implements ITaskService {
         UUID projectId = task.getTimeline().getProject().getId();
         ProjectAccessResponse access = requireEditTaskAccess(projectId);
 
+        if (!permissionAccessService.hasAction(access, "APPROVE_TASKS")) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "You do not have permission to approve tasks"
+            );
+        }
+
         phaseStatusService.refreshProjectStatuses(projectId);
         task = findTask(taskId);
+        validateTaskIsEditable(task);
         validatePhaseIsInProgress(task.getTimeline());
 
         boolean fullWorkScope = permissionAccessService.hasFullWorkScope(
@@ -151,7 +232,10 @@ public class TaskServiceImpl implements ITaskService {
         TimelineTask updatedTask = taskRepository.save(task);
         taskRepository.flush();
         phaseStatusService.refreshProjectStatuses(projectId);
-        return toTaskResponse(updatedTask);
+        return toTaskResponse(
+                updatedTask,
+                permissionAccessService.hasAction(access, "VIEW_CONTRACTS")
+        );
     }
 
     private Timeline findPhase(UUID phaseId) {
@@ -186,6 +270,36 @@ public class TaskServiceImpl implements ITaskService {
         }
 
         return access;
+    }
+
+    private ProjectAccessResponse requireCreateTaskAccess(UUID projectId) {
+        ProjectAccessResponse access = permissionAccessService
+                .getCurrentUserAccess(projectId);
+
+        if (!permissionAccessService.hasAction(access, "CREATE_TASKS")) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "You do not have permission to create tasks"
+            );
+        }
+
+        return access;
+    }
+
+    private void validateTaskIsEditable(TimelineTask task) {
+        if (TaskStatus.DONE.name().equalsIgnoreCase(task.getStatus())) {
+            throw new BadHttpException(
+                    "A completed task cannot be edited"
+            );
+        }
+    }
+
+    private void validateEditableStatus(TaskStatus status) {
+        if (!EDITABLE_TASK_STATUSES.contains(status)) {
+            throw new BadHttpException(
+                    "Task status must be TODO, IN_PROGRESS or ON_HOLD"
+            );
+        }
     }
 
     private void validatePhaseIsInProgress(Timeline phase) {
@@ -232,9 +346,10 @@ public class TaskServiceImpl implements ITaskService {
         }
     }
 
-    private void validateDates(TaskUpdateRequest request, Timeline phase) {
-        LocalDate startDate = request.startDate();
-        LocalDate endDate = request.endDate();
+    private void validateDates(
+            LocalDate startDate,
+            LocalDate endDate,
+            Timeline phase) {
         LocalDate phaseStartDate = toLocalDate(phase.getStartDate());
         LocalDate phaseEndDate = toLocalDate(phase.getEndDate());
 
@@ -297,17 +412,20 @@ public class TaskServiceImpl implements ITaskService {
     }
 
     private List<TaskItemResponse> toTaskResponses(
-            List<TimelineTask> tasks) {
+            List<TimelineTask> tasks,
+            boolean canViewContracts) {
         List<TaskItemResponse> responses = new ArrayList<>();
 
         for (TimelineTask task : tasks) {
-            responses.add(toTaskResponse(task));
+            responses.add(toTaskResponse(task, canViewContracts));
         }
 
         return responses;
     }
 
-    private TaskItemResponse toTaskResponse(TimelineTask task) {
+    private TaskItemResponse toTaskResponse(
+            TimelineTask task,
+            boolean canViewContracts) {
         Users assignedUser = task.getAssignedTo();
         UUID assignedUserId = null;
         String assignedUserName = null;
@@ -327,8 +445,30 @@ public class TaskServiceImpl implements ITaskService {
                 toLocalDate(task.getEndDate()),
                 assignedUserId,
                 assignedUserName,
-                assignedUserEmail
+                assignedUserEmail,
+                getTaskContracts(task.getId(), canViewContracts)
         );
+    }
+
+    private List<TaskContractResponse> getTaskContracts(
+            UUID taskId,
+            boolean canViewContracts) {
+        List<TaskContractResponse> responses = new ArrayList<>();
+
+        if (!canViewContracts) {
+            return responses;
+        }
+
+        for (Contracts contract
+                : taskRepository.findContractsByTaskId(taskId)) {
+            responses.add(new TaskContractResponse(
+                    contract.getId(),
+                    contract.getContractNumber(),
+                    contract.getContractTitle()
+            ));
+        }
+
+        return responses;
     }
 
     private LocalDate toLocalDate(Date value) {
