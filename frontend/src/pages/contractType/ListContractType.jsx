@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { Alert, Button, Modal, Spinner } from "react-bootstrap";
 import {
+    IconArrowDown,
+    IconArrowUp,
     IconEye,
     IconPencil,
     IconPlus,
@@ -11,6 +13,7 @@ import {
 import contractTypeApi from "../../services/contractTypeService/contractTypeApi.js";
 import {
     formatContractDateTime,
+    formatContractStatus,
     getApiErrorMessage,
     unwrapApiResponse,
 } from "../ContractManagement/contractUtils.js";
@@ -24,12 +27,60 @@ const EMPTY_FORM = {
     category: "Legal",
     status: "Active",
     createdBy: "",
+    workflowName: "Contract approval workflow",
 };
+
+let workflowStepKey = 0;
+
+function createWorkflowStep(overrides = {}) {
+    workflowStepKey += 1;
+    return {
+        clientKey: `workflow-step-${workflowStepKey}`,
+        stepOrder: 1,
+        stepName: "",
+        actionType: "APPROVE",
+        requiredRoleCode: "",
+        required: true,
+        canReject: true,
+        ...overrides,
+    };
+}
+
+function createDefaultWorkflowSteps() {
+    return [
+        createWorkflowStep({
+            stepOrder: 1,
+            stepName: "Prepare and submit",
+            actionType: "CREATE",
+            requiredRoleCode: "EMPLOYEE",
+            canReject: false,
+        }),
+        createWorkflowStep({
+            stepOrder: 2,
+            stepName: "Internal approval",
+            actionType: "APPROVE",
+            requiredRoleCode: "MANAGER",
+        }),
+        createWorkflowStep({
+            stepOrder: 3,
+            stepName: "Company signature",
+            actionType: "SIGN",
+            requiredRoleCode: "DIRECTOR",
+        }),
+        createWorkflowStep({
+            stepOrder: 4,
+            stepName: "Counterparty signature",
+            actionType: "SIGN",
+            requiredRoleCode: "PARTNER",
+        }),
+    ];
+}
 
 function createEmptyForm() {
     return {
         ...EMPTY_FORM,
         createdBy: localStorage.getItem("fullName") || "",
+        workflowSteps: createDefaultWorkflowSteps(),
     };
 }
 
@@ -45,6 +96,10 @@ function ListContractType() {
     const [modalError, setModalError] = useState("");
     const [submitting, setSubmitting] = useState(false);
     const [deletingId, setDeletingId] = useState(null);
+    const [workflowOptions, setWorkflowOptions] = useState({
+        actionTypes: ["CREATE", "APPROVE", "SIGN", "APPROVE_AND_SIGN"],
+        roles: [],
+    });
 
     useEffect(() => {
         let active = true;
@@ -54,11 +109,23 @@ function ListContractType() {
             setErrorMessage("");
 
             try {
-                const response = await contractTypeApi.getAllContractTypes();
-                const items = unwrapApiResponse(response);
+                const [typeResponse, workflowResponse] = await Promise.all([
+                    contractTypeApi.getAllContractTypes(),
+                    contractTypeApi.getWorkflowOptions(),
+                ]);
+                const items = unwrapApiResponse(typeResponse);
+                const workflowPayload = unwrapApiResponse(workflowResponse);
 
                 if (active) {
                     setContractTypes(Array.isArray(items) ? items : []);
+                    setWorkflowOptions({
+                        actionTypes: Array.isArray(workflowPayload?.actionTypes)
+                            ? workflowPayload.actionTypes
+                            : ["CREATE", "APPROVE", "SIGN", "APPROVE_AND_SIGN"],
+                        roles: Array.isArray(workflowPayload?.roles)
+                            ? workflowPayload.roles
+                            : [],
+                    });
                 }
             } catch (error) {
                 if (active) {
@@ -131,6 +198,20 @@ function ListContractType() {
                 contractType.createdBy ||
                 localStorage.getItem("fullName") ||
                 "",
+            workflowName:
+                contractType.activeWorkflow?.workflowName
+                || `${contractType.contractTypeName || "Contract"} workflow`,
+            workflowSteps: Array.isArray(contractType.activeWorkflow?.steps)
+                ? contractType.activeWorkflow.steps.map((step) =>
+                    createWorkflowStep({
+                        stepOrder: step.stepOrder,
+                        stepName: step.stepName || "",
+                        actionType: step.actionType || "APPROVE",
+                        requiredRoleCode: step.requiredRoleCode || "",
+                        required: step.required !== false,
+                        canReject: Boolean(step.canReject),
+                    }))
+                : createDefaultWorkflowSteps(),
         });
         setModalError("");
         setModalMode("edit");
@@ -147,6 +228,71 @@ function ListContractType() {
     const handleChange = (event) => {
         const { name, value } = event.target;
         setForm((current) => ({ ...current, [name]: value }));
+    };
+
+    const updateWorkflowStep = (clientKey, field, value) => {
+        setForm((current) => ({
+            ...current,
+            workflowSteps: current.workflowSteps.map((step) =>
+                step.clientKey === clientKey
+                    ? {
+                        ...step,
+                        [field]: value,
+                        ...(field === "actionType" && value === "CREATE"
+                            ? { canReject: false }
+                            : {}),
+                    }
+                    : step
+            ),
+        }));
+    };
+
+    const addWorkflowStep = () => {
+        setForm((current) => ({
+            ...current,
+            workflowSteps: [
+                ...current.workflowSteps,
+                createWorkflowStep({
+                    stepOrder: current.workflowSteps.length + 1,
+                    stepName: "New workflow step",
+                    requiredRoleCode: workflowOptions.roles[0]?.roleCode || "",
+                }),
+            ],
+        }));
+    };
+
+    const removeWorkflowStep = (clientKey) => {
+        setForm((current) => ({
+            ...current,
+            workflowSteps: current.workflowSteps
+                .filter((step) => step.clientKey !== clientKey)
+                .map((step, index) => ({ ...step, stepOrder: index + 1 })),
+        }));
+    };
+
+    const moveWorkflowStep = (clientKey, direction) => {
+        setForm((current) => {
+            const index = current.workflowSteps.findIndex(
+                (step) => step.clientKey === clientKey
+            );
+            const targetIndex = index + direction;
+            if (index <= 0 || targetIndex <= 0
+                || targetIndex >= current.workflowSteps.length) {
+                return current;
+            }
+            const workflowSteps = [...current.workflowSteps];
+            [workflowSteps[index], workflowSteps[targetIndex]] = [
+                workflowSteps[targetIndex],
+                workflowSteps[index],
+            ];
+            return {
+                ...current,
+                workflowSteps: workflowSteps.map((step, stepIndex) => ({
+                    ...step,
+                    stepOrder: stepIndex + 1,
+                })),
+            };
+        });
     };
 
     const handleSubmit = async (event) => {
@@ -166,6 +312,28 @@ function ListContractType() {
             return;
         }
 
+        if (!form.workflowName.trim() || form.workflowSteps.length < 2) {
+            setModalError(
+                "Workflow name and at least two workflow steps are required."
+            );
+            return;
+        }
+        if (form.workflowSteps[0].actionType !== "CREATE"
+            || form.workflowSteps.slice(1).some(
+                (step) => step.actionType === "CREATE"
+            )) {
+            setModalError(
+                "The workflow must start with exactly one CREATE step."
+            );
+            return;
+        }
+        if (form.workflowSteps.some(
+            (step) => !step.stepName.trim() || !step.requiredRoleCode
+        )) {
+            setModalError("Every workflow step needs a name and a role.");
+            return;
+        }
+
         const request = {
             contractTypeCode: form.contractTypeCode.trim(),
             contractTypeName: form.contractTypeName.trim(),
@@ -176,6 +344,16 @@ function ListContractType() {
             category: form.category.trim() || null,
             status: form.status,
             createdBy: form.createdBy.trim() || null,
+            workflowName: form.workflowName.trim(),
+            workflowSteps: form.workflowSteps.map((step, index) => ({
+                stepOrder: index + 1,
+                stepName: step.stepName.trim(),
+                actionType: step.actionType,
+                requiredRoleCode: step.requiredRoleCode,
+                required: true,
+                canReject: step.actionType !== "CREATE"
+                    && Boolean(step.canReject),
+            })),
         };
 
         setSubmitting(true);
@@ -375,7 +553,12 @@ function ListContractType() {
                 form={form}
                 error={modalError}
                 submitting={submitting}
+                workflowOptions={workflowOptions}
                 onChange={handleChange}
+                onStepChange={updateWorkflowStep}
+                onAddStep={addWorkflowStep}
+                onRemoveStep={removeWorkflowStep}
+                onMoveStep={moveWorkflowStep}
                 onClose={closeModal}
                 onSubmit={handleSubmit}
                 onEdit={() => openEditModal(selectedType)}
@@ -390,7 +573,12 @@ function ContractTypeModal({
     form,
     error,
     submitting,
+    workflowOptions,
     onChange,
+    onStepChange,
+    onAddStep,
+    onRemoveStep,
+    onMoveStep,
     onClose,
     onSubmit,
     onEdit,
@@ -410,7 +598,7 @@ function ContractTypeModal({
         <Modal
             show
             onHide={onClose}
-            size="lg"
+            size="xl"
             centered
             backdrop={submitting ? "static" : true}
             className="contract-modal"
@@ -475,6 +663,17 @@ function ContractTypeModal({
                                 <strong>
                                     {contractType?.description || "-"}
                                 </strong>
+                            </div>
+                            <div className="contract-detail-item contract-detail-full">
+                                <span>Active Workflow</span>
+                                <strong>
+                                    {contractType?.activeWorkflow
+                                        ? `${contractType.activeWorkflow.workflowName} (V${contractType.activeWorkflow.versionNumber})`
+                                        : "Not configured"}
+                                </strong>
+                                <WorkflowPreview
+                                    workflow={contractType?.activeWorkflow}
+                                />
                             </div>
                         </div>
                     </Modal.Body>
@@ -585,6 +784,15 @@ function ContractTypeModal({
                                 />
                             </div>
                         </div>
+                        <WorkflowEditor
+                            form={form}
+                            workflowOptions={workflowOptions}
+                            onChange={onChange}
+                            onStepChange={onStepChange}
+                            onAddStep={onAddStep}
+                            onRemoveStep={onRemoveStep}
+                            onMoveStep={onMoveStep}
+                        />
                     </Modal.Body>
                     <Modal.Footer>
                         <Button
@@ -606,6 +814,191 @@ function ContractTypeModal({
                 </form>
             )}
         </Modal>
+    );
+}
+
+function WorkflowEditor({
+    form,
+    workflowOptions,
+    onChange,
+    onStepChange,
+    onAddStep,
+    onRemoveStep,
+    onMoveStep,
+}) {
+    const actionTypes = workflowOptions?.actionTypes || [];
+    const roles = workflowOptions?.roles || [];
+
+    return (
+        <section className="contract-type-workflow-editor">
+            <div className="contract-type-workflow-heading">
+                <div>
+                    <h3>Contract workflow</h3>
+                    <p>
+                        Set the ordered roles that create, approve and sign this
+                        contract type. Saving a changed workflow creates a new
+                        immutable version.
+                    </p>
+                </div>
+                <Button type="button" variant="outline-primary" onClick={onAddStep}>
+                    <IconPlus size={18} />
+                    Add step
+                </Button>
+            </div>
+            <FormField
+                label="Workflow Name"
+                name="workflowName"
+                value={form.workflowName}
+                onChange={onChange}
+                placeholder="Example: Employment contract workflow"
+                required
+            />
+            <div className="contract-type-workflow-steps">
+                {form.workflowSteps.map((step, index) => {
+                    const roleExists = roles.some(
+                        (role) => role.roleCode === step.requiredRoleCode
+                    );
+                    return (
+                        <article
+                            className="contract-type-workflow-step"
+                            key={step.clientKey}
+                        >
+                            <div className="contract-type-workflow-order">
+                                <strong>{index + 1}</strong>
+                                <div>
+                                    <button
+                                        type="button"
+                                        title="Move up"
+                                        disabled={index <= 1}
+                                        onClick={() => onMoveStep(step.clientKey, -1)}
+                                    >
+                                        <IconArrowUp size={16} />
+                                    </button>
+                                    <button
+                                        type="button"
+                                        title="Move down"
+                                        disabled={index === 0
+                                            || index === form.workflowSteps.length - 1}
+                                        onClick={() => onMoveStep(step.clientKey, 1)}
+                                    >
+                                        <IconArrowDown size={16} />
+                                    </button>
+                                </div>
+                            </div>
+                            <div>
+                                <label className="contract-form-label">Step name</label>
+                                <input
+                                    className="form-control"
+                                    value={step.stepName}
+                                    onChange={(event) => onStepChange(
+                                        step.clientKey,
+                                        "stepName",
+                                        event.target.value
+                                    )}
+                                    required
+                                />
+                            </div>
+                            <div>
+                                <label className="contract-form-label">Action</label>
+                                <select
+                                    className="form-select"
+                                    value={step.actionType}
+                                    disabled={index === 0}
+                                    onChange={(event) => onStepChange(
+                                        step.clientKey,
+                                        "actionType",
+                                        event.target.value
+                                    )}
+                                >
+                                    {(index === 0
+                                        ? ["CREATE"]
+                                        : actionTypes.filter(
+                                            (action) => action !== "CREATE"
+                                        )
+                                    ).map((action) => (
+                                        <option value={action} key={action}>
+                                            {formatContractStatus(action)}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="contract-form-label">Required role</label>
+                                <select
+                                    className="form-select"
+                                    value={step.requiredRoleCode}
+                                    onChange={(event) => onStepChange(
+                                        step.clientKey,
+                                        "requiredRoleCode",
+                                        event.target.value
+                                    )}
+                                    required
+                                >
+                                    <option value="">Select role</option>
+                                    {!roleExists && step.requiredRoleCode && (
+                                        <option value={step.requiredRoleCode}>
+                                            {step.requiredRoleCode}
+                                        </option>
+                                    )}
+                                    {roles.map((role) => (
+                                        <option value={role.roleCode} key={role.id || role.roleCode}>
+                                            {role.roleName} ({role.roleCode})
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                            <label className="form-check contract-type-workflow-reject">
+                                <input
+                                    type="checkbox"
+                                    className="form-check-input"
+                                    checked={Boolean(step.canReject)}
+                                    disabled={index === 0}
+                                    onChange={(event) => onStepChange(
+                                        step.clientKey,
+                                        "canReject",
+                                        event.target.checked
+                                    )}
+                                />
+                                <span className="form-check-label">Can reject</span>
+                            </label>
+                            <button
+                                type="button"
+                                className="contract-action-button danger"
+                                title="Remove step"
+                                disabled={index === 0 || form.workflowSteps.length <= 2}
+                                onClick={() => onRemoveStep(step.clientKey)}
+                            >
+                                <IconTrash size={17} />
+                            </button>
+                        </article>
+                    );
+                })}
+            </div>
+        </section>
+    );
+}
+
+function WorkflowPreview({ workflow }) {
+    const steps = Array.isArray(workflow?.steps) ? workflow.steps : [];
+    if (steps.length === 0) {
+        return null;
+    }
+
+    return (
+        <div className="contract-type-workflow-preview">
+            {steps.map((step) => (
+                <div key={step.id || step.stepOrder}>
+                    <span>{step.stepOrder}</span>
+                    <div>
+                        <strong>{step.stepName}</strong>
+                        <small>
+                            {formatContractStatus(step.actionType)} · {step.requiredRoleCode}
+                            {step.canReject ? " · can reject" : ""}
+                        </small>
+                    </div>
+                </div>
+            ))}
+        </div>
     );
 }
 

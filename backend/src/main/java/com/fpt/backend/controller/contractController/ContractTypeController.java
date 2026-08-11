@@ -2,6 +2,7 @@ package com.fpt.backend.controller.contractController;
 
 import com.fpt.backend.dto.request.contract.ContractTypeRequest;
 import com.fpt.backend.dto.response.contract.ContractTypeResponse;
+import com.fpt.backend.dto.response.contract.ContractWorkflowOptionsResponse;
 import com.fpt.backend.service.interfaces.contract.ContractTypeService;
 import com.fpt.backend.util.BaseResponse;
 import lombok.RequiredArgsConstructor;
@@ -42,6 +43,14 @@ public class ContractTypeController {
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.noStore())
                 .body(new BaseResponse<>(contractTypeService.getContractTypeById(id)));
+    }
+
+    @GetMapping("/workflow-options")
+    public ResponseEntity<BaseResponse<ContractWorkflowOptionsResponse>>
+    getWorkflowOptions() {
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .body(new BaseResponse<>(contractTypeService.getWorkflowOptions()));
     }
 
     @PostMapping

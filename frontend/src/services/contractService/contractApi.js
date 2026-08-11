@@ -23,6 +23,13 @@ const contractApi = {
         );
     },
 
+    getProjectContext(projectId) {
+        return axiosClient.get(
+            CONTRACT_ENDPOINT + "/project-options/" + projectId + "/context",
+            noCacheConfig
+        );
+    },
+
     getContractById(id) {
         return axiosClient.get(CONTRACT_ENDPOINT + "/" + id, noCacheConfig);
     },

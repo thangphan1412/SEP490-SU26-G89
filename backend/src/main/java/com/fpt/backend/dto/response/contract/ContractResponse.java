@@ -10,6 +10,10 @@ public record ContractResponse(
         UUID id,
         UUID projectId,
         String projectName,
+        UUID phaseId,
+        String phaseName,
+        UUID taskId,
+        String taskTitle,
         UUID contractTypeId,
         String contractTypeCode,
         String contractTypeName,
@@ -40,6 +44,7 @@ public record ContractResponse(
         UUID previousContractId,
         String previousContractNumber,
         List<ContractStatusHistoryResponse> statusHistory,
+        ContractWorkflowRuntimeResponse workflowRuntime,
         ContractAccessResponse currentUserAccess
 ) {
 }

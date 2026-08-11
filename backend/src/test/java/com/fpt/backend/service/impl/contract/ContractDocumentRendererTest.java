@@ -108,7 +108,7 @@ class ContractDocumentRendererTest {
         contract.setContractStatus("NEW");
         ContractDocumentRenderer.RenderedDocument rendered = renderer.render(
                 contract,
-                List.of(),
+                List.of(approval("APPROVE", "Contract HR", 10)),
                 Map.of("contract_value", "150000000")
         );
 
@@ -124,10 +124,45 @@ class ContractDocumentRendererTest {
                     .contains("director@seed.local")
                     .contains("BÊN B")
                     .contains("partner@seed.local")
+                    .contains("Căn cứ các quy định pháp luật hiện hành")
                     .contains("Ký và ghi rõ họ tên")
                     .doesNotContain("Chưa ký")
                     .doesNotContain("ĐÃ KÝ ĐIỆN TỬ")
                     .doesNotContain("Đã ký điện tử bởi");
+            assertThat(countOccurrences(extracted, "Tran Thi Director"))
+                    .as("unsigned director name must appear only in party information")
+                    .isEqualTo(1);
+            assertThat(countOccurrences(extracted, "Nguyen Van Partner"))
+                    .as("unsigned partner name must appear only in party information")
+                    .isEqualTo(1);
+        }
+    }
+
+    @Test
+    void removesStandaloneLayoutAndSignaturePlaceholdersFromPdfClauses()
+            throws Exception {
+        Contracts contract = createContract();
+        contract.setContractContent("""
+                {{project_name}}
+                {{director_name}}
+                {{director_signature}}
+                {{partner_name}}
+                {{partner_signature}}
+                """);
+        ContractDocumentRenderer.RenderedDocument rendered = renderer.render(
+                contract,
+                List.of(approval("APPROVE", "Contract HR", 10)),
+                Map.of()
+        );
+
+        byte[] pdf = new ContractPdfGenerator().generate(contract, rendered);
+        try (PDDocument document = Loader.loadPDF(pdf)) {
+            String extracted = new PDFTextStripper().getText(document);
+            assertThat(extracted)
+                    .contains("Nội dung điều khoản chưa được cập nhật.")
+                    .doesNotContain("Chưa ký");
+            assertThat(countOccurrences(extracted, "Du an hop dong"))
+                    .isZero();
         }
     }
 
@@ -252,6 +287,24 @@ class ContractDocumentRendererTest {
         history.setSignerAgeVerified(true);
         history.setChangedAt(LocalDateTime.of(2026, 8, 2, hour, 0));
         return history;
+    }
+
+    @SuppressWarnings("SameParameterValue") // Đã thêm dòng này để tắt 3 cảnh báo tham số
+    private ContractStatusHistory approval(
+            String action,
+            String actorName,
+            int hour
+    ) {
+        ContractStatusHistory history = new ContractStatusHistory();
+        history.setAction(action);
+        history.setActorName(actorName);
+        history.setSignerAgeVerified(false);
+        history.setChangedAt(LocalDateTime.of(2026, 8, 2, hour, 0));
+        return history;
+    }
+
+    private static int countOccurrences(String content, String value) {
+        return content.split(Pattern.quote(value), -1).length - 1;
     }
 
     private static int countDirectorSignatures(String content) {

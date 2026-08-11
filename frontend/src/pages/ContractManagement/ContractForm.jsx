@@ -14,7 +14,9 @@ function ContractForm({
     projects = [],
     contractTypes = [],
     contractTemplates = [],
+    projectContext = null,
     loadingProjects = false,
+    loadingProjectContext = false,
     loadingContractOptions = false,
     creatorReadOnly = false,
     projectReadOnly = false,
@@ -25,6 +27,21 @@ function ContractForm({
     const filteredTemplates = contractTemplates.filter(
         (template) => template.contractTypeId === contract.contractTypeId
     );
+    const phases = Array.isArray(projectContext?.phases)
+        ? projectContext.phases
+        : [];
+    const selectedPhase = phases.find(
+        (phase) => phase.id === contract.phaseId
+    );
+    const tasks = Array.isArray(selectedPhase?.tasks)
+        ? selectedPhase.tasks
+        : [];
+    const selectedContractType = contractTypes.find(
+        (item) => item.id === contract.contractTypeId
+    );
+    const workflow = projectReadOnly
+        ? contract.workflowDefinition
+        : selectedContractType?.activeWorkflow || contract.workflowDefinition;
     const selectedTemplate = filteredTemplates.find(
         (template) => template.id === contract.contractTemplateId
     );
@@ -77,6 +94,30 @@ function ContractForm({
                 />
 
                 <SelectField
+                    label="Contract Type"
+                    name="contractTypeId"
+                    value={contract.contractTypeId}
+                    onChange={onChange}
+                    disabled={loadingContractOptions || projectReadOnly}
+                    required
+                >
+                    <option value="">
+                        {loadingContractOptions
+                            ? "Loading contract types..."
+                            : "Select contract type to load its workflow"}
+                    </option>
+
+                    {contractTypes.map((contractType) => (
+                        <option key={contractType.id} value={contractType.id}>
+                            {contractType.contractTypeCode
+                                ? `${contractType.contractTypeCode} - `
+                                : ""}
+                            {contractType.contractTypeName}
+                        </option>
+                    ))}
+                </SelectField>
+
+                <SelectField
                     label="Project"
                     name="projectId"
                     value={contract.projectId}
@@ -103,25 +144,43 @@ function ContractForm({
                 </SelectField>
 
                 <SelectField
-                    label="Contract Type"
-                    name="contractTypeId"
-                    value={contract.contractTypeId}
+                    label="Phase"
+                    name="phaseId"
+                    value={contract.phaseId}
                     onChange={onChange}
-                    disabled={loadingContractOptions}
+                    disabled={!contract.projectId
+                        || loadingProjectContext
+                        || projectReadOnly}
                     required
                 >
                     <option value="">
-                        {loadingContractOptions
-                            ? "Loading contract types..."
-                            : "Select contract type"}
+                        {loadingProjectContext
+                            ? "Loading phases..."
+                            : "Select phase"}
                     </option>
+                    {phases.map((phase) => (
+                        <option key={phase.id} value={phase.id}>
+                            {phase.title}
+                            {phase.status ? ` (${formatContractStatus(phase.status)})` : ""}
+                        </option>
+                    ))}
+                </SelectField>
 
-                    {contractTypes.map((contractType) => (
-                        <option key={contractType.id} value={contractType.id}>
-                            {contractType.contractTypeCode
-                                ? `${contractType.contractTypeCode} - `
-                                : ""}
-                            {contractType.contractTypeName}
+                <SelectField
+                    label="Task"
+                    name="taskId"
+                    value={contract.taskId}
+                    onChange={onChange}
+                    disabled={!contract.phaseId
+                        || loadingProjectContext
+                        || projectReadOnly}
+                    required
+                >
+                    <option value="">Select task</option>
+                    {tasks.map((task) => (
+                        <option key={task.id} value={task.id}>
+                            {task.title}
+                            {task.status ? ` (${formatContractStatus(task.status)})` : ""}
                         </option>
                     ))}
                 </SelectField>
@@ -196,6 +255,17 @@ function ContractForm({
                     placeholder="Current user"
                     readOnly={creatorReadOnly}
                 />
+
+                {contract.contractTypeId && (
+                    <WorkflowAssignments
+                        workflow={workflow}
+                        projectContext={projectContext}
+                        assignments={contract.workflowAssignees}
+                        creatorName={contract.contractCreatedBy}
+                        onChange={onChange}
+                        readOnly={projectReadOnly}
+                    />
+                )}
 
                 {manualFields.length > 0 && (
                     <section className="contract-form-full contract-manual-fields">
@@ -285,6 +355,117 @@ function ContractForm({
                 )}
         </div>
     );
+}
+
+function WorkflowAssignments({
+    workflow,
+    projectContext,
+    assignments = [],
+    creatorName,
+    onChange,
+    readOnly,
+}) {
+    const steps = Array.isArray(workflow?.steps) ? workflow.steps : [];
+    const members = Array.isArray(projectContext?.members)
+        ? projectContext.members
+        : [];
+
+    if (steps.length === 0) {
+        return (
+            <div className="contract-form-full contract-replacement-banner">
+                This contract type has no active workflow. Configure it from
+                List Contract Type before creating a contract.
+            </div>
+        );
+    }
+
+    return (
+        <section className="contract-form-full contract-workflow-assignments">
+            <div className="contract-manual-fields-heading">
+                <strong>
+                    {workflow.workflowName} · V{workflow.versionNumber}
+                </strong>
+                <span>
+                    Assign the exact project member responsible for each step.
+                    The backend also verifies their role and project permissions.
+                </span>
+            </div>
+            <div className="contract-workflow-assignment-list">
+                {steps.map((step, index) => {
+                    const assignment = assignments.find(
+                        (item) => item.workflowStepId === step.id
+                    );
+                    const requiredPermissions = Array.isArray(
+                        step.requiredPermissionCodes
+                    ) ? step.requiredPermissionCodes : [];
+                    const candidates = members.filter((member) => {
+                        const memberRoles = Array.isArray(member.roleCodes)
+                            ? member.roleCodes
+                            : [member.roleCode];
+                        return memberRoles.some((role) =>
+                            normalizeRole(role)
+                                === normalizeRole(step.requiredRoleCode)
+                        ) && requiredPermissions.every((permission) =>
+                            (member.allowedActions || []).includes(permission)
+                        );
+                    });
+
+                    return (
+                        <article className="contract-workflow-assignment" key={step.id || index}>
+                            <span>{step.stepOrder || index + 1}</span>
+                            <div>
+                                <strong>{step.stepName}</strong>
+                                <small>
+                                    {formatContractStatus(step.actionType)} · {step.requiredRoleCode}
+                                    {requiredPermissions.length > 0
+                                        ? ` · ${requiredPermissions.join(", ")}`
+                                        : ""}
+                                </small>
+                            </div>
+                            {step.actionType === "CREATE" ? (
+                                <div className="contract-readonly-field">
+                                    {creatorName || "Current user"}
+                                </div>
+                            ) : (
+                                <select
+                                    className="form-select"
+                                    value={assignment?.userId || ""}
+                                    disabled={readOnly}
+                                    required={!readOnly}
+                                    onChange={(event) => onChange({
+                                        target: {
+                                            name: `workflowAssignee.${step.id}`,
+                                            value: event.target.value,
+                                            type: "select-one",
+                                        },
+                                    })}
+                                >
+                                    <option value="">
+                                        {candidates.length === 0
+                                            ? "No eligible project member"
+                                            : "Select responsible member"}
+                                    </option>
+                                    {candidates.map((member) => (
+                                        <option value={member.userId} key={member.userId}>
+                                            {member.fullName} ({member.email || member.roleCode})
+                                        </option>
+                                    ))}
+                                </select>
+                            )}
+                        </article>
+                    );
+                })}
+            </div>
+        </section>
+    );
+}
+
+function normalizeRole(value) {
+    return String(value || "")
+        .trim()
+        .toUpperCase()
+        .replaceAll("-", "_")
+        .replaceAll(" ", "_");
 }
 
 function PagedContractContentEditor({ value, onChange }) {

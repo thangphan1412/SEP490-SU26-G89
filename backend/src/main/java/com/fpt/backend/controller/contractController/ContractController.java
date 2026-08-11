@@ -5,6 +5,7 @@ import com.fpt.backend.dto.request.contract.ContractRequest;
 import com.fpt.backend.dto.request.contract.ContractTransitionRequest;
 import com.fpt.backend.dto.response.contract.ContractListResponse;
 import com.fpt.backend.dto.response.contract.ContractPdfResponse;
+import com.fpt.backend.dto.response.contract.ContractProjectContextResponse;
 import com.fpt.backend.dto.response.contract.ContractProjectOptionResponse;
 import com.fpt.backend.dto.response.contract.ContractResponse;
 import com.fpt.backend.service.interfaces.contract.ContractService;
@@ -63,6 +64,16 @@ public class ContractController {
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.noStore())
                 .body(new BaseResponse<>(contractService.getProjectOptions()));
+    }
+
+    @GetMapping("/project-options/{projectId}/context")
+    public ResponseEntity<BaseResponse<ContractProjectContextResponse>>
+            getProjectContext(@PathVariable UUID projectId) {
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .body(new BaseResponse<>(
+                        contractService.getProjectContext(projectId)
+                ));
     }
 
     @GetMapping("/{id}")

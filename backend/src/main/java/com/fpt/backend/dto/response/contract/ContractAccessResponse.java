@@ -11,6 +11,7 @@ public record ContractAccessResponse(
         List<String> allowedActions,
         List<String> fullScopeActions,
         String workScope,
-        boolean currentUserOwner
+        boolean currentUserOwner,
+        boolean currentUserWorkflowParticipant
 ) {
 }
