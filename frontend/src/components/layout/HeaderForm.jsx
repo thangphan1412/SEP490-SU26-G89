@@ -51,18 +51,10 @@ function HeaderForm(){
                             </Nav.Link>
                         )}
 
-                        {/* HIỂN THỊ DỰA TRÊN ROLE */}
-                        {/* CEO, HeadOfDepartment và Administrator mới thấy Employee Management */}
-                        {['CEO', 'HeadOfDepartment', 'Administrator'].includes(role) && (
-                            <Nav.Link as={NavLink} to="/user-management/list?type=employee" className="nav-item">
-                                <IconUserPlus stroke={2} />Employee Management
-                            </Nav.Link>
-                        )}
-
-                        {/* CEO và Administrator mới thấy Customer Management */}
-                        {['CEO', 'Administrator'].includes(role) && (
-                            <Nav.Link as={NavLink} to="/user-management/list?type=customer" className="nav-item">
-                                <IconUserPlus stroke={2} />Customer Management
+                        {/* HIỂN THỊ MENU USER MANAGEMENT */}
+                        {['CEO', 'Administrator', 'Accountant', 'HeadOfDepartment'].includes(role) && (
+                            <Nav.Link as={NavLink} to="/user-management/list" className="nav-item">
+                                <IconUserPlus stroke={2} />User Management
                             </Nav.Link>
                         )}
 
@@ -86,17 +78,17 @@ function HeaderForm(){
                         </span>
                      }  id="basic-nav-dropdown">
 
-                        <NavDropdown.Item as={NavLink} to="#Dashboard">Dashboard</NavDropdown.Item>
+                         <NavDropdown.Item as={NavLink} to="/dashboard/agreement-statistics">Dashboard</NavDropdown.Item>
                          <NavDropdown.Item as={NavLink} to="/user-profile/view">My profile</NavDropdown.Item>
-                        <NavDropdown.Item as={NavLink} to="/company-profile/view">
+                         <NavDropdown.Item as={NavLink} to="/company-profile/view">
                             Company profile
-                        </NavDropdown.Item>
-                        <NavDropdown.Item as={NavLink} to="#action/3.3">Setting</NavDropdown.Item>
-                        <NavDropdown.Divider />
-                        <NavDropdown.Item as={NavLink} to="/login">
+                         </NavDropdown.Item>
+                         <NavDropdown.Item as={NavLink} to="#action/3.3">Setting</NavDropdown.Item>
+                         <NavDropdown.Divider />
+                         <NavDropdown.Item as={NavLink} to="/login">
                             Logout
-                        </NavDropdown.Item>
-                    </NavDropdown>
+                         </NavDropdown.Item>
+                     </NavDropdown>
 
                 </div>
 

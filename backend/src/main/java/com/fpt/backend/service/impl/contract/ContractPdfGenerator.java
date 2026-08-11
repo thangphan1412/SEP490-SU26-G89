@@ -16,6 +16,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -33,6 +34,11 @@ public class ContractPdfGenerator {
             "Độc lập - Tự do - Hạnh phúc";
     private static final Pattern PAGE_BREAK_PATTERN = Pattern.compile(
             "^<!--\\s*pagebreak\\s*-->$",
+            Pattern.CASE_INSENSITIVE
+    );
+    private static final Pattern STANDALONE_FORM_FIELD_PATTERN = Pattern.compile(
+            "^\\{\\{\\s*(project_name|director_name|director_signature|"
+                    + "partner_name|partner_signature)\\s*}}$",
             Pattern.CASE_INSENSITIVE
     );
     private static final DateTimeFormatter DATE_TIME_FORMATTER =
@@ -76,11 +82,15 @@ public class ContractPdfGenerator {
             )) {
                 writer.writeNationalHeader();
                 writer.writeContractHeading();
+                writer.writeLegalIntroduction();
                 writer.writeParty("BÊN A", partyA);
                 writer.writeParty("BÊN B", partyB);
                 writer.writeSectionTitle();
-                writer.writeContractContent(renderedDocument.content());
-                writer.writeSignatureSection(renderedDocument, partyA, partyB);
+                writer.writeContractContent(
+                        contract.getContractContent(),
+                        renderedDocument.content()
+                );
+                writer.writeSignatureSection(renderedDocument);
             }
 
             document.save(output);
@@ -293,6 +303,39 @@ public class ContractPdfGenerator {
             );
         }
 
+        private void writeLegalIntroduction() throws IOException {
+            writeWrappedText(
+                    "- Căn cứ các quy định pháp luật hiện hành;",
+                    regularFont,
+                    11f,
+                    16f,
+                    2f
+            );
+            writeWrappedText(
+                    "- Căn cứ nhu cầu và sự thỏa thuận của các bên.",
+                    regularFont,
+                    11f,
+                    16f,
+                    8f
+            );
+            writeWrappedText(
+                    "Hôm nay, " + formatContractDate() + ", các bên gồm:",
+                    regularFont,
+                    11f,
+                    16f,
+                    8f
+            );
+        }
+
+        private String formatContractDate() {
+            LocalDate date = contract.getContractCreatedAt() == null
+                    ? LocalDate.now()
+                    : contract.getContractCreatedAt().toLocalDate();
+            return "ngày " + date.getDayOfMonth()
+                    + " tháng " + date.getMonthValue()
+                    + " năm " + date.getYear();
+        }
+
         private void writeParty(String heading, PartyInformation party)
                 throws IOException {
             ensureSpace(130f);
@@ -330,8 +373,14 @@ public class ContractPdfGenerator {
             );
         }
 
-        private void writeContractContent(String content) throws IOException {
-            String normalized = withoutEmbeddedSignatureBlock(content);
+        private void writeContractContent(
+                String templateContent,
+                String renderedContent
+        ) throws IOException {
+            String normalized = prepareContractContent(
+                    templateContent,
+                    renderedContent
+            );
             for (String rawLine : normalized.split("\n", -1)) {
                 String line = rawLine.strip();
                 if (PAGE_BREAK_PATTERN.matcher(line).matches()) {
@@ -355,6 +404,59 @@ public class ContractPdfGenerator {
             }
         }
 
+        private String prepareContractContent(
+                String templateContent,
+                String renderedContent
+        ) {
+            String normalizedTemplate = templateContent == null
+                    ? ""
+                    : templateContent.replace("\r", "");
+            String normalizedRendered = renderedContent == null
+                    ? ""
+                    : renderedContent.replace("\r", "");
+            String[] templateLines = normalizedTemplate.split("\n", -1);
+            String[] renderedLines = normalizedRendered.split("\n", -1);
+            List<String> visibleLines = new ArrayList<>();
+            boolean placeholderOnlyContent = containsOnlyStandaloneFormFields(
+                    templateLines
+            );
+
+            for (int index = 0; index < renderedLines.length; index++) {
+                boolean standaloneFormField = placeholderOnlyContent
+                        && index < templateLines.length
+                        && STANDALONE_FORM_FIELD_PATTERN.matcher(
+                                templateLines[index].strip()
+                        ).matches();
+                if (!standaloneFormField) {
+                    visibleLines.add(renderedLines[index]);
+                }
+            }
+
+            String content = withoutEmbeddedSignatureBlock(
+                    String.join("\n", visibleLines)
+            );
+            return content.isBlank()
+                    ? "Nội dung điều khoản chưa được cập nhật."
+                    : content;
+        }
+
+        private boolean containsOnlyStandaloneFormFields(
+                String[] templateLines
+        ) {
+            boolean hasFormField = false;
+            for (String templateLine : templateLines) {
+                String line = templateLine.strip();
+                if (line.isEmpty() || PAGE_BREAK_PATTERN.matcher(line).matches()) {
+                    continue;
+                }
+                if (!STANDALONE_FORM_FIELD_PATTERN.matcher(line).matches()) {
+                    return false;
+                }
+                hasFormField = true;
+            }
+            return hasFormField;
+        }
+
         private String withoutEmbeddedSignatureBlock(String content) {
             String normalized = content == null ? "" : content.replace("\r", "");
             String[] lines = normalized.split("\n", -1);
@@ -374,7 +476,7 @@ public class ContractPdfGenerator {
                 }
             }
 
-            if (partyAIndex < lines.length / 2 || partyBIndex <= partyAIndex) {
+            if (partyAIndex < 0 || partyBIndex <= partyAIndex) {
                 return normalized;
             }
 
@@ -385,9 +487,7 @@ public class ContractPdfGenerator {
         }
 
         private void writeSignatureSection(
-                ContractDocumentRenderer.RenderedDocument renderedDocument,
-                PartyInformation partyA,
-                PartyInformation partyB
+                ContractDocumentRenderer.RenderedDocument renderedDocument
         ) throws IOException {
             ensureSpace(175f);
             cursorY -= 16f;
@@ -400,7 +500,6 @@ public class ContractPdfGenerator {
 
             writeSignatureColumn(
                     "BÊN A",
-                    partyA,
                     renderedDocument.directorSignerName(),
                     renderedDocument.directorSignedAt(),
                     MARGIN,
@@ -409,7 +508,6 @@ public class ContractPdfGenerator {
             );
             writeSignatureColumn(
                     "BÊN B",
-                    partyB,
                     renderedDocument.partnerSignerName(),
                     renderedDocument.partnerSignedAt(),
                     rightX,
@@ -421,7 +519,6 @@ public class ContractPdfGenerator {
 
         private void writeSignatureColumn(
                 String heading,
-                PartyInformation party,
                 String signerName,
                 LocalDateTime signedAt,
                 float x,
@@ -440,6 +537,7 @@ public class ContractPdfGenerator {
                         topY - 22f,
                         14f
                 );
+                return;
             } else {
                 drawCenteredWithin(
                         "ĐÃ KÝ ĐIỆN TỬ",
@@ -461,11 +559,8 @@ public class ContractPdfGenerator {
                 );
             }
 
-            String printedName = hasText(signerName)
-                    ? signerName
-                    : party.fullName();
             drawCenteredWithin(
-                    safe(printedName),
+                    signerName,
                     boldFont,
                     10.5f,
                     x,

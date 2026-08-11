@@ -1,20 +1,33 @@
 package com.fpt.backend.service.impl.contract;
 
 import com.fpt.backend.dto.request.contract.ContractTypeRequest;
+import com.fpt.backend.dto.request.contract.ContractWorkflowStepRequest;
+import com.fpt.backend.dto.response.contract.ContractRoleOptionResponse;
 import com.fpt.backend.dto.response.contract.ContractTypeResponse;
+import com.fpt.backend.dto.response.contract.ContractWorkflowDefinitionResponse;
+import com.fpt.backend.dto.response.contract.ContractWorkflowOptionsResponse;
+import com.fpt.backend.dto.response.contract.ContractWorkflowStepDefinitionResponse;
+import com.fpt.backend.entity.ContractTypeWorkflow;
+import com.fpt.backend.entity.ContractTypeWorkflowStep;
 import com.fpt.backend.entity.ContractTypes;
+import com.fpt.backend.enums.ContractWorkflowActionType;
 import com.fpt.backend.exception.BadHttpException;
 import com.fpt.backend.exception.NotFoundException;
 import com.fpt.backend.repository.contract.ContractRepository;
 import com.fpt.backend.repository.contract.ContractTemplateRepository;
 import com.fpt.backend.repository.contract.ContractTypeRepository;
+import com.fpt.backend.repository.contract.ContractTypeWorkflowRepository;
+import com.fpt.backend.repository.role.RoleRepository;
 import com.fpt.backend.service.interfaces.contract.ContractTypeService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 
 @Service
@@ -25,6 +38,8 @@ public class ContractTypeServiceImpl implements ContractTypeService {
     private final ContractTypeRepository contractTypeRepository;
     private final ContractTemplateRepository contractTemplateRepository;
     private final ContractRepository contractRepository;
+    private final ContractTypeWorkflowRepository workflowRepository;
+    private final RoleRepository roleRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -39,6 +54,29 @@ public class ContractTypeServiceImpl implements ContractTypeService {
     @Transactional(readOnly = true)
     public ContractTypeResponse getContractTypeById(UUID id) {
         return toResponse(findContractType(id));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ContractWorkflowOptionsResponse getWorkflowOptions() {
+        List<ContractRoleOptionResponse> roles = roleRepository.findAllForSelection()
+                .stream()
+                .map(role -> new ContractRoleOptionResponse(
+                        role.getId(),
+                        role.getRoleCode(),
+                        role.getRoleName()
+                ))
+                .toList();
+
+        return new ContractWorkflowOptionsResponse(
+                List.of(
+                        ContractWorkflowActionType.CREATE.name(),
+                        ContractWorkflowActionType.APPROVE.name(),
+                        ContractWorkflowActionType.SIGN.name(),
+                        ContractWorkflowActionType.APPROVE_AND_SIGN.name()
+                ),
+                roles
+        );
     }
 
     @Override
@@ -57,7 +95,13 @@ public class ContractTypeServiceImpl implements ContractTypeService {
         contractType.setCreatedAt(now);
         contractType.setUpdatedAt(now);
 
-        return toResponse(contractTypeRepository.save(contractType));
+        ContractTypes savedType = contractTypeRepository.save(contractType);
+        List<ContractWorkflowStepRequest> requestedSteps = request.workflowSteps();
+        if (requestedSteps == null || requestedSteps.isEmpty()) {
+            requestedSteps = defaultWorkflowSteps();
+        }
+        createWorkflowVersion(savedType, request.workflowName(), requestedSteps);
+        return toResponse(savedType);
     }
 
     @Override
@@ -78,7 +122,21 @@ public class ContractTypeServiceImpl implements ContractTypeService {
         }
         contractType.setUpdatedAt(LocalDateTime.now());
 
-        return toResponse(contractTypeRepository.save(contractType));
+        ContractTypes savedType = contractTypeRepository.save(contractType);
+        if (request.workflowSteps() != null
+                && !request.workflowSteps().isEmpty()
+                && !workflowMatches(
+                findActiveWorkflow(savedType.getId()),
+                request.workflowName(),
+                request.workflowSteps()
+        )) {
+            createWorkflowVersion(
+                    savedType,
+                    request.workflowName(),
+                    request.workflowSteps()
+            );
+        }
+        return toResponse(savedType);
     }
 
     @Override
@@ -139,6 +197,7 @@ public class ContractTypeServiceImpl implements ContractTypeService {
 
     private ContractTypeResponse toResponse(ContractTypes contractType) {
         UUID id = contractType.getId();
+        ContractTypeWorkflow activeWorkflow = findActiveWorkflow(id);
 
         return new ContractTypeResponse(
                 id,
@@ -152,8 +211,225 @@ public class ContractTypeServiceImpl implements ContractTypeService {
                 contractType.getCreatedAt(),
                 contractType.getUpdatedAt(),
                 contractTemplateRepository.countByContractTypeId(id),
-                contractRepository.countByContractTypeId(id)
+                contractRepository.countByContractTypeId(id),
+                toWorkflowResponse(activeWorkflow)
         );
+    }
+
+    private ContractTypeWorkflow findActiveWorkflow(UUID contractTypeId) {
+        return workflowRepository
+                .findFirstByContractTypeIdAndActiveTrueOrderByVersionNumberDesc(
+                        contractTypeId
+                )
+                .orElse(null);
+    }
+
+    // Đã chuyển kiểu trả về thành void vì giá trị trả về không được sử dụng
+    private void createWorkflowVersion(
+            ContractTypes contractType,
+            String requestedWorkflowName,
+            List<ContractWorkflowStepRequest> requestedSteps
+    ) {
+        List<NormalizedWorkflowStep> normalizedSteps = normalizeWorkflowSteps(
+                requestedSteps
+        );
+        List<ContractTypeWorkflow> existingVersions = workflowRepository
+                .findByContractTypeIdOrderByVersionNumberDesc(contractType.getId());
+        existingVersions.forEach(workflow -> workflow.setActive(false));
+        if (!existingVersions.isEmpty()) {
+            workflowRepository.saveAll(existingVersions);
+        }
+
+        int versionNumber = workflowRepository
+                .findLatestVersionNumber(contractType.getId()) + 1;
+        ContractTypeWorkflow workflow = ContractTypeWorkflow.builder()
+                .contractType(contractType)
+                .versionNumber(versionNumber)
+                .workflowName(isBlank(requestedWorkflowName)
+                        ? contractType.getContractTypeName() + " workflow"
+                        : requestedWorkflowName.trim())
+                .active(true)
+                .createdBy(contractType.getCreatedBy())
+                .createdAt(LocalDateTime.now())
+                .steps(new ArrayList<>())
+                .build();
+
+        normalizedSteps.forEach(step -> workflow.getSteps().add(
+                ContractTypeWorkflowStep.builder()
+                        .workflow(workflow)
+                        .stepOrder(step.stepOrder())
+                        .stepName(step.stepName())
+                        .actionType(step.actionType())
+                        .requiredRoleCode(step.requiredRoleCode())
+                        .required(step.required())
+                        .canReject(step.canReject())
+                        .build()
+        ));
+
+        // Đã bỏ chữ 'return' ở đây
+        workflowRepository.save(workflow);
+    }
+
+    private List<NormalizedWorkflowStep> normalizeWorkflowSteps(
+            List<ContractWorkflowStepRequest> requestedSteps
+    ) {
+        if (requestedSteps == null || requestedSteps.size() < 2) {
+            throw new BadHttpException(
+                    "A contract type workflow requires at least two steps"
+            );
+        }
+
+        List<ContractWorkflowStepRequest> orderedSteps = new ArrayList<>(requestedSteps);
+        orderedSteps.sort(Comparator.comparing(
+                step -> step.stepOrder() == null
+                        ? Integer.MAX_VALUE
+                        : step.stepOrder()
+        ));
+
+        List<NormalizedWorkflowStep> normalized = new ArrayList<>();
+        int createStepCount = 0;
+        for (int index = 0; index < orderedSteps.size(); index++) {
+            ContractWorkflowStepRequest step = orderedSteps.get(index);
+            if (step == null) {
+                throw new BadHttpException("Workflow step information is required");
+            }
+
+            ContractWorkflowActionType actionType;
+            try {
+                actionType = ContractWorkflowActionType.fromValue(step.actionType());
+            } catch (IllegalArgumentException exception) {
+                throw new BadHttpException(exception.getMessage());
+            }
+            if (actionType == ContractWorkflowActionType.CREATE) {
+                createStepCount++;
+            }
+
+            normalized.add(new NormalizedWorkflowStep(
+                    index + 1,
+                    requireText(step.stepName(), "Workflow step name is required"),
+                    actionType,
+                    normalizeRole(step.requiredRoleCode()),
+                    step.required() == null || step.required(),
+                    Boolean.TRUE.equals(step.canReject())
+                            && actionType != ContractWorkflowActionType.CREATE
+            ));
+        }
+
+        // Đã đổi .get(0) thành .getFirst()
+        if (normalized.getFirst().actionType() != ContractWorkflowActionType.CREATE
+                || createStepCount != 1) {
+            throw new BadHttpException(
+                    "A workflow must start with exactly one CREATE step"
+            );
+        }
+
+        return List.copyOf(normalized);
+    }
+
+    private boolean workflowMatches(
+            ContractTypeWorkflow current,
+            String workflowName,
+            List<ContractWorkflowStepRequest> requestedSteps
+    ) {
+        if (current == null) {
+            return false;
+        }
+
+        List<NormalizedWorkflowStep> normalized = normalizeWorkflowSteps(requestedSteps);
+        String requestedName = isBlank(workflowName)
+                ? current.getContractType().getContractTypeName() + " workflow"
+                : workflowName.trim();
+        if (!requestedName.equals(current.getWorkflowName())
+                || current.getSteps() == null
+                || current.getSteps().size() != normalized.size()) {
+            return false;
+        }
+
+        List<ContractTypeWorkflowStep> currentSteps = current.getSteps().stream()
+                .sorted(Comparator.comparing(ContractTypeWorkflowStep::getStepOrder))
+                .toList();
+        for (int index = 0; index < normalized.size(); index++) {
+            NormalizedWorkflowStep expected = normalized.get(index);
+            ContractTypeWorkflowStep actual = currentSteps.get(index);
+            if (!expected.stepOrder().equals(actual.getStepOrder())
+                    || !expected.stepName().equals(actual.getStepName())
+                    || expected.actionType() != actual.getActionType()
+                    || !expected.requiredRoleCode().equals(
+                    normalizeRole(actual.getRequiredRoleCode())
+            )
+                    || expected.required() != Boolean.TRUE.equals(actual.getRequired())
+                    || expected.canReject() != Boolean.TRUE.equals(actual.getCanReject())) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private ContractWorkflowDefinitionResponse toWorkflowResponse(
+            ContractTypeWorkflow workflow
+    ) {
+        if (workflow == null) {
+            return null;
+        }
+
+        List<ContractWorkflowStepDefinitionResponse> steps = workflow.getSteps()
+                .stream()
+                .sorted(Comparator.comparing(ContractTypeWorkflowStep::getStepOrder))
+                .map(step -> new ContractWorkflowStepDefinitionResponse(
+                        step.getId(),
+                        step.getStepOrder(),
+                        step.getStepName(),
+                        step.getActionType().name(),
+                        step.getRequiredRoleCode(),
+                        ContractWorkflowRules.requiredPermissions(step.getActionType()),
+                        Boolean.TRUE.equals(step.getRequired()),
+                        Boolean.TRUE.equals(step.getCanReject())
+                ))
+                .toList();
+
+        return new ContractWorkflowDefinitionResponse(
+                workflow.getId(),
+                workflow.getVersionNumber(),
+                workflow.getWorkflowName(),
+                Boolean.TRUE.equals(workflow.getActive()),
+                workflow.getCreatedBy(),
+                workflow.getCreatedAt(),
+                steps
+        );
+    }
+
+    private List<ContractWorkflowStepRequest> defaultWorkflowSteps() {
+        return List.of(
+                new ContractWorkflowStepRequest(
+                        1, "Prepare and submit", "CREATE", "EMPLOYEE", true, false
+                ),
+                new ContractWorkflowStepRequest(
+                        2, "Internal approval", "APPROVE", "MANAGER", true, true
+                ),
+                new ContractWorkflowStepRequest(
+                        3, "Company signature", "SIGN", "DIRECTOR", true, true
+                ),
+                new ContractWorkflowStepRequest(
+                        4, "Counterparty signature", "SIGN", "PARTNER", true, true
+                )
+        );
+    }
+
+    private String normalizeRole(String value) {
+        String role = requireText(value, "Workflow role is required");
+        return role.toUpperCase(Locale.ROOT)
+                .replace('-', '_')
+                .replace(' ', '_');
+    }
+
+    private record NormalizedWorkflowStep(
+            Integer stepOrder,
+            String stepName,
+            ContractWorkflowActionType actionType,
+            String requiredRoleCode,
+            boolean required,
+            boolean canReject
+    ) {
     }
 
     private String requireText(String value, String message) {

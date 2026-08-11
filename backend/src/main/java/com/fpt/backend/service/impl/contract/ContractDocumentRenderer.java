@@ -34,6 +34,16 @@ public class ContractDocumentRenderer {
     ) {
         SignatureInformation director = findSignature(history, "SIGN_DIRECTOR");
         SignatureInformation partner = findSignature(history, "SIGN_PARTNER");
+        List<SignatureInformation> workflowSignatures = findWorkflowSignatures(
+                history
+        );
+        if (director == null && !workflowSignatures.isEmpty()) {
+            // Đã đổi .get(0) thành .getFirst() để loại bỏ cảnh báo
+            director = workflowSignatures.getFirst();
+        }
+        if (partner == null && workflowSignatures.size() > 1) {
+            partner = workflowSignatures.get(1);
+        }
         Map<String, String> values = createPlaceholderValues(
                 contract,
                 attributeValues,
@@ -90,7 +100,8 @@ public class ContractDocumentRenderer {
         }
 
         Matcher matcher = PLACEHOLDER_PATTERN.matcher(templateContent);
-        StringBuffer rendered = new StringBuffer();
+        // Đã đổi StringBuffer thành StringBuilder để tối ưu code
+        StringBuilder rendered = new StringBuilder();
         while (matcher.find()) {
             String replacement = values.getOrDefault(
                     normalizeKey(matcher.group(1)),
@@ -124,6 +135,33 @@ public class ContractDocumentRenderer {
                 ))
                 .findFirst()
                 .orElse(null);
+    }
+
+    private List<SignatureInformation> findWorkflowSignatures(
+            List<ContractStatusHistory> history
+    ) {
+        if (history == null) {
+            return List.of();
+        }
+
+        return history.stream()
+                .filter(item -> "SIGN".equalsIgnoreCase(item.getAction())
+                        || "APPROVE_AND_SIGN".equalsIgnoreCase(
+                        item.getAction()
+                ))
+                .filter(item -> Boolean.TRUE.equals(
+                        item.getSignerAgeVerified()
+                ))
+                .filter(item -> item.getActorName() != null
+                        && !item.getActorName().isBlank())
+                .sorted(java.util.Comparator.comparing(
+                        ContractStatusHistory::getChangedAt
+                ))
+                .map(item -> new SignatureInformation(
+                        item.getActorName().trim(),
+                        item.getChangedAt()
+                ))
+                .toList();
     }
 
     private String signerName(SignatureInformation signature) {

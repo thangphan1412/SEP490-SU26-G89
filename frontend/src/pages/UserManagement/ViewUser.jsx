@@ -112,17 +112,13 @@ function ViewUser() {
         }
     }, [id, navigate, viewType]);
 
+    // Xác định ai có quyền bấm nút Edit
+    const canCreateAndUpdate = ['Accountant', 'HeadOfDepartment'].includes(currentUserRole);
+
     // 1. VIẾT HÀM KIỂM TRA QUYỀN TRUY CẬP (AUTHORIZATION CHECK)
     const checkPermission = () => {
-        // Nếu vào tab Customer Management -> Chỉ CEO và Administrator được vào
-        if (viewType === "customer") {
-            return ['CEO', 'Administrator'].includes(currentUserRole);
-        }
-        // Nếu vào tab Employee Management -> Thêm HeadOfDepartment được vào
-        if (viewType === "employee") {
-            return ['CEO', 'Administrator', 'HeadOfDepartment'].includes(currentUserRole);
-        }
-        return false;
+        // Cả 4 Role đều được phép vào màn hình View
+        return ['CEO', 'Administrator', 'Accountant', 'HeadOfDepartment'].includes(currentUserRole);
     };
 
     // 2. NẾU KHÔNG CÓ QUYỀN -> HIỂN THỊ MÀN HÌNH BÁO LỖI LUÔN, KHÔNG RENDER UI BÊN DƯỚI
@@ -158,23 +154,26 @@ function ViewUser() {
                             <p className="text-muted mb-0">Review user information, role permissions, and department assignment.</p>
                         </div>
                         <div className="d-flex gap-2">
-                            {/* Nút Back giữ nguyên ngữ cảnh Type */}
+                            {/* Nút Back */}
                             <Button
                                 variant="outline-secondary"
                                 className="fw-bold px-3 d-flex align-items-center gap-2"
-                                onClick={() => navigate(`/user-management/list?type=${viewType}`)}
+                                onClick={() => navigate(`/user-management/list`)} // Đã xóa chữ ?type=...
                             >
                                 <IconArrowLeft size={19} /> Back
                             </Button>
-                            {/* Nút Edit kèm theo Type */}
-                            <Button
-                                variant="primary"
-                                className="fw-bold px-4 d-flex align-items-center gap-2"
-                                onClick={() => navigate(`/user-management/update/${id}?type=${viewType}`)}
-                                disabled={loading}
-                            >
-                                <IconEdit size={19} color="#ffffff" /> Edit User
-                            </Button>
+
+                            {/* CHỈ ACCOUNTANT VÀ HEAD CÓ QUYỀN MỚI THẤY NÚT NÀY */}
+                            {canCreateAndUpdate && (
+                                <Button
+                                    variant="primary"
+                                    className="fw-bold px-4 d-flex align-items-center gap-2"
+                                    onClick={() => navigate(`/user-management/update/${id}`)}
+                                    disabled={loading}
+                                >
+                                    <IconEdit size={19} color="#ffffff" /> Edit User
+                                </Button>
+                            )}
                         </div>
                     </div>
 
@@ -364,12 +363,14 @@ function ViewUser() {
                             </Card>
 
                             {/* --- ALERT INFO --- */}
-                            <Alert variant="info" className="mx-4 mb-4 d-flex align-items-center gap-2">
-                                <IconInfoCircle size={20} />
-                                <span>
-                                    To make changes to this user, click <strong className="text-primary" style={{ cursor: "pointer" }} onClick={() => navigate(`/user-management/update/${id}?type=${viewType}`)}>Edit User</strong>.
-                                </span>
-                            </Alert>
+                            {canCreateAndUpdate && (
+                                <Alert variant="info" className="mx-4 mb-4 d-flex align-items-center gap-2">
+                                    <IconInfoCircle size={20} />
+                                    <span>
+                                        To make changes to this user, click <strong className="text-primary" style={{ cursor: "pointer" }} onClick={() => navigate(`/user-management/update/${id}`)}>Edit User</strong>.
+                                    </span>
+                                </Alert>
+                            )}
                         </>
                     ) : (
                         <div className="text-center py-5 my-5 text-danger">
