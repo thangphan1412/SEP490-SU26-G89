@@ -37,7 +37,7 @@ public class PermissionActionService {
                 allowedActionCodes
         );
         List<PermissionAction> availableActions =
-                findAvailableActionEntities();
+                findAllActionEntities();
         Map<String, PermissionAction> availableActionByCode =
                 new LinkedHashMap<>();
 
@@ -58,7 +58,7 @@ public class PermissionActionService {
 
         if (!unsupportedCodes.isEmpty()) {
             throw new BadHttpException(
-                    "Unsupported or inactive permission actions: "
+                    "Unsupported permission actions: "
                             + String.join(", ", unsupportedCodes)
             );
         }
@@ -81,7 +81,7 @@ public class PermissionActionService {
         }
 
         List<PermissionAction> availableActions =
-                findAvailableActionEntities();
+                findAllActionEntities();
 
         if (availableActions.isEmpty()) {
             throw new BadHttpException(
@@ -125,16 +125,16 @@ public class PermissionActionService {
     public List<PermissionActionResponse> getAvailableActions() {
         List<PermissionActionResponse> responses = new ArrayList<>();
 
-        for (PermissionAction action : findAvailableActionEntities()) {
+        for (PermissionAction action : findAllActionEntities()) {
             responses.add(toResponse(action));
         }
 
         return responses;
     }
 
-    private List<PermissionAction> findAvailableActionEntities() {
+    private List<PermissionAction> findAllActionEntities() {
         return permissionActionRepository
-                .findByStatusTrueOrderByDisplayOrderAscActionCodeAsc();
+                .findAllByOrderByDisplayOrderAscActionCodeAsc();
     }
 
     private List<PermissionAction> getActions(Permissions permission) {
@@ -143,7 +143,6 @@ public class PermissionActionService {
         }
 
         return permission.getActions().stream()
-                .filter(action -> Boolean.TRUE.equals(action.getStatus()))
                 .sorted((firstAction, secondAction) -> {
                     int orderComparison = Integer.compare(
                             getDisplayOrder(firstAction),

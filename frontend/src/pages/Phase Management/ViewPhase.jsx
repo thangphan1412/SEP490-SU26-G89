@@ -80,11 +80,11 @@ function ViewPhase() {
     access,
     PROJECT_ACTIONS.VIEW_TASKS
   );
-  const canManageTasks = canViewTasks && hasAnyProjectAction(access, [
-    PROJECT_ACTIONS.CREATE_TASKS,
-    PROJECT_ACTIONS.EDIT_TASKS,
-    PROJECT_ACTIONS.DELETE_TASKS,
-  ]);
+  const canManageTasks = hasProjectAction(
+    access,
+    PROJECT_ACTIONS.EDIT_TASKS
+  );
+  const canAccessTasks = canViewTasks || canManageTasks;
   const canViewDeliverables = hasProjectAction(
     access,
     PROJECT_ACTIONS.VIEW_DELIVERABLES
@@ -105,22 +105,16 @@ function ViewPhase() {
       PROJECT_ACTIONS.EDIT_CONTRACTS,
       PROJECT_ACTIONS.DELETE_CONTRACTS,
     ]);
-  const canViewAnyWorkModule = canViewTasks
+  const canViewAnyWorkModule = canAccessTasks
     || canViewDeliverables
     || canViewContracts;
 
   function renderTask(task) {
-    const taskProgress = normalizeProgress(task.progress);
-
     return (
       <tr key={task.id}>
         <td><strong>{task.title || `Task #${task.id}`}</strong></td>
         <td>{formatAssignee(task)}</td>
         <td>{formatDateRange(task.startDate, task.endDate)}</td>
-        <td className="phase-progress-cell">
-          <span>{taskProgress}%</span>
-          <ProgressBar now={taskProgress} />
-        </td>
         <td><PhaseStatusBadge status={task.status} /></td>
       </tr>
     );
@@ -191,7 +185,7 @@ function ViewPhase() {
             </Alert>
           )}
 
-          {canViewTasks && (
+          {canAccessTasks && (
           <PhaseTableSection
             icon={<IconChecklist size={22} />}
             title="Tasks"
@@ -202,6 +196,9 @@ function ViewPhase() {
                 type="button"
                 variant="outline-primary"
                 className="phase-manage-button"
+                onClick={() => navigate(
+                  `/task-management/edit/${projectId}/${phaseId}`
+                )}
               >
                 <IconSettings size={16} /> Manage Tasks
               </Button>
@@ -209,10 +206,10 @@ function ViewPhase() {
           >
             <div className="phase-table-wrap">
               <Table responsive hover className="phase-data-table mb-0">
-                <thead><tr><th>Task</th><th>Assignee</th><th>Date range</th><th>Progress</th><th>Status</th></tr></thead>
+                <thead><tr><th>Task</th><th>Assignee</th><th>Date range</th><th>Status</th></tr></thead>
                 <tbody>
                   {tasks.length === 0 ? (
-                    <EmptyTableRow colSpan={5} message="No tasks have been added to this phase." />
+                    <EmptyTableRow colSpan={4} message="No tasks have been added to this phase." />
                   ) : tasks.map(renderTask)}
                 </tbody>
               </Table>
@@ -267,6 +264,7 @@ function ViewPhase() {
                 type="button"
                 variant="outline-primary"
                 className="phase-manage-button"
+                onClick={() => navigate("/contract-management/list")}
               >
                 <IconSettings size={16} /> Manage Contracts
               </Button>

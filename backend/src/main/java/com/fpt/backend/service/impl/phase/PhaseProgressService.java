@@ -20,8 +20,8 @@ public class PhaseProgressService {
             return 0;
         }
 
-        long completedTasks = phaseTaskRepository.countCompletedByPhaseId(phaseId);
-        double progress = completedTasks * 100.0 / totalTasks;
+        long doneTasks = phaseTaskRepository.countDoneByPhaseId(phaseId);
+        double progress = doneTasks * 100.0 / totalTasks;
 
         return Math.round(progress * 100.0) / 100.0;
     }

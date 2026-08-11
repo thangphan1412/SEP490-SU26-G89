@@ -3,6 +3,6 @@ package com.fpt.backend.enums;
 public enum PhaseStatus {
     PLANNING,
     IN_PROGRESS,
-    ON_HOLD,
-    COMPLETED
+    COMPLETED,
+    OVER_DUE
 }

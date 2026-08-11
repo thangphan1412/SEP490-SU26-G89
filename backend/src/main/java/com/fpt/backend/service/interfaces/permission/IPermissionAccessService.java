@@ -19,7 +19,7 @@ public interface IPermissionAccessService {
 
     boolean hasFullWorkScope(
             ProjectAccessResponse access,
-            String actionCode
+            String ignoredActionCode
     );
 
     List<UUID> getCurrentUserProjectIdsWithAction(String actionCode);

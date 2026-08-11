@@ -14,12 +14,10 @@ import java.util.Date;
 @Table(name = "timeline_task")
 public class TimelineTask extends BaseEntity{
 
-
      private String Title;
     private String status;
     private Date startDate;
     private Date endDate;
-    private Double progress;
     //            TimelineId
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "timeline_id")

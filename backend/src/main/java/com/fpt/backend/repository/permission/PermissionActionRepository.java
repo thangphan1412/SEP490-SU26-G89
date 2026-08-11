@@ -11,5 +11,5 @@ import java.util.UUID;
 public interface PermissionActionRepository
         extends JpaRepository<PermissionAction, UUID> {
     List<PermissionAction>
-    findByStatusTrueOrderByDisplayOrderAscActionCodeAsc();
+    findAllByOrderByDisplayOrderAscActionCodeAsc();
 }

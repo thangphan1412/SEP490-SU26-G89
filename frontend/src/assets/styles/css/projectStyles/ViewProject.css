@@ -216,6 +216,11 @@
     cursor: pointer;
 }
 
+.view-project-phase-row--locked {
+    cursor: not-allowed;
+    opacity: 0.65;
+}
+
 .view-project-phase-row:focus {
     outline: 2px solid #8da8ff;
     outline-offset: -2px;

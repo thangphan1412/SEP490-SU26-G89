@@ -18,7 +18,6 @@ import com.fpt.backend.dto.response.project.ProjectUserResponse;
 import com.fpt.backend.entity.Contracts;
 import com.fpt.backend.entity.Projects;
 import com.fpt.backend.entity.Users;
-import com.fpt.backend.enums.PermissionModule;
 import com.fpt.backend.enums.ProjectDeleteResult;
 import com.fpt.backend.enums.UserStatus;
 import com.fpt.backend.exception.BadHttpException;
@@ -56,14 +55,6 @@ public class ProjectServiceImpl implements IProjectService {
     private static final String DEFAULT_PROJECT_STATUS = "Planning";
     private static final String CANCELLED_PROJECT_STATUS = "Cancelled";
     private static final String COMPLETED_PROJECT_STATUS = "Completed";
-    private static final String EDIT_PROJECT =
-            PermissionModule.EDIT_PROJECT.name();
-    private static final String EDIT_PHASE =
-            PermissionModule.EDIT_PHASE.name();
-    private static final String MANAGE_MEMBERS =
-            PermissionModule.MANAGE_MEMBERS.name();
-    private static final String VIEW_CONTRACTS =
-            PermissionModule.VIEW_CONTRACTS.name();
     private static final List<String> CREATE_PROJECT_STATUSES = List.of(
             "Planning",
             "Active",
@@ -114,6 +105,7 @@ public class ProjectServiceImpl implements IProjectService {
 
     //Lấy chi tiết dự án dựa trên ID dự án và quyền truy cập của người dùng hiện tại.
     @Override
+    @Transactional
     public ProjectDetailResponse getProjectById(UUID id) {
         Projects project = findProject(id);
         ProjectAccessResponse access =
@@ -197,8 +189,11 @@ public class ProjectServiceImpl implements IProjectService {
             throw new BadHttpException("No project changes were provided");
         }
 
+        if (updateProjectInformation || updatePhases) {
+            permissionAccessService.requireAction(id, "EDIT_PROJECT");
+        }
+
         if (updateProjectInformation) {
-            permissionAccessService.requireAction(id, EDIT_PROJECT);
             boolean projectDatesChanged = !Objects.equals(
                     project.getProjectStartDate(),
                     request.projectStartDate()
@@ -208,8 +203,6 @@ public class ProjectServiceImpl implements IProjectService {
             );
 
             if (projectDatesChanged) {
-                permissionAccessService.requireAction(id, EDIT_PHASE);
-
                 if (!updatePhases) {
                     throw new BadHttpException(
                             "Phases are required when project dates change"
@@ -231,12 +224,11 @@ public class ProjectServiceImpl implements IProjectService {
         }
 
         if (updatePhases) {
-            permissionAccessService.requireAction(id, EDIT_PHASE);
             projectPhaseService.syncPhases(project, request.phases());
         }
 
         if (updateMembers) {
-            permissionAccessService.requireAction(id, MANAGE_MEMBERS);
+            permissionAccessService.requireAction(id, "MANAGE_MEMBERS");
             projectMemberService.syncMembers(project, request.members(), true);
         }
 
@@ -249,7 +241,7 @@ public class ProjectServiceImpl implements IProjectService {
     @Transactional
     public ProjectDeleteResult deleteProject(UUID id) {
         Projects project = findProject(id);
-        permissionAccessService.requireAction(id, EDIT_PROJECT);
+        permissionAccessService.requireAction(id, "EDIT_PROJECT");
 
         if (isCompletedProject(project)) {
             throw new BadHttpException(
@@ -294,7 +286,7 @@ public class ProjectServiceImpl implements IProjectService {
     public List<ProjectPermissionConfigurationResponse>
     getProjectPermissionConfigurations(UUID projectId) {
         findProject(projectId);
-        permissionAccessService.requireAction(projectId, MANAGE_MEMBERS);
+        permissionAccessService.requireAction(projectId, "MANAGE_MEMBERS");
         return projectPermissionService.getConfigurations(projectId);
     }
 
@@ -305,7 +297,7 @@ public class ProjectServiceImpl implements IProjectService {
             UUID permissionId,
             ProjectPermissionConfigurationRequest request) {
         Projects project = findProject(projectId);
-        permissionAccessService.requireAction(projectId, MANAGE_MEMBERS);
+        permissionAccessService.requireAction(projectId, "MANAGE_MEMBERS");
         return projectPermissionService.configure(
                 project,
                 permissionId,
@@ -515,11 +507,11 @@ public class ProjectServiceImpl implements IProjectService {
         UUID projectId = project.getId();
         boolean canManageMembers = permissionAccessService.hasAction(
                 access,
-                MANAGE_MEMBERS
+                "MANAGE_MEMBERS"
         );
         boolean canViewContracts = permissionAccessService.hasAction(
                 access,
-                VIEW_CONTRACTS
+                "VIEW_CONTRACTS"
         );
         List<ProjectPhaseResponse> phases =
                 projectPhaseService.getProjectPhases(projectId);

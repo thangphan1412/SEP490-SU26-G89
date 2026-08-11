@@ -68,8 +68,7 @@ public interface PermissionRepository extends JpaRepository<Permissions, UUID> {
                 WHERE userPermission.user.id = :currentUserId
                     AND assignedPermission.project.id = project.id
                     AND assignedPermission.status = true
-                    AND assignedAction.status = true
-                    AND UPPER(assignedAction.actionCode) = :requiredActionCode
+                    AND assignedAction.actionCode = :requiredActionCode
             )
             """)
     Page<Permissions> searchPermissions(
