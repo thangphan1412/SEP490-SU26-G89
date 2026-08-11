@@ -1,5 +1,6 @@
 package com.fpt.backend.controller.companyController;
 
+import com.fpt.backend.constant.ApiConstant;
 import com.fpt.backend.dto.request.companyProfile.CompanyProfileRequestDTO;
 import com.fpt.backend.dto.response.companyProfile.CompanyProfileResponseDTO;
 import com.fpt.backend.service.interfaces.company.ICompanyService;
@@ -12,7 +13,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/company-profile")
+@RequestMapping(ApiConstant.Company.COMPANY_PROFILE)
 public class CompanyProfileController {
 
     @Autowired

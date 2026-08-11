@@ -4,6 +4,10 @@
         public static final String API = "/api/v1";
         public static class USER{
             public static final String USER = API+"/user";
+            // Thêm Users và Profile
+            public static final String USERS = "/api/users";
+            public static final String PROFILE = "/api/profile";
+            public static final String BY_ID = "/{id}";
         }
         public static class Authentication{
             public static final String LOGIN ="/auth/login";
@@ -26,6 +30,18 @@
             public static final String ELECTRONICSIGNATURES = "/create/electronic-signatures";
             public static final String ELECTRONICBYID = "/electronic-by/{id}";
             public static final String UPDATEELECTRONICSIGNATURE = "update/electronic-by/{id}";
+        }
+        // Thêm Dashboard Constants
+        public static class Dashboard {
+            public static final String DASHBOARD = API + "/dashboard";
+            public static final String OVERVIEW = "/overview";
+            public static final String STATISTICAL_REPORTS = "/statistical-reports";
+            public static final String PENDING_SIGNATURES = "/pending-signatures";
+        }
+
+        // Thêm Company Constants
+        public static class Company {
+            public static final String COMPANY_PROFILE = "/api/company-profile";
         }
         public static class Project {
             public static final String PROJECTS = "/api/projects";

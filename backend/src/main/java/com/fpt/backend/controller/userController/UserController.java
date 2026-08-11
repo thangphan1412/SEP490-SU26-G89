@@ -1,12 +1,13 @@
 package com.fpt.backend.controller.userController;
 
+import com.fpt.backend.constant.ApiConstant;
 import com.fpt.backend.dto.request.user.UserFilterRequestDTO;
 import com.fpt.backend.dto.request.user.UserCreateRequestDTO;
 import com.fpt.backend.dto.request.user.UserUpdateRequestDTO;
 import com.fpt.backend.dto.response.user.UserResponseDTO;
 import com.fpt.backend.service.interfaces.user.IUserService;
 import com.fpt.backend.util.BaseResponse;
-import jakarta.validation.Valid; // BẮT BUỘC IMPORT CÁI NÀY
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
@@ -18,13 +19,13 @@ import java.security.Principal;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/users")
+@RequestMapping(ApiConstant.USER.USERS)
 public class UserController {
 
     @Autowired
     private IUserService userService;
 
-    // 1. GET ALL USERS (ListUser) - ĐÃ HỖ TRỢ PHÂN TRANG THỰC TẾ
+    // 1. GET ALL USERS (ListUser)
     @PreAuthorize("hasAnyAuthority('CEO', 'Administrator', 'Accountant', 'HeadOfDepartment')")
     @GetMapping
     public ResponseEntity<BaseResponse<Page<UserResponseDTO>>> getAllUsers(
@@ -53,7 +54,7 @@ public class UserController {
 
     // 2. GET USER BY ID (ViewUser)
     @PreAuthorize("hasAnyAuthority('CEO', 'Administrator', 'Accountant', 'HeadOfDepartment')")
-    @GetMapping("/{id}")
+    @GetMapping(ApiConstant.USER.BY_ID)
     public ResponseEntity<BaseResponse<UserResponseDTO>> getUserById(@PathVariable UUID id) {
         try {
             UserResponseDTO user = userService.getUserById(id);
@@ -72,7 +73,7 @@ public class UserController {
         }
     }
 
-    // 3. CREATE USER (CreateUser) - ĐÃ BẬT @Valid
+    // 3. CREATE USER (CreateUser)
     @PreAuthorize("hasAnyAuthority('Accountant', 'HeadOfDepartment')")
     @PostMapping
     public ResponseEntity<BaseResponse<UserResponseDTO>> createUser(@Valid @RequestBody UserCreateRequestDTO request) {
@@ -93,9 +94,9 @@ public class UserController {
         }
     }
 
-    // 4. UPDATE USER (UpdateUser) - ĐÃ BẬT @Valid
+    // 4. UPDATE USER (UpdateUser)
     @PreAuthorize("hasAnyAuthority('Accountant', 'HeadOfDepartment')")
-    @PutMapping("/{id}")
+    @PutMapping(ApiConstant.USER.BY_ID)
     public ResponseEntity<BaseResponse<UserResponseDTO>> updateUser(
             @PathVariable UUID id,
             @Valid @RequestBody UserUpdateRequestDTO request) {
