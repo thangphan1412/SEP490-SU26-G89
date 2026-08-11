@@ -8,10 +8,17 @@ public record ProjectAccessResponse(
         UUID currentUserId,
         boolean projectMember,
         List<String> allowedActions,
-        List<String> fullScopeActions,
         String workScope
 ) {
     public boolean projectCreator() {
         return false;
+    }
+
+    public List<String> fullScopeActions() {
+        if ("FULL".equalsIgnoreCase(workScope) && allowedActions != null) {
+            return allowedActions;
+        }
+
+        return List.of();
     }
 }

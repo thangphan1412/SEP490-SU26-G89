@@ -17,6 +17,7 @@ function StatusBadge({ status }) {
     inactive: "project-management-status-badge--draft",
     cancelled: "project-management-status-badge--danger",
     canceled: "project-management-status-badge--danger",
+    overdue: "project-management-status-badge--danger",
   };
 
   return (

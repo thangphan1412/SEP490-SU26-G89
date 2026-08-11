@@ -10,7 +10,7 @@ import com.fpt.backend.repository.phase.PhaseContractRepository;
 import com.fpt.backend.repository.phase.PhaseDeliverableRepository;
 import com.fpt.backend.repository.phase.PhaseRepository;
 import com.fpt.backend.repository.phase.PhaseTaskRepository;
-import com.fpt.backend.service.impl.phase.PhaseProgressService;
+import com.fpt.backend.service.impl.phase.PhaseStatusService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -34,7 +34,7 @@ public class ProjectPhaseService {
     private final PhaseTaskRepository phaseTaskRepository;
     private final PhaseDeliverableRepository phaseDeliverableRepository;
     private final PhaseContractRepository phaseContractRepository;
-    private final PhaseProgressService phaseProgressService;
+    private final PhaseStatusService phaseStatusService;
 
     public void syncPhases(
             Projects project,
@@ -84,9 +84,13 @@ public class ProjectPhaseService {
         for (Timeline removedPhase : existingPhases.values()) {
             removePhase(removedPhase);
         }
+
+        phaseRepository.flush();
+        phaseStatusService.refreshProjectStatuses(project.getId());
     }
 
     public List<ProjectPhaseResponse> getProjectPhases(UUID projectId) {
+        phaseStatusService.refreshProjectStatuses(projectId);
         List<Timeline> phases = phaseRepository.findByProjectId(projectId);
         List<ProjectPhaseResponse> responses = new ArrayList<>();
 
@@ -98,7 +102,7 @@ public class ProjectPhaseService {
                     toLocalDate(phase.getStartDate()),
                     toLocalDate(phase.getEndDate()),
                     phase.getStatus(),
-                    phaseProgressService.calculateProgress(phase.getId())
+                    phase.getProgress()
             ));
         }
 
@@ -149,12 +153,11 @@ public class ProjectPhaseService {
                 );
             }
 
-            if (endDate.isBefore(expectedStartDate)) {
+            if (expectedStartDate.isAfter(endDate)) {
                 throw new BadHttpException(
                         "Phase " + phaseNumber
-                                + " end date must not be before its "
-                                + "calculated start date "
-                                + expectedStartDate
+                                + " start date must not be after "
+                                + "its end date"
                 );
             }
 
@@ -190,9 +193,6 @@ public class ProjectPhaseService {
                 150
         );
         String description = normalize(request.description());
-        PhaseStatus status = request.status() == null
-                ? DEFAULT_PHASE_STATUS
-                : request.status();
         LocalDate endDate = request.endDate();
 
         validateMaxLength(description, "Phase description", 500);
@@ -201,9 +201,9 @@ public class ProjectPhaseService {
         phase.setDescription(description);
         phase.setStartDate(java.sql.Date.valueOf(startDate));
         phase.setEndDate(java.sql.Date.valueOf(endDate));
-        phase.setStatus(status);
 
         if (phase.getId() == null) {
+            phase.setStatus(DEFAULT_PHASE_STATUS);
             phase.setProgress(0D);
         }
 

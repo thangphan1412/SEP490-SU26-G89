@@ -1,9 +1,9 @@
-package com.fpt.backend.dto.response.phase;
+package com.fpt.backend.dto.response.task;
 
 import java.time.LocalDate;
 import java.util.UUID;
 
-public record PhaseTaskResponse(
+public record TaskItemResponse(
         UUID id,
         String title,
         String status,

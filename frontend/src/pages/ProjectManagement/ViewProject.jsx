@@ -131,14 +131,22 @@ function ViewProject() {
         }
     }
 
-    function openPhase(phaseId) {
-        navigate(`/phase-management/view/${projectId}/${phaseId}`);
+    function openPhase(phase) {
+        if (!isPhaseInProgress(phase.status)) {
+            setActionError(
+                "Only an IN_PROGRESS phase can be accessed."
+            );
+            return;
+        }
+
+        setActionError("");
+        navigate(`/phase-management/view/${projectId}/${phase.id}`);
     }
 
-    function handlePhaseKeyDown(event, phaseId) {
+    function handlePhaseKeyDown(event, phase) {
         if (event.key === "Enter" || event.key === " ") {
             event.preventDefault();
-            openPhase(phaseId);
+            openPhase(phase);
         }
     }
 
@@ -204,16 +212,11 @@ function ViewProject() {
         access,
         PROJECT_ACTIONS.EDIT_PROJECT
     );
-    const canEditPhase = hasProjectAction(
-        access,
-        PROJECT_ACTIONS.EDIT_PHASE
-    );
     const canManageMembers = hasProjectAction(
         access,
         PROJECT_ACTIONS.MANAGE_MEMBERS
     );
     const canOpenUpdate = canEditProject
-        || canEditPhase
         || canManageMembers;
     const canViewContracts = hasProjectAction(
         access,
@@ -345,11 +348,17 @@ function ViewProject() {
                                         projectPhases.map((phase) => (
                                             <tr
                                                 key={phase.id}
-                                                className="view-project-row view-project-phase-row"
+                                                className={isPhaseInProgress(phase.status)
+                                                    ? "view-project-row view-project-phase-row"
+                                                    : "view-project-row view-project-phase-row view-project-phase-row--locked"}
                                                 role="button"
                                                 tabIndex={0}
-                                                onClick={() => openPhase(phase.id)}
-                                                onKeyDown={(event) => handlePhaseKeyDown(event, phase.id)}
+                                                aria-disabled={!isPhaseInProgress(phase.status)}
+                                                title={isPhaseInProgress(phase.status)
+                                                    ? "Open phase"
+                                                    : "This phase is available only when its status is IN_PROGRESS"}
+                                                onClick={() => openPhase(phase)}
+                                                onKeyDown={(event) => handlePhaseKeyDown(event, phase)}
                                             >
                                                 <td className="view-project-td view-project-phase-title">{showValue(phase.title)}</td>
                                                 <td className="view-project-td">
@@ -530,6 +539,10 @@ function ViewProject() {
 function clampProgress(progress) {
     const numberValue = Number(progress || 0);
     return Math.min(100, Math.max(0, Math.round(numberValue)));
+}
+
+function isPhaseInProgress(status) {
+    return String(status || "").trim().toUpperCase() === "IN_PROGRESS";
 }
 
 function getApiErrorMessage(error) {

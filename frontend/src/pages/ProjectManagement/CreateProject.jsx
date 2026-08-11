@@ -19,7 +19,6 @@ import {
     getEmployeeName,
     getEmployeeSearchText,
     CREATE_PROJECT_STATUS_OPTIONS as statusOptions,
-    PHASE_STATUS_OPTIONS as phaseStatusOptions,
 } from "../../components/projectComponents/projectFormUtils.js";
 import "../../assets/styles/css/projectStyles/CreateProject.css";
 
@@ -192,7 +191,6 @@ function CreateProject() {
                     description: "",
                     startDate: nextStartDate,
                     endDate: currentProject.projectEndDate,
-                    status: "PLANNING",
                 },
             ],
         }));
@@ -314,7 +312,6 @@ function CreateProject() {
                     title: phase.title.trim(),
                     description: phase.description.trim(),
                     endDate: phase.endDate,
-                    status: phase.status,
                 })),
                 members: project.members,
             });
@@ -431,12 +428,6 @@ function CreateProject() {
                             <Col md={3}>
                                 <Form.Label className="project-management-field-label">End Date</Form.Label>
                                 <Form.Control required type="date" name="endDate" min={phase.startDate || project.projectStartDate} max={project.projectEndDate} value={phase.endDate} onChange={(event) => updatePhase(phase.clientId, event)} className="project-management-input" />
-                            </Col>
-                            <Col md={4}>
-                                <Form.Label className="project-management-field-label">Status</Form.Label>
-                                <Form.Select name="status" value={phase.status} onChange={(event) => updatePhase(phase.clientId, event)} className="project-management-input">
-                                    {phaseStatusOptions.map((status) => <option key={status}>{status}</option>)}
-                                </Form.Select>
                             </Col>
                             <Col xs={12}>
                                 <Form.Label className="project-management-field-label">Description</Form.Label>

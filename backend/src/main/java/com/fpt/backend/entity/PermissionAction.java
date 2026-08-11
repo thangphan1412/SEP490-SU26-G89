@@ -58,6 +58,4 @@ public class PermissionAction extends BaseEntity {
     @Column(name = "display_order", nullable = false)
     private Integer displayOrder;
 
-    @Column(name = "action_is_active", nullable = false)
-    private Boolean status;
 }

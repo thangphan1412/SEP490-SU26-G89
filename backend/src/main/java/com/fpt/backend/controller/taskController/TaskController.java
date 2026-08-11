@@ -1,0 +1,54 @@
+package com.fpt.backend.controller.taskController;
+
+import com.fpt.backend.dto.request.task.TaskUpdateRequest;
+import com.fpt.backend.dto.response.task.TaskItemResponse;
+import com.fpt.backend.dto.response.task.TaskManagementResponse;
+import com.fpt.backend.service.interfaces.task.ITaskService;
+import com.fpt.backend.util.BaseResponse;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.CacheControl;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.util.UUID;
+
+@RestController
+@RequestMapping("/api/tasks")
+@RequiredArgsConstructor
+public class TaskController {
+    private final ITaskService taskService;
+
+    @GetMapping("/phase/{phaseId}")
+    public ResponseEntity<BaseResponse<TaskManagementResponse>>
+    getTasksByPhaseId(@PathVariable UUID phaseId) {
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .body(new BaseResponse<>(
+                        taskService.getTasksByPhaseId(phaseId)
+                ));
+    }
+
+    @PutMapping("/{taskId}")
+    public ResponseEntity<BaseResponse<TaskItemResponse>> updateTask(
+            @PathVariable UUID taskId,
+            @Valid @RequestBody TaskUpdateRequest request) {
+        return ResponseEntity.ok(new BaseResponse<>(
+                taskService.updateTask(taskId, request)
+        ));
+    }
+
+    @PatchMapping("/{taskId}/done")
+    public ResponseEntity<BaseResponse<TaskItemResponse>> markTaskAsDone(
+            @PathVariable UUID taskId) {
+        return ResponseEntity.ok(new BaseResponse<>(
+                taskService.markTaskAsDone(taskId)
+        ));
+    }
+}

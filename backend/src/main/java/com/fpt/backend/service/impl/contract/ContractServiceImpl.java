@@ -1219,21 +1219,23 @@ public class ContractServiceImpl implements ContractService {
 
     private Set<String> activeActionsForUser(UUID userId, UUID projectId) {
         Set<String> actions = new LinkedHashSet<>();
-        for (UserPermission userPermission : userPermissionRepository
-                .findActiveByUserIdAndProjectId(userId, projectId)) {
-            if (userPermission.getPermission() == null
-                    || userPermission.getPermission().getActions() == null) {
-                continue;
-            }
-            for (PermissionAction action
-                    : userPermission.getPermission().getActions()) {
-                if (action != null && Boolean.TRUE.equals(action.getStatus())
-                        && !isBlank(action.getActionCode())) {
-                    actions.add(action.getActionCode().trim()
-                            .toUpperCase(Locale.ROOT));
-                }
+        UserPermission userPermission = userPermissionRepository
+                .findActiveByUserIdAndProjectId(userId, projectId);
+
+        if (userPermission == null
+                || userPermission.getPermission() == null
+                || userPermission.getPermission().getActions() == null) {
+            return actions;
+        }
+
+        for (PermissionAction action
+                : userPermission.getPermission().getActions()) {
+            if (action != null && !isBlank(action.getActionCode())) {
+                actions.add(action.getActionCode().trim()
+                        .toUpperCase(Locale.ROOT));
             }
         }
+
         return actions;
     }
 

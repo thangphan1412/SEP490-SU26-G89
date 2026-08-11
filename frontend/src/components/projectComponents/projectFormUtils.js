@@ -12,13 +12,6 @@ export const CREATE_PROJECT_STATUS_OPTIONS = [
   "On Hold",
 ];
 
-export const PHASE_STATUS_OPTIONS = [
-  "PLANNING",
-  "IN_PROGRESS",
-  "ON_HOLD",
-  "COMPLETED",
-];
-
 export function createClientId() {
   return "phase-" + Date.now() + "-" + Math.random().toString(16).slice(2);
 }

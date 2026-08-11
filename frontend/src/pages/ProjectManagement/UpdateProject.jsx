@@ -25,7 +25,6 @@ import {
     getEmployeeSearchText,
     getFilterOptions,
     isCompletedProjectStatus,
-    PHASE_STATUS_OPTIONS as phaseStatusOptions,
     PROJECT_STATUS_OPTIONS as projectStatusOptions,
 } from "../../components/projectComponents/projectFormUtils.js";
 import "../../assets/styles/css/projectStyles/UpdateProject.css";
@@ -76,7 +75,6 @@ function UpdateProject({ onUpdateProject }) {
                     projectAccess,
                     [
                         PROJECT_ACTIONS.EDIT_PROJECT,
-                        PROJECT_ACTIONS.EDIT_PHASE,
                         PROJECT_ACTIONS.MANAGE_MEMBERS,
                     ]
                 );
@@ -158,10 +156,6 @@ function UpdateProject({ onUpdateProject }) {
         access,
         PROJECT_ACTIONS.EDIT_PROJECT
     );
-    const canEditPhase = hasProjectAction(
-        access,
-        PROJECT_ACTIONS.EDIT_PHASE
-    );
     const canManageMembers = hasProjectAction(
         access,
         PROJECT_ACTIONS.MANAGE_MEMBERS
@@ -169,20 +163,34 @@ function UpdateProject({ onUpdateProject }) {
 
     function handleProjectChange(event) {
         const { name, value } = event.target;
-        setProject(function (currentProject) {
-            let phases = currentProject.phases;
+        let phases = project.phases;
 
-            if (name === "projectStartDate" && phases.length > 0) {
-                phases = calculatePhaseStartDatesForDisplay(phases, value);
-            }
+        if (name === "projectStartDate" && phases.length > 0) {
+            phases = calculatePhaseStartDatesForDisplay(phases, value);
+        }
 
-            if (name === "projectEndDate" && phases.length > 0) {
-                phases = phases.map((phase, index) =>
-                    index === phases.length - 1 ? { ...phase, endDate: value } : phase
-                );
-            }
+        if (name === "projectEndDate" && phases.length > 0) {
+            phases = phases.map(function (phase, index) {
+                if (index === phases.length - 1) {
+                    return { ...phase, endDate: value };
+                }
 
-            return { ...currentProject, [name]: value, phases };
+                return phase;
+            });
+        }
+
+        const phaseDateError = getPhaseDateError(phases);
+
+        if (phaseDateError) {
+            setSubmitError(phaseDateError);
+            return;
+        }
+
+        setSubmitError("");
+        setProject({
+            ...project,
+            [name]: value,
+            phases,
         });
     }
 
@@ -219,7 +227,6 @@ function UpdateProject({ onUpdateProject }) {
                     description: "",
                     startDate: nextStartDate,
                     endDate: currentProject.projectEndDate,
-                    status: "PLANNING",
                 },
             ],
         }));
@@ -227,23 +234,30 @@ function UpdateProject({ onUpdateProject }) {
 
     function updatePhase(clientId, event) {
         const { name, value } = event.target;
-
-        setProject(function (currentProject) {
-            let phases = currentProject.phases.map((phase) =>
-                phase.clientId === clientId
-                    ? { ...phase, [name]: value }
-                    : phase
-            );
-
-            if (name === "endDate") {
-                phases = calculatePhaseStartDatesForDisplay(
-                    phases,
-                    currentProject.projectStartDate
-                );
+        let phases = project.phases.map(function (phase) {
+            if (phase.clientId === clientId) {
+                return { ...phase, [name]: value };
             }
 
-            return { ...currentProject, phases };
+            return phase;
         });
+
+        if (name === "endDate") {
+            phases = calculatePhaseStartDatesForDisplay(
+                phases,
+                project.projectStartDate
+            );
+        }
+
+        const phaseDateError = getPhaseDateError(phases);
+
+        if (phaseDateError) {
+            setSubmitError(phaseDateError);
+            return;
+        }
+
+        setSubmitError("");
+        setProject({ ...project, phases });
     }
 
     function removePhase(clientId) {
@@ -325,6 +339,15 @@ function UpdateProject({ onUpdateProject }) {
     async function handleSubmit(event) {
         event.preventDefault();
 
+        if (canEditProject) {
+            const phaseDateError = getPhaseDateError(project.phases);
+
+            if (phaseDateError) {
+                setSubmitError(phaseDateError);
+                return;
+            }
+        }
+
         try {
             setSaving(true);
             setSubmitError("");
@@ -347,13 +370,12 @@ function UpdateProject({ onUpdateProject }) {
                 projectStatus: canEditProject
                     ? project.projectStatus
                     : null,
-                phases: canEditPhase
+                phases: canEditProject
                     ? project.phases.map((phase) => ({
                         id: phase.id,
                         title: phase.title.trim(),
                         description: phase.description.trim(),
                         endDate: phase.endDate,
-                        status: phase.status,
                     }))
                     : null,
                 members: canManageMembers ? project.members : null,
@@ -488,12 +510,12 @@ function UpdateProject({ onUpdateProject }) {
 
                             <Form.Group as={Col} md={6} controlId="projectStartDate">
                                 <Form.Label className="project-management-field-label">Start Date</Form.Label>
-                                <Form.Control disabled={!canEditPhase} required type="date" name="projectStartDate" value={project.projectStartDate} onChange={handleProjectChange} className="project-management-input" />
+                                <Form.Control required type="date" name="projectStartDate" value={project.projectStartDate} onChange={handleProjectChange} className="project-management-input" />
                             </Form.Group>
 
                             <Form.Group as={Col} md={6} controlId="projectEndDate">
                                 <Form.Label className="project-management-field-label">End Date</Form.Label>
-                                <Form.Control disabled={!canEditPhase} required type="date" min={project.projectStartDate} name="projectEndDate" value={project.projectEndDate} onChange={handleProjectChange} className="project-management-input" />
+                                <Form.Control required type="date" min={project.projectStartDate} name="projectEndDate" value={project.projectEndDate} onChange={handleProjectChange} className="project-management-input" />
                             </Form.Group>
 
                             <Form.Group as={Col} md={6} controlId="projectStatus">
@@ -522,7 +544,7 @@ function UpdateProject({ onUpdateProject }) {
                     </Card>
                     )}
 
-                    {canEditPhase && (
+                    {canEditProject && (
                     <Card as="section" className="project-management-card">
                         <div className="update-project-section-header">
                             <div>
@@ -559,12 +581,6 @@ function UpdateProject({ onUpdateProject }) {
                                             <Col md={3}>
                                                 <Form.Label className="project-management-field-label">End Date</Form.Label>
                                                 <Form.Control required type="date" name="endDate" min={phase.startDate || project.projectStartDate} max={project.projectEndDate} value={phase.endDate} onChange={(event) => updatePhase(phase.clientId, event)} className="project-management-input" />
-                                            </Col>
-                                            <Col md={4}>
-                                                <Form.Label className="project-management-field-label">Status</Form.Label>
-                                                <Form.Select name="status" value={phase.status} onChange={(event) => updatePhase(phase.clientId, event)} className="project-management-input">
-                                                    {phaseStatusOptions.map((status) => <option key={status}>{status}</option>)}
-                                                </Form.Select>
                                             </Col>
                                             <Col xs={12}>
                                                 <Form.Label className="project-management-field-label">Description</Form.Label>
@@ -743,11 +759,27 @@ function mapPhases(phases) {
             description: phase.description || "",
             startDate: phase.startDate || "",
             endDate: phase.endDate || "",
-            status: phase.status || "PLANNING",
         });
     }
 
     return mappedPhases;
+}
+
+function getPhaseDateError(phases) {
+    for (let index = 0; index < phases.length; index++) {
+        const phase = phases[index];
+
+        if (
+            phase.startDate
+            && phase.endDate
+            && phase.startDate > phase.endDate
+        ) {
+            return "Phase " + (index + 1)
+                + " start date must not be after its end date.";
+        }
+    }
+
+    return "";
 }
 
 function mergeEmployees(employeeData, projectUsers) {

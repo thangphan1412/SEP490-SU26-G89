@@ -9,7 +9,6 @@ import com.fpt.backend.dto.response.permission.PermissionListResponse;
 import com.fpt.backend.dto.response.permission.PermissionProjectResponse;
 import com.fpt.backend.entity.Permissions;
 import com.fpt.backend.entity.Projects;
-import com.fpt.backend.enums.PermissionModule;
 import com.fpt.backend.exception.BadHttpException;
 import com.fpt.backend.exception.NotFoundException;
 import com.fpt.backend.repository.permission.PermissionRepository;
@@ -40,7 +39,6 @@ import java.util.UUID;
 public class PermissionServiceImpl implements IPermissionService {
     private static final int PAGE_SIZE = 7;
     private static final String DEFAULT_SORT_FIELD = "createdAt";
-    private static final String MANAGE_MEMBERS = PermissionModule.MANAGE_MEMBERS.name();
     private static final Set<String> SORT_FIELDS = Set.of(
             "id",
             "permissionName",
@@ -68,7 +66,7 @@ public class PermissionServiceImpl implements IPermissionService {
                 request.projectId(),
                 request.status(),
                 currentUser.getCurrentUser().getId(),
-                MANAGE_MEMBERS,
+                "MANAGE_MEMBERS",
                 pageable);
 
         return new PermissionListResponse(
@@ -117,7 +115,7 @@ public class PermissionServiceImpl implements IPermissionService {
     @Override
     public List<PermissionProjectResponse> getProjectsForPermissionSelection() {
         List<UUID> projectIds = permissionAccessService
-                .getCurrentUserProjectIdsWithAction(MANAGE_MEMBERS);
+                .getCurrentUserProjectIdsWithAction("MANAGE_MEMBERS");
         List<Projects> projects = projectRepository.findAllById(projectIds);
         //Sắp xếp danh sách dự án theo tên dự án (không phân biệt chữ hoa chữ thường)
         projects.sort(
@@ -154,7 +152,7 @@ public class PermissionServiceImpl implements IPermissionService {
         Projects project = findProject(request.projectId());
         permissionAccessService.requireAction(
                 project.getId(),
-                MANAGE_MEMBERS);
+                "MANAGE_MEMBERS");
 
         boolean duplicateCode = currentId == null
                 ? permissionRepository.existsByPermissionCodeIgnoreCase(permissionCode)
@@ -214,7 +212,7 @@ public class PermissionServiceImpl implements IPermissionService {
 
         permissionAccessService.requireAction(
                 project.getId(),
-                MANAGE_MEMBERS);
+                "MANAGE_MEMBERS");
     }
 
     private Pageable createPageable(int page, String sortBy, String sortDirection) {

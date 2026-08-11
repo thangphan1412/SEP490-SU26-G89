@@ -14,6 +14,12 @@ import java.util.UUID;
 @Repository
 public interface PhaseRepository extends JpaRepository<Timeline, UUID> {
     @Query("""
+            SELECT DISTINCT phase.project.id
+            FROM Timeline phase
+            """)
+    List<UUID> findProjectIds();
+
+    @Query("""
             SELECT phase
             FROM Timeline phase
             JOIN FETCH phase.project project
