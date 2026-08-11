@@ -16,6 +16,13 @@ const contractTypeApi = {
         return axios.get(CONTRACT_TYPE_ENDPOINT + "/" + id, noCacheConfig);
     },
 
+    getWorkflowOptions() {
+        return axios.get(
+            CONTRACT_TYPE_ENDPOINT + "/workflow-options",
+            noCacheConfig
+        );
+    },
+
     createContractType(data) {
         return axios.post(CONTRACT_TYPE_ENDPOINT, data);
     },

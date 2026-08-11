@@ -698,8 +698,167 @@
 
 .contract-workflow-steps {
   display: grid;
-  grid-template-columns: repeat(6, minmax(112px, 1fr));
+  grid-auto-columns: minmax(145px, 1fr);
+  grid-auto-flow: column;
   overflow-x: auto;
+}
+
+.contract-workflow-assignments,
+.contract-type-workflow-editor,
+.contract-workflow-assignment-summary {
+  padding: 16px;
+  border: 1px solid #c9d7ff;
+  border-radius: 10px;
+  background: #f7f9ff;
+}
+
+.contract-workflow-assignment-list,
+.contract-type-workflow-steps,
+.contract-type-workflow-preview,
+.contract-workflow-assignment-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.contract-workflow-assignment,
+.contract-type-workflow-step,
+.contract-type-workflow-preview > div,
+.contract-workflow-assignment-summary > article {
+  display: grid;
+  grid-template-columns: 42px minmax(180px, 1fr) minmax(220px, 1.25fr);
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid #dce5f4;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.contract-workflow-assignment > span,
+.contract-type-workflow-preview > div > span,
+.contract-workflow-assignment-summary > article > span {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border-radius: 50%;
+  color: #ffffff;
+  background: #2450f5;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.contract-workflow-assignment strong,
+.contract-workflow-assignment small,
+.contract-type-workflow-preview strong,
+.contract-type-workflow-preview small,
+.contract-workflow-assignment-summary strong,
+.contract-workflow-assignment-summary small {
+  display: block;
+}
+
+.contract-workflow-assignment small,
+.contract-type-workflow-preview small,
+.contract-workflow-assignment-summary small {
+  margin-top: 3px;
+  color: #697691;
+  font-size: 11px;
+}
+
+.contract-type-workflow-editor {
+  margin-top: 22px;
+}
+
+.contract-type-workflow-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 16px;
+}
+
+.contract-type-workflow-heading h3,
+.contract-workflow-assignment-summary h3 {
+  margin: 0;
+  color: #17213d;
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.contract-type-workflow-heading p {
+  max-width: 650px;
+  margin: 4px 0 0;
+  color: #697691;
+  font-size: 12px;
+}
+
+.contract-type-workflow-editor > .contract-type-workflow-steps {
+  margin-top: 16px;
+}
+
+.contract-type-workflow-step {
+  grid-template-columns: 58px minmax(180px, 1.3fr) minmax(150px, 0.8fr)
+    minmax(180px, 1fr) 105px 40px;
+}
+
+.contract-type-workflow-order {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.contract-type-workflow-order > strong {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border-radius: 50%;
+  color: #ffffff;
+  background: #2450f5;
+  font-size: 12px;
+}
+
+.contract-type-workflow-order > div {
+  display: flex;
+  flex-direction: column;
+}
+
+.contract-type-workflow-order button {
+  display: grid;
+  width: 22px;
+  height: 19px;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  color: #506080;
+  background: transparent;
+}
+
+.contract-type-workflow-order button:disabled {
+  color: #c4ccda;
+}
+
+.contract-type-workflow-reject {
+  margin: 22px 0 0;
+}
+
+.contract-type-workflow-preview {
+  margin-top: 12px;
+}
+
+.contract-type-workflow-preview > div {
+  grid-template-columns: 42px 1fr;
+}
+
+.contract-workflow-assignment-summary {
+  margin-top: 20px;
+  background: #ffffff;
+}
+
+.contract-workflow-assignment-summary > article {
+  grid-template-columns: 42px 1fr 1fr;
+  padding: 10px 12px;
 }
 
 .contract-workflow-step {
@@ -1789,6 +1948,14 @@
 }
 
 @media (max-width: 1000px) {
+  .contract-type-workflow-step {
+    grid-template-columns: 58px repeat(2, minmax(0, 1fr));
+  }
+
+  .contract-type-workflow-reject {
+    margin-top: 0;
+  }
+
   .contract-toolbar {
     flex-wrap: wrap;
   }
@@ -1842,6 +2009,17 @@
 }
 
 @media (max-width: 700px) {
+  .contract-type-workflow-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .contract-workflow-assignment,
+  .contract-type-workflow-step,
+  .contract-workflow-assignment-summary > article {
+    grid-template-columns: 1fr;
+  }
+
   .contract-page-header {
     align-items: stretch;
     flex-direction: column;

@@ -13,7 +13,8 @@ import com.fpt.backend.entity.Timeline;
 import com.fpt.backend.entity.TimelineContract;
 import com.fpt.backend.entity.TimelineTask;
 import com.fpt.backend.entity.Users;
-import com.fpt.backend.enums.PermissionModule;
+import com.fpt.backend.enums.PhaseStatus;
+import com.fpt.backend.exception.BadHttpException;
 import com.fpt.backend.exception.NotFoundException;
 import com.fpt.backend.repository.phase.PhaseContractRepository;
 import com.fpt.backend.repository.phase.PhaseDeliverableRepository;
@@ -36,22 +37,16 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
-@Transactional(readOnly = true)
+@Transactional
 public class PhaseServiceImpl implements IPhaseService {
     private static final ZoneId APP_TIME_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
-    private static final String VIEW_TASKS =
-            PermissionModule.VIEW_TASKS.name();
-    private static final String VIEW_DELIVERABLES =
-            PermissionModule.VIEW_DELIVERABLES.name();
-    private static final String VIEW_CONTRACTS =
-            PermissionModule.VIEW_CONTRACTS.name();
 
     private final PhaseRepository phaseRepository;
     private final PhaseTaskRepository phaseTaskRepository;
     private final PhaseDeliverableRepository phaseDeliverableRepository;
     private final PhaseContractRepository phaseContractRepository;
     private final ProjectRepository projectRepository;
-    private final PhaseProgressService phaseProgressService;
+    private final PhaseStatusService phaseStatusService;
     private final IPermissionAccessService permissionAccessService;
 
     @Override
@@ -61,6 +56,7 @@ public class PhaseServiceImpl implements IPhaseService {
         }
 
         permissionAccessService.requireProjectAccess(projectId);
+        phaseStatusService.refreshProjectStatuses(projectId);
 
         List<Timeline> phases = phaseRepository.findByProjectId(projectId);
         List<PhaseListItemResponse> responses = new ArrayList<>();
@@ -74,16 +70,21 @@ public class PhaseServiceImpl implements IPhaseService {
 
     @Override
     public PhaseDetailResponse getPhaseById(UUID phaseId) {
-        Optional<Timeline> optionalPhase = phaseRepository.findDetailById(phaseId);
-
-        if (optionalPhase.isEmpty()) {
-            throw new NotFoundException("Phase not found");
-        }
-
-        Timeline phase = optionalPhase.get();
+        Timeline phase = findPhase(phaseId);
         Projects project = phase.getProject();
         ProjectAccessResponse access = permissionAccessService
                 .getCurrentUserAccess(project.getId());
+
+        phaseStatusService.refreshProjectStatuses(project.getId());
+        phase = findPhase(phaseId);
+
+        if (phase.getStatus() != PhaseStatus.IN_PROGRESS) {
+            throw new BadHttpException(
+                    "Only an IN_PROGRESS phase can be accessed"
+            );
+        }
+
+        project = phase.getProject();
         List<PhaseTaskResponse> tasks = getVisibleTasks(phaseId, access);
         List<PhaseDeliverableResponse> deliverables =
                 getVisibleDeliverables(phaseId, access);
@@ -97,7 +98,7 @@ public class PhaseServiceImpl implements IPhaseService {
                 toLocalDate(phase.getStartDate()),
                 toLocalDate(phase.getEndDate()),
                 phase.getStatus(),
-                phaseProgressService.calculateProgress(phase.getId()),
+                phase.getProgress(),
                 project.getId(),
                 project.getProjectCode(),
                 project.getProjectName(),
@@ -113,7 +114,16 @@ public class PhaseServiceImpl implements IPhaseService {
             ProjectAccessResponse access) {
         List<PhaseTaskResponse> responses = new ArrayList<>();
 
-        if (!permissionAccessService.hasAction(access, VIEW_TASKS)) {
+        boolean canViewTasks = permissionAccessService.hasAction(
+                access,
+                "VIEW_TASKS"
+        );
+        boolean canEditTasks = permissionAccessService.hasAction(
+                access,
+                "EDIT_TASKS"
+        );
+
+        if (!canViewTasks && !canEditTasks) {
             return responses;
         }
 
@@ -121,7 +131,7 @@ public class PhaseServiceImpl implements IPhaseService {
 
         if (permissionAccessService.hasFullWorkScope(
                 access,
-                VIEW_TASKS
+                "VIEW_TASKS"
         )) {
             tasks = phaseTaskRepository.findByPhaseId(phaseId);
         } else {
@@ -145,7 +155,7 @@ public class PhaseServiceImpl implements IPhaseService {
 
         if (!permissionAccessService.hasAction(
                 access,
-                VIEW_DELIVERABLES
+                "VIEW_DELIVERABLES"
         )) {
             return responses;
         }
@@ -169,7 +179,7 @@ public class PhaseServiceImpl implements IPhaseService {
             ProjectAccessResponse access) {
         List<PhaseContractResponse> responses = new ArrayList<>();
 
-        if (!permissionAccessService.hasAction(access, VIEW_CONTRACTS)) {
+        if (!permissionAccessService.hasAction(access, "VIEW_CONTRACTS")) {
             return responses;
         }
 
@@ -208,7 +218,6 @@ public class PhaseServiceImpl implements IPhaseService {
                 task.getStatus(),
                 toLocalDate(task.getStartDate()),
                 toLocalDate(task.getEndDate()),
-                task.getProgress(),
                 assignedUserId,
                 assignedUserName,
                 assignedUserEmail
@@ -225,7 +234,7 @@ public class PhaseServiceImpl implements IPhaseService {
                 toLocalDate(phase.getStartDate()),
                 toLocalDate(phase.getEndDate()),
                 phase.getStatus(),
-                phaseProgressService.calculateProgress(phase.getId()),
+                phase.getProgress(),
                 project.getId(),
                 project.getProjectCode(),
                 project.getProjectName()
@@ -251,5 +260,17 @@ public class PhaseServiceImpl implements IPhaseService {
 
     private String normalize(String value) {
         return value == null ? "" : value.trim();
+    }
+
+    private Timeline findPhase(UUID phaseId) {
+        Optional<Timeline> optionalPhase = phaseRepository.findDetailById(
+                phaseId
+        );
+
+        if (optionalPhase.isEmpty()) {
+            throw new NotFoundException("Phase not found");
+        }
+
+        return optionalPhase.get();
     }
 }

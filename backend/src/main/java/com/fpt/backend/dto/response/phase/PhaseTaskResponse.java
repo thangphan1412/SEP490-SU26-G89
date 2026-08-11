@@ -9,7 +9,6 @@ public record PhaseTaskResponse(
         String status,
         LocalDate startDate,
         LocalDate endDate,
-        Double progress,
         UUID assignedToId,
         String assignedToName,
         String assignedToEmail

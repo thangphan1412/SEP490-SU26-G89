@@ -41,9 +41,9 @@ public interface PhaseTaskRepository extends JpaRepository<TimelineTask, UUID> {
             SELECT COUNT(task)
             FROM TimelineTask task
             WHERE task.timeline.id = :phaseId
-              AND LOWER(TRIM(task.status)) IN ('completed', 'done')
+              AND UPPER(TRIM(task.status)) = 'DONE'
             """)
-    long countCompletedByPhaseId(@Param("phaseId") UUID phaseId);
+    long countDoneByPhaseId(@Param("phaseId") UUID phaseId);
 
     @Modifying
     @Query("""

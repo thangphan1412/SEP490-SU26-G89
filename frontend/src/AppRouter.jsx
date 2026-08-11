@@ -33,6 +33,7 @@ import MainLayout from "./components/layout/MainLayout.jsx";
 import ForgotPassword from "./pages/authentication/ForgotPassword.jsx";
 import Resetpassword from "./pages/authentication/Resetpassword.jsx";
 import ViewPhase from "./pages/Phase Management/ViewPhase.jsx";
+import EditTask from "./pages/TaskManagement/EditTask.jsx";
 import AgreementStatistics from "./pages/Dashboard/AgreementStatistics.jsx";
 import TotalAgreements from "./pages/Dashboard/TotalAgreements.jsx";
 import PendingSignatureAgreements from "./pages/Dashboard/PendingSignatureAgreements.jsx";
@@ -122,6 +123,10 @@ function AppRouter() {
                 <Route
                     path="/phase-management/view/:projectId/:phaseId"
                     element={<ViewPhase />}
+                />
+                <Route
+                    path="/task-management/edit/:projectId/:phaseId"
+                    element={<EditTask />}
                 />
                 <Route
                     path="/contract-management/list"
