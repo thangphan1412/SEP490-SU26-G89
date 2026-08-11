@@ -31,6 +31,12 @@ public interface ContractRepository extends JpaRepository<Contracts, UUID> {
             AND (
                 project.id IN (:fullScopeProjectIds)
                 OR creator.id = :currentUserId
+                OR EXISTS (
+                    SELECT workflowStep.id
+                    FROM ContractWorkflowStepInstance workflowStep
+                    WHERE workflowStep.contract.id = contract.id
+                        AND workflowStep.assignedUser.id = :currentUserId
+                )
                 OR (
                     contract.contractCreatedByUser IS NULL
                     AND LOWER(TRIM(COALESCE(contract.contractCreateBy, '')))

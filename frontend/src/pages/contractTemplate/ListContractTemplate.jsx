@@ -24,6 +24,29 @@ import {
 } from "./templatePositionUtils.js";
 import "../../assets/styles/css/layoutStyles/ContractWorkspace.css";
 
+const DEFAULT_TEMPLATE_CONTENT = `ĐIỀU 1. NỘI DUNG VÀ PHẠM VI HỢP ĐỒNG
+Hai bên thống nhất thực hiện {{contract_title}} thuộc dự án {{project_name}} theo nội dung, phạm vi và yêu cầu được quy định trong hợp đồng này.
+
+ĐIỀU 2. THỜI HẠN VÀ HIỆU LỰC
+Hợp đồng có hiệu lực từ ngày {{effective_date}} đến hết ngày {{expiration_date}}.
+Mọi thay đổi về thời hạn phải được các bên thống nhất bằng văn bản.
+
+ĐIỀU 3. GIÁ TRỊ VÀ THANH TOÁN
+Giá trị hợp đồng: {{contract_value}}.
+Thời hạn, phương thức và tiến độ thanh toán do các bên thỏa thuận và thực hiện theo hợp đồng.
+
+ĐIỀU 4. QUYỀN VÀ NGHĨA VỤ CỦA CÁC BÊN
+Các bên có trách nhiệm cung cấp đầy đủ thông tin, phối hợp thực hiện công việc và hoàn thành đúng các nghĩa vụ đã thỏa thuận.
+
+ĐIỀU 5. BẢO MẬT THÔNG TIN
+Các bên không được tiết lộ thông tin của hợp đồng cho bên thứ ba khi chưa có sự đồng ý của bên còn lại, trừ trường hợp pháp luật có quy định khác.
+
+ĐIỀU 6. GIẢI QUYẾT TRANH CHẤP
+Mọi tranh chấp phát sinh được ưu tiên giải quyết thông qua thương lượng. Trường hợp không thể thương lượng, tranh chấp được giải quyết theo quy định của pháp luật.
+
+ĐIỀU 7. ĐIỀU KHOẢN CHUNG
+Các bên cam kết thực hiện đúng các nội dung đã thỏa thuận. Hợp đồng là căn cứ ràng buộc quyền và nghĩa vụ của các bên trong suốt thời gian có hiệu lực.`;
+
 function createEmptyTemplateForm() {
     return {
         contractTypeId: "",
@@ -52,15 +75,30 @@ function createEmptyVersionForm(sourceVersion = null) {
         && sourceVersion.positions.length > 0
         ? sourceVersion.positions
         : savedLayout.fields;
+    const sourceContent = sourceVersion?.templateContent;
 
     return {
         versionName: "",
-        templateContent: sourceVersion?.templateContent || "",
+        templateContent: sourceContent?.trim()
+            ? sourceContent
+            : DEFAULT_TEMPLATE_CONTENT,
         changeNote: "",
         createdBy: localStorage.getItem("fullName") || "",
         pageCount: Number(sourceVersion?.pageCount || savedLayout.pageCount) || 1,
         positions: cloneVersionPositions(sourcePositions),
     };
+}
+
+function findLatestVersion(template) {
+    if (!Array.isArray(template?.versions) || template.versions.length === 0) {
+        return null;
+    }
+
+    return [...template.versions].sort(
+        (left, right) =>
+            Number(right?.versionNumber || 0)
+            - Number(left?.versionNumber || 0)
+    )[0];
 }
 
 function ListContractTemplate() {
@@ -185,9 +223,7 @@ function ListContractTemplate() {
     };
 
     const openVersionModal = (template) => {
-        const latestVersion = Array.isArray(template?.versions)
-            ? template.versions[0]
-            : null;
+        const latestVersion = findLatestVersion(template);
         setModalMode(null);
         setSelectedTemplate(template);
         setVersionForm(createEmptyVersionForm(latestVersion));

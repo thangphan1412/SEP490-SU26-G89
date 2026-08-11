@@ -52,6 +52,13 @@ public class Contracts extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "project_id")
     private Projects project;
+    // Task selected from the project's phase when the contract is created.
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(
+            name = "timeline_task_id",
+            foreignKey = @ForeignKey(name = "FK_contracts_timeline_task")
+    )
+    private TimelineTask timelineTask;
     //Signature
     @OneToMany(mappedBy = "contract")
     private List<Signature>  signatures;
@@ -59,6 +66,13 @@ public class Contracts extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "contract_type_id")
     private ContractTypes contractType;
+    // Immutable workflow version selected from the contract type.
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(
+            name = "contract_workflow_version_id",
+            foreignKey = @ForeignKey(name = "FK_contracts_workflow_version")
+    )
+    private ContractTypeWorkflow workflowVersion;
     // contract template
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "contract_template_id")
@@ -81,6 +95,14 @@ public class Contracts extends BaseEntity {
     )
     @OrderBy("changedAt DESC")
     private List<ContractStatusHistory> statusHistory;
+    // Runtime snapshot with the exact user assigned to every workflow step.
+    @OneToMany(
+            mappedBy = "contract",
+            cascade = CascadeType.ALL,
+            orphanRemoval = true
+    )
+    @OrderBy("stepOrder ASC")
+    private List<ContractWorkflowStepInstance> workflowStepInstances;
     // contrac approvals
     @OneToMany(mappedBy = "contract")
     private List<ContractApprovals> contractApprovals;

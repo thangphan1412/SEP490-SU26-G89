@@ -5,6 +5,7 @@ import com.fpt.backend.dto.request.contract.ContractRequest;
 import com.fpt.backend.dto.request.contract.ContractTransitionRequest;
 import com.fpt.backend.dto.response.contract.ContractListResponse;
 import com.fpt.backend.dto.response.contract.ContractPdfResponse;
+import com.fpt.backend.dto.response.contract.ContractProjectContextResponse;
 import com.fpt.backend.dto.response.contract.ContractProjectOptionResponse;
 import com.fpt.backend.dto.response.contract.ContractResponse;
 
@@ -15,6 +16,8 @@ public interface ContractService {
     ContractListResponse getContracts(ContractListRequest request);
 
     List<ContractProjectOptionResponse> getProjectOptions();
+
+    ContractProjectContextResponse getProjectContext(UUID projectId);
 
     ContractResponse getContractById(UUID id);
 

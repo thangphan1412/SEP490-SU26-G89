@@ -2,6 +2,8 @@ import contractApi from "../../services/contractService/contractApi.js";
 
 export const CONTRACT_STATUS = Object.freeze({
     NEW: "NEW",
+    PENDING_APPROVAL: "PENDING_APPROVAL",
+    PENDING_SIGNATURE: "PENDING_SIGNATURE",
     PENDING_INTERNAL_APPROVAL: "PENDING_INTERNAL_APPROVAL",
     PENDING_DIRECTOR_SIGNATURE: "PENDING_DIRECTOR_SIGNATURE",
     PENDING_PARTNER_SIGNATURE: "PENDING_PARTNER_SIGNATURE",
@@ -13,6 +15,7 @@ export const CONTRACT_STATUS = Object.freeze({
 export const defaultContractStatuses = Object.values(CONTRACT_STATUS);
 
 export const CONTRACT_ACTION = Object.freeze({
+    COMPLETE_STEP: "COMPLETE_STEP",
     SUBMIT: "SUBMIT",
     APPROVE_INTERNAL: "APPROVE_INTERNAL",
     SIGN_DIRECTOR: "SIGN_DIRECTOR",
@@ -34,6 +37,11 @@ export const CONTRACT_PROJECT_ACTION = Object.freeze({
 });
 
 const ACTION_DETAILS = Object.freeze({
+    [CONTRACT_ACTION.COMPLETE_STEP]: {
+        label: "Complete current step",
+        description: "Complete the workflow step assigned to you.",
+        tone: "primary",
+    },
     [CONTRACT_ACTION.SUBMIT]: {
         label: "Submit for approval",
         description: "Send this contract to the internal approval stage.",
@@ -88,6 +96,8 @@ export function getCurrentContractActor() {
 export function createEmptyContract(projectId = "") {
     return {
         projectId,
+        phaseId: "",
+        taskId: "",
         contractTypeId: "",
         contractTemplateId: "",
         contractTemplateVersionId: "",
@@ -106,12 +116,16 @@ export function createEmptyContract(projectId = "") {
         templateVersionNote: "",
         previousContractId: "",
         previousContractNumber: "",
+        workflowDefinition: null,
+        workflowAssignees: [],
     };
 }
 
 export function mapContractToForm(contract) {
     return {
         projectId: contract?.projectId || "",
+        phaseId: contract?.phaseId || "",
+        taskId: contract?.taskId || "",
         contractTypeId: contract?.contractTypeId || "",
         contractTemplateId: contract?.contractTemplateId || "",
         contractTemplateVersionId: contract?.contractTemplateVersionId || "",
@@ -130,6 +144,21 @@ export function mapContractToForm(contract) {
         templateVersionNote: "",
         previousContractId: contract?.previousContractId || "",
         previousContractNumber: contract?.previousContractNumber || "",
+        workflowDefinition: contract?.workflowRuntime
+            ? {
+                ...contract.workflowRuntime,
+                steps: (contract.workflowRuntime.steps || []).map((step) => ({
+                    ...step,
+                    id: step.workflowStepId,
+                })),
+            }
+            : null,
+        workflowAssignees: Array.isArray(contract?.workflowRuntime?.steps)
+            ? contract.workflowRuntime.steps.map((step) => ({
+                workflowStepId: step.workflowStepId,
+                userId: step.assignedUserId,
+            })).filter((item) => item.workflowStepId && item.userId)
+            : [],
     };
 }
 
@@ -145,6 +174,8 @@ export function createReplacementContract(contract) {
         templateVersionNote: "",
         previousContractId: contract?.id || "",
         previousContractNumber: contract?.contractNumber || "",
+        workflowDefinition: null,
+        workflowAssignees: [],
     };
 }
 
@@ -153,6 +184,7 @@ export function toContractRequest(contract, isCreating = false) {
 
     return {
         projectId: contract.projectId || null,
+        taskId: contract.taskId || null,
         contractTypeId: contract.contractTypeId || null,
         contractTemplateId: contract.contractTemplateId || null,
         contractTemplateVersionId:
@@ -179,10 +211,16 @@ export function toContractRequest(contract, isCreating = false) {
                 .map(([key, value]) => [key, String(value ?? "").trim()])
                 .filter(([, value]) => value !== "")
         ),
+        workflowAssignees: (contract.workflowAssignees || []).map(
+            (assignment) => ({
+                workflowStepId: assignment.workflowStepId,
+                userId: assignment.userId,
+            })
+        ),
     };
 }
 
-export function validateContract(contract) {
+export function validateContract(contract, isCreating = true) {
     const actor = getCurrentContractActor();
 
     if (!actor.actorName || !actor.actorRole) {
@@ -193,8 +231,32 @@ export function validateContract(contract) {
         return "Please select a project.";
     }
 
+    if (!contract.taskId) {
+        return "Please select a task from a project phase.";
+    }
+
     if (!contract.contractTypeId) {
         return "Please select a contract type.";
+    }
+
+    if (isCreating) {
+        const workflowSteps = contract.workflowDefinition?.steps;
+        if (!Array.isArray(workflowSteps) || workflowSteps.length < 2) {
+            return "The selected contract type does not have an active workflow.";
+        }
+        const requiredAssigneeSteps = workflowSteps.filter(
+            (step) => step.actionType !== "CREATE"
+        );
+        const assignedStepIds = new Set(
+            (contract.workflowAssignees || [])
+                .filter((assignment) => assignment.userId)
+                .map((assignment) => assignment.workflowStepId)
+        );
+        if (requiredAssigneeSteps.some(
+            (step) => !assignedStepIds.has(step.id)
+        )) {
+            return "Please assign a project member to every workflow step.";
+        }
     }
 
     if (!contract.contractNumber.trim() || !contract.contractTitle.trim()) {
@@ -329,7 +391,17 @@ export function canUseContractProjectAction(contract, actionCode) {
                 === requiredAction
         );
 
-    return fullScope || Boolean(contract?.currentUserAccess?.currentUserOwner);
+    if (fullScope || Boolean(contract?.currentUserAccess?.currentUserOwner)) {
+        return true;
+    }
+
+    return [
+        CONTRACT_PROJECT_ACTION.VIEW,
+        CONTRACT_PROJECT_ACTION.EXPORT,
+    ].includes(requiredAction)
+        && Boolean(
+            contract?.currentUserAccess?.currentUserWorkflowParticipant
+        );
 }
 
 export function canCreateReplacementContract(contract) {
@@ -341,7 +413,37 @@ export function canCreateReplacementContract(contract) {
         );
 }
 
-export function getContractActionDetails(action) {
+export function getContractActionDetails(action, contract = null) {
+    if (action === CONTRACT_ACTION.COMPLETE_STEP
+        && contract?.workflowRuntime) {
+        const stepName = contract.workflowRuntime.currentStepName
+            || "current workflow step";
+        const actionType = contract.workflowRuntime.currentStepActionType;
+        const actionDetails = {
+            CREATE: {
+                label: "Submit contract",
+                description: `Complete “${stepName}” and send the contract to the next step.`,
+            },
+            APPROVE: {
+                label: "Approve",
+                description: `Approve “${stepName}” and continue the workflow.`,
+            },
+            SIGN: {
+                label: "Sign contract",
+                description: `Sign at “${stepName}” and continue the workflow.`,
+                verifiesAccountDateOfBirth: true,
+            },
+            APPROVE_AND_SIGN: {
+                label: "Approve and sign",
+                description: `Approve and sign at “${stepName}”, then continue the workflow.`,
+                verifiesAccountDateOfBirth: true,
+            },
+        }[actionType] || {};
+        return {
+            ...ACTION_DETAILS[action],
+            ...actionDetails,
+        };
+    }
     return ACTION_DETAILS[action] || {
         label: formatContractStatus(action),
         description: "",
@@ -350,6 +452,11 @@ export function getContractActionDetails(action) {
 }
 
 export function getAvailableContractActions(contract, role) {
+    if (contract?.workflowRuntime) {
+        return Array.isArray(contract.workflowRuntime.availableActions)
+            ? contract.workflowRuntime.availableActions
+            : [];
+    }
     const status = normalizeContractStatus(contract?.contractStatus);
     const normalizedRole = normalizeContractRole(role);
     const isAdmin = normalizedRole === "ADMIN";
@@ -440,6 +547,37 @@ export function getRoleContractTask(contract, role) {
     const status = normalizeContractStatus(contract?.contractStatus);
     const normalizedRole = normalizeContractRole(role);
     const actions = getAvailableContractActions(contract, role);
+
+    if (contract?.workflowRuntime) {
+        if (status === CONTRACT_STATUS.CANCELLED) {
+            return { label: "Contract cancelled", status: "CANCELLED" };
+        }
+        if (status === CONTRACT_STATUS.ENDED) {
+            return { label: "Contract completed", status: "COMPLETED" };
+        }
+        const runtime = contract.workflowRuntime;
+        if (!runtime.currentStepId) {
+            return status === CONTRACT_STATUS.ACTIVE
+                ? { label: "Monitor active contract", status: "IN_PROGRESS" }
+                : { label: "Workflow completed", status: "COMPLETED" };
+        }
+        const assignedToCurrentUser = runtime.steps?.some(
+            (step) => step.id === runtime.currentStepId
+                && step.currentUserAssigned
+        );
+        if (assignedToCurrentUser) {
+            return {
+                label: runtime.currentStepName || "Workflow action required",
+                status: actions.length > 0 ? "ACTION_REQUIRED" : "READ_ONLY",
+            };
+        }
+        return {
+            label: runtime.currentAssignedUserName
+                ? `Waiting for ${runtime.currentAssignedUserName}`
+                : `Waiting for ${runtime.currentStepName || "next step"}`,
+            status: "WAITING",
+        };
+    }
 
     if (status === CONTRACT_STATUS.CANCELLED) {
         return { label: "Contract cancelled", status: "CANCELLED" };
