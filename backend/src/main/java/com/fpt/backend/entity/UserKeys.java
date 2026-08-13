@@ -2,10 +2,7 @@ package com.fpt.backend.entity;
 
 import com.fpt.backend.enums.KeyAlgorithm;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -15,6 +12,7 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 @Entity
+@Builder
 @Table(name = "user_keys")
 public class UserKeys extends BaseEntity{
     @Column(name = "keys_size")

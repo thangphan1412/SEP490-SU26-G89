@@ -21,6 +21,7 @@ import com.fpt.backend.repository.department.DepartmentRepository;
 import com.fpt.backend.repository.role.RoleRepository;
 import com.fpt.backend.repository.user.UserRepository;
 import com.fpt.backend.repository.userRole.UserRoleRepository;
+import com.fpt.backend.service.impl.signature.UserKeyServiceImpl;
 import com.fpt.backend.service.interfaces.user.IUserService;
 import com.fpt.backend.util.CurrentUser;
 import com.fpt.backend.util.OTPGenerator;
@@ -59,7 +60,8 @@ public class UserServiceImpl implements IUserService {
     private RoleRepository roleRepository;
     @Autowired
     private UserRoleRepository userRoleRepository;
-
+    @Autowired
+    private UserKeyServiceImpl userKeyService;
     @Override
     public Boolean existsByEmail(String email) {
         return userRepository.existsByEmail(email);
@@ -70,34 +72,34 @@ public class UserServiceImpl implements IUserService {
          userRepository.save(user);
     }
 
-    @Override
-    public RegisterResponse create(RegisterRequest registerRequest) {
-        ValidateEmail validateEmail = new ValidateEmail();
-        String regexPattern = "^(.+)@(\\S+)$";
-        List<Users> users = userRepository.findAll();
-
-        if(userRepository.existsByEmail(registerRequest.getEmail())){
-            throw new RuntimeException("Email already exists");
-        }
-        if(!ValidateEmail.validateEmail(registerRequest.getEmail(), regexPattern)){
-            throw new RuntimeException("Invalid format email: abc@domain.com");
-        }
-        if(registerRequest.getPassword().length() < 8 || registerRequest.getPassword().length() > 12){
-            throw new RuntimeException("Password too short, have to be at least 8 characters and less than 12 characters");
-        }
-        if(registerRequest.getPassword().isEmpty()){
-            throw new RuntimeException("Password cannot be empty");
-        }
-        Users user = new Users();
-        user.setFirstName(registerRequest.getFirstName());
-        user.setLastName(registerRequest.getLastName());
-        user.setEmail(registerRequest.getEmail());
-        user.setPassword(passwordEncoder.encode(registerRequest.getPassword()));
-        userRepository.save(user);
-        RegisterResponse registerResponse = new RegisterResponse();
-        registerResponse.setId(user.getId());
-        return registerResponse;
-    }
+//    @Override
+//    public RegisterResponse create(RegisterRequest registerRequest) {
+//        ValidateEmail validateEmail = new ValidateEmail();
+//        String regexPattern = "^(.+)@(\\S+)$";
+//        List<Users> users = userRepository.findAll();
+//
+//        if(userRepository.existsByEmail(registerRequest.getEmail())){
+//            throw new RuntimeException("Email already exists");
+//        }
+//        if(!ValidateEmail.validateEmail(registerRequest.getEmail(), regexPattern)){
+//            throw new RuntimeException("Invalid format email: abc@domain.com");
+//        }
+//        if(registerRequest.getPassword().length() < 8 || registerRequest.getPassword().length() > 12){
+//            throw new RuntimeException("Password too short, have to be at least 8 characters and less than 12 characters");
+//        }
+//        if(registerRequest.getPassword().isEmpty()){
+//            throw new RuntimeException("Password cannot be empty");
+//        }
+//        Users user = new Users();
+//        user.setFirstName(registerRequest.getFirstName());
+//        user.setLastName(registerRequest.getLastName());
+//        user.setEmail(registerRequest.getEmail());
+//        user.setPassword(passwordEncoder.encode(registerRequest.getPassword()));
+//        userRepository.save(user);
+//        RegisterResponse registerResponse = new RegisterResponse();
+//        registerResponse.setId(user.getId());
+//        return registerResponse;
+//    }
 
     // 1. List User
     @Override
@@ -192,8 +194,10 @@ public class UserServiceImpl implements IUserService {
             newUser.setDepartment(dept);
         }
 
-        Users savedUser = userRepository.save(newUser);
 
+
+        Users savedUser = userRepository.save(newUser);
+        userKeyService.generateUserKey(savedUser);
         if (request.getRole() != null && !request.getRole().isEmpty()) {
             Role roleEntity = roleRepository.findByRoleName(request.getRole()).orElseThrow(() -> new RuntimeException("Role không tồn tại"));
             UserRole userRole = UserRole.builder().user(savedUser).role(roleEntity).build();
