@@ -18,24 +18,7 @@ import com.fpt.backend.dto.response.contract.ContractTaskOptionResponse;
 import com.fpt.backend.dto.response.contract.ContractWorkflowRuntimeResponse;
 import com.fpt.backend.dto.response.contract.ContractWorkflowStepRuntimeResponse;
 import com.fpt.backend.dto.response.project.ProjectAccessResponse;
-import com.fpt.backend.entity.ContractAttributeValues;
-import com.fpt.backend.entity.ContractPositions;
-import com.fpt.backend.entity.ContractStatusHistory;
-import com.fpt.backend.entity.ContractTemplateVersions;
-import com.fpt.backend.entity.ContractTemplates;
-import com.fpt.backend.entity.ContractTypeWorkflow;
-import com.fpt.backend.entity.ContractTypeWorkflowStep;
-import com.fpt.backend.entity.ContractTypes;
-import com.fpt.backend.entity.ContractWorkflowStepInstance;
-import com.fpt.backend.entity.Contracts;
-import com.fpt.backend.entity.PermissionAction;
-import com.fpt.backend.entity.ProjectMember;
-import com.fpt.backend.entity.Projects;
-import com.fpt.backend.entity.Timeline;
-import com.fpt.backend.entity.TimelineTask;
-import com.fpt.backend.entity.UserPermission;
-import com.fpt.backend.entity.UserRole;
-import com.fpt.backend.entity.Users;
+import com.fpt.backend.entity.*;
 import com.fpt.backend.enums.ContractAction;
 import com.fpt.backend.enums.ContractStatus;
 import com.fpt.backend.enums.ContractWorkflowActionType;
@@ -1247,7 +1230,13 @@ public class ContractServiceImpl implements ContractService {
             return false;
         }
 
-        if (required.equals(normalizeRoleOrEmpty(user.getRole()))) {
+        if (required.equals(normalizeRoleOrEmpty(user.getUserRoles().stream()
+                .map(UserRole::getRole)
+                .filter(java.util.Objects::nonNull)
+                .map(Role::getRoleCode)
+                .filter(java.util.Objects::nonNull)
+                .findFirst()
+                .orElse(null)))) {
             return true;
         }
         if (user.getUserRoles() == null) {
@@ -1268,7 +1257,13 @@ public class ContractServiceImpl implements ContractService {
         if (!assignedRole.isEmpty()) {
             return assignedRole;
         }
-        String legacyRole = normalizeRoleOrEmpty(user.getRole());
+        String legacyRole = normalizeRoleOrEmpty(user.getUserRoles().stream()
+                .map(UserRole::getRole)
+                .filter(java.util.Objects::nonNull)
+                .map(Role::getRoleCode)
+                .filter(java.util.Objects::nonNull)
+                .findFirst()
+                .orElse(null));
         return legacyRole.isEmpty() ? "UNKNOWN" : legacyRole;
     }
 
@@ -1283,7 +1278,13 @@ public class ContractServiceImpl implements ContractService {
                     .forEach(codes::add);
         }
         if (user != null) {
-            String legacyRole = normalizeRoleOrEmpty(user.getRole());
+            String legacyRole = normalizeRoleOrEmpty(user.getUserRoles().stream()
+                    .map(UserRole::getRole)
+                    .filter(java.util.Objects::nonNull)
+                    .map(Role::getRoleCode)
+                    .filter(java.util.Objects::nonNull)
+                    .findFirst()
+                    .orElse(null));
             if (!legacyRole.isEmpty()) {
                 codes.add(legacyRole);
             }

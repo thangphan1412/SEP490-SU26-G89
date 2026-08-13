@@ -108,21 +108,23 @@ public class UserServiceImpl implements IUserService {
     }
 
     // 2. View User
+
+    //sua o day o day loi
     @Override
     public UserResponseDTO getUserById(UUID id) {
         Users user = userRepository.findById(id).orElseThrow(() -> new RuntimeException("User not found with id: " + id));
         Users loggedInUser = currentUser.getCurrentUser();
-        String currentRole = loggedInUser.getRole();
+        String currentRole = loggedInUser.getUserRoles().stream().map(UserRole::getRole).map(Role::getRoleName).findFirst().orElse("");
 
         // CEO / Admin xem được Kế toán, Trưởng phòng, NV, Đối tác
         if ("CEO".equalsIgnoreCase(currentRole) || "Administrator".equalsIgnoreCase(currentRole)) {
-            if (!List.of("Accountant", "HeadOfDepartment", "Employee", "External Parners").contains(user.getRole())) {
+            if (!List.of("Accountant", "HeadOfDepartment", "Employee", "External Parners").contains(currentRole)) {
                 throw new RuntimeException("Access Denied!");
             }
         }
         // Accountant xem được Trưởng phòng, NV, Đối tác
         else if ("Accountant".equalsIgnoreCase(currentRole)) {
-            if (!List.of("HeadOfDepartment", "Employee", "External Parners").contains(user.getRole())) {
+            if (!List.of("HeadOfDepartment", "Employee", "External Parners").contains(currentRole)) {
                 throw new RuntimeException("Access Denied!");
             }
         }
@@ -130,14 +132,14 @@ public class UserServiceImpl implements IUserService {
         else if ("HeadOfDepartment".equalsIgnoreCase(currentRole)) {
             String myDept = loggedInUser.getDepartment() != null ? loggedInUser.getDepartment().getDepartmentName() : "";
             String targetDept = user.getDepartment() != null ? user.getDepartment().getDepartmentName() : "";
-            if (!myDept.equals(targetDept) || !"Employee".equalsIgnoreCase(user.getRole())) {
+            if (!myDept.equals(targetDept) || !"Employee".equalsIgnoreCase(currentRole)) {
                 throw new RuntimeException("Access Denied: Bạn chỉ được phép xem thông tin nhân viên cùng phòng ban!");
             }
         }
         return UserResponseDTO.fromEntity(user);
     }
 
-    // 3. Create User
+//     3. Create User
     @Override
     public UserResponseDTO createUser(UserCreateRequestDTO request) {
         if (request.getPassword() == null || request.getPassword().isEmpty()) {
@@ -148,7 +150,8 @@ public class UserServiceImpl implements IUserService {
         }
 
         Users loggedInUser = currentUser.getCurrentUser();
-        String currentRole = loggedInUser.getRole();
+        String currentRole = loggedInUser.getUserRoles().stream().map(UserRole::getRole).map(Role::getRoleName).findFirst().orElse("");
+
 
         // 1. Phân quyền CREATE
         if ("CEO".equalsIgnoreCase(currentRole) || "Administrator".equalsIgnoreCase(currentRole)) {
@@ -173,19 +176,25 @@ public class UserServiceImpl implements IUserService {
         if (UserStatus.ACTIVE.equals(request.getStatus())) {
             String roleToCheck = request.getRole();
             if (List.of("CEO", "Administrator", "Accountant").contains(roleToCheck)) {
-                boolean isExist = userRepository.findByRole(roleToCheck).stream().anyMatch(u -> UserStatus.ACTIVE.equals(u.getStatus()));
+                boolean isExist = userRepository.findByUserRoles_Role_RoleName(roleToCheck).stream().anyMatch(u -> UserStatus.ACTIVE.equals(u.getStatus()));
                 if (isExist) throw new RuntimeException("Lỗi: Hệ thống chỉ cho phép có 1 tài khoản " + roleToCheck + " đang hoạt động!");
             } else if ("HeadOfDepartment".equalsIgnoreCase(roleToCheck)) {
                 Departments dept = departmentRepository.findByDepartmentName(request.getDepartmentName()).orElseThrow(() -> new RuntimeException("Phòng ban không tồn tại"));
-                boolean isExist = userRepository.findByRoleAndDepartment(roleToCheck, dept).stream().anyMatch(u -> UserStatus.ACTIVE.equals(u.getStatus()));
+                boolean isExist = userRepository.findByUserRoles_Role_RoleNameAndDepartment(roleToCheck, dept).stream().anyMatch(u -> UserStatus.ACTIVE.equals(u.getStatus()));
                 if (isExist) throw new RuntimeException("Lỗi: Phòng ban " + request.getDepartmentName() + " đã có Trưởng phòng đang hoạt động!");
             }
         }
 
         Users newUser = Users.builder()
-                .email(request.getEmail()).password(passwordEncoder.encode(request.getPassword())).firstName(request.getFirstName())
-                .lastName(request.getLastName()).numberPhone(request.getNumberPhone()).role(request.getRole())
-                .dob(request.getDob()).startDate(request.getStartDate()).status(request.getStatus()).build();
+                .email(request.getEmail())
+                .password(passwordEncoder.encode(request.getPassword()))
+                .firstName(request.getFirstName())
+                .lastName(request.getLastName())
+                .numberPhone(request.getNumberPhone())
+                .dob(request.getDob())
+                .startDate(request.getStartDate())
+                .status(request.getStatus())
+                .build();
 
         if (request.getDepartmentName() != null && !request.getDepartmentName().isEmpty()) {
             Departments dept = departmentRepository.findByDepartmentName(request.getDepartmentName()).orElseThrow(() -> new RuntimeException("Department not found"));
@@ -215,20 +224,21 @@ public class UserServiceImpl implements IUserService {
     public UserResponseDTO updateUser(UUID id, UserUpdateRequestDTO request) {
         Users existingUser = userRepository.findById(id).orElseThrow(() -> new RuntimeException("User not found"));
         Users loggedInUser = currentUser.getCurrentUser();
-        String currentRole = loggedInUser.getRole();
+        String currentRole = loggedInUser.getUserRoles().stream().map(UserRole::getRole).map(Role::getRoleName).findFirst().orElse("");
+
 
         // 1. Phân quyền UPDATE
         if ("CEO".equalsIgnoreCase(currentRole) || "Administrator".equalsIgnoreCase(currentRole)) {
             throw new RuntimeException("Access Denied: Bạn không có quyền chỉnh sửa tài khoản!");
         } else if ("Accountant".equalsIgnoreCase(currentRole)) {
-            if (!List.of("HeadOfDepartment", "Employee", "External Parners").contains(existingUser.getRole()) ||
+            if (!List.of("HeadOfDepartment", "Employee", "External Parners").contains(currentRole) ||
                     !List.of("HeadOfDepartment", "Employee", "External Parners").contains(request.getRole())) {
                 throw new RuntimeException("Access Denied: Bạn chỉ được chỉnh sửa quyền của HeadOfDepartment, Employee, External Parners!");
             }
         } else if ("HeadOfDepartment".equalsIgnoreCase(currentRole)) {
             String myDept = loggedInUser.getDepartment() != null ? loggedInUser.getDepartment().getDepartmentName() : "";
             String targetDept = existingUser.getDepartment() != null ? existingUser.getDepartment().getDepartmentName() : "";
-            if (!myDept.equals(targetDept) || !"Employee".equalsIgnoreCase(existingUser.getRole())) {
+            if (!myDept.equals(targetDept) || !"Employee".equalsIgnoreCase(currentRole)) {
                 throw new RuntimeException("Access Denied: Bạn chỉ có quyền sửa nhân viên cùng phòng ban!");
             }
             if (!"Employee".equalsIgnoreCase(request.getRole()) || !myDept.equals(request.getDepartmentName())) {
@@ -240,12 +250,12 @@ public class UserServiceImpl implements IUserService {
         if (UserStatus.ACTIVE.equals(request.getStatus())) {
             String roleToCheck = request.getRole();
             if (List.of("CEO", "Administrator", "Accountant").contains(roleToCheck)) {
-                boolean isExist = userRepository.findByRole(roleToCheck).stream()
+                boolean isExist = userRepository.findByUserRoles_Role_RoleName(roleToCheck).stream()
                         .anyMatch(u -> UserStatus.ACTIVE.equals(u.getStatus()) && !u.getId().equals(existingUser.getId()));
                 if (isExist) throw new RuntimeException("Lỗi: Hệ thống chỉ cho phép có 1 tài khoản " + roleToCheck + " đang hoạt động!");
             } else if ("HeadOfDepartment".equalsIgnoreCase(roleToCheck)) {
                 Departments dept = departmentRepository.findByDepartmentName(request.getDepartmentName()).orElseThrow(() -> new RuntimeException("Phòng ban không tồn tại"));
-                boolean isExist = userRepository.findByRoleAndDepartment(roleToCheck, dept).stream()
+                boolean isExist = userRepository.findByUserRoles_Role_RoleNameAndDepartment(roleToCheck, dept).stream()
                         .anyMatch(u -> UserStatus.ACTIVE.equals(u.getStatus()) && !u.getId().equals(existingUser.getId()));
                 if (isExist) throw new RuntimeException("Lỗi: Phòng ban " + request.getDepartmentName() + " đã có Trưởng phòng đang hoạt động!");
             }
@@ -255,8 +265,8 @@ public class UserServiceImpl implements IUserService {
         existingUser.setLastName(request.getLastName());
         existingUser.setNumberPhone(request.getNumberPhone());
 
-        if (request.getRole() != null && !request.getRole().equals(existingUser.getRole())) {
-            existingUser.setRole(request.getRole());
+        if (request.getRole() != null && !request.getRole().equals(currentRole)) {
+//            currentRole(request.getRole());
             Role newRoleEntity = roleRepository.findByRoleName(request.getRole()).orElseThrow(() -> new RuntimeException("Role không tồn tại"));
             Optional<UserRole> existingUserRole = userRoleRepository.findByUser(existingUser);
             if (existingUserRole.isPresent()) {
@@ -294,20 +304,22 @@ public class UserServiceImpl implements IUserService {
 
     @Override
     public Page<UserResponseDTO> getAllUsersFiltered(UserFilterRequestDTO filter, String currentUsername, int page, int size) {
-        Users currentUser = userRepository.findByEmail(currentUsername).orElseThrow(() -> new RuntimeException("Current user not found"));
-        String currentUserRole = currentUser.getRole();
+        Users currentUsers = userRepository.findByEmail(currentUsername).orElseThrow(() -> new RuntimeException("Current user not found"));
+        Users loggedInUser = currentUser.getCurrentUser();
+        String currentRole = loggedInUser.getUserRoles().stream().map(UserRole::getRole).map(Role::getRoleName).findFirst().orElse("");
+
         List<String> allowedRoles;
 
         // Phân quyền LIST USER
-        if ("CEO".equalsIgnoreCase(currentUserRole) || "Administrator".equalsIgnoreCase(currentUserRole)) {
+        if ("CEO".equalsIgnoreCase(currentRole) || "Administrator".equalsIgnoreCase(currentRole)) {
             allowedRoles = List.of("Accountant", "HeadOfDepartment", "Employee", "External Parners");
-        } else if ("Accountant".equalsIgnoreCase(currentUserRole)) {
+        } else if ("Accountant".equalsIgnoreCase(currentRole)) {
             allowedRoles = List.of("HeadOfDepartment", "Employee", "External Parners");
-        } else if ("HeadOfDepartment".equalsIgnoreCase(currentUserRole)) {
+        } else if ("HeadOfDepartment".equalsIgnoreCase(currentRole)) {
             allowedRoles = List.of("Employee");
-            if (currentUser.getDepartment() != null) {
-                filter.setDepartmentName(currentUser.getDepartment().getDepartmentName()); // Ép cứng phòng ban
-            }
+//            if (currentUser.getDepartment() != null) {
+//                filter.setDepartmentName(currentUser.getDepartment().getDepartmentName()); // Ép cứng phòng ban
+//            }
         } else {
             throw new RuntimeException("Access Denied!");
         }

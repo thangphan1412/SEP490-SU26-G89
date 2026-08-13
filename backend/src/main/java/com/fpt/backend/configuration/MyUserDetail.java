@@ -23,14 +23,12 @@ public class MyUserDetail implements UserDetails {
     private final Users users;
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        List<GrantedAuthority> authorities = users.getUserRoles()
+        return users.getUserRoles()
                 .stream()
                 .map(userRole -> new SimpleGrantedAuthority(
-                        userRole.getRole()
-                                .getRoleName())
-                )
+                        userRole.getRole().getRoleName()
+                ))
                 .collect(Collectors.toList());
-        return authorities;
     }
 
     @Override

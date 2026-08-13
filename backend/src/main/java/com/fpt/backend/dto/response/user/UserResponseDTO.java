@@ -42,7 +42,7 @@ public class UserResponseDTO {
                 .firstName(user.getFirstName())
                 .lastName(user.getLastName())
                 .numberPhone(user.getNumberPhone())
-                .role(user.getRole())
+                .role(user.getUserRoles() != null && !user.getUserRoles().isEmpty() ? user.getUserRoles().get(0).getRole().getRoleName(): "N/A")
                 // Truyền thẳng Enum vào đây. Nếu null thì set mặc định là Inactive
                 .status(user.getStatus() != null ? user.getStatus() : UserStatus.INACTIVE)
                 // Lấy tên department (nếu user có department)

@@ -38,7 +38,10 @@ public class UserProfileResponseDTO {
         }
 
         // Logic ẩn Department nếu là CEO / Administrator
-        String role = user.getRole();
+        String role = user.getUserRoles().stream()
+                .findFirst()
+                .map(userRole -> userRole.getRole().getRoleName())
+                .orElse("N/A");
         String deptName = "N/A";
         if (role != null && (role.equalsIgnoreCase("CEO") || role.equalsIgnoreCase("Administrator"))) {
             deptName = "N/A"; // Không thuộc phòng ban nào
