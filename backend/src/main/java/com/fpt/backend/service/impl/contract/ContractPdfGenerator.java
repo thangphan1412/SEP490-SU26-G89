@@ -119,9 +119,9 @@ public class ContractPdfGenerator {
                 .orElseGet(() -> members.stream()
                         .map(ProjectMember::getUser)
                         .filter(Objects::nonNull)
-                        .filter(candidate -> acceptedRoles.contains(
-                                normalizeRole(candidate.getRole())
-                        ))
+                        .filter(candidate -> candidate.getUserRoles().stream()
+                                .map(role -> role.getRole().getRoleName())
+                                .anyMatch(acceptedRoles::contains))
                         .findFirst()
                         .orElse(null));
 
@@ -150,7 +150,11 @@ public class ContractPdfGenerator {
 
         return new PartyInformation(
                 resolvedName,
-                user.getRole(),
+                user.getUserRoles().stream()
+                        .map(role -> role.getRole().getRoleName())
+                        .filter(Objects::nonNull)
+                        .findFirst()
+                        .orElse(null),
                 user.getEmail(),
                 user.getNumberPhone(),
                 user.getDob(),

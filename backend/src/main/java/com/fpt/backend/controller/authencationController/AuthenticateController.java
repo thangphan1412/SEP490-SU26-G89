@@ -71,7 +71,7 @@ public class AuthenticateController {
             System.out.println(token);
             AuthenticateResponse authenticateResponse = new AuthenticateResponse();
             authenticateResponse.setToken(token);
-            authenticateResponse.setRole(users.getRole());
+            authenticateResponse.setRole(users.getUserRoles().stream().findFirst().get().getRole().getRoleName());
             authenticateResponse.setFullName(users.getFirstName()+" "+users.getLastName());
 
 //            // --- THÊM ĐOẠN CODE NÀY ---
