@@ -1,0 +1,116 @@
+#@baseUrl = http://localhost:8080
+#@token = replace-with-valid-jwt
+#@userId = replace-with-user-uuid
+#
+#### UM-01: List users - success
+#GET {{baseUrl}}/api/users?page=0&size=10&keyword=&role=All&departmentName=All&status=All
+#Authorization: Bearer {{token}}
+#Accept: application/json
+#
+#### UM-02: List users with role and status filters
+#GET {{baseUrl}}/api/users?page=0&size=10&keyword=lan&role=Employee&departmentName=Engineering&status=ACTIVE
+#Authorization: Bearer {{token}}
+#Accept: application/json
+#
+#### UM-03: View a permitted user
+#GET {{baseUrl}}/api/users/{{userId}}
+#Authorization: Bearer {{token}}
+#Accept: application/json
+#
+#### UM-04: View an unknown user - expected 404
+#GET {{baseUrl}}/api/users/00000000-0000-0000-0000-000000000000
+#Authorization: Bearer {{token}}
+#Accept: application/json
+#
+#### UM-05: Create an employee
+#POST {{baseUrl}}/api/users
+#Authorization: Bearer {{token}}
+#Content-Type: application/json
+#
+#{
+#  "email": "unit.employee@example.com",
+#  "password": "StrongPass1!",
+#  "firstName": "Mai",
+#  "lastName": "Tran",
+#  "numberPhone": "0907654321",
+#  "role": "Employee",
+#  "status": "ACTIVE",
+#  "sendWelcomeEmail": false,
+#  "departmentName": "Engineering",
+#  "dob": "1998-02-03",
+#  "startDate": "2024-04-01"
+#}
+#
+#### UM-06: Create user with duplicate email - expected 400
+#POST {{baseUrl}}/api/users
+#Authorization: Bearer {{token}}
+#Content-Type: application/json
+#
+#{
+#  "email": "unit.employee@example.com",
+#  "password": "StrongPass1!",
+#  "firstName": "Mai",
+#  "lastName": "Tran",
+#  "numberPhone": "0907654321",
+#  "role": "Employee",
+#  "status": "ACTIVE",
+#  "sendWelcomeEmail": false,
+#  "departmentName": "Engineering",
+#  "dob": "1998-02-03",
+#  "startDate": "2024-04-01"
+#}
+#
+#### UM-07: Create user with invalid phone - expected validation error
+#POST {{baseUrl}}/api/users
+#Authorization: Bearer {{token}}
+#Content-Type: application/json
+#
+#{
+#  "email": "invalid.phone@example.com",
+#  "password": "StrongPass1!",
+#  "firstName": "Mai",
+#  "lastName": "Tran",
+#  "numberPhone": "123",
+#  "role": "Employee",
+#  "status": "ACTIVE",
+#  "departmentName": "Engineering",
+#  "dob": "1998-02-03",
+#  "startDate": "2024-04-01"
+#}
+#
+#### UM-08: Update an employee
+#### Note: current UserUpdateRequestDTO validates startDate as YYYY-'MM-DD.
+#PUT {{baseUrl}}/api/users/{{userId}}
+#Authorization: Bearer {{token}}
+#Content-Type: application/json
+#
+#{
+#  "email": "unit.employee.updated@example.com",
+#  "password": "",
+#  "firstName": "Mai",
+#  "lastName": "Updated",
+#  "numberPhone": "0987654321",
+#  "role": "Employee",
+#  "status": "ACTIVE",
+#  "departmentName": "Engineering",
+#  "dob": "1998-02-03",
+#  "startDate": "2024-'04-01"
+#}
+#
+#### UM-09: Update an unknown user - expected 400
+#PUT {{baseUrl}}/api/users/00000000-0000-0000-0000-000000000000
+#Authorization: Bearer {{token}}
+#Content-Type: application/json
+#
+#{
+#  "email": "unknown@example.com",
+#  "password": "",
+#  "firstName": "Mai",
+#  "lastName": "Updated",
+#  "numberPhone": "0987654321",
+#  "role": "Employee",
+#  "status": "ACTIVE",
+#  "departmentName": "Engineering",
+#  "dob": "1998-02-03",
+#  "startDate": "2024-'04-01"
+#}
