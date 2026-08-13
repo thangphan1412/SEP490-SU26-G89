@@ -7,9 +7,13 @@ import java.security.SecureRandom;
 
 @Component
 public class PrimeGenerator {
-    public BigInteger primeGenerator() {
-        SecureRandom random = new SecureRandom();
 
-        return BigInteger.probablePrime(1024, random);
+    private final SecureRandom secureRandom = new SecureRandom();
+
+    public BigInteger generatePrime(int bitLength) {
+        return BigInteger.probablePrime(
+                bitLength,
+                secureRandom
+        );
     }
 }

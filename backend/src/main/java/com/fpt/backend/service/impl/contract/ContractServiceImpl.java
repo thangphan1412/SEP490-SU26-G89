@@ -1201,9 +1201,9 @@ public class ContractServiceImpl implements ContractService {
     }
 
     private TimelineTask resolveTask(UUID taskId, Projects project) {
-        if (taskId == null) {
-            throw new BadHttpException("A project task is required");
-        }
+//        if (taskId == null) {
+//            throw new BadHttpException("A project task is required");
+//        }
 
         TimelineTask task = phaseTaskRepository.findById(taskId)
                 .orElseThrow(() -> new NotFoundException(

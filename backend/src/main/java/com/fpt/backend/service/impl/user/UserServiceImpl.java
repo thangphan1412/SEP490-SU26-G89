@@ -73,33 +73,33 @@ public class UserServiceImpl implements IUserService {
     }
 
 //    @Override
-//    public RegisterResponse create(RegisterRequest registerRequest) {
-//        ValidateEmail validateEmail = new ValidateEmail();
-//        String regexPattern = "^(.+)@(\\S+)$";
-//        List<Users> users = userRepository.findAll();
-//
-//        if(userRepository.existsByEmail(registerRequest.getEmail())){
-//            throw new RuntimeException("Email already exists");
-//        }
-//        if(!ValidateEmail.validateEmail(registerRequest.getEmail(), regexPattern)){
-//            throw new RuntimeException("Invalid format email: abc@domain.com");
-//        }
-//        if(registerRequest.getPassword().length() < 8 || registerRequest.getPassword().length() > 12){
-//            throw new RuntimeException("Password too short, have to be at least 8 characters and less than 12 characters");
-//        }
-//        if(registerRequest.getPassword().isEmpty()){
-//            throw new RuntimeException("Password cannot be empty");
-//        }
-//        Users user = new Users();
-//        user.setFirstName(registerRequest.getFirstName());
-//        user.setLastName(registerRequest.getLastName());
-//        user.setEmail(registerRequest.getEmail());
-//        user.setPassword(passwordEncoder.encode(registerRequest.getPassword()));
-//        userRepository.save(user);
-//        RegisterResponse registerResponse = new RegisterResponse();
-//        registerResponse.setId(user.getId());
-//        return registerResponse;
-//    }
+    public RegisterResponse create(RegisterRequest registerRequest) {
+        ValidateEmail validateEmail = new ValidateEmail();
+        String regexPattern = "^(.+)@(\\S+)$";
+        List<Users> users = userRepository.findAll();
+
+        if(userRepository.existsByEmail(registerRequest.getEmail())){
+            throw new RuntimeException("Email already exists");
+        }
+        if(!ValidateEmail.validateEmail(registerRequest.getEmail(), regexPattern)){
+            throw new RuntimeException("Invalid format email: abc@domain.com");
+        }
+        if(registerRequest.getPassword().length() < 8 || registerRequest.getPassword().length() > 12){
+            throw new RuntimeException("Password too short, have to be at least 8 characters and less than 12 characters");
+        }
+        if(registerRequest.getPassword().isEmpty()){
+            throw new RuntimeException("Password cannot be empty");
+        }
+        Users user = new Users();
+        user.setFirstName(registerRequest.getFirstName());
+        user.setLastName(registerRequest.getLastName());
+        user.setEmail(registerRequest.getEmail());
+        user.setPassword(passwordEncoder.encode(registerRequest.getPassword()));
+        userRepository.save(user);
+        RegisterResponse registerResponse = new RegisterResponse();
+        registerResponse.setId(user.getId());
+        return registerResponse;
+    }
 
     // 1. List User
     @Override

@@ -4,6 +4,6 @@ import com.fpt.backend.entity.UserKeys;
 import com.fpt.backend.entity.Users;
 
 public interface IUserKeyService {
-    public UserKeys generateUserKey(Users user);
+    UserKeys generateUserKey(Users user);
 
 }

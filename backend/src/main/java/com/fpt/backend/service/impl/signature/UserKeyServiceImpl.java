@@ -12,43 +12,61 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-
 @Service
 @RequiredArgsConstructor
-public class UserKeyServiceImpl implements IUserKeyService {
+public class UserKeyServiceImpl
+        implements IUserKeyService {
+
     private final UserKeysRepository userKeysRepository;
+
     private final CalculateRSA calculateRSA;
 
+    @Override
     @Transactional
     public UserKeys generateUserKey(Users user) {
 
-        if (userKeysRepository.existsByUserId(user.getId())) {
+        if (user == null || user.getId() == null) {
+            throw new IllegalArgumentException(
+                    "User must be saved before generating key"
+            );
+        }
+
+        if (userKeysRepository.existsByUserId(
+                user.getId()
+        )) {
+
             throw new IllegalStateException(
                     "User already has RSA key"
             );
         }
 
+        // Generate RSA
         CalculateRSA.RSAKeyPair keyPair =
                 calculateRSA.generateKeyPair();
 
-        String publicKey = RSAKeyConverter.encode(
-                keyPair.modulus(),
-                keyPair.publicExponent()
-        );
+        // Public Key = (n, e)
+        String publicKey =
+                RSAKeyConverter.encode(
+                        keyPair.modulus(),
+                        keyPair.publicExponent()
+                );
 
-        String privateKey = RSAKeyConverter.encode(
-                keyPair.modulus(),
-                keyPair.privateExponent()
-        );
+        // Private Key = (n, d)
+        String privateKey =
+                RSAKeyConverter.encode(
+                        keyPair.modulus(),
+                        keyPair.privateExponent()
+                );
 
-        UserKeys userKeys = UserKeys.builder()
-                .user(user)
-                .keyAlgorithm(KeyAlgorithm.RSA)
-                .keySize(2048)
-                .publicKey(publicKey)
-                .privateKey(privateKey)
-                .createAt(LocalDateTime.now())
-                .build();
+        UserKeys userKeys =
+                UserKeys.builder()
+                        .user(user)
+                        .keyAlgorithm(KeyAlgorithm.RSA)
+                        .keySize(2048)
+                        .publicKey(publicKey)
+                        .privateKey(privateKey)
+                        .createAt(LocalDateTime.now())
+                        .build();
 
         return userKeysRepository.save(userKeys);
     }
