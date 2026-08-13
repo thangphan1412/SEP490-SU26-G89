@@ -94,6 +94,7 @@ public class ContractPdfGenerator {
             }
 
             document.save(output);
+            /// ma hoa o day sang byte[] calculate 256
             return output.toByteArray();
         } catch (IOException exception) {
             throw new IllegalStateException("Unable to generate contract PDF", exception);
