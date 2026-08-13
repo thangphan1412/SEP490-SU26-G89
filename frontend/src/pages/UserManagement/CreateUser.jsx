@@ -13,6 +13,7 @@ import {
 // IMPORT FILE API VÀO ĐÂY
 import { createUser } from "../../services/userService/userApi.js";
 import departmentApi from "../../services/departmentService/departmentApi";
+import roleApi from "../../services/roleService/roleApi";
 
 function CreateUser() {
     const navigate = useNavigate();
@@ -26,34 +27,52 @@ function CreateUser() {
     const viewType = searchParams.get("type") || "employee";
 
     const [departmentsDB, setDepartmentsDB] = useState([]);
+    const [rolesDB, setRolesDB] = useState([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     // Tính toán Role có sẵn
-    const availableRoles = (currentUserRole === 'CEO' || currentUserRole === 'Admin')
-        ? (viewType === 'customer' ? ['Customer'] : ['Manager', 'Employee'])
-        : ['Employee']; // Manager
+    const availableRoles = ['Accountant'].includes(currentUserRole)
+        ? ['HeadOfDepartment', 'Employee', 'External Parners']
+        : ['Employee']; // Dành cho HeadOfDepartment
 
     const [user, setUser] = useState({
         firstName: "", lastName: "", email: "", initialPassword: "", confirmPassword: "",
         department: "",
+        dob: "",
         role: availableRoles[0] || "", // Mặc định lấy role đầu tiên
         position: "", phoneNumber: "", employeeId: "", startDate: "",
         status: "ACTIVE", sendWelcomeEmail: true
     });
 
     useEffect(() => {
-        const fetchDepts = async () => {
+        const fetchData = async () => {
             try {
-                // Gọi qua departmentApi
-                const res = await departmentApi.getAllDepartments();
-                setDepartmentsDB(res.data?.data || res.data || []);
+                // Gọi API song song cho nhanh
+                const [deptRes, roleRes] = await Promise.all([
+                    departmentApi.getAllDepartments(),
+                    roleApi.getAllRoles()
+                ]);
+
+                setDepartmentsDB(deptRes.data?.data || deptRes.data || []);
+
+                // Lọc Role từ DB dựa trên mảng availableRoles
+                const allRoles = roleRes.data?.data || roleRes.data || [];
+                const filteredRoles = allRoles.filter(r => availableRoles.includes(r.roleName));
+                setRolesDB(filteredRoles);
+
+                // Gán mặc định role đầu tiên nếu có
+                if (filteredRoles.length > 0) {
+                    setUser(prev => ({ ...prev, role: filteredRoles[0].roleName }));
+                }
+
             } catch (error) {
-                console.error("Lỗi lấy danh sách department:", error);
+                console.error("Lỗi lấy dữ liệu API:", error);
             }
         };
-        fetchDepts();
+        fetchData();
 
-        if (currentUserRole === 'Manager') {
+        // ÉP BUỘC CHỌN PHÒNG BAN VÀ ROLE NẾU LÀ HeadOfDepartment
+        if (currentUserRole === 'HeadOfDepartment') {
             setUser(prev => ({ ...prev, department: currentUserDept, role: 'Employee' }));
         }
     }, [currentUserRole, currentUserDept]);
@@ -80,6 +99,8 @@ function CreateUser() {
                 email: user.email,
                 password: user.initialPassword,
                 numberPhone: user.phoneNumber,
+                dob: user.dob,
+                startDate: user.startDate,
                 role: user.role,
                 status: user.status,
                 departmentName: user.department,
@@ -94,37 +115,59 @@ function CreateUser() {
             navigate("/user-management/list");
 
         } catch (error) {
-            console.error("Lỗi khi tạo user:", error);
-            // Hiển thị lỗi từ BE trả về (nếu có)
-            alert("Có lỗi xảy ra: " + (error.response?.data?.message || "Vui lòng kiểm tra lại thông tin."));
+            console.error("Lỗi:", error);
+            const responseData = error.response?.data;
+
+            // 1. Lấy thông báo chung
+            let alertMessage = responseData?.message || "Vui lòng thử lại!";
+
+            // 2. Móc lỗi chi tiết (Nếu Backend có gửi kèm trong biến data)
+            if (responseData?.data && typeof responseData.data === 'object') {
+                // Lấy tất cả các câu của Backend ghép thành nhiều dòng
+                const detailedErrors = Object.values(responseData.data).join('\n- ');
+                alertMessage += "\n\nChi tiết lỗi:\n- " + detailedErrors;
+            }
+
+            // 3. Hiển thị lên màn hình
+            alert("Có lỗi xảy ra: " + alertMessage);
         } finally {
             setIsSubmitting(false);
         }
     };
 
+    // 1. VIẾT HÀM KIỂM TRA QUYỀN TRUY CẬP (AUTHORIZATION CHECK)
+    const checkPermission = () => {
+        return ['Accountant', 'HeadOfDepartment'].includes(currentUserRole);
+    };
+
+    // 2. NẾU KHÔNG CÓ QUYỀN -> HIỂN THỊ MÀN HÌNH BÁO LỖI LUÔN, KHÔNG RENDER UI BÊN DƯỚI
+    if (!checkPermission()) {
+        return (
+            <div className="bg-light min-vh-screen d-flex align-items-center justify-content-center">
+                <Card className="p-5 text-center shadow border-0 rounded-4" style={{ maxWidth: "500px" }}>
+                    <div className="text-danger mb-3">
+                        {/* Bạn có thể dùng icon Tabler ở đây */}
+                        <svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0"></path><path d="M9 12l2 2l4 -4"></path></svg>
+                    </div>
+                    <h2 className="fw-bold mb-3 text-dark">Access Denied</h2>
+                    <h5 className="text-secondary mb-4">Bạn không có quyền truy cập vào chức năng này!</h5>
+                    <Button variant="primary" className="fw-bold px-4" onClick={() => navigate("/home_page")}>
+                        Quay lại Trang chủ
+                    </Button>
+                </Card>
+            </div>
+        );
+    }
+
     return (
         <div className="bg-light min-vh-screen">
-            {/* --- HEADER ĐỒNG BỘ --- */}
-            {/*<header className="d-flex justify-content-between align-items-center px-4 py-3 bg-white border-bottom mb-4">*/}
-            {/*    <div className="d-flex align-items-center gap-2">*/}
-            {/*        <span className="fs-4">🛡️</span>*/}
-            {/*        <div className="d-flex flex-column lh-sm">*/}
-            {/*            <strong className="text-dark">E-CONTRACT</strong>*/}
-            {/*            <small className="text-muted" style={{ fontSize: "12px" }}>Management System</small>*/}
-            {/*        </div>*/}
-            {/*    </div>*/}
-            {/*    <NavDropdown title={<span className="text-dark fw-semibold"><IconWorld size={20} className="me-1"/>English</span>} id="lang-dropdown">*/}
-            {/*        <NavDropdown.Item>English</NavDropdown.Item>*/}
-            {/*        <NavDropdown.Item>Vietnamese</NavDropdown.Item>*/}
-            {/*    </NavDropdown>*/}
-            {/*</header>*/}
 
             <Container fluid="lg" className="mb-5">
                 <Form onSubmit={handleSubmit} className="border shadow-sm rounded-4 overflow-hidden bg-white">
                     <div className="d-flex justify-content-between align-items-center border-bottom p-4 bg-white">
                         <div>
                             <h1 className="h3 fw-bold mb-1">Create User</h1>
-                            <p className="text-muted mb-0">Add a new employee account and assign access permissions.</p>
+                            <p className="text-muted mb-0">Add a new user account and assign access permissions.</p>
                         </div>
                         <div className="d-flex gap-2">
                             <Button variant="outline-secondary" className="fw-bold px-3"
@@ -172,9 +215,17 @@ function CreateUser() {
                             </Col>
                             <Col md={6}>
                                 <Form.Group>
-                                    <Form.Label className="small fw-bold">Phone Number</Form.Label><Form.Control
-                                    type="text" name="phoneNumber" value={user.phoneNumber} onChange={handleChange}
-                                    placeholder="Enter phone number" disabled={isSubmitting}/></Form.Group>
+                                    <Form.Label className="small fw-bold">Phone Number <span className="text-danger">*</span></Form.Label>
+                                    <Form.Control
+                                        type="text"
+                                        name="phoneNumber"
+                                        value={user.phoneNumber}
+                                        onChange={handleChange}
+                                        placeholder="Enter phone number"
+                                        disabled={isSubmitting}
+                                        required
+                                    />
+                                </Form.Group>
                             </Col>
                             <Col md={6}>
                                 <Form.Group>
@@ -199,13 +250,9 @@ function CreateUser() {
                             <Col md={6}>
                                 <Form.Group>
                                     <Form.Label className="small fw-bold">Department <span className="text-danger">*</span></Form.Label>
-                                    <Form.Select name="department" value={user.department} onChange={handleChange} required
-                                        // KHÓA LẠI NẾU LÀ MANAGER
-                                                 disabled={isSubmitting || currentUserRole === 'Manager'}>
+                                    <Form.Select name="department" value={user.department} onChange={handleChange} required disabled={isSubmitting || currentUserRole === 'HeadOfDepartment'}>
                                         <option value="">Select department</option>
-                                        {departmentsDB.map(d => (
-                                            <option key={d.departmentName} value={d.departmentName}>{d.departmentName}</option>
-                                        ))}
+                                        {departmentsDB.map(d => <option key={d.departmentName} value={d.departmentName}>{d.departmentName}</option>)}
                                     </Form.Select>
                                 </Form.Group>
                             </Col>
@@ -214,29 +261,41 @@ function CreateUser() {
                             <Col md={6}>
                                 <Form.Group>
                                     <Form.Label className="small fw-bold">Role <span className="text-danger">*</span></Form.Label>
-                                    <Form.Select name="role" value={user.role} onChange={handleChange} required
-                                        // NẾU CHỈ CÓ 1 ROLE (VD: MANAGER TẠO NV, HOẶC TẠO CUSTOMER), KHÓA LUÔN CHO ĐỠ BẤM
-                                                 disabled={isSubmitting || availableRoles.length === 1}>
+                                    <Form.Select name="role" value={user.role} onChange={handleChange} required disabled={isSubmitting || rolesDB.length <= 1}>
                                         <option value="">Select role</option>
-                                        {availableRoles.map(r => (
-                                            <option key={r} value={r}>{r}</option>
-                                        ))}
+                                        {rolesDB.map(r => <option key={r.id} value={r.roleName}>{r.roleName}</option>)}
                                     </Form.Select>
                                 </Form.Group>
                             </Col>
 
+                            <Col md={6}>
+                                <Form.Group>
+                                    <Form.Label className="small fw-bold">Date of Birth <span className="text-danger">*</span></Form.Label>
+                                    <Form.Control
+                                        type="date"
+                                        name="dob"
+                                        value={user.dob}
+                                        onChange={handleChange}
+                                        disabled={isSubmitting}
+                                        required
+                                    />
+                                </Form.Group>
+                            </Col>
 
-                            {/* CÁC TRƯỜNG BÊN DƯỚI ĐƯỢC GIỮ NGUYÊN (HARDCODE) THEO Ý BẠN */}
+                            {/* User ID */}
                             <Col md={6}>
-                                <Form.Group><Form.Label className="small fw-bold">Position</Form.Label><Form.Control
-                                    type="text" name="position" value={user.position} onChange={handleChange}
-                                    placeholder="Enter position" disabled={isSubmitting}/></Form.Group>
+                                <Form.Group>
+                                    <Form.Label className="small fw-bold">User ID</Form.Label>
+                                    <Form.Control
+                                        type="text"
+                                        value="Auto-generated after creation"
+                                        disabled={true}
+                                        className="bg-light text-muted fst-italic"
+                                    />
+                                </Form.Group>
                             </Col>
-                            <Col md={6}>
-                                <Form.Group><Form.Label className="small fw-bold">Employee ID</Form.Label><Form.Control
-                                    type="text" name="employeeId" value={user.employeeId} onChange={handleChange}
-                                    placeholder="Enter employee ID" disabled={isSubmitting}/></Form.Group>
-                            </Col>
+
+                            {/* Start Date */}
                             <Col md={6}>
                                 <Form.Group>
                                     <Form.Label className="small fw-bold">Start Date <span

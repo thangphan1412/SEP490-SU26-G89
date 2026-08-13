@@ -16,13 +16,9 @@ import java.util.UUID;
 
 @Repository
 public interface ContractRepository extends JpaRepository<Contracts, UUID> {
-    Page<Contracts> findByContractStatusIgnoreCase(String contractStatus, Pageable pageable);
-
     long countByContractTypeId(UUID contractTypeId);
 
     long countByContractTemplateId(UUID contractTemplateId);
-
-    long countByContractTemplateVersionId(UUID contractTemplateVersionId);
 
     @Query("""
             SELECT contract
@@ -30,8 +26,26 @@ public interface ContractRepository extends JpaRepository<Contracts, UUID> {
             LEFT JOIN contract.project project
             LEFT JOIN contract.contractType contractType
             LEFT JOIN contract.contractTemplate contractTemplate
-            WHERE (
-                LOWER(COALESCE(contract.contractNumber, '')) LIKE CONCAT('%', CONCAT(:search, '%'))
+            LEFT JOIN contract.contractCreatedByUser creator
+            WHERE project.id IN (:projectIds)
+            AND (
+                project.id IN (:fullScopeProjectIds)
+                OR creator.id = :currentUserId
+                OR EXISTS (
+                    SELECT workflowStep.id
+                    FROM ContractWorkflowStepInstance workflowStep
+                    WHERE workflowStep.contract.id = contract.id
+                        AND workflowStep.assignedUser.id = :currentUserId
+                )
+                OR (
+                    contract.contractCreatedByUser IS NULL
+                    AND LOWER(TRIM(COALESCE(contract.contractCreateBy, '')))
+                        = :currentUserName
+                )
+            )
+            AND (
+                :search = ''
+                OR LOWER(COALESCE(contract.contractNumber, '')) LIKE CONCAT('%', CONCAT(:search, '%'))
                 OR LOWER(COALESCE(contract.contractTitle, '')) LIKE CONCAT('%', CONCAT(:search, '%'))
                 OR LOWER(COALESCE(contract.contractCreateBy, '')) LIKE CONCAT('%', CONCAT(:search, '%'))
                 OR LOWER(COALESCE(project.projectName, '')) LIKE CONCAT('%', CONCAT(:search, '%'))
@@ -44,20 +58,15 @@ public interface ContractRepository extends JpaRepository<Contracts, UUID> {
                 OR LOWER(COALESCE(contract.contractStatus, '')) = :status
             )
             """)
-    Page<Contracts> searchContracts(
+    Page<Contracts> searchAccessibleContracts(
+            @Param("projectIds") List<UUID> projectIds,
+            @Param("fullScopeProjectIds") List<UUID> fullScopeProjectIds,
+            @Param("currentUserId") UUID currentUserId,
+            @Param("currentUserName") String currentUserName,
             @Param("search") String search,
             @Param("status") String status,
             Pageable pageable
     );
-
-    @Query("""
-            SELECT DISTINCT contract.contractStatus
-            FROM Contracts contract
-            WHERE contract.contractStatus IS NOT NULL
-                AND TRIM(contract.contractStatus) <> ''
-            ORDER BY contract.contractStatus
-            """)
-    List<String> findDistinctContractStatuses();
 
     @Query("""
             SELECT contract.id
@@ -90,4 +99,36 @@ public interface ContractRepository extends JpaRepository<Contracts, UUID> {
             @Param("today") LocalDate today,
             @Param("endedAt") LocalDateTime endedAt
     );
+
+
+    // Đếm theo trạng thái
+    long countByContractStatus(String status);
+
+    // Lấy thống kê Status cho biểu đồ
+    @Query("SELECT c.contractStatus, COUNT(c) FROM Contracts c GROUP BY c.contractStatus")
+    List<Object[]> countContractsByStatus();
+
+    // Lấy các hợp đồng sắp hết hạn (Trong vòng 30 ngày tới)
+    @Query("SELECT c FROM Contracts c WHERE c.contractStatus = 'ACTIVE' AND c.expirationDate BETWEEN :today AND :thirtyDaysLater ORDER BY c.expirationDate ASC")
+    List<Contracts> findUpcomingExpirations(@Param("today") LocalDate today, @Param("thirtyDaysLater") LocalDate thirtyDaysLater, Pageable pageable);
+
+    // Lấy số lượng hợp đồng nhóm theo Năm và Tháng
+    @Query("SELECT YEAR(c.contractCreatedAt), MONTH(c.contractCreatedAt), COUNT(c) " +
+            "FROM Contracts c " +
+            "WHERE c.contractCreatedAt >= :startDate " +
+            "GROUP BY YEAR(c.contractCreatedAt), MONTH(c.contractCreatedAt) " +
+            "ORDER BY YEAR(c.contractCreatedAt) ASC, MONTH(c.contractCreatedAt) ASC")
+    List<Object[]> countContractsByMonth(@Param("startDate") java.time.LocalDateTime startDate);
+
+    // Lấy thống kê theo Loại hợp đồng (Dành cho màn Statistical)
+    @Query("SELECT ct.contractTypeName, COUNT(c) FROM Contracts c LEFT JOIN c.contractType ct GROUP BY ct.contractTypeName")
+    List<Object[]> countContractsByType();
+
+    // Lấy danh sách hợp đồng Pending để tính toán thời gian chờ
+    @Query("SELECT p.projectName, c.contractCreatedAt FROM Contracts c LEFT JOIN c.project p WHERE c.contractStatus IN ('PENDING_DIRECTOR_SIGNATURE', 'PENDING_PARTNER_SIGNATURE')")
+    List<Object[]> getPendingSignatureDetails();
+
+    // Đếm hợp đồng đã hết hạn dựa vào ngày
+    @Query("SELECT COUNT(c) FROM Contracts c WHERE c.expirationDate < :today")
+    long countExpiredContracts(@Param("today") java.time.LocalDate today);
 }

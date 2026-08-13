@@ -4,6 +4,8 @@ import java.util.Locale;
 
 public enum ContractStatus {
     NEW,
+    PENDING_APPROVAL,
+    PENDING_SIGNATURE,
     PENDING_INTERNAL_APPROVAL,
     PENDING_DIRECTOR_SIGNATURE,
     PENDING_PARTNER_SIGNATURE,

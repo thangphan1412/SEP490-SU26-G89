@@ -1,5 +1,6 @@
 package com.fpt.backend.entity;
 
+import com.fpt.backend.enums.WorkScope;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -75,9 +76,4 @@ public class Permissions extends BaseEntity {
 
     @Column(name = "permission_created_at")
     private LocalDateTime createdAt;
-
-    public enum WorkScope {
-        OWN,
-        FULL
-    }
 }

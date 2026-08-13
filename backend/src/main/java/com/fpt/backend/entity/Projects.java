@@ -61,6 +61,5 @@ public class Projects extends BaseEntity {
     private List<ProjectMember> projectMembers;
     // timeline
     @OneToMany(mappedBy = "project")
-    @OrderBy("sequenceNo ASC")
     private List<Timeline> timelines;
 }

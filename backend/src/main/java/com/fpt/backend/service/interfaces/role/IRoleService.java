@@ -13,8 +13,6 @@ public interface IRoleService {
 
     RoleResponseDTO getRoleById(UUID id);
 
-    RoleResponseDTO getSystemRoleByCode(String roleCode);
-
     RoleResponseDTO createRole(RoleRequestDTO request);
 
     RoleResponseDTO updateRole(UUID id, RoleRequestDTO request);

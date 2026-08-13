@@ -1,47 +1,55 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Container, Card, Row, Col, Form, Button, NavDropdown, Spinner, Stack, Alert } from "react-bootstrap";
-
-// Import Icon chuẩn từ Tabler Icons
+import { Container, Card, Row, Col, Form, Button, Spinner, Stack, Alert } from "react-bootstrap";
 import {
-    IconWorld,
     IconDeviceFloppy,
     IconEdit,
     IconFileDescription,
     IconShieldCheck,
     IconBuilding,
     IconClock,
-    IconInfoCircle
+    IconInfoCircle,
+    IconLock,
+    IconMailForward
 } from "@tabler/icons-react";
 
-// IMPORT HÀM GỌI API PROFILE
 import { getMyProfile, updateMyProfile } from "../../services/userService/userApi.js";
+import authenService from "../../services/userService/authenService.js";
 
 function UpdateProfile({ onSaveProfile }) {
     const navigate = useNavigate();
 
-    // State dữ liệu trắng ban đầu
+    // --- STATE CHO PROFILE ---
     const [userProfile, setUserProfile] = useState({
-        fullName: "", email: "", phoneNumber: "", department: "Legal Department",
-        position: "Contract Manager", employeeId: "EMP-00023",
-        timeZone: "(GMT+07:00) Bangkok, Hanoi, Jakarta", language: "English"
+        fullName: "", email: "", phoneNumber: "",
+        role: "", department: "", userId: ""
     });
-
     const [isLoadingData, setIsLoadingData] = useState(true);
-    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isSubmittingProfile, setIsSubmittingProfile] = useState(false);
 
-    // Lấy thông tin cá nhân hiện tại trước khi Edit
+    // --- STATE CHO CHANGE PASSWORD VÀ OTP ---
+    const [pwdMethod, setPwdMethod] = useState("old");
+    const [pwdData, setPwdData] = useState({ oldPassword: "", newPassword: "", confirmPassword: "", otp: "" });
+    const [otpSent, setOtpSent] = useState(false);
+    const [isSubmittingPwd, setIsSubmittingPwd] = useState(false);
+
+    // THÊM: STATE CHO ĐẾM NGƯỢC 60 GIÂY
+    const [countdown, setCountdown] = useState(0);
+
+    // Load dữ liệu
     useEffect(() => {
         const fetchCurrentProfile = async () => {
             try {
                 const response = await getMyProfile();
                 const data = response.data.data;
-                setUserProfile(prev => ({
-                    ...prev,
+                setUserProfile({
                     fullName: `${data.firstName || ""} ${data.lastName || ""}`.trim(),
                     email: data.email || "",
-                    phoneNumber: data.numberPhone || ""
-                }));
+                    phoneNumber: data.numberPhone || "",
+                    role: data.role || "N/A",
+                    department: data.departmentName || "N/A",
+                    userId: data.userId || "N/A"
+                });
             } catch (error) {
                 console.error("Lỗi tải thông tin:", error);
                 alert("Không thể tải thông tin profile của bạn!");
@@ -53,333 +61,307 @@ function UpdateProfile({ onSaveProfile }) {
         fetchCurrentProfile();
     }, [navigate]);
 
-    const handleChange = (event) => {
+    // THÊM: USE-EFFECT XỬ LÝ ĐẾM NGƯỢC THỜI GIAN
+    useEffect(() => {
+        let timer;
+        if (countdown > 0) {
+            timer = setInterval(() => {
+                setCountdown((prev) => prev - 1);
+            }, 1000);
+        }
+        // Dọn dẹp interval khi component unmount hoặc khi countdown = 0
+        return () => clearInterval(timer);
+    }, [countdown]);
+
+    // --- HANDLER CHO PROFILE ---
+    const handleProfileChange = (event) => {
         const { name, value } = event.target;
-        setUserProfile((currentProfile) => ({
-            ...currentProfile,
-            [name]: value,
-        }));
+        setUserProfile((prev) => ({ ...prev, [name]: value }));
     };
 
-    const handleSubmit = async (event) => {
+    const handleSubmitProfile = async (event) => {
         event.preventDefault();
-        setIsSubmitting(true);
-
+        setIsSubmittingProfile(true);
         try {
-            // Logic tách tên: Từ 1 biến fullName -> tách thành firstName và lastName gửi cho BE
             const nameParts = userProfile.fullName.trim().split(" ");
-            const fName = nameParts[0] || ""; // Lấy chữ đầu tiên làm firstName
-            const lName = nameParts.slice(1).join(" ") || ""; // Lấy các chữ còn lại làm lastName
-
             const payload = {
-                firstName: fName,
-                lastName: lName,
+                firstName: nameParts[0] || "",
+                lastName: nameParts.slice(1).join(" ") || "",
                 email: userProfile.email,
                 numberPhone: userProfile.phoneNumber
             };
 
-            // Gọi API Update
             await updateMyProfile(payload);
-
             if (onSaveProfile) onSaveProfile(userProfile);
-
             alert("Cập nhật thông tin cá nhân thành công!");
             navigate("/user-profile/view");
 
         } catch (error) {
-            console.error("Lỗi:", error);
-            alert("Có lỗi xảy ra trong quá trình lưu dữ liệu: " + (error.response?.data?.message || "Vui lòng thử lại!"));
+            alert("Có lỗi xảy ra: " + (error.response?.data?.message || "Vui lòng thử lại!"));
         } finally {
-            setIsSubmitting(false);
+            setIsSubmittingProfile(false);
+        }
+    };
+
+    // --- HANDLER CHO ĐỔI MẬT KHẨU ---
+    const handlePwdChange = (event) => {
+        const { name, value } = event.target;
+        setPwdData((prev) => ({ ...prev, [name]: value }));
+    };
+
+    // Gọi API Gửi OTP
+    const handleSendOtp = async () => {
+        try {
+            setIsSubmittingPwd(true);
+            await authenService.forgot({ email: userProfile.email });
+            setOtpSent(true);
+
+            // KÍCH HOẠT ĐẾM NGƯỢC 60 GIÂY SAU KHI GỬI THÀNH CÔNG
+            setCountdown(60);
+
+            alert("Mã OTP đã được gửi đến email: " + userProfile.email);
+        } catch (error) {
+            alert("Lỗi gửi OTP: " + (error.response?.data?.message || "Vui lòng thử lại"));
+        } finally {
+            setIsSubmittingPwd(false);
+        }
+    };
+
+    // Gọi API Lưu Mật Khẩu
+    const handleSubmitPassword = async (event) => {
+        event.preventDefault();
+        if (pwdData.newPassword !== pwdData.confirmPassword) {
+            alert("Mật khẩu xác nhận không khớp!");
+            return;
+        }
+
+        setIsSubmittingPwd(true);
+        try {
+            if (pwdMethod === "old") {
+                await authenService.changePassword({
+                    oldPassword: pwdData.oldPassword,
+                    newPassword: pwdData.newPassword
+                });
+            } else {
+                await authenService.reset({
+                    email: userProfile.email,
+                    otp: pwdData.otp,
+                    newPassword: pwdData.newPassword,
+                    newPasswordConfirm: pwdData.confirmPassword
+                });
+            }
+            alert("Đổi mật khẩu thành công! Vui lòng sử dụng mật khẩu mới cho lần đăng nhập sau.");
+            setPwdData({ oldPassword: "", newPassword: "", confirmPassword: "", otp: "" });
+            setOtpSent(false);
+            setCountdown(0); // Reset bộ đếm nếu đổi xong
+        } catch (error) {
+            console.error("Lỗi:", error);
+            const responseData = error.response?.data;
+
+            // 1. Lấy thông báo chung
+            let alertMessage = responseData?.message || "Vui lòng thử lại!";
+
+            // 2. Móc lỗi chi tiết (Nếu Backend có gửi kèm trong biến data)
+            if (responseData?.data && typeof responseData.data === 'object') {
+                // Lấy tất cả các câu chửi của Backend ghép thành nhiều dòng
+                const detailedErrors = Object.values(responseData.data).join('\n- ');
+                alertMessage += "\n\nChi tiết lỗi:\n- " + detailedErrors;
+            }
+
+            // 3. Hiển thị lên màn hình
+            alert("Có lỗi xảy ra: " + alertMessage);
+        } finally {
+            setIsSubmittingPwd(false);
         }
     };
 
     return (
         <div className="bg-light min-vh-screen">
-            {/* --- HEADER ĐỒNG BỘ --- */}
-            {/*<header className="d-flex justify-content-between align-items-center px-4 py-3 bg-white border-bottom mb-4">*/}
-            {/*    <div className="d-flex align-items-center gap-2">*/}
-            {/*        <span className="fs-4">🛡️</span>*/}
-            {/*        <div className="d-flex flex-column lh-sm">*/}
-            {/*            <strong className="text-dark">E-CONTRACT</strong>*/}
-            {/*            <small className="text-muted" style={{ fontSize: "12px" }}>Management System</small>*/}
-            {/*        </div>*/}
-            {/*    </div>*/}
-            {/*    <NavDropdown title={<span className="text-dark fw-semibold"><IconWorld size={20} className="me-1"/>English</span>} id="lang-dropdown">*/}
-            {/*        <NavDropdown.Item>English</NavDropdown.Item>*/}
-            {/*        <NavDropdown.Item>Vietnamese</NavDropdown.Item>*/}
-            {/*    </NavDropdown>*/}
-            {/*</header>*/}
-
-            {/* --- MAIN CONTENT --- */}
             <Container fluid="lg" className="mb-5">
-                <Form onSubmit={handleSubmit} className="border shadow-sm rounded-4 overflow-hidden bg-white">
 
-                    {/* Panel Header */}
-                    <div className="d-flex justify-content-between align-items-center border-bottom p-4 bg-white">
-                        <div>
-                            <h1 className="h3 mb-1 fw-bold text-dark">Update Profile</h1>
-                            <p className="text-muted mb-0">
-                                Update your personal information and account preferences.
-                            </p>
-                        </div>
-                        <div className="form-actions d-flex gap-2">
-                            <Button
-                                variant="outline-secondary"
-                                className="fw-bold px-3"
-                                onClick={() => navigate("/user-profile/view")}
-                                disabled={isSubmitting || isLoadingData}
-                            >
-                                Cancel
-                            </Button>
-                            <Button
-                                type="submit"
-                                variant="primary"
-                                className="fw-bold px-4 d-flex align-items-center gap-2"
-                                disabled={isSubmitting || isLoadingData}
-                            >
-                                {isSubmitting ? (
-                                    <>
-                                        <Spinner animation="border" size="sm" />
-                                        <span>Saving...</span>
-                                    </>
-                                ) : (
-                                    <>
-                                        <IconDeviceFloppy size={19} color="#ffffff" />
-                                        <span>Save Changes</span>
-                                    </>
-                                )}
-                            </Button>
-                        </div>
+                {/* Header Tổng */}
+                <div className="d-flex justify-content-between align-items-center border-bottom p-4 bg-white mt-4 border shadow-sm rounded-top-4">
+                    <div>
+                        <h1 className="h3 mb-1 fw-bold text-dark">Update Settings</h1>
+                        <p className="text-muted mb-0">Manage your profile and security settings.</p>
                     </div>
+                    <Button variant="outline-secondary" className="fw-bold px-3" onClick={() => navigate("/user-profile/view")} disabled={isLoadingData}>
+                        Back to Profile
+                    </Button>
+                </div>
 
-                    {isLoadingData ? (
-                        <div className="text-center py-5 my-5 text-secondary">
-                            <Spinner animation="border" />
-                            <p className="mt-3">Đang tải thông tin cá nhân...</p>
-                        </div>
-                    ) : (
-                        <>
-                            {/* --- PROFILE INFORMATION FORM --- */}
-                            <Card className="m-4 border rounded-3 p-4">
-                                <div className="d-flex justify-content-between align-items-center border-bottom pb-3 mb-4">
-                                    <div className="d-flex align-items-center gap-2">
-                                        <div className="p-2 bg-primary bg-opacity-10 text-primary rounded-circle d-flex">
-                                            <IconEdit size={22} />
-                                        </div>
+                {isLoadingData ? (
+                    <Card className="text-center py-5 shadow-sm rounded-bottom-4 border-top-0">
+                        <Spinner animation="border" variant="primary" />
+                        <p className="mt-3 text-muted">Loading data...</p>
+                    </Card>
+                ) : (
+                    <>
+                        {/* =========================================
+                            FORM 1: CẬP NHẬT THÔNG TIN CÁ NHÂN
+                        ============================================= */}
+                        <Form onSubmit={handleSubmitProfile}>
+                            <Card className="mb-4 border rounded-bottom-4 shadow-sm border-top-0">
+                                <Card.Body className="p-4">
+                                    <div className="d-flex align-items-center gap-2 border-bottom pb-3 mb-4">
+                                        <div className="p-2 bg-primary bg-opacity-10 text-primary rounded-circle d-flex"><IconEdit size={22} /></div>
                                         <h2 className="h5 fw-bold mb-0 text-dark">Profile Information</h2>
                                     </div>
-                                    <span className="badge bg-success bg-opacity-10 text-success px-3 py-2 rounded fw-bold small border border-success border-opacity-25">
-                                        Verified Profile
-                                    </span>
-                                </div>
 
-                                <Row className="g-4">
-                                    {/* Avatar Section bên trái */}
-                                    <Col md={3} className="text-center border-end d-flex flex-column align-items-center justify-content-center pb-4 pb-md-0">
-                                        <div className="position-relative mb-3">
-                                            <div
-                                                className="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center fw-bold shadow-sm"
-                                                style={{ width: "100px", height: "100px", fontSize: "36px", boxShadow: "0 0 0 4px #edf2ff" }}
-                                            >
-                                                {userProfile.fullName ? userProfile.fullName.split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase() : 'U'}
+                                    <Row className="g-4">
+                                        <Col md={3} className="text-center border-end d-flex flex-column align-items-center justify-content-center pb-4 pb-md-0">
+                                            <div className="position-relative mb-3">
+                                                <div className="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center fw-bold shadow-sm" style={{ width: "100px", height: "100px", fontSize: "36px" }}>
+                                                    {userProfile.fullName ? userProfile.fullName.split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase() : 'U'}
+                                                </div>
                                             </div>
-                                            <div
-                                                className="position-absolute bg-white border rounded-circle d-flex align-items-center justify-content-center border-secondary-subtle text-secondary"
-                                                style={{ width: "26px", height: "26px", right: "-4px", bottom: "4px" }}
-                                            >
-                                                <IconFileDescription size={15} />
+                                            <Button size="sm" variant="outline-secondary" className="fw-semibold px-3">Change Avatar</Button>
+                                        </Col>
+
+                                        <Col md={9} className="px-4">
+                                            <Row className="g-4">
+                                                <Col md={6}>
+                                                    <Form.Group>
+                                                        <Form.Label className="small fw-bold text-secondary">Full Name <span className="text-danger">*</span></Form.Label>
+                                                        <Form.Control name="fullName" type="text" value={userProfile.fullName} onChange={handleProfileChange} required disabled={isSubmittingProfile} className="py-2" />
+                                                    </Form.Group>
+                                                </Col>
+                                                <Col md={6}>
+                                                    <Form.Group>
+                                                        <Form.Label className="small fw-bold text-secondary">Email <span className="text-danger">*</span></Form.Label>
+                                                        <Form.Control name="email" type="email" value={userProfile.email} onChange={handleProfileChange} required disabled={isSubmittingProfile} className="py-2" />
+                                                    </Form.Group>
+                                                </Col>
+                                                <Col md={6}>
+                                                    <Form.Group>
+                                                        <Form.Label className="small fw-bold text-secondary">Phone Number <span className="text-danger">*</span></Form.Label>
+                                                        <Form.Control name="phoneNumber" type="tel" value={userProfile.phoneNumber} onChange={handleProfileChange} required disabled={isSubmittingProfile} className="py-2" />
+                                                    </Form.Group>
+                                                </Col>
+                                                <Col md={6}>
+                                                    <Form.Group>
+                                                        <Form.Label className="small fw-bold text-secondary">User ID</Form.Label>
+                                                        <Form.Control type="text" value={userProfile.userId} disabled className="py-2 bg-light text-muted" />
+                                                    </Form.Group>
+                                                </Col>
+                                            </Row>
+
+                                            <div className="d-flex justify-content-end mt-4">
+                                                <Button type="submit" variant="primary" className="fw-bold px-4 d-flex align-items-center gap-2" disabled={isSubmittingProfile}>
+                                                    {isSubmittingProfile ? <Spinner animation="border" size="sm" /> : <IconDeviceFloppy size={19} />}
+                                                    {isSubmittingProfile ? "Saving..." : "Save Profile"}
+                                                </Button>
                                             </div>
-                                        </div>
-                                        <Button size="sm" variant="outline-secondary" className="fw-semibold px-3">
-                                            Change Avatar
-                                        </Button>
-                                        <p className="small text-muted mt-2 mb-0 text-center">
-                                            Used across profile and approvals.
-                                        </p>
-                                    </Col>
-
-                                    {/* Form Input Section bên phải */}
-                                    <Col md={9} className="px-4">
-                                        <Row className="g-4">
-                                            {/* Full Name */}
-                                            <Col md={6}>
-                                                <Form.Group>
-                                                    <Form.Label className="small fw-bold text-secondary">
-                                                        Full Name <span className="text-danger">*</span>
-                                                    </Form.Label>
-                                                    <Form.Control id="fullName" name="fullName" type="text" value={userProfile.fullName} onChange={handleChange} required disabled={isSubmitting} className="py-2" />
-                                                    <Form.Text className="text-muted">Display name used in the system.</Form.Text>
-                                                </Form.Group>
-                                            </Col>
-
-                                            {/* Email */}
-                                            <Col md={6}>
-                                                <Form.Group>
-                                                    <Form.Label className="small fw-bold text-secondary">
-                                                        Email <span className="text-danger">*</span>
-                                                    </Form.Label>
-                                                    <Form.Control id="email" name="email" type="email" value={userProfile.email} onChange={handleChange} required disabled={isSubmitting} className="py-2" />
-                                                    <Form.Text className="text-muted">Work email for system notifications.</Form.Text>
-                                                </Form.Group>
-                                            </Col>
-
-                                            {/* Phone Number */}
-                                            <Col md={6}>
-                                                <Form.Group>
-                                                    <Form.Label className="small fw-bold text-secondary">
-                                                        Phone Number <span className="text-danger">*</span>
-                                                    </Form.Label>
-                                                    <Form.Control id="phoneNumber" name="phoneNumber" type="tel" value={userProfile.phoneNumber} onChange={handleChange} required disabled={isSubmitting} className="py-2" />
-                                                </Form.Group>
-                                            </Col>
-
-                                            {/* Department */}
-                                            <Col md={6}>
-                                                <Form.Group>
-                                                    <Form.Label className="small fw-bold text-secondary">
-                                                        Department <span className="text-danger">*</span>
-                                                    </Form.Label>
-                                                    <Form.Select id="department" name="department" value={userProfile.department} onChange={handleChange} required disabled={isSubmitting} className="py-2">
-                                                        <option value="Legal Department">Legal Department</option>
-                                                        <option value="Sales Department">Sales Department</option>
-                                                        <option value="Finance Department">Finance Department</option>
-                                                    </Form.Select>
-                                                </Form.Group>
-                                            </Col>
-
-                                            {/* Position */}
-                                            <Col md={6}>
-                                                <Form.Group>
-                                                    <Form.Label className="small fw-bold text-secondary">
-                                                        Position <span className="text-danger">*</span>
-                                                    </Form.Label>
-                                                    <Form.Select id="position" name="position" value={userProfile.position} onChange={handleChange} required disabled={isSubmitting} className="py-2">
-                                                        <option value="Contract Manager">Contract Manager</option>
-                                                        <option value="Legal Specialist">Legal Specialist</option>
-                                                        <option value="Department Manager">Department Manager</option>
-                                                    </Form.Select>
-                                                </Form.Group>
-                                            </Col>
-
-                                            {/* Employee ID */}
-                                            <Col md={6}>
-                                                <Form.Group>
-                                                    <Form.Label className="small fw-bold text-secondary">Employee ID</Form.Label>
-                                                    <Form.Control id="employeeId" name="employeeId" type="text" value={userProfile.employeeId} disabled className="py-2" />
-                                                </Form.Group>
-                                            </Col>
-
-                                            {/* Time Zone */}
-                                            <Col md={6}>
-                                                <Form.Group>
-                                                    <Form.Label className="small fw-bold text-secondary">
-                                                        Time Zone <span className="text-danger">*</span>
-                                                    </Form.Label>
-                                                    <Form.Select id="timeZone" name="timeZone" value={userProfile.timeZone} onChange={handleChange} required disabled={isSubmitting} className="py-2">
-                                                        <option value="(GMT+07:00) Bangkok, Hanoi, Jakarta">(GMT+07:00) Bangkok, Hanoi, Jakarta</option>
-                                                        <option value="(GMT+08:00) Singapore, Kuala Lumpur">(GMT+08:00) Singapore, Kuala Lumpur</option>
-                                                        <option value="(GMT+09:00) Tokyo, Seoul">(GMT+09:00) Tokyo, Seoul</option>
-                                                    </Form.Select>
-                                                </Form.Group>
-                                            </Col>
-
-                                            {/* Language */}
-                                            <Col md={6}>
-                                                <Form.Group>
-                                                    <Form.Label className="small fw-bold text-secondary">
-                                                        Language <span className="text-danger">*</span>
-                                                    </Form.Label>
-                                                    <Form.Select id="language" name="language" value={userProfile.language} onChange={handleChange} required disabled={isSubmitting} className="py-2">
-                                                        <option value="English">English</option>
-                                                        <option value="Vietnamese">Vietnamese</option>
-                                                    </Form.Select>
-                                                </Form.Group>
-                                            </Col>
-                                        </Row>
-                                    </Col>
-                                </Row>
+                                        </Col>
+                                    </Row>
+                                </Card.Body>
                             </Card>
+                        </Form>
 
-                            {/* --- USAGE PREVIEW --- */}
-                            <Card className="mx-4 mb-4 border rounded-3 p-4">
-                                <Stack direction="horizontal" gap={3} className="align-items-start mb-4">
-                                    <div className="p-2 bg-primary bg-opacity-10 text-primary rounded-circle d-flex">
-                                        <IconShieldCheck size={22} />
+                        {/* =========================================
+                            FORM 2: CẬP NHẬT MẬT KHẨU
+                        ============================================= */}
+                        <Form onSubmit={handleSubmitPassword}>
+                            <Card className="mb-4 border rounded-4 shadow-sm">
+                                <Card.Body className="p-4">
+                                    <div className="d-flex align-items-center gap-2 border-bottom pb-3 mb-4">
+                                        <div className="p-2 bg-warning bg-opacity-10 text-warning rounded-circle d-flex"><IconLock size={22} /></div>
+                                        <div>
+                                            <h2 className="h5 fw-bold mb-0 text-dark">Security & Password</h2>
+                                            <p className="small text-muted mb-0">Choose a method to change your password securely.</p>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <h2 className="h5 fw-bold mb-1 text-dark">Profile Usage Preview</h2>
-                                        <p className="small text-muted mb-0">
-                                            Changes will be reflected across contract templates, approvals, and notifications after saving.
-                                        </p>
-                                    </div>
-                                </Stack>
 
-                                <Row className="g-3">
-                                    {/* Contracts */}
-                                    <Col lg={3} md={6}>
-                                        <div className="p-3 border rounded h-100 d-flex align-items-center gap-3 bg-light">
-                                            <div className="p-2 bg-primary bg-opacity-10 text-primary rounded-circle d-flex">
-                                                <IconFileDescription size={22} />
-                                            </div>
-                                            <div>
-                                                <h3 className="h6 fw-bold mb-1 text-dark">Contracts</h3>
-                                                <p className="small text-muted mb-0">Profile details appear on owned contracts.</p>
-                                            </div>
-                                        </div>
-                                    </Col>
+                                    <Row className="g-4">
+                                        {/* Cột Trái: Chọn Phương thức */}
+                                        <Col md={4} className="border-end px-3">
+                                            <div className="p-3 bg-light rounded border">
+                                                <h6 className="fw-bold text-secondary mb-3">Phương thức xác thực:</h6>
 
-                                    {/* Approvals */}
-                                    <Col lg={3} md={6}>
-                                        <div className="p-3 border rounded h-100 d-flex align-items-center gap-3 bg-light">
-                                            <div className="p-2 bg-primary bg-opacity-10 text-primary rounded-circle d-flex">
-                                                <IconShieldCheck size={22} />
+                                                <Form.Check
+                                                    type="radio" id="method-old" name="pwdMethod"
+                                                    label={<span className="fw-medium">Nhập mật khẩu cũ</span>}
+                                                    className="mb-2"
+                                                    checked={pwdMethod === "old"}
+                                                    onChange={() => setPwdMethod("old")}
+                                                />
+                                                <Form.Check
+                                                    type="radio" id="method-otp" name="pwdMethod"
+                                                    label={<span className="fw-medium">Xác thực OTP qua Email</span>}
+                                                    checked={pwdMethod === "otp"}
+                                                    onChange={() => { setPwdMethod("otp"); setOtpSent(false); setCountdown(0); }}
+                                                />
                                             </div>
-                                            <div>
-                                                <h3 className="h6 fw-bold mb-1 text-dark">Approvals</h3>
-                                                <p className="small text-muted mb-0">Name and position show in approval flows.</p>
-                                            </div>
-                                        </div>
-                                    </Col>
 
-                                    {/* Department */}
-                                    <Col lg={3} md={6}>
-                                        <div className="p-3 border rounded h-100 d-flex align-items-center gap-3 bg-light">
-                                            <div className="p-2 bg-primary bg-opacity-10 text-primary rounded-circle d-flex">
-                                                <IconBuilding size={22} />
-                                            </div>
-                                            <div>
-                                                <h3 className="h6 fw-bold mb-1 text-dark">Department</h3>
-                                                <p className="small text-muted mb-0">Department controls workflow routing.</p>
-                                            </div>
-                                        </div>
-                                    </Col>
+                                            {/* Hiển thị nút Gửi OTP nếu chọn OTP */}
+                                            {pwdMethod === "otp" && (
+                                                <div className="mt-3 text-center">
+                                                    <p className="small text-muted mb-2">Mã OTP sẽ được gửi đến:<br/><strong>{userProfile.email}</strong></p>
+                                                    <Button
+                                                        variant="outline-primary"
+                                                        size="sm"
+                                                        className="w-100 fw-bold d-flex justify-content-center align-items-center gap-2"
+                                                        onClick={handleSendOtp}
+                                                        // KHÓA NÚT NẾU ĐANG CALL API HOẶC NẾU ĐANG ĐẾM NGƯỢC
+                                                        disabled={isSubmittingPwd || !userProfile.email || countdown > 0}
+                                                    >
+                                                        <IconMailForward size={16} />
+                                                        {countdown > 0 ? `Thử lại sau (${countdown}s)` : (otpSent ? "Gửi lại mã OTP" : "Gửi mã OTP")}
+                                                    </Button>
+                                                </div>
+                                            )}
+                                        </Col>
 
-                                    {/* Notifications */}
-                                    <Col lg={3} md={6}>
-                                        <div className="p-3 border rounded h-100 d-flex align-items-center gap-3 bg-light">
-                                            <div className="p-2 bg-primary bg-opacity-10 text-primary rounded-circle d-flex">
-                                                <IconClock size={22} />
+                                        {/* Cột Phải: Các ô nhập liệu */}
+                                        <Col md={8} className="px-4">
+                                            <Row className="g-3">
+                                                {pwdMethod === "old" && (
+                                                    <Col md={12}>
+                                                        <Form.Group>
+                                                            <Form.Label className="small fw-bold text-secondary">Mật khẩu cũ <span className="text-danger">*</span></Form.Label>
+                                                            <Form.Control name="oldPassword" type="password" value={pwdData.oldPassword} onChange={handlePwdChange} required={pwdMethod === "old"} disabled={isSubmittingPwd} className="py-2" placeholder="Nhập mật khẩu hiện tại" />
+                                                        </Form.Group>
+                                                    </Col>
+                                                )}
+
+                                                {pwdMethod === "otp" && (
+                                                    <Col md={12}>
+                                                        <Form.Group>
+                                                            <Form.Label className="small fw-bold text-secondary">Mã xác thực OTP <span className="text-danger">*</span></Form.Label>
+                                                            <Form.Control name="otp" type="text" value={pwdData.otp} onChange={handlePwdChange} required={pwdMethod === "otp"} disabled={!otpSent || isSubmittingPwd} className="py-2" placeholder="Nhập mã 6 số từ email" />
+                                                            {!otpSent && <Form.Text className="text-danger">Vui lòng bấm nút Gửi mã OTP trước!</Form.Text>}
+                                                        </Form.Group>
+                                                    </Col>
+                                                )}
+
+                                                <Col md={6}>
+                                                    <Form.Group>
+                                                        <Form.Label className="small fw-bold text-secondary">Mật khẩu mới <span className="text-danger">*</span></Form.Label>
+                                                        <Form.Control name="newPassword" type="password" value={pwdData.newPassword} onChange={handlePwdChange} required disabled={isSubmittingPwd || (pwdMethod === "otp" && !otpSent)} className="py-2" />
+                                                    </Form.Group>
+                                                </Col>
+                                                <Col md={6}>
+                                                    <Form.Group>
+                                                        <Form.Label className="small fw-bold text-secondary">Xác nhận mật khẩu mới <span className="text-danger">*</span></Form.Label>
+                                                        <Form.Control name="confirmPassword" type="password" value={pwdData.confirmPassword} onChange={handlePwdChange} required disabled={isSubmittingPwd || (pwdMethod === "otp" && !otpSent)} className="py-2" />
+                                                    </Form.Group>
+                                                </Col>
+                                            </Row>
+
+                                            <div className="d-flex justify-content-end mt-4">
+                                                <Button type="submit" variant="warning" className="fw-bold px-4 d-flex align-items-center gap-2 text-dark" disabled={isSubmittingPwd || (pwdMethod === "otp" && !otpSent)}>
+                                                    {isSubmittingPwd ? <Spinner animation="border" size="sm" /> : <IconLock size={19} />}
+                                                    {isSubmittingPwd ? "Processing..." : "Change Password"}
+                                                </Button>
                                             </div>
-                                            <div>
-                                                <h3 className="h6 fw-bold mb-1 text-dark">Notifications</h3>
-                                                <p className="small text-muted mb-0">Email and phone receive system alerts.</p>
-                                            </div>
-                                        </div>
-                                    </Col>
-                                </Row>
+                                        </Col>
+                                    </Row>
+                                </Card.Body>
                             </Card>
+                        </Form>
 
-                            {/* --- INFO ALERT --- */}
-                            <Alert variant="info" className="mx-4 mb-4 d-flex align-items-center gap-3 py-3">
-                                <IconInfoCircle size={22} className="text-primary" />
-                                <span>
-                                    Review all changes carefully before saving. Updated profile data will apply to future documents.
-                                </span>
-                            </Alert>
-                        </>
-                    )}
-                </Form>
+                    </>
+                )}
             </Container>
         </div>
     );

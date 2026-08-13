@@ -7,10 +7,13 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Repository
 public interface RoleRepository extends JpaRepository<Role, UUID> {
+
+    Optional<Role> findByRoleName(String roleName);
 
     Boolean existsByRoleCodeIgnoreCase(String roleCode);
 
@@ -41,25 +44,6 @@ public interface RoleRepository extends JpaRepository<Role, UUID> {
             WHERE userRole.role.id = :roleId
             """)
     long countAssignedUsers(@Param("roleId") UUID roleId);
-
-    @Query("""
-            SELECT account.role AS roleValue, COUNT(account) AS userCount
-            FROM Users account
-            WHERE account.role IS NOT NULL AND TRIM(account.role) <> ''
-            GROUP BY account.role
-            """)
-    List<SystemRoleUsageProjection> findSystemRoleUsage();
-
-    @Query("""
-            SELECT COUNT(account)
-            FROM Users account
-            WHERE LOWER(TRIM(account.role)) = LOWER(TRIM(:roleCode))
-               OR LOWER(TRIM(account.role)) = LOWER(TRIM(:roleName))
-            """)
-    long countUsersReferencingRole(
-            @Param("roleCode") String roleCode,
-            @Param("roleName") String roleName
-    );
 
     @Query("""
             SELECT role

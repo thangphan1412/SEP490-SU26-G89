@@ -1,62 +1,50 @@
-import React, { useMemo, useState, useEffect } from "react";
-import { Card, Col, Form, Row, Table } from "react-bootstrap";
-import {
-    IconArrowLeft,
-    IconArrowRight,
-    IconCalendar,
-    IconClock,
-    IconDots,
-    IconEye,
-    IconSearch,
-    IconSignature,
-    IconTrendingDown,
-    IconTrendingUp,
-} from "@tabler/icons-react";
+import React, { useState, useEffect } from "react";
+import { Card, Col, Form, Row, Table, Pagination, Stack, Spinner } from "react-bootstrap";
+import { IconArrowLeft, IconArrowRight, IconCalendar, IconClock, IconDots, IconEye, IconSearch, IconSignature, IconTrendingDown, IconTrendingUp } from "@tabler/icons-react";
+import contractApi from "../../services/contractService/contractApi.js";
+import dashboardApi from "../../services/dashboardService/dashboardApi.js";
 
-// --- CONSTANTS ---
 const BLUE = "#1f5eff";
 const NAVY = "#101a3e";
 const MUTED = "#687694";
 const BORDER = "#e7ebf3";
 
-const MOCK_PENDING_AGE = [
-    { label: "0 – 3 Days", value: 46, percent: "35.9%", color: "#2361ed" },
-    { label: "4 – 7 Days", value: 32, percent: "25.0%", color: "#2ab784" },
-    { label: "8 – 14 Days", value: 24, percent: "18.8%", color: "#ff9800" },
-    { label: "15 – 30 Days", value: 16, percent: "12.5%", color: "#fa4455" },
-    { label: "> 30 Days", value: 8, percent: "6.2%", color: "#63728e" }
-];
-
-const MOCK_PARTIES = [
-    { name: "Acme Corporation", value: 24 },
-    { name: "Tech Solutions Inc.", value: 18 },
-    { name: "Blue Ltd.", value: 14 },
-    { name: "Innovatech Solutions", value: 12 },
-    { name: "Global Services LLC", value: 10 }
-];
-
-const MOCK_AGREEMENTS = [
-    { id: 1, name: "Service Agreement", party: "Acme Corporation", requestedTo: "Jane Smith", reqDate: "May 20, 2025", dueDate: "May 27, 2025", pending: "4", status: "Due in 7 Days" },
-    { id: 2, name: "Software License Agreement", party: "Tech Solutions Inc.", requestedTo: "Mike Johnson", reqDate: "May 16, 2025", dueDate: "May 23, 2025", pending: "6", status: "Overdue" },
-    { id: 3, name: "NDA Agreement", party: "Blue Ltd.", requestedTo: "Sarah Lee", reqDate: "May 19, 2025", dueDate: "May 26, 2025", pending: "5", status: "Due in 3 Days" },
-    { id: 4, name: "Employment Agreement", party: "Innovatech Solutions", requestedTo: "Robert Brown", reqDate: "May 21, 2025", dueDate: "May 28, 2025", pending: "3", status: "Due in 7 Days" }
-];
-
-// --- MAIN COMPONENT ---
 function PendingSignatureAgreements() {
-    // TODO: Liên kết với API
     const [search, setSearch] = useState("");
-    const [agreements, setAgreements] = useState(MOCK_AGREEMENTS);
-    const [pendingAge, setPendingAge] = useState(MOCK_PENDING_AGE);
-    const [partyData, setPartyData] = useState(MOCK_PARTIES);
+    const [loadingStats, setLoadingStats] = useState(true);
+    const [stats, setStats] = useState(null);
 
-    // Lọc table
-    const filtered = useMemo(() => {
-        return agreements.filter((agreement) => {
-            const searchString = Object.values(agreement).join(" ").toLowerCase();
-            return searchString.includes(search.toLowerCase());
-        });
-    }, [search, agreements]);
+    // Table State
+    const [loadingTable, setLoadingTable] = useState(true);
+    const [agreements, setAgreements] = useState([]);
+    const [pagination, setPagination] = useState({ page: 0, size: 10, totalElements: 0, totalPages: 0 });
+
+    useEffect(() => {
+        dashboardApi.getPendingSignatures().then(res => {
+            setStats(res.data.data);
+            setLoadingStats(false);
+        }).catch(err => { console.error(err); setLoadingStats(false); });
+    }, []);
+
+    const fetchContracts = async (currPage = 0, currentKeyword = search, currentSize = pagination.size) => {
+        setLoadingTable(true);
+        try {
+            // Chỉ lấy hợp đồng trạng thái PENDING_SIGNATURE
+            const response = await contractApi.getAllContracts({ search: currentKeyword, status: "PENDING_SIGNATURE", page: currPage, size: currentSize, sortBy: "contractCreatedAt", sortDirection: "desc" });
+            const pageData = response.data.data;
+            setAgreements(pageData.items || []);
+            setPagination({ page: currPage, size: currentSize, totalElements: pageData.totalElements || 0, totalPages: pageData.totalPages || 0 });
+        } catch (error) { console.error(error); setAgreements([]); } finally { setLoadingTable(false); }
+    };
+
+    useEffect(() => {
+        const delay = setTimeout(() => fetchContracts(0, search, pagination.size), 500);
+        return () => clearTimeout(delay);
+    }, [search]);
+
+    if (loadingStats || !stats) {
+        return <div className="vh-100 d-flex justify-content-center align-items-center"><Spinner animation="border" variant="primary" /></div>;
+    }
 
     return (
         <div className="bg-white" style={{ color: NAVY, fontFamily: "Inter, system-ui, sans-serif" }}>
@@ -65,48 +53,31 @@ function PendingSignatureAgreements() {
                 <p className="mb-0" style={{ color: MUTED }}>Track and manage agreements waiting for signatures.</p>
             </div>
 
-            {/* Filters */}
             <div className="d-flex flex-wrap gap-3 mb-4">
-                <SelectField value="All Parties" style={{ minWidth: 252 }} />
-                <SelectField value="All Types" style={{ minWidth: 252 }} />
-                <SelectField value="Sort by: Requested Date" style={{ minWidth: 228 }} />
                 <SearchField value={search} onChange={setSearch} />
             </div>
 
-            {/* Metrics */}
             <Row className="g-3 mb-3">
-                <Col xl={3} md={6}><MetricCard label="Pending Signatures" value="128" change="6.3%" icon={IconSignature} tone="blue" /></Col>
-                <Col xl={3} md={6}><MetricCard label="Overdue" value="15" change="3.5%" direction="down" icon={IconClock} tone="red" /></Col>
-                <Col xl={3} md={6}><MetricCard label="Due in 7 Days" value="32" change="8.0%" icon={IconCalendar} tone="green" /></Col>
-                <Col xl={3} md={6}><MetricCard label="Avg. Days Pending" value="4.6" change="1.2" direction="down" icon={IconClock} tone="slate" /></Col>
+                <Col xl={3} md={6}><MetricCard label="Pending Signatures" value={stats.totalPending} icon={IconSignature} tone="blue" /></Col>
+                <Col xl={3} md={6}><MetricCard label="Overdue (>14d)" value={stats.overdue} direction="down" icon={IconClock} tone="red" /></Col>
+                <Col xl={3} md={6}><MetricCard label="Long Wait (>7d)" value={stats.dueIn7Days} icon={IconCalendar} tone="green" /></Col>
+                <Col xl={3} md={6}><MetricCard label="Avg. Days Pending" value={stats.avgDaysPending.toFixed(1)} direction="down" icon={IconClock} tone="slate" /></Col>
             </Row>
 
-            {/* Charts */}
             <Row className="g-3 mb-3">
                 <Col lg={6}>
-                    <ChartCard title="Pending by Party" description="Top parties with pending signature requests">
-                        <PartyChart data={partyData} />
+                    <ChartCard title="Pending by Project" description="Top projects with pending signature requests">
+                        <PartyChart data={stats.pendingByProject} maxVal={stats.totalPending} />
                     </ChartCard>
                 </Col>
                 <Col lg={6}>
                     <ChartCard title="Pending by Age" description="Number of agreements by pending duration">
-                        <AgeChart data={pendingAge} />
+                        <AgeChart data={stats.pendingByAge} total={stats.totalPending} />
                     </ChartCard>
                 </Col>
             </Row>
 
-            <PendingTable rows={filtered} />
-        </div>
-    );
-}
-
-// --- SUB COMPONENTS ---
-function SelectField({ value, style }) {
-    return (
-        <div className="position-relative" style={style}>
-            <Form.Select value={value} className="fw-medium ps-3" style={{ height: 42, borderColor: "#dce3ee", color: "#2d3c5d", fontSize: 13 }} readOnly>
-                <option>{value}</option>
-            </Form.Select>
+            <PendingTable rows={agreements} loading={loadingTable} pagination={pagination} fetchContracts={fetchContracts} search={search} />
         </div>
     );
 }
@@ -115,37 +86,24 @@ function SearchField({ value, onChange }) {
     return (
         <div className="position-relative flex-grow-1" style={{ minWidth: 260 }}>
             <IconSearch className="position-absolute top-50 translate-middle-y" style={{ left: 15, color: "#4c5b78", zIndex: 1 }} size={19} />
-            <Form.Control value={value} onChange={(e) => onChange(e.target.value)} placeholder="Search agreements or parties..." className="ps-5" style={{ height: 42, borderColor: "#dce3ee", fontSize: 13 }} />
+            <Form.Control value={value} onChange={(e) => onChange(e.target.value)} placeholder="Search pending agreements..." className="ps-5" style={{ height: 42, borderColor: "#dce3ee", fontSize: 13 }} />
         </div>
     );
 }
 
-function MetricCard({ label, value, change, direction = "up", icon: Icon, tone }) {
-    const tones = {
-        blue: ["#eaf0ff", BLUE],
-        green: ["#e5f8ef", "#08b875"],
-        red: ["#ffebed", "#f3273b"],
-        slate: ["#edf1fb", "#42527b"]
-    };
+function MetricCard({ label, value, direction = "up", icon: Icon, tone }) {
+    const tones = { blue: ["#eaf0ff", BLUE], green: ["#e5f8ef", "#08b875"], red: ["#ffebed", "#f3273b"], slate: ["#edf1fb", "#42527b"] };
     const [background, color] = tones[tone];
-    const ChangeIcon = direction === "down" ? IconTrendingDown : IconTrendingUp;
-
     return (
         <Card className="h-100 border shadow-sm" style={{ borderColor: BORDER, borderRadius: 10 }}>
             <Card.Body className="p-4">
                 <div className="d-flex justify-content-between align-items-start mb-2">
                     <span style={{ color: "#52617e" }}>{label}</span>
-                    <span className="rounded-3 d-flex justify-content-center align-items-center" style={{ width: 54, height: 54, background, color }}>
-                        <Icon size={27} />
-                    </span>
+                    <span className="rounded-3 d-flex justify-content-center align-items-center" style={{ width: 54, height: 54, background, color }}><Icon size={27} /></span>
                 </div>
                 <div className="d-flex align-items-center gap-3">
                     <span className="fw-bold" style={{ fontSize: 27 }}>{value}</span>
-                    <span className="fw-semibold d-flex align-items-center gap-1" style={{ color: direction === "down" ? "#f3273b" : "#08ac68" }}>
-                        <ChangeIcon size={17} />{change}
-                    </span>
                 </div>
-                <div className="mt-2" style={{ color: MUTED, fontSize: 13 }}>vs Apr 1 – Apr 30, 2025</div>
             </Card.Body>
         </Card>
     );
@@ -163,49 +121,45 @@ function ChartCard({ title, description, children }) {
     );
 }
 
-function PartyChart({ data }) {
+function PartyChart({ data, maxVal }) {
+    if (!data || data.length === 0) return <div className="text-center text-muted mt-5 fst-italic">No data</div>;
     return (
         <div className="pt-2 px-2">
-            {data.map((row, index) => (
+            {data.slice(0, 5).map((row, index) => (
                 <div className="d-flex align-items-center gap-3 mb-3" key={index}>
-                    <span style={{ width: 150, color: "#3d4a68", fontSize: 13 }}>{row.name}</span>
+                    <span className="text-truncate" style={{ width: 150, color: "#3d4a68", fontSize: 13 }}>{row.name}</span>
                     <div className="flex-grow-1" style={{ height: 10, background: "#edf0f6", borderRadius: 4 }}>
-                        <div className="h-100 rounded" style={{ width: `${(row.value / 24) * 100}%`, background: BLUE }} />
+                        <div className="h-100 rounded" style={{ width: `${maxVal===0?0:(row.value / maxVal) * 100}%`, background: BLUE }} />
                     </div>
                     <span className="fw-medium" style={{ width: 24, fontSize: 13 }}>{row.value}</span>
                 </div>
             ))}
-            <div className="d-flex justify-content-between ps-5 ms-5 mt-2" style={{ color: MUTED, fontSize: 12 }}>
-                <span>0</span><span>10</span><span>20</span><span>30</span>
-            </div>
         </div>
     );
 }
 
-function AgeChart({ data }) {
-    const gradient = useMemo(() => {
-        const total = data.reduce((sum, item) => sum + item.value, 0);
-        return `conic-gradient(${data.map((item, index) => {
-            const start = data.slice(0, index).reduce((sum, previous) => sum + (previous.value / total) * 100, 0);
+function AgeChart({ data, total }) {
+    const gradient = React.useMemo(() => {
+        if (!data || total === 0) return "conic-gradient(#e7ebf3 100%)";
+        let start = 0;
+        return `conic-gradient(${data.map(item => {
             const end = start + (item.value / total) * 100;
-            return `${item.color} ${start.toFixed(2)}% ${(end - .7).toFixed(2)}%`;
+            const res = `${item.color} ${start.toFixed(2)}% ${(end - 0.5).toFixed(2)}%`;
+            start = end; return res;
         }).join(", ")})`;
-    }, [data]);
+    }, [data, total]);
 
     return (
         <div className="d-flex flex-column flex-sm-row align-items-center justify-content-center gap-4 mt-3">
             <div className="rounded-circle position-relative flex-shrink-0" style={{ width: 178, height: 178, background: gradient }}>
                 <div className="rounded-circle bg-white position-absolute top-50 start-50 translate-middle d-flex flex-column align-items-center justify-content-center" style={{ width: 106, height: 106 }}>
-                    <strong style={{ fontSize: 23 }}>128</strong>
-                    <small style={{ color: MUTED }}>Total</small>
+                    <strong style={{ fontSize: 23 }}>{total}</strong><small style={{ color: MUTED }}>Total</small>
                 </div>
             </div>
             <div className="w-100" style={{ maxWidth: 260 }}>
-                {data.map((item) => (
+                {data?.map(item => (
                     <div key={item.label} className="d-flex justify-content-between mb-3 gap-3" style={{ color: "#3f4e6b", fontSize: 13 }}>
-                        <span className="d-flex align-items-center gap-2">
-                            <i className="rounded-circle" style={{ width: 9, height: 9, background: item.color }} />{item.label}
-                        </span>
+                        <span className="d-flex align-items-center gap-2"><i className="rounded-circle" style={{ width: 9, height: 9, background: item.color }} />{item.label}</span>
                         <span className="fw-semibold">{item.value} ({item.percent})</span>
                     </div>
                 ))}
@@ -214,64 +168,59 @@ function AgeChart({ data }) {
     );
 }
 
-function Pill({ value }) {
-    return (
-        <span className="rounded-2 fw-semibold text-nowrap" style={{ padding: "6px 10px", fontSize: 12, background: value === "Overdue" ? "#ffedef" : "#fff4e8", color: value === "Overdue" ? "#f12f43" : "#ff8500" }}>
-            {value}
-        </span>
-    );
-}
-
-function Actions() {
-    return (
-        <div className="d-flex gap-2">
-            <button type="button" className="btn btn-sm bg-white border" aria-label="View agreement" style={{ borderColor: "#dce3ee" }}><IconEye size={17} /></button>
-            <button type="button" className="btn btn-sm bg-white border" aria-label="More actions" style={{ borderColor: "#dce3ee" }}><IconDots size={17} /></button>
-        </div>
-    );
-}
-
-function PendingTable({ rows }) {
-    const headers = ["Agreement Name", "Party", "Requested To", "Requested Date", "Due Date", "Days Pending", "Status", "Actions"];
-
+function PendingTable({ rows, loading, pagination, fetchContracts, search }) {
+    const headers = ["Agreement No", "Title", "Project", "Created Date", "Creator", "Status", "Actions"];
     return (
         <Card className="border shadow-sm overflow-hidden" style={{ borderColor: BORDER, borderRadius: 10 }}>
             <Card.Body className="p-0">
                 <div className="p-3 px-4 border-bottom" style={{ borderColor: BORDER }}>
-                    <h2 className="h6 fw-bold mb-0">Pending Agreements <span style={{ color: MUTED }}>(128)</span></h2>
+                    <h2 className="h6 fw-bold mb-0">Pending Agreements <span style={{ color: MUTED }}>({pagination.totalElements})</span></h2>
                 </div>
                 <div className="table-responsive">
                     <Table className="align-middle mb-0" style={{ minWidth: 1050, fontSize: 13 }}>
                         <thead style={{ background: "#fafbfe", color: "#3d4a67" }}>
-                        <tr>
-                            {headers.map((header) => <th key={header} className="fw-semibold text-nowrap px-4 py-3">{header}</th>)}
-                        </tr>
+                        <tr>{headers.map(h => <th key={h} className="fw-semibold text-nowrap px-4 py-3">{h}</th>)}</tr>
                         </thead>
                         <tbody>
-                        {rows.map((row) => (
-                            <tr key={row.id}>
-                                <td className="px-4 py-3 text-nowrap fw-semibold">{row.name}</td>
-                                <td className="px-4 py-3 text-nowrap">{row.party}</td>
-                                <td className="px-4 py-3 text-nowrap">{row.requestedTo}</td>
-                                <td className="px-4 py-3 text-nowrap">{row.reqDate}</td>
-                                <td className="px-4 py-3 text-nowrap">{row.dueDate}</td>
-                                <td className="px-4 py-3 text-nowrap">{row.pending}</td>
-                                <td className="px-4 py-3 text-nowrap"><Pill value={row.status} /></td>
-                                <td className="px-4 py-2"><Actions /></td>
-                            </tr>
-                        ))}
+                        {loading ? (
+                            <tr><td colSpan="7" className="text-center py-5 text-muted"><Spinner animation="border" size="sm"/> Loading...</td></tr>
+                        ) : rows.length === 0 ? (
+                            <tr><td colSpan="7" className="text-center py-5 text-muted fst-italic">No pending agreements.</td></tr>
+                        ) : (
+                            rows.map(row => (
+                                <tr key={row.id}>
+                                    <td className="px-4 py-3 fw-semibold text-primary">{row.contractNumber || 'N/A'}</td>
+                                    <td className="px-4 py-3 fw-semibold">{row.contractTitle}</td>
+                                    <td className="px-4 py-3">{row.projectName || 'General'}</td>
+                                    <td className="px-4 py-3">{row.contractCreatedAt ? new Date(row.contractCreatedAt).toLocaleDateString() : 'N/A'}</td>
+                                    <td className="px-4 py-3">{row.contractCreatedBy || 'N/A'}</td>
+                                    <td className="px-4 py-3"><span className="rounded-2 fw-semibold px-2 py-1" style={{ background: "#fff4e8", color: "#ff8500", fontSize: 12 }}>Pending Signature</span></td>
+                                    <td className="px-4 py-2">
+                                        <div className="d-flex gap-2">
+                                            <button className="btn btn-sm bg-white border"><IconEye size={17}/></button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            ))
+                        )}
                         </tbody>
                     </Table>
                 </div>
-                <div className="d-flex flex-wrap gap-3 justify-content-between align-items-center px-4 py-3 border-top" style={{ color: MUTED, borderColor: BORDER, fontSize: 13 }}>
-                    <span>Showing {rows.length ? 1 : 0} to {rows.length} of 128 results</span>
+                <Stack direction="horizontal" className="justify-content-between align-items-center px-4 py-3 border-top text-muted" style={{ fontSize: 13 }}>
+                    <span>Showing {rows.length > 0 ? (pagination.page * pagination.size) + 1 : 0} to {(pagination.page * pagination.size) + rows.length} of {pagination.totalElements} results</span>
                     <div className="d-flex align-items-center gap-2">
-                        <IconArrowLeft size={16} />
-                        <button type="button" className="btn btn-sm border" style={{ width: 36, height: 36, borderColor: "#8ba9ff", color: BLUE }}>1</button>
-                        {["2", "3", "4", "5", "…", "32"].map((page) => <button type="button" key={page} className="btn btn-sm border-0">{page}</button>)}
-                        <IconArrowRight size={16} />
+                        <Pagination className="mb-0">
+                            <Pagination.Prev disabled={pagination.page === 0 || loading} onClick={() => fetchContracts(pagination.page - 1, search, pagination.size)} />
+                            <Pagination.Item active>{pagination.page + 1}</Pagination.Item>
+                            <Pagination.Next disabled={(pagination.page + 1) >= pagination.totalPages || loading} onClick={() => fetchContracts(pagination.page + 1, search, pagination.size)} />
+                        </Pagination>
+                        <Form.Select size="sm" style={{ width: "90px" }} value={pagination.size} onChange={(e) => fetchContracts(0, search, parseInt(e.target.value, 10))}>
+                            <option value={10}>10 / page</option>
+                            <option value={20}>20 / page</option>
+                            <option value={50}>50 / page</option>
+                        </Form.Select>
                     </div>
-                </div>
+                </Stack>
             </Card.Body>
         </Card>
     );

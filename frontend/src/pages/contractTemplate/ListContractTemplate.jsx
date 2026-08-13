@@ -16,12 +16,36 @@ import {
     getApiErrorMessage,
     unwrapApiResponse,
 } from "../ContractManagement/contractUtils.js";
+import { splitContractPages } from "../ContractManagement/contractPageUtils.js";
 import TemplatePositionDesigner from "./TemplatePositionDesigner.jsx";
 import {
     cloneVersionPositions,
     toPositionRequest,
 } from "./templatePositionUtils.js";
 import "../../assets/styles/css/layoutStyles/ContractWorkspace.css";
+
+const DEFAULT_TEMPLATE_CONTENT = `ĐIỀU 1. NỘI DUNG VÀ PHẠM VI HỢP ĐỒNG
+Hai bên thống nhất thực hiện {{contract_title}} thuộc dự án {{project_name}} theo nội dung, phạm vi và yêu cầu được quy định trong hợp đồng này.
+
+ĐIỀU 2. THỜI HẠN VÀ HIỆU LỰC
+Hợp đồng có hiệu lực từ ngày {{effective_date}} đến hết ngày {{expiration_date}}.
+Mọi thay đổi về thời hạn phải được các bên thống nhất bằng văn bản.
+
+ĐIỀU 3. GIÁ TRỊ VÀ THANH TOÁN
+Giá trị hợp đồng: {{contract_value}}.
+Thời hạn, phương thức và tiến độ thanh toán do các bên thỏa thuận và thực hiện theo hợp đồng.
+
+ĐIỀU 4. QUYỀN VÀ NGHĨA VỤ CỦA CÁC BÊN
+Các bên có trách nhiệm cung cấp đầy đủ thông tin, phối hợp thực hiện công việc và hoàn thành đúng các nghĩa vụ đã thỏa thuận.
+
+ĐIỀU 5. BẢO MẬT THÔNG TIN
+Các bên không được tiết lộ thông tin của hợp đồng cho bên thứ ba khi chưa có sự đồng ý của bên còn lại, trừ trường hợp pháp luật có quy định khác.
+
+ĐIỀU 6. GIẢI QUYẾT TRANH CHẤP
+Mọi tranh chấp phát sinh được ưu tiên giải quyết thông qua thương lượng. Trường hợp không thể thương lượng, tranh chấp được giải quyết theo quy định của pháp luật.
+
+ĐIỀU 7. ĐIỀU KHOẢN CHUNG
+Các bên cam kết thực hiện đúng các nội dung đã thỏa thuận. Hợp đồng là căn cứ ràng buộc quyền và nghĩa vụ của các bên trong suốt thời gian có hiệu lực.`;
 
 function createEmptyTemplateForm() {
     return {
@@ -51,15 +75,30 @@ function createEmptyVersionForm(sourceVersion = null) {
         && sourceVersion.positions.length > 0
         ? sourceVersion.positions
         : savedLayout.fields;
+    const sourceContent = sourceVersion?.templateContent;
 
     return {
         versionName: "",
-        templateContent: sourceVersion?.templateContent || "",
+        templateContent: sourceContent?.trim()
+            ? sourceContent
+            : DEFAULT_TEMPLATE_CONTENT,
         changeNote: "",
         createdBy: localStorage.getItem("fullName") || "",
         pageCount: Number(sourceVersion?.pageCount || savedLayout.pageCount) || 1,
         positions: cloneVersionPositions(sourcePositions),
     };
+}
+
+function findLatestVersion(template) {
+    if (!Array.isArray(template?.versions) || template.versions.length === 0) {
+        return null;
+    }
+
+    return [...template.versions].sort(
+        (left, right) =>
+            Number(right?.versionNumber || 0)
+            - Number(left?.versionNumber || 0)
+    )[0];
 }
 
 function ListContractTemplate() {
@@ -184,9 +223,7 @@ function ListContractTemplate() {
     };
 
     const openVersionModal = (template) => {
-        const latestVersion = Array.isArray(template?.versions)
-            ? template.versions[0]
-            : null;
+        const latestVersion = findLatestVersion(template);
         setModalMode(null);
         setSelectedTemplate(template);
         setVersionForm(createEmptyVersionForm(latestVersion));
@@ -225,6 +262,13 @@ function ListContractTemplate() {
             ...current,
             pageCount,
             positions,
+        }));
+    };
+
+    const handleVersionContentChange = (templateContent) => {
+        setVersionForm((current) => ({
+            ...current,
+            templateContent,
         }));
     };
 
@@ -302,7 +346,26 @@ function ListContractTemplate() {
         );
         if (invalidPosition) {
             setModalError(
-                "Every layout field needs a label and a lowercase attribute key."
+                "Every custom field needs a label and a lowercase attribute key."
+            );
+            return;
+        }
+
+        const definitionsByKey = new Map();
+        const conflictingPosition = versionForm.positions.find((position) => {
+            const attributeKey = position.attributeKey.trim().toLowerCase();
+            const definition = [
+                position.fieldType,
+                position.valueSource,
+                position.signerRole || "",
+            ].join("|");
+            const savedDefinition = definitionsByKey.get(attributeKey);
+            definitionsByKey.set(attributeKey, definition);
+            return savedDefinition && savedDefinition !== definition;
+        });
+        if (conflictingPosition) {
+            setModalError(
+                "A field reused on multiple pages must keep the same type and value source."
             );
             return;
         }
@@ -577,6 +640,7 @@ function ListContractTemplate() {
                 submitting={submitting}
                 onChange={handleVersionChange}
                 onLayoutChange={handleLayoutChange}
+                onContentChange={handleVersionContentChange}
                 onClose={closeVersionModal}
                 onSubmit={handleVersionSubmit}
             />
@@ -716,20 +780,24 @@ function TemplateModal({
                                             </span>
                                             <span>
                                                 {version.positions?.length || 0}{" "}
-                                                positioned field(s)
+                                                dynamic field(s)
                                             </span>
-                                            <span>Normalized coordinates</span>
+                                            <span>Values filled automatically</span>
                                         </div>
-                                        <pre>
-                                            {version.templateContent ||
-                                                "No content."}
-                                        </pre>
-                                        {version.layoutJson && (
-                                            <details className="contract-layout-preview">
-                                                <summary>Layout data</summary>
-                                                <pre>{version.layoutJson}</pre>
-                                            </details>
-                                        )}
+                                        <div className="contract-template-page-previews">
+                                            {splitContractPages(
+                                                version.templateContent,
+                                                version.pageCount
+                                            ).map((pageContent, index) => (
+                                                <section key={index}>
+                                                    <span>Page {index + 1}</span>
+                                                    <pre>
+                                                        {pageContent ||
+                                                            "No content on this page."}
+                                                    </pre>
+                                                </section>
+                                            ))}
+                                        </div>
                                     </details>
                                 ))
                             ) : (
@@ -868,6 +936,7 @@ function VersionModal({
     submitting,
     onChange,
     onLayoutChange,
+    onContentChange,
     onClose,
     onSubmit,
 }) {
@@ -889,8 +958,9 @@ function VersionModal({
                 <Modal.Body>
                     <Alert variant="info">
                         This creates V{(template?.latestVersion || 0) + 1}. Existing
-                        versions remain unchanged. The latest version content and
-                        positions are copied as the starting point.
+                        versions remain unchanged. Start from the latest content,
+                        insert dynamic fields, and check the example preview before
+                        saving.
                     </Alert>
                     {error && <Alert variant="danger">{error}</Alert>}
                     <div className="contract-form-grid">
@@ -926,27 +996,12 @@ function VersionModal({
                             />
                         </div>
                         <div className="contract-form-full">
-                            <label
-                                htmlFor="templateContent"
-                                className="contract-form-label"
-                            >
-                                Template Content
-                            </label>
-                            <textarea
-                                id="templateContent"
-                                name="templateContent"
-                                className="form-control contract-content-editor"
-                                value={form.templateContent}
-                                onChange={onChange}
-                                required
-                            />
-                        </div>
-                        <div className="contract-form-full">
                             <TemplatePositionDesigner
                                 content={form.templateContent}
                                 pageCount={form.pageCount}
                                 positions={form.positions}
                                 onChange={onLayoutChange}
+                                onContentChange={onContentChange}
                             />
                         </div>
                     </div>

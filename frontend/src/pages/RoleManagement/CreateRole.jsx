@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Alert, Button, Form, Spinner } from "react-bootstrap";
 import { IconArrowLeft, IconDeviceFloppy } from "@tabler/icons-react";
 import { useNavigate } from "react-router-dom";
-import roleApi from "../../services/RoleService/roleApi.js";
+import roleApi from "../../services/roleService/roleApi.js";
 import "../../assets/styles/css/roleStyles/Roles.css";
 
 function CreateRole() {
@@ -75,7 +75,7 @@ function CreateRole() {
                     <header className="role-panel-header">
                         <div>
                             <h1>Create Role</h1>
-                            <p>Create a custom or project role. System roles are sourced from users and cannot be created here.</p>
+                            <p>Add a new role to the shared role catalog.</p>
                         </div>
                         <div className="role-header-actions">
                             <Button className="role-secondary-button" onClick={() => navigate("/role-management/list")}>
@@ -90,7 +90,7 @@ function CreateRole() {
                         <div className="role-form-section">
                             <div className="role-form-section-heading">
                                 <h2>Role information</h2>
-                                    <p>Use a stable custom code and a clear name for project assignments.</p>
+                                <p>Use a stable code for the system and a clear name for users.</p>
                             </div>
 
                             <div className="role-form-grid">

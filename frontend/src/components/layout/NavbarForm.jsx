@@ -4,6 +4,7 @@ import "../../assets/styles/css/layoutStyles/Navbar.css"
 
 function NavbarForm() {
     const location = useLocation()
+    const currentUserRole = localStorage.getItem("role") || ""; // Lấy role hiện tại
 
     const activeSection = navConfig.find((section) =>
         section.matchPaths.some((prefix) => location.pathname.startsWith(prefix))
@@ -13,7 +14,10 @@ function NavbarForm() {
 
     return (
         <div className="sidebar-container">
-            {activeSection.children.map((item) => (
+            {activeSection.children
+                // Lọc những trang được phép vào theo Role (nếu có config allowedRoles)
+                .filter(item => !item.allowedRoles || item.allowedRoles.includes(currentUserRole))
+                .map((item) => (
                 <NavLink
                     key={item.path}
                     to={item.path}

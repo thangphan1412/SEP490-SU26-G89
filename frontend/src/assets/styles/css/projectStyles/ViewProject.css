@@ -181,7 +181,7 @@
 }
 
 .view-project-member-table.table {
-    min-width: 1060px;
+    min-width: 900px;
 }
 
 .view-project-table.table > :not(caption) > * > * {
@@ -214,6 +214,11 @@
 
 .view-project-phase-row {
     cursor: pointer;
+}
+
+.view-project-phase-row--locked {
+    cursor: not-allowed;
+    opacity: 0.65;
 }
 
 .view-project-phase-row:focus {

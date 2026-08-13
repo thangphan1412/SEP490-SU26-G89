@@ -5,6 +5,7 @@ import java.util.UUID;
 public record PermissionProjectResponse(
         UUID id,
         String projectCode,
-        String projectName
+        String projectName,
+        boolean canManage
 ) {
 }

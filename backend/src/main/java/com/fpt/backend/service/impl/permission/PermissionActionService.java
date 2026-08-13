@@ -1,0 +1,222 @@
+package com.fpt.backend.service.impl.permission;
+
+import com.fpt.backend.dto.response.permission.PermissionActionResponse;
+import com.fpt.backend.entity.PermissionAction;
+import com.fpt.backend.entity.Permissions;
+import com.fpt.backend.enums.WorkScope;
+import com.fpt.backend.exception.BadHttpException;
+import com.fpt.backend.repository.permission.PermissionActionRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
+
+@Service
+@RequiredArgsConstructor
+@Transactional(readOnly = true)
+public class PermissionActionService {
+    private final PermissionActionRepository permissionActionRepository;
+
+    public void configurePermission(
+            Permissions permission,
+            List<String> allowedActionCodes,
+            String workScopeValue) {
+        if (permission == null) {
+            throw new BadHttpException("Permission is required");
+        }
+
+        WorkScope workScope = parseWorkScope(workScopeValue);
+        Set<String> requestedCodes = normalizeActionCodes(
+                allowedActionCodes
+        );
+        List<PermissionAction> availableActions =
+                findAllActionEntities();
+        Map<String, PermissionAction> availableActionByCode =
+                new LinkedHashMap<>();
+
+        for (PermissionAction action : availableActions) {
+            availableActionByCode.put(
+                    normalize(action.getActionCode()),
+                    action
+            );
+        }
+
+        List<String> unsupportedCodes = new ArrayList<>();
+
+        for (String requestedCode : requestedCodes) {
+            if (!availableActionByCode.containsKey(requestedCode)) {
+                unsupportedCodes.add(requestedCode);
+            }
+        }
+
+        if (!unsupportedCodes.isEmpty()) {
+            throw new BadHttpException(
+                    "Unsupported permission actions: "
+                            + String.join(", ", unsupportedCodes)
+            );
+        }
+
+        Set<PermissionAction> selectedActions = new LinkedHashSet<>();
+
+        for (PermissionAction action : availableActions) {
+            if (requestedCodes.contains(normalize(action.getActionCode()))) {
+                selectedActions.add(action);
+            }
+        }
+
+        permission.setActions(selectedActions);
+        permission.setWorkScope(workScope);
+    }
+
+    public void configureFullAccess(Permissions permission) {
+        if (permission == null) {
+            throw new BadHttpException("Permission is required");
+        }
+
+        List<PermissionAction> availableActions =
+                findAllActionEntities();
+
+        if (availableActions.isEmpty()) {
+            throw new BadHttpException(
+                    "The permission action catalog is empty"
+            );
+        }
+
+        permission.setActions(new LinkedHashSet<>(availableActions));
+        permission.setWorkScope(WorkScope.FULL);
+    }
+
+    public List<String> getAllowedActionCodes(Permissions permission) {
+        List<String> actionCodes = new ArrayList<>();
+
+        for (PermissionAction action : getActions(permission)) {
+            actionCodes.add(action.getActionCode());
+        }
+
+        return actionCodes;
+    }
+
+    public List<PermissionActionResponse> getActionDetails(
+            Permissions permission) {
+        List<PermissionActionResponse> responses = new ArrayList<>();
+
+        for (PermissionAction action : getActions(permission)) {
+            responses.add(toResponse(action));
+        }
+
+        return responses;
+    }
+
+    public String getWorkScope(Permissions permission) {
+        if (permission == null || permission.getWorkScope() == null) {
+            return WorkScope.FULL.name();
+        }
+
+        return permission.getWorkScope().name();
+    }
+
+    public List<PermissionActionResponse> getAvailableActions() {
+        List<PermissionActionResponse> responses = new ArrayList<>();
+
+        for (PermissionAction action : findAllActionEntities()) {
+            responses.add(toResponse(action));
+        }
+
+        return responses;
+    }
+
+    private List<PermissionAction> findAllActionEntities() {
+        return permissionActionRepository
+                .findAllByOrderByDisplayOrderAscActionCodeAsc();
+    }
+
+    private List<PermissionAction> getActions(Permissions permission) {
+        if (permission == null || permission.getActions() == null) {
+            return List.of();
+        }
+
+        return permission.getActions().stream()
+                .sorted((firstAction, secondAction) -> {
+                    int orderComparison = Integer.compare(
+                            getDisplayOrder(firstAction),
+                            getDisplayOrder(secondAction)
+                    );
+
+                    if (orderComparison != 0) {
+                        return orderComparison;
+                    }
+
+                    return normalize(firstAction.getActionCode())
+                            .compareTo(normalize(
+                                    secondAction.getActionCode()
+                            ));
+                })
+                .toList();
+    }
+
+    private int getDisplayOrder(PermissionAction action) {
+        if (action == null || action.getDisplayOrder() == null) {
+            return Integer.MAX_VALUE;
+        }
+
+        return action.getDisplayOrder();
+    }
+
+    private WorkScope parseWorkScope(String value) {
+        String normalizedValue = normalize(value);
+
+        try {
+            return WorkScope.valueOf(normalizedValue);
+        } catch (IllegalArgumentException exception) {
+            throw new BadHttpException(
+                    "Work scope must be OWN or FULL"
+            );
+        }
+    }
+
+    private Set<String> normalizeActionCodes(List<String> actionCodes) {
+        Set<String> normalizedCodes = new LinkedHashSet<>();
+
+        if (actionCodes == null) {
+            return normalizedCodes;
+        }
+
+        for (String actionCode : actionCodes) {
+            String normalizedCode = normalize(actionCode);
+
+            if (normalizedCode.isBlank()) {
+                throw new BadHttpException(
+                        "Permission action code must not be blank"
+                );
+            }
+
+            normalizedCodes.add(normalizedCode);
+        }
+
+        return normalizedCodes;
+    }
+
+    private PermissionActionResponse toResponse(PermissionAction action) {
+        return new PermissionActionResponse(
+                action.getId(),
+                action.getActionCode(),
+                action.getActionName(),
+                action.getResourceCode(),
+                action.getActionDescription(),
+                action.getDisplayOrder()
+        );
+    }
+
+    private String normalize(String value) {
+        return value == null
+                ? ""
+                : value.trim().toUpperCase(Locale.ROOT);
+    }
+}

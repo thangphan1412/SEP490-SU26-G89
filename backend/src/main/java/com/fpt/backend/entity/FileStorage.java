@@ -14,26 +14,27 @@ import java.util.List;
 @Builder
 @Table(name = "file_storage")
 public class FileStorage extends BaseEntity{
-    @Column(name = "fileStorage_original_name")
+    @Column(name = "original_name", nullable = false)
     private String originalName;
-    @Column(name = "fileStorage_stored_name")
-    private String storedName;
-    @Column(name = "fileStorage_mime_type")
+
+    @Column(name = "file_name", nullable = false, unique = true)
+    private String fileName;
+
+    @Column(name = "file_path", nullable = false)
+    private String filePath;
+
+    @Column(name = "mime_type", nullable = false)
     private String mimeType;
-    @Column(name = "fileStorage_extension")
-    private String extension;
-    @Column(name = "fileStorage_storage_provider")
-    private String storageProvider;
-    @Column(name = "fileStorage_storage_key")
-    private String storageKey;
-    @Column(name = "fileStorage_url")
-    private String url;
-    @Column(name = "fileStorage_upload_by")
-    private String uploadBy;
-    @Column(name = "fileStorage_upload_at")
+
+    @Column(name = "file_size")
+    private Long fileSize;
+
+    @Column(name = "upload_at", nullable = false)
     private LocalDateTime uploadAt;
-    @Column(name = "fileStorage_is_deleted")
-    private Boolean isDeleted;
+
+    @Column(name = "is_deleted")
+    @Builder.Default
+    private Boolean isDeleted = false;
 
     /// Relation
     //user

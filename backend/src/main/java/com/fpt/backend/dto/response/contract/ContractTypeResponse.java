@@ -15,6 +15,7 @@ public record ContractTypeResponse(
         LocalDateTime createdAt,
         LocalDateTime updatedAt,
         long templateCount,
-        long contractCount
+        long contractCount,
+        ContractWorkflowDefinitionResponse activeWorkflow
 ) {
 }

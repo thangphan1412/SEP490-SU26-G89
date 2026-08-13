@@ -1,31 +1,77 @@
-import { IconDots } from "@tabler/icons-react"
-import StatusBadge from "./StatusBadge.jsx";
-
+import { Eye, Pencil } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 function SignatureRow({ signature }) {
-    const { name, type, usedIn, status, updatedAt, avatarText, avatarColor } = signature
+
+    const navigate = useNavigate();
+
+    const handleDetail = () => {
+        navigate(
+            `/signatures/${signature.id}`
+        );
+    };
+
+    const handleEdit = () => {
+        navigate(
+            `/signatures/${signature.id}/edit`
+        );
+    };
 
     return (
-        <tr className="signature-row">
+        <tr>
+
             <td>
-                <div className="signature-name-cell">
-                    <div className="signature-avatar" style={{ color: avatarColor }}>
-                        {avatarText}
-                    </div>
-                    <span className="signature-name-text">{name}</span>
-                </div>
+                <strong>
+                    {signature.signatureName}
+                </strong>
             </td>
-            <td className="text-muted">{type}</td>
-            <td className="text-muted">{usedIn}</td>
-            <td><StatusBadge status={status} /></td>
-            <td className="text-muted">{updatedAt}</td>
+
+            <td>
+                {signature.type}
+            </td>
+
+            <td>
+                <span
+                    className={
+                        signature.status === "ACTIVE"
+                            ? "badge bg-success"
+                            : "badge bg-secondary"
+                    }
+                >
+                    {signature.status}
+                </span>
+            </td>
+
+            <td>
+                {signature.default ? "Yes" : "No"}
+            </td>
+
+            <td>
+                {signature.uploadAt || "-"}
+            </td>
+
             <td className="text-end">
-                <button className="row-action-btn">
-                    <IconDots size={18} />
+
+                <button
+                    type="button"
+                    className="btn btn-sm btn-light me-1"
+                    onClick={handleDetail}
+                >
+                    <Eye size={14} />
                 </button>
+
+                <button
+                    type="button"
+                    className="btn btn-sm btn-light"
+                    onClick={handleEdit}
+                >
+                    <Pencil size={14} />
+                </button>
+
             </td>
+
         </tr>
-    )
+    );
 }
 
-export default SignatureRow
+export default SignatureRow;

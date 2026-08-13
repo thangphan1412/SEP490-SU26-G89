@@ -6,19 +6,6 @@ export const PROJECT_STATUS_OPTIONS = [
   "Cancelled",
 ];
 
-export const CREATE_PROJECT_STATUS_OPTIONS = [
-  "Planning",
-  "Active",
-  "On Hold",
-];
-
-export const PHASE_STATUS_OPTIONS = [
-  "Planning",
-  "In Progress",
-  "On Hold",
-  "Completed",
-];
-
 export function createClientId() {
   return "phase-" + Date.now() + "-" + Math.random().toString(16).slice(2);
 }
@@ -37,7 +24,6 @@ export function getEmployeeName(employee) {
 export function getEmployeeDescription(employee) {
   const values = [
     employee.email,
-    getEmployeeRoleNames(employee).join(", ") || "No assigned role",
     employee.status,
   ];
 
@@ -50,43 +36,10 @@ export function getEmployeeSearchText(employee) {
     employee.lastName,
     employee.userName,
     employee.email,
-    ...getEmployeeRoleNames(employee),
     employee.status,
   ];
 
   return values.filter(Boolean).join(" ").toLowerCase();
-}
-
-export function getEmployeeRoleNames(employee) {
-  if (!Array.isArray(employee.roles)) {
-    return [];
-  }
-
-  const roleNames = [];
-
-  for (const role of employee.roles) {
-    const roleName = role?.roleName?.trim();
-
-    if (roleName) {
-      roleNames.push(roleName);
-    }
-  }
-
-  return roleNames;
-}
-
-export function employeeHasRole(employee, roleId) {
-  if (!Array.isArray(employee.roles)) {
-    return false;
-  }
-
-  for (const role of employee.roles) {
-    if (String(role.id) === String(roleId)) {
-      return true;
-    }
-  }
-
-  return false;
 }
 
 export function getFilterOptions(employees, fieldName) {
@@ -115,11 +68,18 @@ export function calculatePhaseStartDatesForDisplay(
   const updatedPhases = [];
 
   for (const phase of phases) {
-    updatedPhases.push({
+    const updatedPhase = {
       ...phase,
-      startDate: expectedStartDate,
-    });
-    expectedStartDate = phase.endDate ? addOneDay(phase.endDate) : "";
+    };
+
+    updatedPhase.startDate = expectedStartDate;
+    updatedPhases.push(updatedPhase);
+
+    if (phase.endDate) {
+      expectedStartDate = addOneDay(phase.endDate);
+    } else {
+      expectedStartDate = "";
+    }
   }
 
   return updatedPhases;

@@ -1,12 +1,13 @@
 package com.fpt.backend.controller.permissionController;
 
+import com.fpt.backend.constant.ApiConstant;
 import com.fpt.backend.dto.request.permission.PermissionListRequest;
 import com.fpt.backend.dto.request.permission.PermissionRequest;
 import com.fpt.backend.dto.response.permission.PermissionActionResponse;
 import com.fpt.backend.dto.response.permission.PermissionDetailResponse;
 import com.fpt.backend.dto.response.permission.PermissionListResponse;
 import com.fpt.backend.dto.response.permission.PermissionProjectResponse;
-import com.fpt.backend.service.interfaces.permission.PermissionService;
+import com.fpt.backend.service.interfaces.permission.IPermissionService;
 import com.fpt.backend.util.BaseResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.CacheControl;
@@ -26,12 +27,12 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/permissions")
+@RequestMapping(ApiConstant.Permission.PERMISSIONS)
 @RequiredArgsConstructor
 public class PermissionController {
-    private final PermissionService permissionService;
+    private final IPermissionService permissionService;
 
-    @GetMapping({"", "/list"})
+    @GetMapping(ApiConstant.Permission.LIST)
     public ResponseEntity<BaseResponse<PermissionListResponse>> getPermissions(
             @RequestParam(defaultValue = "") String search,
             @RequestParam(required = false) UUID projectId,
@@ -55,14 +56,14 @@ public class PermissionController {
                 .body(new BaseResponse<>(permissions));
     }
 
-    @GetMapping("/projects")
+    @GetMapping(ApiConstant.Permission.PROJECTS)
     public ResponseEntity<BaseResponse<List<PermissionProjectResponse>>> getProjectsForPermissionSelection() {
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.noStore())
                 .body(new BaseResponse<>(permissionService.getProjectsForPermissionSelection()));
     }
 
-    @GetMapping("/actions")
+    @GetMapping(ApiConstant.Permission.ACTIONS)
     public ResponseEntity<BaseResponse<List<PermissionActionResponse>>>
     getAvailableActions() {
         return ResponseEntity.ok()
@@ -72,14 +73,14 @@ public class PermissionController {
                 ));
     }
 
-    @GetMapping({"/view/{id}", "/{id}"})
+    @GetMapping(ApiConstant.Permission.BY_ID)
     public ResponseEntity<BaseResponse<PermissionDetailResponse>> getPermissionById(@PathVariable UUID id) {
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.noStore())
                 .body(new BaseResponse<>(permissionService.getPermissionById(id)));
     }
 
-    @PostMapping({"", "/create"})
+    @PostMapping
     public ResponseEntity<BaseResponse<PermissionDetailResponse>> createPermission(
             @RequestBody PermissionRequest request) {
         PermissionDetailResponse permission = permissionService.createPermission(request);
@@ -88,14 +89,14 @@ public class PermissionController {
                 .body(new BaseResponse<>(HttpStatus.CREATED.value(), "Created", permission));
     }
 
-    @PutMapping({"/{id}", "/update/{id}"})
+    @PutMapping(ApiConstant.Permission.BY_ID)
     public ResponseEntity<BaseResponse<PermissionDetailResponse>> updatePermission(
             @PathVariable UUID id,
             @RequestBody PermissionRequest request) {
         return ResponseEntity.ok(new BaseResponse<>(permissionService.updatePermission(id, request)));
     }
 
-    @DeleteMapping({"/{id}", "/delete/{id}"})
+    @DeleteMapping(ApiConstant.Permission.BY_ID)
     public ResponseEntity<BaseResponse<Void>> deletePermission(@PathVariable UUID id) {
         permissionService.deletePermission(id);
 

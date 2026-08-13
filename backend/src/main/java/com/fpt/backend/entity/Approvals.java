@@ -11,7 +11,13 @@ import java.time.LocalDate;
 @Getter
 @Entity
 @Builder
-@Table(name = "approvals")
+@Table(
+        name = "approvals",
+        uniqueConstraints = @UniqueConstraint(
+                name = "UK_approvals_proposal_level",
+                columnNames = {"proposal_id", "approval_level"}
+        )
+)
 public class Approvals extends BaseEntity {
     @Column(name = "approval_level")
     private String approvalLevel;
@@ -25,4 +31,8 @@ public class Approvals extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "proposal_id")
     private Proposals proposal;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "approved_by_user_id")
+    private Users approvedBy;
 }

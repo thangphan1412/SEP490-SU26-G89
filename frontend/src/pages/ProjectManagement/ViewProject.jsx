@@ -68,27 +68,21 @@ function ViewProject() {
     );
 
     useEffect(function () {
-        let isActive = true;
         const requestController = new AbortController();
 
         async function loadProject() {
-            if (!projectId) {
-                setProject(null);
-                setError("Project id is missing. Please choose a project from the list.");
-                setLoading(false);
-                return;
-            }
-
             try {
                 setLoading(true);
                 setError("");
                 const payload = await viewProject(projectId, requestController.signal);
 
-                if (isActive) {
-                    setProject(payload);
+                if (requestController.signal.aborted) {
+                    return;
                 }
+
+                setProject(payload);
             } catch (apiError) {
-                if (!isActive) {
+                if (requestController.signal.aborted) {
                     return;
                 }
 
@@ -101,7 +95,7 @@ function ViewProject() {
                     setError("Unable to load this project. Please try again later.");
                 }
             } finally {
-                if (isActive) {
+                if (!requestController.signal.aborted) {
                     setLoading(false);
                 }
             }
@@ -110,7 +104,6 @@ function ViewProject() {
         loadProject();
 
         return function () {
-            isActive = false;
             requestController.abort();
         };
     }, [projectId]);
@@ -138,14 +131,22 @@ function ViewProject() {
         }
     }
 
-    function openPhase(phaseId) {
-        navigate(`/phase-management/view/${projectId}/${phaseId}`);
+    function openPhase(phase) {
+        if (!canViewPhase(phase, access)) {
+            setActionError(
+                "Only an IN_PROGRESS phase can be accessed."
+            );
+            return;
+        }
+
+        setActionError("");
+        navigate(`/phase-management/view/${projectId}/${phase.id}`);
     }
 
-    function handlePhaseKeyDown(event, phaseId) {
+    function handlePhaseKeyDown(event, phase) {
         if (event.key === "Enter" || event.key === " ") {
             event.preventDefault();
-            openPhase(phaseId);
+            openPhase(phase);
         }
     }
 
@@ -165,7 +166,6 @@ function ViewProject() {
         const values = [
             user.userName,
             user.email,
-            user.role,
             user.userStatus,
             user.permissionName,
             user.permissionCode,
@@ -198,24 +198,33 @@ function ViewProject() {
     }
 
     const filteredContracts = projectContracts.filter(contractMatchesFilters);
-    const completedProject = isCompletedProjectStatus(
-        project?.projectStatus
-    );
-    const access = project?.currentUserAccess;
+
+    let projectStatus = "";
+    let access = null;
+
+    if (project) {
+        projectStatus = project.projectStatus;
+        access = project.currentUserAccess;
+    }
+
+    const completedProject = isCompletedProjectStatus(projectStatus);
     const canEditProject = hasProjectAction(
         access,
         PROJECT_ACTIONS.EDIT_PROJECT
-    );
-    const canEditPhase = hasProjectAction(
-        access,
-        PROJECT_ACTIONS.EDIT_PHASE
     );
     const canManageMembers = hasProjectAction(
         access,
         PROJECT_ACTIONS.MANAGE_MEMBERS
     );
+    let canViewAllProjectData = false;
+
+    if (access) {
+        canViewAllProjectData = access.canViewAllProjectData === true;
+    }
+
+    const canViewMembers = canManageMembers
+        || canViewAllProjectData;
     const canOpenUpdate = canEditProject
-        || canEditPhase
         || canManageMembers;
     const canViewContracts = hasProjectAction(
         access,
@@ -347,11 +356,17 @@ function ViewProject() {
                                         projectPhases.map((phase) => (
                                             <tr
                                                 key={phase.id}
-                                                className="view-project-row view-project-phase-row"
+                                                className={canViewPhase(phase, access)
+                                                    ? "view-project-row view-project-phase-row"
+                                                    : "view-project-row view-project-phase-row view-project-phase-row--locked"}
                                                 role="button"
                                                 tabIndex={0}
-                                                onClick={() => openPhase(phase.id)}
-                                                onKeyDown={(event) => handlePhaseKeyDown(event, phase.id)}
+                                                aria-disabled={!canViewPhase(phase, access)}
+                                                title={canViewPhase(phase, access)
+                                                    ? "Open phase"
+                                                    : "This phase is available only when its status is IN_PROGRESS"}
+                                                onClick={() => openPhase(phase)}
+                                                onKeyDown={(event) => handlePhaseKeyDown(event, phase)}
                                             >
                                                 <td className="view-project-td view-project-phase-title">{showValue(phase.title)}</td>
                                                 <td className="view-project-td">
@@ -374,7 +389,7 @@ function ViewProject() {
                         </div>
                     </Card>
 
-                    {canManageMembers && (
+                    {canViewMembers && (
                     <Card as="section" className="project-management-card">
                         <div className="view-project-section-header">
                             <Card.Title as="h2" className="project-management-card-title">
@@ -391,7 +406,7 @@ function ViewProject() {
                                 <Form.Control
                                     className="view-project-filter-input"
                                     value={userSearch}
-                                    placeholder="Search by name, email, role, or permission..."
+                                    placeholder="Search by name, email, status, or permission..."
                                     onChange={(event) => setUserSearch(event.target.value)}
                                 />
                             </Form.Group>
@@ -409,7 +424,6 @@ function ViewProject() {
                                     <tr>
                                         <th className="view-project-th">Member</th>
                                         <th className="view-project-th">Email</th>
-                                        <th className="view-project-th">Role</th>
                                         <th className="view-project-th">User Status</th>
                                         <th className="view-project-th">Permission</th>
                                         <th className="view-project-th">Join Date</th>
@@ -417,15 +431,14 @@ function ViewProject() {
                                 </thead>
                                 <tbody>
                                     {projectUsers.length === 0 ? (
-                                        <EmptyRow colSpan={6} message="No members are assigned to this project." />
+                                        <EmptyRow colSpan={5} message="No members are assigned to this project." />
                                     ) : filteredUsers.length === 0 ? (
-                                        <EmptyRow colSpan={6} message="No members match your search." />
+                                        <EmptyRow colSpan={5} message="No members match your search." />
                                     ) : (
                                         filteredUsers.map((user) => (
                                             <tr key={user.userId} className="view-project-row">
                                                 <td className="view-project-td view-project-user-name">{showValue(user.userName)}</td>
                                                 <td className="view-project-td">{showValue(user.email)}</td>
-                                                <td className="view-project-td">{showValue(user.role)}</td>
                                                 <td className="view-project-td"><StatusBadge status={user.userStatus} /></td>
                                                 <td className="view-project-td">
                                                     <div className="view-project-permission-cell">
@@ -534,6 +547,22 @@ function ViewProject() {
 function clampProgress(progress) {
     const numberValue = Number(progress || 0);
     return Math.min(100, Math.max(0, Math.round(numberValue)));
+}
+
+function isPhaseInProgress(status) {
+    return String(status || "").trim().toUpperCase() === "IN_PROGRESS";
+}
+
+function canViewPhase(phase, access) {
+    if (isPhaseInProgress(phase.status)) {
+        return true;
+    }
+
+    if (!access) {
+        return false;
+    }
+
+    return access.canViewAllProjectData === true;
 }
 
 function getApiErrorMessage(error) {

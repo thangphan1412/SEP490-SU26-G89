@@ -13,6 +13,7 @@ import java.util.List;
 @Getter
 @Entity
 @Builder
+@SuppressWarnings("JpaDataSourceORMInspection")
 @Table(name = "contracts")
 public class Contracts extends BaseEntity {
     @Column(name = "contract_number")
@@ -27,6 +28,12 @@ public class Contracts extends BaseEntity {
     private LocalDate expirationDate;
     @Column(name = "contract_created_by")
     private String contractCreateBy;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(
+            name = "contract_created_by_user_id",
+            foreignKey = @ForeignKey(name = "FK_contracts_created_by_user")
+    )
+    private Users contractCreatedByUser;
     @Column(name = "contract_created_at")
     private LocalDateTime contractCreatedAt;
     @Column(name = "contract_status_updated_at")
@@ -45,6 +52,13 @@ public class Contracts extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "project_id")
     private Projects project;
+    // Task selected from the project's phase when the contract is created.
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(
+            name = "timeline_task_id",
+            foreignKey = @ForeignKey(name = "FK_contracts_timeline_task")
+    )
+    private TimelineTask timelineTask;
     //Signature
     @OneToMany(mappedBy = "contract")
     private List<Signature>  signatures;
@@ -52,6 +66,13 @@ public class Contracts extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "contract_type_id")
     private ContractTypes contractType;
+    // Immutable workflow version selected from the contract type.
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(
+            name = "contract_workflow_version_id",
+            foreignKey = @ForeignKey(name = "FK_contracts_workflow_version")
+    )
+    private ContractTypeWorkflow workflowVersion;
     // contract template
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "contract_template_id")
@@ -74,6 +95,14 @@ public class Contracts extends BaseEntity {
     )
     @OrderBy("changedAt DESC")
     private List<ContractStatusHistory> statusHistory;
+    // Runtime snapshot with the exact user assigned to every workflow step.
+    @OneToMany(
+            mappedBy = "contract",
+            cascade = CascadeType.ALL,
+            orphanRemoval = true
+    )
+    @OrderBy("stepOrder ASC")
+    private List<ContractWorkflowStepInstance> workflowStepInstances;
     // contrac approvals
     @OneToMany(mappedBy = "contract")
     private List<ContractApprovals> contractApprovals;

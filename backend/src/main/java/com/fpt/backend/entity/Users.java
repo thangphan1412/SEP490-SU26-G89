@@ -1,9 +1,11 @@
 package com.fpt.backend.entity;
 
+import com.fpt.backend.enums.UserStatus;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.processing.Pattern;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Entity
@@ -25,10 +27,35 @@ public class Users extends BaseEntity {
     private String lastName;
     @Column(name = "user_number_phone")
     private String numberPhone;
+    @Enumerated(EnumType.STRING)
     @Column(name = "user_status")
-    private String status;
+    private UserStatus status;
     @Column(name = "user_role")
     private String role;
+    @Column(name = "date_of_birth")
+    private String dob;
+    // THÊM TRƯỜNG NÀY ĐỂ LƯU THỜI GIAN HOẠT ĐỘNG CUỐI
+    @Column(name = "last_active")
+    private LocalDateTime lastActive;
+    @Column(name = "start_date")
+    private String startDate;
+
+    @Column(name = "created_at", updatable = false)
+    private LocalDateTime createdAt;
+
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
+
+    @PrePersist
+    protected void onCreate() {
+        this.createdAt = LocalDateTime.now(java.time.ZoneId.of("Asia/Ho_Chi_Minh"));
+        this.updatedAt = LocalDateTime.now(java.time.ZoneId.of("Asia/Ho_Chi_Minh"));
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        this.updatedAt = LocalDateTime.now(java.time.ZoneId.of("Asia/Ho_Chi_Minh"));
+    }
 
     /// Relation
     // permissions
@@ -63,4 +90,7 @@ public class Users extends BaseEntity {
     private List<ProjectMember>  projectMembers;
     @OneToMany(mappedBy = "assignedTo")
     private List<TimelineTask>  timelineTasks;
+    @OneToMany(mappedBy = "user")
+    private List<ElectronicSignatures>  electronicSignatures;
+
 }

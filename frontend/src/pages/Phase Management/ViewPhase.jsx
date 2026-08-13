@@ -30,7 +30,6 @@ function ViewPhase() {
   const [error, setError] = useState("");
 
   useEffect(function () {
-    let isActive = true;
     const requestController = new AbortController();
 
     async function loadPhase() {
@@ -45,11 +44,13 @@ function ViewPhase() {
         setError("");
         const payload = await viewPhase(phaseId, requestController.signal);
 
-        if (isActive) {
-          setPhase(payload || null);
+        if (requestController.signal.aborted) {
+          return;
         }
+
+        setPhase(payload || null);
       } catch (requestError) {
-        if (!isActive) {
+        if (requestController.signal.aborted) {
           return;
         }
 
@@ -57,7 +58,7 @@ function ViewPhase() {
         setPhase(null);
         setError(getErrorMessage(requestError));
       } finally {
-        if (isActive) {
+        if (!requestController.signal.aborted) {
           setLoading(false);
         }
       }
@@ -66,7 +67,6 @@ function ViewPhase() {
     loadPhase();
 
     return function () {
-      isActive = false;
       requestController.abort();
     };
   }, [phaseId]);
@@ -76,20 +76,20 @@ function ViewPhase() {
   const contracts = Array.isArray(phase?.contracts) ? phase.contracts : [];
   const progress = normalizeProgress(phase?.progress);
   const access = phase?.currentUserAccess;
+  const phaseIsInProgress = phase?.status === "IN_PROGRESS";
   const canViewTasks = hasProjectAction(
     access,
     PROJECT_ACTIONS.VIEW_TASKS
   );
-  const canManageTasks = canViewTasks && hasAnyProjectAction(access, [
-    PROJECT_ACTIONS.CREATE_TASKS,
-    PROJECT_ACTIONS.EDIT_TASKS,
-    PROJECT_ACTIONS.DELETE_TASKS,
-  ]);
+  const canManageTasks = phaseIsInProgress
+    && hasProjectAction(access, PROJECT_ACTIONS.EDIT_TASKS);
+  const canAccessTasks = canViewTasks || canManageTasks;
   const canViewDeliverables = hasProjectAction(
     access,
     PROJECT_ACTIONS.VIEW_DELIVERABLES
   );
-  const canManageDeliverables = canViewDeliverables
+  const canManageDeliverables = phaseIsInProgress
+    && canViewDeliverables
     && hasAnyProjectAction(access, [
       PROJECT_ACTIONS.CREATE_DELIVERABLES,
       PROJECT_ACTIONS.EDIT_DELIVERABLES,
@@ -99,28 +99,23 @@ function ViewPhase() {
     access,
     PROJECT_ACTIONS.VIEW_CONTRACTS
   );
-  const canManageContracts = canViewContracts
+  const canManageContracts = phaseIsInProgress
+    && canViewContracts
     && hasAnyProjectAction(access, [
       PROJECT_ACTIONS.CREATE_CONTRACTS,
       PROJECT_ACTIONS.EDIT_CONTRACTS,
       PROJECT_ACTIONS.DELETE_CONTRACTS,
     ]);
-  const canViewAnyWorkModule = canViewTasks
+  const canViewAnyWorkModule = canAccessTasks
     || canViewDeliverables
     || canViewContracts;
 
   function renderTask(task) {
-    const taskProgress = normalizeProgress(task.progress);
-
     return (
       <tr key={task.id}>
         <td><strong>{task.title || `Task #${task.id}`}</strong></td>
         <td>{formatAssignee(task)}</td>
         <td>{formatDateRange(task.startDate, task.endDate)}</td>
-        <td className="phase-progress-cell">
-          <span>{taskProgress}%</span>
-          <ProgressBar now={taskProgress} />
-        </td>
         <td><PhaseStatusBadge status={task.status} /></td>
       </tr>
     );
@@ -191,7 +186,7 @@ function ViewPhase() {
             </Alert>
           )}
 
-          {canViewTasks && (
+          {canAccessTasks && (
           <PhaseTableSection
             icon={<IconChecklist size={22} />}
             title="Tasks"
@@ -202,6 +197,9 @@ function ViewPhase() {
                 type="button"
                 variant="outline-primary"
                 className="phase-manage-button"
+                onClick={() => navigate(
+                  `/task-management/edit/${projectId}/${phaseId}`
+                )}
               >
                 <IconSettings size={16} /> Manage Tasks
               </Button>
@@ -209,10 +207,10 @@ function ViewPhase() {
           >
             <div className="phase-table-wrap">
               <Table responsive hover className="phase-data-table mb-0">
-                <thead><tr><th>Task</th><th>Assignee</th><th>Date range</th><th>Progress</th><th>Status</th></tr></thead>
+                <thead><tr><th>Task</th><th>Assignee</th><th>Date range</th><th>Status</th></tr></thead>
                 <tbody>
                   {tasks.length === 0 ? (
-                    <EmptyTableRow colSpan={5} message="No tasks have been added to this phase." />
+                    <EmptyTableRow colSpan={4} message="No tasks have been added to this phase." />
                   ) : tasks.map(renderTask)}
                 </tbody>
               </Table>
@@ -267,6 +265,7 @@ function ViewPhase() {
                 type="button"
                 variant="outline-primary"
                 className="phase-manage-button"
+                onClick={() => navigate("/contract-management/list")}
               >
                 <IconSettings size={16} /> Manage Contracts
               </Button>

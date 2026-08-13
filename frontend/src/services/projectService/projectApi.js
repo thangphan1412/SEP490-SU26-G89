@@ -36,9 +36,9 @@ export async function listProjectEmployees(signal) {
   return getResponseData(response);
 }
 
-export async function listProjectRoles(signal) {
+export async function listProjectUserStatuses(signal) {
   const response = await axiosClient.get(
-    `${PROJECT_API_BASE_URL}/roles`,
+    `${PROJECT_API_BASE_URL}/user-statuses`,
     { signal }
   );
 
@@ -57,6 +57,14 @@ export async function updateProject(projectId, project) {
   );
 
   return getResponseData(response);
+}
+
+export async function approveProject(projectId) {
+  const response = await axiosClient.post(
+    `${PROJECT_API_BASE_URL}/${projectId}/approve`
+  );
+
+  return response.data?.message || "Project approved successfully";
 }
 
 export async function deleteProject(projectId) {

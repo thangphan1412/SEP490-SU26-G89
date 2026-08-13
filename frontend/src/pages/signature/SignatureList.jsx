@@ -1,19 +1,11 @@
-import { useState, useMemo } from "react"
+import {useState, useMemo, useEffect} from "react"
 
 import "../../assets/styles/css/signatureStyles/SignaturePage.css"
 import SignatureToolbar from "../../components/signature/SignatureToolbar.jsx";
 import SignatureTable from "../../components/signature/SignatureTable.jsx";
 import SignaturePagination from "../../components/signature/SignaturePagination.jsx";
+import electronicSignatureService from "../../services/signatureService/electronicSignatureService.js"
 
-// TODO: thay bằng data thật từ API
-const mockSignatures = [
-    { id: 1, name: "Default Work Signature", type: "Drawn", usedIn: "Contracts", status: "Active", updatedAt: "May 22, 2025", avatarText: "❦", avatarColor: "#2563eb" },
-    { id: 2, name: "Formal Approval", type: "Uploaded", usedIn: "Approvals", status: "Active", updatedAt: "May 21, 2025", avatarText: "Am", avatarColor: "#374151" },
-    { id: 3, name: "Internal Memo Sign", type: "Typed", usedIn: "Memos", status: "Active", updatedAt: "May 20, 2025", avatarText: "Am", avatarColor: "#374151" },
-    { id: 4, name: "Short Initials", type: "Drawn", usedIn: "Quick Sign", status: "Inactive", updatedAt: "May 18, 2025", avatarText: "AM", avatarColor: "#2563eb" },
-    { id: 5, name: "HR Document Signature", type: "Uploaded", usedIn: "HR Forms", status: "Active", updatedAt: "May 17, 2025", avatarText: "Am", avatarColor: "#374151" },
-    { id: 6, name: "Procurement Approval", type: "Drawn", usedIn: "Purchase Requests", status: "Active", updatedAt: "May 15, 2025", avatarText: "❦", avatarColor: "#2563eb" },
-]
 
 function SignatureList() {
     const [searchTerm, setSearchTerm] = useState("")
@@ -22,14 +14,58 @@ function SignatureList() {
     const [currentPage, setCurrentPage] = useState(1)
     const [pageSize, setPageSize] = useState(10)
 
+    const [electronicSignature, setElectronicSignature] = useState([]);
+    const loadElectronicSignature = async () => {
+        try {
+            const response =
+                await electronicSignatureService
+                    .getAllElectronicSignature();
+
+            console.log("SIGNATURE DATA:", response.data.data);
+
+            setElectronicSignature(response.data.data);
+
+        } catch (error) {
+            console.error(error);
+            setElectronicSignature([]);
+        }
+    };
+    useEffect(() => {
+        loadElectronicSignature();
+    }, []);
     const filteredSignatures = useMemo(() => {
-        return mockSignatures.filter((sig) => {
-            const matchesSearch = sig.name.toLowerCase().includes(searchTerm.toLowerCase())
-            const matchesType = typeFilter === "All" || sig.type === typeFilter
-            const matchesStatus = statusFilter === "All" || sig.status === statusFilter
-            return matchesSearch && matchesType && matchesStatus
-        })
-    }, [searchTerm, typeFilter, statusFilter])
+        return electronicSignature.filter((sig) => {
+
+            const name = sig.signatureName || "";
+            const type = sig.type || "";
+            const status = sig.status || "";
+
+            const matchesSearch =
+                name
+                    .toLowerCase()
+                    .includes(
+                        searchTerm.toLowerCase()
+                    );
+
+            const matchesType =
+                typeFilter === "All" ||
+                type === typeFilter;
+
+            const matchesStatus =
+                statusFilter === "All" ||
+                status === statusFilter;
+
+
+            return (
+                matchesSearch &&
+                matchesType &&
+                matchesStatus
+            );
+        });
+    }, [electronicSignature,
+        searchTerm,
+        typeFilter,
+        statusFilter]);
 
     const totalPages = Math.max(1, Math.ceil(filteredSignatures.length / pageSize))
 
@@ -38,7 +74,7 @@ function SignatureList() {
     }
 
     const handleRefresh = () => {
-        // TODO: gọi lại API
+        loadElectronicSignature();
     }
 
     return (

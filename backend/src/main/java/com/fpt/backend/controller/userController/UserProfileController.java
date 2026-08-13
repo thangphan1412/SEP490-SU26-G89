@@ -1,18 +1,20 @@
 package com.fpt.backend.controller.userController;
 
+import com.fpt.backend.constant.ApiConstant;
 import com.fpt.backend.dto.request.userProfile.UserProfileRequestDTO;
 import com.fpt.backend.dto.response.userProfile.UserProfileResponseDTO;
 import com.fpt.backend.entity.Users;
 import com.fpt.backend.service.interfaces.user.IUserService;
 import com.fpt.backend.util.BaseResponse;
 import com.fpt.backend.util.CurrentUser;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/profile") // Tách ra route riêng biệt so với việc quản lý /api/users
+@RequestMapping(ApiConstant.USER.PROFILE)
 public class UserProfileController {
 
     @Autowired
@@ -51,7 +53,7 @@ public class UserProfileController {
 
     // 2. Cập nhật thông tin cá nhân
     @PutMapping
-    public ResponseEntity<BaseResponse<UserProfileResponseDTO>> updateMyProfile(@RequestBody UserProfileRequestDTO request) {
+    public ResponseEntity<BaseResponse<UserProfileResponseDTO>> updateMyProfile(@Valid @RequestBody UserProfileRequestDTO request) {
         try {
             // Lấy user đang đăng nhập để tránh việc user này truyền ID cập nhật cho user khác
             Users currentUser = currentUserUtil.getCurrentUser();

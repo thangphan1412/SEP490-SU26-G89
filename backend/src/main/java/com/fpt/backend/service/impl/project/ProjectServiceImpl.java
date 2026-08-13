@@ -12,23 +12,22 @@ import com.fpt.backend.dto.response.project.ProjectEmployeeResponse;
 import com.fpt.backend.dto.response.project.ProjectListItemResponse;
 import com.fpt.backend.dto.response.project.ProjectListResponse;
 import com.fpt.backend.dto.response.project.ProjectPermissionConfigurationResponse;
-import com.fpt.backend.dto.response.project.ProjectRoleResponse;
+import com.fpt.backend.dto.response.project.ProjectPermissionOptionResponse;
+import com.fpt.backend.dto.response.project.ProjectPhaseResponse;
+import com.fpt.backend.dto.response.project.ProjectUserResponse;
 import com.fpt.backend.entity.Contracts;
-import com.fpt.backend.entity.PermissionAction;
 import com.fpt.backend.entity.Projects;
 import com.fpt.backend.entity.Users;
+import com.fpt.backend.enums.ProjectDeleteResult;
+import com.fpt.backend.enums.UserStatus;
 import com.fpt.backend.exception.BadHttpException;
 import com.fpt.backend.exception.NotFoundException;
 import com.fpt.backend.repository.project.ProjectCleanupRepository;
 import com.fpt.backend.repository.project.ProjectContractRepository;
 import com.fpt.backend.repository.project.ProjectMemberRepository;
 import com.fpt.backend.repository.project.ProjectRepository;
-import com.fpt.backend.service.interfaces.project.ProjectDeleteResult;
-import com.fpt.backend.service.interfaces.permission.PermissionAccessService;
-import com.fpt.backend.service.interfaces.project.ProjectMemberService;
-import com.fpt.backend.service.interfaces.project.ProjectPermissionService;
-import com.fpt.backend.service.interfaces.project.ProjectPhaseService;
-import com.fpt.backend.service.interfaces.project.ProjectService;
+import com.fpt.backend.service.interfaces.permission.IPermissionAccessService;
+import com.fpt.backend.service.interfaces.project.IProjectService;
 import com.fpt.backend.util.CurrentUser;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -46,47 +45,18 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
-public class ProjectServiceImpl implements ProjectService {
+public class ProjectServiceImpl implements IProjectService {
     private static final int PAGE_SIZE = 7;
-    private static final String DATA_SOURCE = "DATABASE";
-    private static final String DEFAULT_SORT_FIELD = "projectCreatedAt";
-    private static final String DEFAULT_PROJECT_STATUS = "Planning";
+    private static final String NEW_PROJECT_STATUS = "On Hold";
     private static final String CANCELLED_PROJECT_STATUS = "Cancelled";
     private static final String COMPLETED_PROJECT_STATUS = "Completed";
-    private static final String EDIT_PROJECT =
-            PermissionAction.DefaultAction.EDIT_PROJECT.getActionCode();
-    private static final String EDIT_PHASE =
-            PermissionAction.DefaultAction.EDIT_PHASE.getActionCode();
-    private static final String MANAGE_MEMBERS =
-            PermissionAction.DefaultAction.MANAGE_MEMBERS.getActionCode();
-    private static final String VIEW_CONTRACTS =
-            PermissionAction.DefaultAction.VIEW_CONTRACTS.getActionCode();
-    private static final String PROJECT_ACCESS_DENIED_MESSAGE =
-            "Bạn không được quyền xem project này!";
-    private static final List<String> CREATE_PROJECT_STATUSES = List.of(
-            "Planning",
-            "Active",
-            "On Hold"
-    );
     private static final ZoneId PROJECT_TIME_ZONE =
             ZoneId.of("Asia/Ho_Chi_Minh");
-    private static final Set<String> SORT_FIELDS = Set.of(
-            "id",
-            "projectCode",
-            "projectName",
-            "projectStatus",
-            "projectStartDate",
-            "projectEndDate",
-            "projectCreatedBy",
-            "projectCreatedAt"
-    );
-
     private final ProjectRepository projectRepository;
     private final ProjectContractRepository projectContractRepository;
     private final ProjectMemberRepository projectMemberRepository;
@@ -94,55 +64,44 @@ public class ProjectServiceImpl implements ProjectService {
     private final ProjectPhaseService projectPhaseService;
     private final ProjectMemberService projectMemberService;
     private final ProjectPermissionService projectPermissionService;
-    private final PermissionAccessService permissionAccessService;
+    private final ProjectApprovalService projectApprovalService;
+    private final IPermissionAccessService permissionAccessService;
     private final CurrentUser currentUserUtil;
 
+    //Load danh sách các dự án dựa trên tìm kiếm, trạng thái dự án, quyền truy cập của người dùng hiện tại và phân trang.
     @Override
     public ProjectListResponse getProjects(ProjectListRequest request) {
-        ProjectListRequest validRequest = request;
-
-        if (validRequest == null) {
-            validRequest = new ProjectListRequest(
-                    "",
-                    "",
-                    false,
-                    0,
-                    DEFAULT_SORT_FIELD,
-                    "desc"
-            );
-        }
-
-        String search = normalize(validRequest.search());
-        String status = normalize(validRequest.status());
+        String search = normalize(request.search());
+        String status = normalize(request.status());
         Users currentUser = currentUserUtil.getCurrentUser();
-        Pageable pageable = createPageable(
-                validRequest.page(),
-                validRequest.sortBy(),
-                validRequest.sortDirection()
-        );
+        Pageable pageable = createPageable(request.page());
         Page<Projects> projects = findProjects(
                 search,
                 status,
-                validRequest.viewOnlyYourProjects(),
+                request.viewOnlyYourProjects(),
                 currentUser.getId(),
                 pageable
         );
+        List<ProjectListItemResponse> projectItems = new ArrayList<>();
+
+        for (Projects project : projects.getContent()) {
+            ProjectListItemResponse projectItem = toListItem(
+                    project,
+                    currentUser
+            );
+            projectItems.add(projectItem);
+        }
 
         return new ProjectListResponse(
-                DATA_SOURCE,
-                projects.map(project -> toListItem(project, currentUser))
-                        .getContent(),
-                projects.getNumber(),
-                projects.getSize(),
+                projectItems,
                 projects.getTotalElements(),
-                projects.getTotalPages(),
-                projects.isFirst(),
-                projects.isLast(),
-                projectRepository.findDistinctProjectStatuses()
+                projects.getTotalPages()
         );
     }
 
+    //Lấy chi tiết dự án dựa trên ID dự án và quyền truy cập của người dùng hiện tại.
     @Override
+    @Transactional
     public ProjectDetailResponse getProjectById(UUID id) {
         Projects project = findProject(id);
         ProjectAccessResponse access =
@@ -166,15 +125,19 @@ public class ProjectServiceImpl implements ProjectService {
                 request.projectStartDate(),
                 request.projectEndDate(),
                 request.projectDescription(),
-                request.projectStatus(),
                 null
         );
+        project.setProjectStatus(NEW_PROJECT_STATUS);
         project.setProjectCreatedBy(currentUser);
         project.setProjectCreatedAt(
                 LocalDate.now(PROJECT_TIME_ZONE).toString()
         );
 
         Projects savedProject = projectRepository.save(project);
+        projectApprovalService.createApprovalRequest(
+                savedProject,
+                currentUser
+        );
         UUID fullAccessPermissionId =
                 projectPermissionService.createProjectFullAccessPermission(
                         savedProject
@@ -226,8 +189,11 @@ public class ProjectServiceImpl implements ProjectService {
             throw new BadHttpException("No project changes were provided");
         }
 
+        if (updateProjectInformation || updatePhases) {
+            permissionAccessService.requireAction(id, "EDIT_PROJECT");
+        }
+
         if (updateProjectInformation) {
-            permissionAccessService.requireAction(id, EDIT_PROJECT);
             boolean projectDatesChanged = !Objects.equals(
                     project.getProjectStartDate(),
                     request.projectStartDate()
@@ -237,8 +203,6 @@ public class ProjectServiceImpl implements ProjectService {
             );
 
             if (projectDatesChanged) {
-                permissionAccessService.requireAction(id, EDIT_PHASE);
-
                 if (!updatePhases) {
                     throw new BadHttpException(
                             "Phases are required when project dates change"
@@ -253,19 +217,17 @@ public class ProjectServiceImpl implements ProjectService {
                     request.projectStartDate(),
                     request.projectEndDate(),
                     request.projectDescription(),
-                    request.projectStatus(),
                     id
             );
             projectRepository.save(project);
         }
 
         if (updatePhases) {
-            permissionAccessService.requireAction(id, EDIT_PHASE);
             projectPhaseService.syncPhases(project, request.phases());
         }
 
         if (updateMembers) {
-            permissionAccessService.requireAction(id, MANAGE_MEMBERS);
+            permissionAccessService.requireAction(id, "MANAGE_MEMBERS");
             projectMemberService.syncMembers(project, request.members(), true);
         }
 
@@ -276,9 +238,18 @@ public class ProjectServiceImpl implements ProjectService {
 
     @Override
     @Transactional
+    public void approveProject(UUID id) {
+        Projects project = findProject(id);
+        Users currentUser = currentUserUtil.getCurrentUser();
+        projectApprovalService.approveProject(project, currentUser);
+        projectRepository.flush();
+    }
+
+    @Override
+    @Transactional
     public ProjectDeleteResult deleteProject(UUID id) {
         Projects project = findProject(id);
-        permissionAccessService.requireAction(id, EDIT_PROJECT);
+        permissionAccessService.requireAction(id, "EDIT_PROJECT");
 
         if (isCompletedProject(project)) {
             throw new BadHttpException(
@@ -313,16 +284,17 @@ public class ProjectServiceImpl implements ProjectService {
         return projectMemberService.getEmployeesForSelection();
     }
 
+    //Lấy enum danh sách trạng thái người dùng để lọc thành viên dự án.
     @Override
-    public List<ProjectRoleResponse> getRolesForProjectMemberFilter() {
-        return projectMemberService.getRolesForFilter();
+    public List<UserStatus> getUserStatusesForProjectMemberFilter() {
+        return List.of(UserStatus.values());
     }
 
     @Override
     public List<ProjectPermissionConfigurationResponse>
     getProjectPermissionConfigurations(UUID projectId) {
         findProject(projectId);
-        permissionAccessService.requireAction(projectId, MANAGE_MEMBERS);
+        permissionAccessService.requireAction(projectId, "MANAGE_MEMBERS");
         return projectPermissionService.getConfigurations(projectId);
     }
 
@@ -333,7 +305,7 @@ public class ProjectServiceImpl implements ProjectService {
             UUID permissionId,
             ProjectPermissionConfigurationRequest request) {
         Projects project = findProject(projectId);
-        permissionAccessService.requireAction(projectId, MANAGE_MEMBERS);
+        permissionAccessService.requireAction(projectId, "MANAGE_MEMBERS");
         return projectPermissionService.configure(
                 project,
                 permissionId,
@@ -341,6 +313,7 @@ public class ProjectServiceImpl implements ProjectService {
         );
     }
 
+    //Tìm kiếm dự án dựa trên ID dự án. Nếu không tìm thấy, ném NotFoundException.
     private Projects findProject(UUID id) {
         Optional<Projects> project = projectRepository.findById(id);
 
@@ -351,6 +324,7 @@ public class ProjectServiceImpl implements ProjectService {
         return project.get();
     }
 
+    //Tìm kiếm các dự án dựa trên tìm kiếm theo từ khóa, trạng thái dự án, quyền truy cập của người dùng hiện tại và phân trang.
     private Page<Projects> findProjects(
             String search,
             String status,
@@ -384,34 +358,14 @@ public class ProjectServiceImpl implements ProjectService {
         );
     }
 
-    private Pageable createPageable(
-            int page,
-            String sortBy,
-            String sortDirection) {
+    private Pageable createPageable(int page) {
         int validPage = Math.max(page, 0);
-        String sortField = DEFAULT_SORT_FIELD;
+        Sort newestProjectFirst = Sort.by(
+                Sort.Direction.DESC,
+                "projectCreatedAt"
+        );
 
-        if (sortBy != null && SORT_FIELDS.contains(sortBy)) {
-            sortField = sortBy;
-        }
-
-        Sort.Direction direction = Sort.Direction.DESC;
-
-        if ("asc".equalsIgnoreCase(sortDirection)) {
-            direction = Sort.Direction.ASC;
-        }
-
-        Sort sort = Sort.by(direction, sortField);
-
-        if ("projectCreatedBy".equals(sortField)) {
-            sort = Sort.by(direction, "projectCreatedBy.firstName")
-                    .and(Sort.by(
-                            direction,
-                            "projectCreatedBy.lastName"
-                    ));
-        }
-
-        return PageRequest.of(validPage, PAGE_SIZE, sort);
+        return PageRequest.of(validPage, PAGE_SIZE, newestProjectFirst);
     }
 
     private void applyProjectInformation(
@@ -421,7 +375,6 @@ public class ProjectServiceImpl implements ProjectService {
             LocalDate startDate,
             LocalDate endDate,
             String descriptionValue,
-            String statusValue,
             UUID currentProjectId) {
         String projectName = requireText(
                 projectNameValue,
@@ -434,29 +387,14 @@ public class ProjectServiceImpl implements ProjectService {
                 50
         );
         String description = normalize(descriptionValue);
-        String status = defaultIfBlank(
-                statusValue,
-                DEFAULT_PROJECT_STATUS
-        );
-
-        if (currentProjectId == null) {
-            status = getCreateProjectStatus(status);
-        }
 
         validateMaxLength(description, "Project description", 255);
-        validateMaxLength(status, "Project status", 50);
+        validateProjectDateRange(startDate, endDate);
 
-        if (startDate == null) {
-            throw new BadHttpException("Start date is required");
-        }
-
-        if (endDate == null) {
-            throw new BadHttpException("End date is required");
-        }
-
-        if (endDate.isBefore(startDate)) {
+        if (currentProjectId == null
+                && endDate.isBefore(LocalDate.now(PROJECT_TIME_ZONE))) {
             throw new BadHttpException(
-                    "End date must not be before start date"
+                    "Project end date must not be before today"
             );
         }
 
@@ -482,20 +420,24 @@ public class ProjectServiceImpl implements ProjectService {
         project.setProjectStartDate(startDate);
         project.setProjectEndDate(endDate);
         project.setProjectDescription(description);
-        project.setProjectStatus(status);
     }
 
-    private String getCreateProjectStatus(String status) {
-        for (String allowedStatus : CREATE_PROJECT_STATUSES) {
-            if (allowedStatus.equalsIgnoreCase(status)) {
-                return allowedStatus;
-            }
+    private void validateProjectDateRange(
+            LocalDate startDate,
+            LocalDate endDate) {
+        if (startDate == null) {
+            throw new BadHttpException("Start date is required");
         }
 
-        throw new BadHttpException(
-                "Project status must be Planning, Active, or On Hold "
-                        + "when creating a project"
-        );
+        if (endDate == null) {
+            throw new BadHttpException("End date is required");
+        }
+
+        if (startDate.isAfter(endDate)) {
+            throw new BadHttpException(
+                    "Start date must not be after end date"
+            );
+        }
     }
 
     private boolean isCompletedProject(Projects project) {
@@ -530,11 +472,15 @@ public class ProjectServiceImpl implements ProjectService {
     private ProjectListItemResponse toListItem(
             Projects project,
             Users currentUser) {
-        boolean canView = isProjectCreator(project, currentUser)
-                || projectMemberRepository.countByProjectIdAndUserId(
+        boolean projectMember = projectMemberRepository
+                .countByProjectIdAndUserId(
                         project.getId(),
                         currentUser.getId()
                 ) > 0;
+        boolean canView = projectMember
+                || projectApprovalService.canReviewProjects(currentUser);
+        boolean canApprove = projectApprovalService
+                .canApproveProject(project, currentUser);
 
         return new ProjectListItemResponse(
                 project.getId(),
@@ -546,7 +492,8 @@ public class ProjectServiceImpl implements ProjectService {
                 project.getProjectEndDate(),
                 getUserName(project.getProjectCreatedBy()),
                 project.getProjectCreatedAt(),
-                canView
+                canView,
+                canApprove
         );
     }
 
@@ -556,12 +503,31 @@ public class ProjectServiceImpl implements ProjectService {
         UUID projectId = project.getId();
         boolean canManageMembers = permissionAccessService.hasAction(
                 access,
-                MANAGE_MEMBERS
+                "MANAGE_MEMBERS"
         );
+        boolean canViewMembers = canManageMembers
+                || access.canViewAllProjectData();
         boolean canViewContracts = permissionAccessService.hasAction(
                 access,
-                VIEW_CONTRACTS
+                "VIEW_CONTRACTS"
         );
+        List<ProjectPhaseResponse> phases =
+                projectPhaseService.getProjectPhases(projectId);
+        List<ProjectUserResponse> users = List.of();
+        List<ProjectPermissionOptionResponse> permissionOptions = List.of();
+        List<ProjectContractResponse> contracts = List.of();
+
+        if (canViewMembers) {
+            users = projectMemberService.getProjectUsers(projectId);
+        }
+
+        if (canManageMembers) {
+            permissionOptions = projectPermissionService.getOptions(projectId);
+        }
+
+        if (canViewContracts) {
+            contracts = toProjectContracts(projectId);
+        }
 
         return new ProjectDetailResponse(
                 projectId,
@@ -573,17 +539,10 @@ public class ProjectServiceImpl implements ProjectService {
                 project.getProjectEndDate(),
                 getUserName(project.getProjectCreatedBy()),
                 project.getProjectCreatedAt(),
-                projectPhaseService.getProjectPhases(projectId),
-                canManageMembers
-                        ? projectMemberService.getProjectUsers(projectId)
-                        : List.of(),
-                canManageMembers
-                        ? projectPermissionService.getOptions(projectId)
-                        : List.of(),
-                canViewContracts
-                        ? toProjectContracts(projectId)
-                        : List.of(),
-                access.projectCreator(),
+                phases,
+                users,
+                permissionOptions,
+                contracts,
                 access
         );
     }
@@ -593,8 +552,7 @@ public class ProjectServiceImpl implements ProjectService {
                 || request.projectCode() != null
                 || request.projectStartDate() != null
                 || request.projectEndDate() != null
-                || request.projectDescription() != null
-                || request.projectStatus() != null;
+                || request.projectDescription() != null;
     }
 
     private List<ProjectContractResponse> toProjectContracts(UUID projectId) {
@@ -612,15 +570,6 @@ public class ProjectServiceImpl implements ProjectService {
         }
 
         return responses;
-    }
-
-    private boolean isProjectCreator(
-            Projects project,
-            Users currentUser) {
-        Users projectCreator = project.getProjectCreatedBy();
-
-        return projectCreator != null
-                && projectCreator.getId().equals(currentUser.getId());
     }
 
     private String getUserName(Users currentUser) {
@@ -673,16 +622,6 @@ public class ProjectServiceImpl implements ProjectService {
                             + maxLength + " characters"
             );
         }
-    }
-
-    private String defaultIfBlank(String value, String defaultValue) {
-        String normalizedValue = normalize(value);
-
-        if (normalizedValue.isBlank()) {
-            return defaultValue;
-        }
-
-        return normalizedValue;
     }
 
     private String normalize(String value) {

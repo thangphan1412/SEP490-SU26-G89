@@ -116,8 +116,8 @@ function PermissionListContent() {
     };
   }, [searchInput]);
 
+  //Load danh sách các dự án để hiển thị trong bộ lọc
   useEffect(function () {
-    let isActive = true;
     const requestController = new AbortController();
 
     async function loadFilterOptions() {
@@ -126,26 +126,29 @@ function PermissionListContent() {
           requestController.signal
         );
 
-        if (isActive) {
-          setProjects(Array.isArray(projectPayload) ? projectPayload : []);
+        if (requestController.signal.aborted) {
+          return;
         }
+
+        setProjects(Array.isArray(projectPayload) ? projectPayload : []);
       } catch (requestError) {
-        if (isActive) {
-          console.error("Unable to load permission filters:", requestError);
+        if (requestController.signal.aborted) {
+          return;
         }
+
+        console.error("Unable to load permission filters:", requestError);
       }
     }
 
     loadFilterOptions();
 
     return function () {
-      isActive = false;
       requestController.abort();
     };
   }, []);
 
+  //Load danh sách quyền dựa trên các bộ lọc và phân trang
   useEffect(function () {
-    let isActive = true;
     const requestController = new AbortController();
 
     async function loadPermissions() {
@@ -166,7 +169,7 @@ function PermissionListContent() {
         const items = Array.isArray(payload?.items) ? payload.items : [];
         const responseTotalPages = Number(payload?.totalPages) || 0;
 
-        if (!isActive) {
+        if (requestController.signal.aborted) {
           return;
         }
 
@@ -177,7 +180,7 @@ function PermissionListContent() {
           setPage(responseTotalPages - 1);
         }
       } catch (requestError) {
-        if (!isActive) {
+        if (requestController.signal.aborted) {
           return;
         }
 
@@ -189,7 +192,7 @@ function PermissionListContent() {
           "Unable to load permissions. Please try again later."
         ));
       } finally {
-        if (isActive) {
+        if (!requestController.signal.aborted) {
           setLoading(false);
         }
       }
@@ -198,7 +201,6 @@ function PermissionListContent() {
     loadPermissions();
 
     return function () {
-      isActive = false;
       requestController.abort();
     };
   }, [deleteVersion, page, projectId, search, sortBy, sortDirection, status]);
@@ -280,12 +282,15 @@ function PermissionListContent() {
 
   const pageNumbers = createPageNumbers(page, totalPages);
   const filtersAreActive = Boolean(searchInput || projectId || status);
-  const createAction = (
+  const canCreatePermission = projects.some(
+    (project) => project.canManage === true
+  );
+  const createAction = canCreatePermission ? (
     <Button className="permission-primary-button" onClick={() => navigate("/permission/create")}>
       <IconPlus size={19} />
       Create Permission
     </Button>
-  );
+  ) : null;
 
   return (
     <PermissionPage
@@ -400,24 +405,28 @@ function PermissionListContent() {
                   </td>
                   <td className="permission-status-cell"><PermissionStatusBadge status={permission.status} /></td>
                   <td className="permission-actions-cell">
-                    <Stack direction="horizontal" className="permission-row-actions">
-                      <Button
-                        variant="light"
-                        className="permission-table-action"
-                        onClick={(event) => openPermissionEdit(event, permission.id)}
-                      >
-                        <IconEdit size={17} /> Edit
-                      </Button>
-                      <Button
-                        variant="light"
-                        className="permission-table-delete"
-                        disabled={deletingId === permission.id}
-                        onClick={(event) => handleDelete(event, permission)}
-                      >
-                        <IconTrash size={17} />
-                        {deletingId === permission.id ? "Deleting" : "Delete"}
-                      </Button>
-                    </Stack>
+                    {permission.canManage ? (
+                      <Stack direction="horizontal" className="permission-row-actions">
+                        <Button
+                          variant="light"
+                          className="permission-table-action"
+                          onClick={(event) => openPermissionEdit(event, permission.id)}
+                        >
+                          <IconEdit size={17} /> Edit
+                        </Button>
+                        <Button
+                          variant="light"
+                          className="permission-table-delete"
+                          disabled={deletingId === permission.id}
+                          onClick={(event) => handleDelete(event, permission)}
+                        >
+                          <IconTrash size={17} />
+                          {deletingId === permission.id ? "Deleting" : "Delete"}
+                        </Button>
+                      </Stack>
+                    ) : (
+                      <span>View only</span>
+                    )}
                   </td>
                 </tr>
               ))

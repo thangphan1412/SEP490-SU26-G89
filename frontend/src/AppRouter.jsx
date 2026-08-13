@@ -33,11 +33,15 @@ import MainLayout from "./components/layout/MainLayout.jsx";
 import ForgotPassword from "./pages/authentication/ForgotPassword.jsx";
 import Resetpassword from "./pages/authentication/Resetpassword.jsx";
 import ViewPhase from "./pages/Phase Management/ViewPhase.jsx";
+import EditTask from "./pages/TaskManagement/EditTask.jsx";
 import AgreementStatistics from "./pages/Dashboard/AgreementStatistics.jsx";
 import TotalAgreements from "./pages/Dashboard/TotalAgreements.jsx";
 import PendingSignatureAgreements from "./pages/Dashboard/PendingSignatureAgreements.jsx";
 import ContractStatisticalReports from "./pages/Dashboard/ContractStatisticalReports.jsx";
 import SignatureList from "./pages/signature/SignatureList.jsx";
+import CreateSignaturePage from "./pages/signature/CreateSignaturePage.jsx";
+import SignatureDetail from "./pages/signature/SignatureDetail.jsx";
+import UpdateSignature from "./pages/signature/UpdateSignature.jsx";
 
 function AppRouter() {
     return (
@@ -119,6 +123,10 @@ function AppRouter() {
                 <Route
                     path="/phase-management/view/:projectId/:phaseId"
                     element={<ViewPhase />}
+                />
+                <Route
+                    path="/task-management/edit/:projectId/:phaseId"
+                    element={<EditTask />}
                 />
                 <Route
                     path="/contract-management/list"
@@ -223,6 +231,22 @@ function AppRouter() {
                 <Route
                     path="/signature-management/list"
                     element={<SignatureList />}
+                />
+                <Route
+                    path="/signature-management/create-signature"
+                    element={<CreateSignaturePage/>}
+                />
+                <Route
+                    path="/signature-management/detail/:id"
+                    element={<SignatureDetail/>}
+                />
+                <Route
+                    path="/signature-management/update/:id"
+                    element={<UpdateSignature/>}
+                />
+                <Route
+                    path="/signatures/:id/edit"
+                    element={<UpdateSignature />}
                 />
             </Route>
 

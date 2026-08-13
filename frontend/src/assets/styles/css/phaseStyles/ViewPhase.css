@@ -119,15 +119,13 @@
   color: #087f75;
 }
 
-.phase-overall-progress .progress,
-.phase-progress-cell .progress {
+.phase-overall-progress .progress {
   height: 8px;
   border-radius: 999px;
   background: #e8edf3;
 }
 
-.phase-overall-progress .progress-bar,
-.phase-progress-cell .progress-bar {
+.phase-overall-progress .progress-bar {
   background: #0a9c8f;
 }
 
@@ -169,18 +167,6 @@
   min-width: 240px;
   max-width: 380px;
   white-space: normal;
-}
-
-.phase-progress-cell {
-  min-width: 135px;
-}
-
-.phase-progress-cell > span {
-  display: block;
-  margin-bottom: 5px;
-  color: #4b5b75;
-  font-size: 11px;
-  font-weight: 700;
 }
 
 @media (max-width: 900px) {

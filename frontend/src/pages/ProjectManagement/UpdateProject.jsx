@@ -3,7 +3,6 @@ import { Alert, Button, Card, Col, Form, Modal, Row, Stack } from "react-bootstr
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
     listProjectEmployees,
-    listProjectRoles,
     updateProject,
     viewProject,
 } from "../../services/projectService/projectApi.js";
@@ -20,16 +19,12 @@ import {
     addOneDay,
     calculatePhaseStartDatesForDisplay,
     createClientId,
-    employeeHasRole,
     getApiErrorMessage,
     getEmployeeDescription,
     getEmployeeName,
-    getEmployeeRoleNames,
     getEmployeeSearchText,
     getFilterOptions,
     isCompletedProjectStatus,
-    PHASE_STATUS_OPTIONS as phaseStatusOptions,
-    PROJECT_STATUS_OPTIONS as projectStatusOptions,
 } from "../../components/projectComponents/projectFormUtils.js";
 import "../../assets/styles/css/projectStyles/UpdateProject.css";
 
@@ -40,11 +35,9 @@ function UpdateProject({ onUpdateProject }) {
     const [project, setProject] = useState(null);
     const [access, setAccess] = useState(null);
     const [employees, setEmployees] = useState([]);
-    const [memberRoleOptions, setMemberRoleOptions] = useState([]);
     const [permissionOptions, setPermissionOptions] = useState([]);
     const [showMemberModal, setShowMemberModal] = useState(false);
     const [memberSearch, setMemberSearch] = useState("");
-    const [memberRoleFilter, setMemberRoleFilter] = useState("");
     const [memberStatusFilter, setMemberStatusFilter] = useState("");
     const [pendingMemberIds, setPendingMemberIds] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -53,7 +46,6 @@ function UpdateProject({ onUpdateProject }) {
     const [saving, setSaving] = useState(false);
 
     useEffect(function () {
-        let isActive = true;
         const requestController = new AbortController();
 
         async function loadPageData() {
@@ -68,6 +60,11 @@ function UpdateProject({ onUpdateProject }) {
                     projectId,
                     requestController.signal
                 );
+
+                if (requestController.signal.aborted) {
+                    return;
+                }
+
                 const projectAccess = projectData?.currentUserAccess;
                 const canManageMembers = hasProjectAction(
                     projectAccess,
@@ -77,7 +74,6 @@ function UpdateProject({ onUpdateProject }) {
                     projectAccess,
                     [
                         PROJECT_ACTIONS.EDIT_PROJECT,
-                        PROJECT_ACTIONS.EDIT_PHASE,
                         PROJECT_ACTIONS.MANAGE_MEMBERS,
                     ]
                 );
@@ -91,16 +87,14 @@ function UpdateProject({ onUpdateProject }) {
                 }
 
                 let employeeData = [];
-                let roleData = [];
 
                 if (canManageMembers) {
-                    [employeeData, roleData] = await Promise.all([
-                        listProjectEmployees(requestController.signal),
-                        listProjectRoles(requestController.signal),
-                    ]);
+                    employeeData = await listProjectEmployees(
+                        requestController.signal
+                    );
                 }
 
-                if (!isActive) {
+                if (requestController.signal.aborted) {
                     return;
                 }
 
@@ -128,7 +122,6 @@ function UpdateProject({ onUpdateProject }) {
                     })),
                 });
                 setEmployees(mergeEmployees(employeeData, projectUsers));
-                setMemberRoleOptions(Array.isArray(roleData) ? roleData : []);
 
                 const projectPermissions = Array.isArray(projectData?.availablePermissions)
                     ? projectData.availablePermissions.filter((permission) => permission.id)
@@ -136,7 +129,7 @@ function UpdateProject({ onUpdateProject }) {
                 setPermissionOptions(projectPermissions);
                 setLoadError("");
             } catch (error) {
-                if (!isActive) {
+                if (requestController.signal.aborted) {
                     return;
                 }
 
@@ -145,7 +138,7 @@ function UpdateProject({ onUpdateProject }) {
                 setAccess(null);
                 setLoadError("Unable to load this project. Please try again later.");
             } finally {
-                if (isActive) {
+                if (!requestController.signal.aborted) {
                     setLoading(false);
                 }
             }
@@ -154,7 +147,6 @@ function UpdateProject({ onUpdateProject }) {
         loadPageData();
 
         return function () {
-            isActive = false;
             requestController.abort();
         };
     }, [projectId]);
@@ -163,10 +155,6 @@ function UpdateProject({ onUpdateProject }) {
         access,
         PROJECT_ACTIONS.EDIT_PROJECT
     );
-    const canEditPhase = hasProjectAction(
-        access,
-        PROJECT_ACTIONS.EDIT_PHASE
-    );
     const canManageMembers = hasProjectAction(
         access,
         PROJECT_ACTIONS.MANAGE_MEMBERS
@@ -174,20 +162,34 @@ function UpdateProject({ onUpdateProject }) {
 
     function handleProjectChange(event) {
         const { name, value } = event.target;
-        setProject(function (currentProject) {
-            let phases = currentProject.phases;
+        let phases = project.phases;
 
-            if (name === "projectStartDate" && phases.length > 0) {
-                phases = calculatePhaseStartDatesForDisplay(phases, value);
-            }
+        if (name === "projectStartDate" && phases.length > 0) {
+            phases = calculatePhaseStartDatesForDisplay(phases, value);
+        }
 
-            if (name === "projectEndDate" && phases.length > 0) {
-                phases = phases.map((phase, index) =>
-                    index === phases.length - 1 ? { ...phase, endDate: value } : phase
-                );
-            }
+        if (name === "projectEndDate" && phases.length > 0) {
+            phases = phases.map(function (phase, index) {
+                if (index === phases.length - 1) {
+                    return { ...phase, endDate: value };
+                }
 
-            return { ...currentProject, [name]: value, phases };
+                return phase;
+            });
+        }
+
+        const phaseDateError = getPhaseDateError(phases);
+
+        if (phaseDateError) {
+            setSubmitError(phaseDateError);
+            return;
+        }
+
+        setSubmitError("");
+        setProject({
+            ...project,
+            [name]: value,
+            phases,
         });
     }
 
@@ -224,7 +226,6 @@ function UpdateProject({ onUpdateProject }) {
                     description: "",
                     startDate: nextStartDate,
                     endDate: currentProject.projectEndDate,
-                    status: "Planning",
                 },
             ],
         }));
@@ -232,23 +233,30 @@ function UpdateProject({ onUpdateProject }) {
 
     function updatePhase(clientId, event) {
         const { name, value } = event.target;
-
-        setProject(function (currentProject) {
-            let phases = currentProject.phases.map((phase) =>
-                phase.clientId === clientId
-                    ? { ...phase, [name]: value }
-                    : phase
-            );
-
-            if (name === "endDate") {
-                phases = calculatePhaseStartDatesForDisplay(
-                    phases,
-                    currentProject.projectStartDate
-                );
+        let phases = project.phases.map(function (phase) {
+            if (phase.clientId === clientId) {
+                return { ...phase, [name]: value };
             }
 
-            return { ...currentProject, phases };
+            return phase;
         });
+
+        if (name === "endDate") {
+            phases = calculatePhaseStartDatesForDisplay(
+                phases,
+                project.projectStartDate
+            );
+        }
+
+        const phaseDateError = getPhaseDateError(phases);
+
+        if (phaseDateError) {
+            setSubmitError(phaseDateError);
+            return;
+        }
+
+        setSubmitError("");
+        setProject({ ...project, phases });
     }
 
     function removePhase(clientId) {
@@ -273,7 +281,6 @@ function UpdateProject({ onUpdateProject }) {
 
     function openMemberModal() {
         setMemberSearch("");
-        setMemberRoleFilter("");
         setMemberStatusFilter("");
         setPendingMemberIds([]);
         setShowMemberModal(true);
@@ -331,6 +338,15 @@ function UpdateProject({ onUpdateProject }) {
     async function handleSubmit(event) {
         event.preventDefault();
 
+        if (canEditProject) {
+            const phaseDateError = getPhaseDateError(project.phases);
+
+            if (phaseDateError) {
+                setSubmitError(phaseDateError);
+                return;
+            }
+        }
+
         try {
             setSaving(true);
             setSubmitError("");
@@ -350,16 +366,12 @@ function UpdateProject({ onUpdateProject }) {
                 projectDescription: canEditProject
                     ? project.projectDescription.trim()
                     : null,
-                projectStatus: canEditProject
-                    ? project.projectStatus
-                    : null,
-                phases: canEditPhase
+                phases: canEditProject
                     ? project.phases.map((phase) => ({
                         id: phase.id,
                         title: phase.title.trim(),
                         description: phase.description.trim(),
                         endDate: phase.endDate,
-                        status: phase.status,
                     }))
                     : null,
                 members: canManageMembers ? project.members : null,
@@ -393,10 +405,9 @@ function UpdateProject({ onUpdateProject }) {
 
     function employeeMatchesFilters(employee) {
         const matchesSearch = getEmployeeSearchText(employee).includes(normalizedMemberSearch);
-        const matchesRole = !memberRoleFilter || employeeHasRole(employee, memberRoleFilter);
         const matchesStatus = !memberStatusFilter || employee.status === memberStatusFilter;
 
-        return matchesSearch && matchesRole && matchesStatus;
+        return matchesSearch && matchesStatus;
     }
 
     const visibleAvailableEmployees = availableEmployees.filter(employeeMatchesFilters);
@@ -427,7 +438,6 @@ function UpdateProject({ onUpdateProject }) {
                     <small>{employee.email || "No email"}</small>
                 </span>
                 <span className="update-project-modal-user-meta">
-                    <small>{getEmployeeRoleNames(employee).join(", ") || "No assigned role"}</small>
                     <small>{employee.status || "Unknown"}</small>
                 </span>
             </label>
@@ -496,19 +506,21 @@ function UpdateProject({ onUpdateProject }) {
 
                             <Form.Group as={Col} md={6} controlId="projectStartDate">
                                 <Form.Label className="project-management-field-label">Start Date</Form.Label>
-                                <Form.Control disabled={!canEditPhase} required type="date" name="projectStartDate" value={project.projectStartDate} onChange={handleProjectChange} className="project-management-input" />
+                                <Form.Control required type="date" name="projectStartDate" value={project.projectStartDate} onChange={handleProjectChange} className="project-management-input" />
                             </Form.Group>
 
                             <Form.Group as={Col} md={6} controlId="projectEndDate">
                                 <Form.Label className="project-management-field-label">End Date</Form.Label>
-                                <Form.Control disabled={!canEditPhase} required type="date" min={project.projectStartDate} name="projectEndDate" value={project.projectEndDate} onChange={handleProjectChange} className="project-management-input" />
+                                <Form.Control required type="date" min={project.projectStartDate} name="projectEndDate" value={project.projectEndDate} onChange={handleProjectChange} className="project-management-input" />
                             </Form.Group>
 
                             <Form.Group as={Col} md={6} controlId="projectStatus">
                                 <Form.Label className="project-management-field-label">Status</Form.Label>
-                                <Form.Select name="projectStatus" value={project.projectStatus} onChange={handleProjectChange} className="project-management-input">
-                                    {projectStatusOptions.map((status) => <option key={status}>{status}</option>)}
-                                </Form.Select>
+                                <Form.Control
+                                    disabled
+                                    value={project.projectStatus}
+                                    className="project-management-input update-project-readonly-input"
+                                />
                             </Form.Group>
 
                             <Form.Group as={Col} md={3} controlId="projectCreatedBy">
@@ -530,7 +542,7 @@ function UpdateProject({ onUpdateProject }) {
                     </Card>
                     )}
 
-                    {canEditPhase && (
+                    {canEditProject && (
                     <Card as="section" className="project-management-card">
                         <div className="update-project-section-header">
                             <div>
@@ -567,12 +579,6 @@ function UpdateProject({ onUpdateProject }) {
                                             <Col md={3}>
                                                 <Form.Label className="project-management-field-label">End Date</Form.Label>
                                                 <Form.Control required type="date" name="endDate" min={phase.startDate || project.projectStartDate} max={project.projectEndDate} value={phase.endDate} onChange={(event) => updatePhase(phase.clientId, event)} className="project-management-input" />
-                                            </Col>
-                                            <Col md={4}>
-                                                <Form.Label className="project-management-field-label">Status</Form.Label>
-                                                <Form.Select name="status" value={phase.status} onChange={(event) => updatePhase(phase.clientId, event)} className="project-management-input">
-                                                    {phaseStatusOptions.map((status) => <option key={status}>{status}</option>)}
-                                                </Form.Select>
                                             </Col>
                                             <Col xs={12}>
                                                 <Form.Label className="project-management-field-label">Description</Form.Label>
@@ -682,23 +688,9 @@ function UpdateProject({ onUpdateProject }) {
                             <Form.Control
                                 value={memberSearch}
                                 onChange={(event) => setMemberSearch(event.target.value)}
-                                placeholder="Search by name, email, role..."
+                                placeholder="Search by name or email..."
                                 className="update-project-modal-filter-input"
                             />
-                        </Form.Group>
-
-                        <Form.Group controlId="add-member-role-filter">
-                            <Form.Label className="project-management-field-label">Role</Form.Label>
-                            <Form.Select
-                                value={memberRoleFilter}
-                                onChange={(event) => setMemberRoleFilter(event.target.value)}
-                                className="update-project-modal-filter-input"
-                            >
-                                <option value="">All roles</option>
-                                {memberRoleOptions.map((role) => (
-                                    <option key={role.id} value={role.id}>{role.roleName}</option>
-                                ))}
-                            </Form.Select>
                         </Form.Group>
 
                         <Form.Group controlId="add-member-status-filter">
@@ -765,11 +757,27 @@ function mapPhases(phases) {
             description: phase.description || "",
             startDate: phase.startDate || "",
             endDate: phase.endDate || "",
-            status: phase.status || "Planning",
         });
     }
 
     return mappedPhases;
+}
+
+function getPhaseDateError(phases) {
+    for (let index = 0; index < phases.length; index++) {
+        const phase = phases[index];
+
+        if (
+            phase.startDate
+            && phase.endDate
+            && phase.startDate > phase.endDate
+        ) {
+            return "Phase " + (index + 1)
+                + " start date must not be after its end date.";
+        }
+    }
+
+    return "";
 }
 
 function mergeEmployees(employeeData, projectUsers) {
@@ -782,7 +790,6 @@ function mergeEmployees(employeeData, projectUsers) {
                 id: user.userId,
                 email: user.email,
                 userName: user.userName,
-                roles: [],
                 status: user.userStatus,
             });
         }

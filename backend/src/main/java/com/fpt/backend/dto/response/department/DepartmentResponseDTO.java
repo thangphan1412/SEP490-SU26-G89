@@ -1,7 +1,6 @@
 package com.fpt.backend.dto.response.department;
 
 import com.fpt.backend.entity.Departments;
-import com.fpt.backend.enums.DepartmentStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -21,7 +20,7 @@ public class DepartmentResponseDTO {
     private UUID companyId;
     private String departmentName;
     private String departmentCode;
-    private DepartmentStatus departmentStatus;
+    private String departmentStatus;
     private LocalDateTime departmentCreatedAt;
     private LocalDateTime updatedAt;
 

@@ -3,10 +3,7 @@ package com.fpt.backend.entity;
 import com.fpt.backend.enums.ElectronicSignatureType;
 import com.fpt.backend.enums.ElectronicStatus;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -16,15 +13,16 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 @Entity
+@Builder
 @Table(name = "electronic_signature")
-public class ElectronicSignatures extends BaseEntity{
-//    user_id              FK -> users
-//    file_storage_id      FK -> file_storage
+public class ElectronicSignatures extends BaseEntity {
+   @Column(name = "electronic_signature_name")
+   private String electronicSignatureName;
     @Column(name = "electronic_signature_type")
     @Enumerated(EnumType.STRING)
     private ElectronicSignatureType electronicSignatureType;
     @Column(name = "is_default")
-    private boolean is_default;
+    private boolean isDefault;
     @Column(name = "status")
     @Enumerated(EnumType.STRING)
     private ElectronicStatus status;
@@ -39,4 +37,7 @@ public class ElectronicSignatures extends BaseEntity{
     // signature
     @OneToMany(mappedBy = "electronicSignatures")
     private List<Signature> signatures;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id")
+    private Users user;
 }

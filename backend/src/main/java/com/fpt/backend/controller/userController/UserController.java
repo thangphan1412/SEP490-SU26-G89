@@ -1,131 +1,119 @@
 package com.fpt.backend.controller.userController;
 
-import com.fpt.backend.dto.request.user.UserRequestDTO;
+import com.fpt.backend.constant.ApiConstant;
+import com.fpt.backend.dto.request.user.UserFilterRequestDTO;
+import com.fpt.backend.dto.request.user.UserCreateRequestDTO;
+import com.fpt.backend.dto.request.user.UserUpdateRequestDTO;
 import com.fpt.backend.dto.response.user.UserResponseDTO;
 import com.fpt.backend.service.interfaces.user.IUserService;
 import com.fpt.backend.util.BaseResponse;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.security.Principal;
-import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/users") // Đổi tên mapping để chuẩn RESTful hơn
+@RequestMapping(ApiConstant.USER.USERS)
 public class UserController {
 
     @Autowired
-    private IUserService userService; // Khuyên dùng interface thay vì implementation (UserServiceImpl)
+    private IUserService userService;
 
     // 1. GET ALL USERS (ListUser)
+    @PreAuthorize("hasAnyAuthority('CEO', 'Administrator', 'Accountant', 'HeadOfDepartment')")
     @GetMapping
-    public ResponseEntity<BaseResponse<List<UserResponseDTO>>> getAllUsers(
-            @RequestParam(defaultValue = "employee") String type,
-            @RequestParam(required = false) String keyword,
-            @RequestParam(required = false, defaultValue = "All") String role,
-            @RequestParam(required = false, defaultValue = "All") String department,
-            @RequestParam(required = false, defaultValue = "All") String status,
+    public ResponseEntity<BaseResponse<Page<UserResponseDTO>>> getAllUsers(
+            @ModelAttribute UserFilterRequestDTO filterDTO, // Ép Spring map URL Params vào DTO
+            @RequestParam(defaultValue = "0") int page,     // Lấy số trang từ FE (Mặc định 0)
+            @RequestParam(defaultValue = "10") int size,    // Lấy số lượng từ FE (Mặc định 10)
             Principal principal
     ) {
         try {
-            // Truyền toàn bộ param xuống Service
-            List<UserResponseDTO> users = userService.getAllUsersFiltered(
-                    type, principal.getName(), keyword, role, department, status
-            );
+            Page<UserResponseDTO> usersPage = userService.getAllUsersFiltered(filterDTO, principal.getName(), page, size);
 
-            return ResponseEntity
-                    .status(HttpStatus.OK)
-                    .body(BaseResponse.<List<UserResponseDTO>>builder()
-                            .status(HttpStatus.OK.value())
-                            .message("Successfully fetched users")
-                            .data(users)
-                            .build()
-                    );
+            return ResponseEntity.status(HttpStatus.OK).body(BaseResponse.<Page<UserResponseDTO>>builder()
+                    .status(HttpStatus.OK.value())
+                    .message("Successfully fetched users")
+                    .data(usersPage)
+                    .build()
+            );
         } catch (Exception e) {
-            return ResponseEntity
-                    .status(HttpStatus.FORBIDDEN) // Lỗi 403 (Cấm truy cập)
-                    .body(BaseResponse.<List<UserResponseDTO>>builder()
-                            .status(HttpStatus.FORBIDDEN.value())
-                            .message(e.getMessage())
-                            .build()
-                    );
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(BaseResponse.<Page<UserResponseDTO>>builder()
+                    .status(HttpStatus.BAD_REQUEST.value())
+                    .message("Lỗi xử lý: " + e.getMessage())
+                    .build()
+            );
         }
     }
 
     // 2. GET USER BY ID (ViewUser)
-    @GetMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('CEO', 'Administrator', 'Accountant', 'HeadOfDepartment')")
+    @GetMapping(ApiConstant.USER.BY_ID)
     public ResponseEntity<BaseResponse<UserResponseDTO>> getUserById(@PathVariable UUID id) {
         try {
             UserResponseDTO user = userService.getUserById(id);
-            return ResponseEntity
-                    .status(HttpStatus.OK)
-                    .body(BaseResponse.<UserResponseDTO>builder()
-                            .status(HttpStatus.OK.value())
-                            .message("User found")
-                            .data(user)
-                            .build()
-                    );
+            return ResponseEntity.status(HttpStatus.OK).body(BaseResponse.<UserResponseDTO>builder()
+                    .status(HttpStatus.OK.value())
+                    .message("User found")
+                    .data(user)
+                    .build()
+            );
         } catch (Exception e) {
-            return ResponseEntity
-                    .status(HttpStatus.NOT_FOUND)
-                    .body(BaseResponse.<UserResponseDTO>builder()
-                            .status(HttpStatus.NOT_FOUND.value())
-                            .message(e.getMessage())
-                            .build()
-                    );
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(BaseResponse.<UserResponseDTO>builder()
+                    .status(HttpStatus.NOT_FOUND.value())
+                    .message(e.getMessage())
+                    .build()
+            );
         }
     }
 
     // 3. CREATE USER (CreateUser)
+    @PreAuthorize("hasAnyAuthority('Accountant', 'HeadOfDepartment')")
     @PostMapping
-    public ResponseEntity<BaseResponse<UserResponseDTO>> createUser(@RequestBody UserRequestDTO request) {
+    public ResponseEntity<BaseResponse<UserResponseDTO>> createUser(@Valid @RequestBody UserCreateRequestDTO request) {
         try {
             UserResponseDTO newUser = userService.createUser(request);
-            return ResponseEntity
-                    .status(HttpStatus.CREATED)
-                    .body(BaseResponse.<UserResponseDTO>builder()
-                            .status(HttpStatus.CREATED.value())
-                            .message("User created successfully")
-                            .data(newUser)
-                            .build()
-                    );
+            return ResponseEntity.status(HttpStatus.CREATED).body(BaseResponse.<UserResponseDTO>builder()
+                    .status(HttpStatus.CREATED.value())
+                    .message("User created successfully")
+                    .data(newUser)
+                    .build()
+            );
         } catch (Exception e) {
-            return ResponseEntity
-                    .status(HttpStatus.BAD_REQUEST)
-                    .body(BaseResponse.<UserResponseDTO>builder()
-                            .status(HttpStatus.BAD_REQUEST.value())
-                            .message(e.getMessage())
-                            .build()
-                    );
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(BaseResponse.<UserResponseDTO>builder()
+                    .status(HttpStatus.BAD_REQUEST.value())
+                    .message(e.getMessage())
+                    .build()
+            );
         }
     }
 
     // 4. UPDATE USER (UpdateUser)
-    @PutMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('Accountant', 'HeadOfDepartment')")
+    @PutMapping(ApiConstant.USER.BY_ID)
     public ResponseEntity<BaseResponse<UserResponseDTO>> updateUser(
             @PathVariable UUID id,
-            @RequestBody UserRequestDTO request) {
+            @Valid @RequestBody UserUpdateRequestDTO request) {
         try {
             UserResponseDTO updatedUser = userService.updateUser(id, request);
-            return ResponseEntity
-                    .status(HttpStatus.OK)
-                    .body(BaseResponse.<UserResponseDTO>builder()
-                            .status(HttpStatus.OK.value())
-                            .message("User updated successfully")
-                            .data(updatedUser)
-                            .build()
-                    );
+            return ResponseEntity.status(HttpStatus.OK).body(BaseResponse.<UserResponseDTO>builder()
+                    .status(HttpStatus.OK.value())
+                    .message("User updated successfully")
+                    .data(updatedUser)
+                    .build()
+            );
         } catch (Exception e) {
-            return ResponseEntity
-                    .status(HttpStatus.BAD_REQUEST)
-                    .body(BaseResponse.<UserResponseDTO>builder()
-                            .status(HttpStatus.BAD_REQUEST.value())
-                            .message(e.getMessage())
-                            .build()
-                    );
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(BaseResponse.<UserResponseDTO>builder()
+                    .status(HttpStatus.BAD_REQUEST.value())
+                    .message(e.getMessage())
+                    .build()
+            );
         }
     }
 }

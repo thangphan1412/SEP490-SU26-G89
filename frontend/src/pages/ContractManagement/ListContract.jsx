@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Alert, Button, Modal, Spinner } from "react-bootstrap";
+import { useSearchParams } from "react-router-dom";
 import {
     IconCopy,
     IconEye,
@@ -14,8 +15,11 @@ import contractApi from "../../services/contractService/contractApi.js";
 import contractTypeApi from "../../services/contractTypeService/contractTypeApi.js";
 import contractTemplateApi from "../../services/contractTemplateService/contractTemplateApi.js";
 import ContractForm from "./ContractForm.jsx";
+import { splitContractPages } from "./contractPageUtils.js";
 import {
     CONTRACT_STATUS,
+    CONTRACT_PROJECT_ACTION,
+    canCreateReplacementContract,
     canExportContractPdf,
     canManageNewContract,
     createEmptyContract,
@@ -56,10 +60,14 @@ function createPageNumbers(currentPage, totalPages) {
 }
 
 function ListContract() {
+    const [searchParameters, setSearchParameters] = useSearchParams();
+    const requestedContractId = searchParameters.get("viewContractId");
     const [contracts, setContracts] = useState([]);
     const [projects, setProjects] = useState([]);
     const [contractTypes, setContractTypes] = useState([]);
     const [contractTemplates, setContractTemplates] = useState([]);
+    const [projectContext, setProjectContext] = useState(null);
+    const [loadingProjectContext, setLoadingProjectContext] = useState(false);
     const [searchInput, setSearchInput] = useState("");
     const [search, setSearch] = useState("");
     const [status, setStatus] = useState("");
@@ -81,12 +89,47 @@ function ListContract() {
     const [transitionContract, setTransitionContract] = useState(null);
     const [transitionForm, setTransitionForm] = useState({
         comment: "",
-        signerDateOfBirth: "",
     });
     const [transitionError, setTransitionError] = useState("");
     const [transitioning, setTransitioning] = useState(false);
     const [reloadKey, setReloadKey] = useState(0);
     const currentActor = getCurrentContractActor();
+
+    useEffect(function () {
+        if (!requestedContractId) {
+            return;
+        }
+
+        let active = true;
+
+        async function openRequestedContract() {
+            try {
+                const response = await contractApi.getContractById(
+                    requestedContractId
+                );
+                const contract = unwrapApiResponse(response);
+
+                if (active) {
+                    setSelectedContract(contract);
+                    setModalError("");
+                    setModalMode("view");
+                }
+            } catch (error) {
+                if (active) {
+                    setErrorMessage(getApiErrorMessage(
+                        error,
+                        "Unable to load the selected contract."
+                    ));
+                }
+            }
+        }
+
+        openRequestedContract();
+
+        return function () {
+            active = false;
+        };
+    }, [requestedContractId]);
 
     const fetchContractOptions = useCallback(async () => {
         const [projectItems, typeResponse, templateResponse] =
@@ -139,6 +182,43 @@ function ListContract() {
             active = false;
         };
     }, [fetchContractOptions]);
+
+    useEffect(() => {
+        let active = true;
+        const projectId = contractForm.projectId;
+        if (!modalMode || modalMode === "view" || !projectId) {
+            return () => {
+                active = false;
+            };
+        }
+
+        const loadContext = async () => {
+            setLoadingProjectContext(true);
+            try {
+                const response = await contractApi.getProjectContext(projectId);
+                const payload = unwrapApiResponse(response);
+                if (active) {
+                    setProjectContext(payload || null);
+                }
+            } catch (error) {
+                if (active) {
+                    setProjectContext(null);
+                    setModalError(getApiErrorMessage(
+                        error,
+                        "Unable to load project phases, tasks and members."
+                    ));
+                }
+            } finally {
+                if (active) {
+                    setLoadingProjectContext(false);
+                }
+            }
+        };
+        loadContext();
+        return () => {
+            active = false;
+        };
+    }, [contractForm.projectId, modalMode]);
 
     useEffect(() => {
         const debounceId = window.setTimeout(() => {
@@ -209,6 +289,7 @@ function ListContract() {
     const openCreateModal = () => {
         setSelectedContract(null);
         setContractForm(createEmptyContract());
+        setProjectContext(null);
         setModalError("");
         setModalMode("create");
     };
@@ -222,34 +303,41 @@ function ListContract() {
     const openEditModal = (contract) => {
         if (!canManageNewContract(
             contract,
-            currentActor.actorRole,
-            currentActor.actorName
+            CONTRACT_PROJECT_ACTION.EDIT
         )) {
             setErrorMessage(
-                "Only the creator or an Admin can edit a contract while it is NEW."
+                "You do not have permission to edit this NEW contract."
             );
             return;
         }
 
         setSelectedContract(contract);
         setContractForm(mapContractToForm(contract));
+        setProjectContext(null);
+        setLoadingProjectContext(false);
         setModalError("");
         setModalMode("edit");
     };
 
     const openReplacementModal = (contract) => {
-        if (
-            normalizeContractStatus(contract?.contractStatus)
-            !== CONTRACT_STATUS.CANCELLED
-        ) {
+        if (!canCreateReplacementContract(contract)) {
             setErrorMessage(
-                "Only a CANCELLED contract can be used to create a replacement."
+                "A replacement requires a CANCELLED contract and CREATE_CONTRACTS permission."
             );
             return;
         }
 
         setSelectedContract(null);
-        setContractForm(createReplacementContract(contract));
+        const replacement = createReplacementContract(contract);
+        const selectedType = contractTypes.find(
+            (item) => item.id === replacement.contractTypeId
+        );
+        setContractForm({
+            ...replacement,
+            workflowDefinition: selectedType?.activeWorkflow || null,
+        });
+        setProjectContext(null);
+        setLoadingProjectContext(false);
         setModalError("");
         setModalMode("create");
     };
@@ -257,7 +345,7 @@ function ListContract() {
     const openTransitionModal = (contract, action) => {
         setTransitionContract(contract);
         setTransitionAction(action);
-        setTransitionForm({ comment: "", signerDateOfBirth: "" });
+        setTransitionForm({ comment: "" });
         setTransitionError("");
         setSelectedContract(null);
         setModalMode(null);
@@ -286,15 +374,49 @@ function ListContract() {
 
         setModalMode(null);
         setSelectedContract(null);
+        setProjectContext(null);
+        setLoadingProjectContext(false);
         setModalError("");
+
+        if (requestedContractId) {
+            const updatedParameters = new URLSearchParams(searchParameters);
+            updatedParameters.delete("viewContractId");
+            setSearchParameters(updatedParameters, { replace: true });
+        }
     };
 
     const handleContractChange = (event) => {
         const { name, value, type, checked } = event.target;
         const nextValue = type === "checkbox" ? checked : value;
 
+        if (name === "projectId") {
+            setProjectContext(null);
+            setLoadingProjectContext(false);
+        }
+
         setContractForm((current) => {
+            if (name === "projectId") {
+                return {
+                    ...current,
+                    projectId: value,
+                    phaseId: "",
+                    taskId: "",
+                    workflowAssignees: [],
+                };
+            }
+
+            if (name === "phaseId") {
+                return {
+                    ...current,
+                    phaseId: value,
+                    taskId: "",
+                };
+            }
+
             if (name === "contractTypeId") {
+                const selectedType = contractTypes.find(
+                    (item) => item.id === value
+                );
                 return {
                     ...current,
                     contractTypeId: value,
@@ -306,6 +428,23 @@ function ListContract() {
                     saveAsTemplateVersion: false,
                     templateVersionName: "",
                     templateVersionNote: "",
+                    workflowDefinition: selectedType?.activeWorkflow || null,
+                    workflowAssignees: [],
+                };
+            }
+
+            if (name.startsWith("workflowAssignee.")) {
+                const workflowStepId = name.slice("workflowAssignee.".length);
+                const remainingAssignments = (current.workflowAssignees || [])
+                    .filter((item) => item.workflowStepId !== workflowStepId);
+                return {
+                    ...current,
+                    workflowAssignees: value
+                        ? [
+                            ...remainingAssignments,
+                            { workflowStepId, userId: value },
+                        ]
+                        : remainingAssignments,
                 };
             }
 
@@ -369,7 +508,10 @@ function ListContract() {
             return;
         }
 
-        const validationMessage = validateContract(contractForm);
+        const validationMessage = validateContract(
+            contractForm,
+            modalMode !== "edit"
+        );
         if (validationMessage) {
             setModalError(validationMessage);
             return;
@@ -426,7 +568,10 @@ function ListContract() {
             return;
         }
 
-        const actionDetails = getContractActionDetails(transitionAction);
+        const actionDetails = getContractActionDetails(
+            transitionAction,
+            transitionContract
+        );
         if (!currentActor.actorName || !currentActor.actorRole) {
             setTransitionError(
                 "Your signed-in name and role are required to perform workflow actions."
@@ -436,16 +581,6 @@ function ListContract() {
 
         if (actionDetails.requiresComment && !transitionForm.comment.trim()) {
             setTransitionError("A reason is required for this action.");
-            return;
-        }
-
-        if (
-            actionDetails.requiresSignerDateOfBirth
-            && !transitionForm.signerDateOfBirth
-        ) {
-            setTransitionError(
-                "Signer date of birth is required for the legal age check."
-            );
             return;
         }
 
@@ -489,7 +624,7 @@ function ListContract() {
         setErrorMessage("");
 
         try {
-            await contractApi.deleteContract(contract.id, currentActor);
+            await contractApi.deleteContract(contract.id);
             setReloadKey((current) => current + 1);
         } catch (error) {
             setErrorMessage(
@@ -555,13 +690,18 @@ function ListContract() {
                     <h1>Contracts</h1>
                     <p>
                         Manage contracts from NEW through approval, signing and
-                        the active lifecycle with role-based actions.
+                        the active lifecycle with project-based permissions.
                     </p>
                 </div>
                 <Button
                     className="contract-primary-button"
                     onClick={openCreateModal}
-                    disabled={loadingOptions}
+                    disabled={loadingOptions || projects.length === 0}
+                    title={
+                        !loadingOptions && projects.length === 0
+                            ? "You need CREATE_CONTRACTS permission in a project."
+                            : "Create a contract"
+                    }
                 >
                     <IconPlus size={20} />
                     New Contract
@@ -683,8 +823,7 @@ function ListContract() {
                                             <TaskBadge
                                                 task={getRoleContractTask(
                                                     contract,
-                                                    currentActor.actorRole,
-                                                    currentActor.actorName
+                                                    currentActor.actorRole
                                                 )}
                                             />
                                         </td>
@@ -721,8 +860,7 @@ function ListContract() {
                                                     disabled={
                                                         !canManageNewContract(
                                                             contract,
-                                                            currentActor.actorRole,
-                                                            currentActor.actorName
+                                                            CONTRACT_PROJECT_ACTION.EDIT
                                                         )
                                                     }
                                                     onClick={() =>
@@ -737,8 +875,7 @@ function ListContract() {
                                                         deletingId === contract.id
                                                         || !canManageNewContract(
                                                             contract,
-                                                            currentActor.actorRole,
-                                                            currentActor.actorName
+                                                            CONTRACT_PROJECT_ACTION.DELETE
                                                         )
                                                     }
                                                     onClick={() =>
@@ -809,7 +946,9 @@ function ListContract() {
                 projects={projects}
                 contractTypes={contractTypes}
                 contractTemplates={contractTemplates}
+                projectContext={projectContext}
                 loadingOptions={loadingOptions}
+                loadingProjectContext={loadingProjectContext}
                 error={modalError}
                 submitting={submitting}
                 onChange={handleContractChange}
@@ -857,7 +996,9 @@ function ContractModal({
     projects,
     contractTypes,
     contractTemplates,
+    projectContext,
     loadingOptions,
+    loadingProjectContext,
     error,
     submitting,
     onChange,
@@ -883,8 +1024,7 @@ function ContractModal({
     const availableActions = isView
         ? getAvailableContractActions(
             contract,
-            currentActor.actorRole,
-            currentActor.actorName
+            currentActor.actorRole
         )
         : [];
 
@@ -915,8 +1055,7 @@ function ContractModal({
                         <Button variant="outline-secondary" onClick={onClose}>
                             Close
                         </Button>
-                        {normalizeContractStatus(contract?.contractStatus)
-                            === CONTRACT_STATUS.CANCELLED && (
+                        {canCreateReplacementContract(contract) && (
                             <Button
                                 variant="outline-primary"
                                 onClick={onCreateReplacement}
@@ -941,8 +1080,7 @@ function ContractModal({
                         )}
                         {canManageNewContract(
                             contract,
-                            currentActor.actorRole,
-                            currentActor.actorName
+                            CONTRACT_PROJECT_ACTION.EDIT
                         ) && (
                             <Button onClick={onEdit}>
                                 <IconPencil size={18} />
@@ -964,11 +1102,14 @@ function ContractModal({
                             projects={projects}
                             contractTypes={contractTypes}
                             contractTemplates={contractTemplates}
+                            projectContext={projectContext}
                             loadingProjects={loadingOptions}
+                            loadingProjectContext={loadingProjectContext}
                             loadingContractOptions={loadingOptions}
                             creatorReadOnly={Boolean(
                                 localStorage.getItem("fullName")
                             )}
+                            projectReadOnly={mode === "edit"}
                         />
                     </Modal.Body>
                     <Modal.Footer>
@@ -1004,8 +1145,10 @@ function ContractDetails({
 
     const currentTask = getRoleContractTask(
         contract,
-        currentActor.actorRole,
-        currentActor.actorName
+        currentActor.actorRole
+    );
+    const completedPages = splitContractPages(
+        contract.renderedContractContent || contract.contractContent
     );
 
     return (
@@ -1013,6 +1156,7 @@ function ContractDetails({
             <ContractWorkflow
                 status={contract.contractStatus}
                 history={contract.statusHistory}
+                workflowRuntime={contract.workflowRuntime}
             />
 
             <div className="contract-current-task">
@@ -1028,13 +1172,17 @@ function ContractDetails({
                     <div>
                         <h3>Available workflow actions</h3>
                         <p>
-                            Only valid actions for {currentActor.actorRole} are
-                            displayed. The backend validates every transition.
+                            Only actions allowed by your project permission and
+                            role are displayed. The backend validates every
+                            transition.
                         </p>
                     </div>
                     <div className="contract-workflow-action-buttons">
                         {availableActions.map((action) => {
-                            const details = getContractActionDetails(action);
+                            const details = getContractActionDetails(
+                                action,
+                                contract
+                            );
 
                             return (
                                 <Button
@@ -1063,6 +1211,8 @@ function ContractDetails({
                     )}
                 />
                 <DetailItem label="Project" value={contract.projectName} />
+                <DetailItem label="Phase" value={contract.phaseName || "-"} />
+                <DetailItem label="Task" value={contract.taskTitle || "-"} />
                 <DetailItem
                     label="Contract Type"
                     value={[
@@ -1141,12 +1291,44 @@ function ContractDetails({
                         full
                     />
                 )}
+                {contract.workflowRuntime && (
+                    <DetailItem
+                        label="Workflow Version"
+                        value={`${contract.workflowRuntime.workflowName} · V${contract.workflowRuntime.workflowVersionNumber}`}
+                        full
+                    />
+                )}
             </div>
+            {contract.workflowRuntime?.steps?.length > 0 && (
+                <section className="contract-workflow-assignment-summary">
+                    <h3>Workflow responsibilities</h3>
+                    {contract.workflowRuntime.steps.map((step) => (
+                        <article key={step.id}>
+                            <span>{step.stepOrder}</span>
+                            <div>
+                                <strong>{step.stepName}</strong>
+                                <small>
+                                    {formatContractStatus(step.actionType)} · {step.requiredRoleCode}
+                                </small>
+                            </div>
+                            <div>
+                                <strong>{step.assignedUserName}</strong>
+                                <small>{formatContractStatus(step.status)}</small>
+                            </div>
+                        </article>
+                    ))}
+                </section>
+            )}
             <div className="contract-content-preview">
                 <h3>Completed Contract Content</h3>
-                <pre>{contract.renderedContractContent
-                    || contract.contractContent
-                    || "No content."}</pre>
+                <div className="contract-document-pages">
+                    {completedPages.map((pageContent, index) => (
+                        <section className="contract-document-page" key={index}>
+                            <span>Page {index + 1}</span>
+                            <pre>{pageContent || "No content on this page."}</pre>
+                        </section>
+                    ))}
+                </div>
             </div>
             <ContractHistory history={contract.statusHistory} />
         </>
@@ -1162,8 +1344,51 @@ const CONTRACT_WORKFLOW_STEPS = [
     CONTRACT_STATUS.ENDED,
 ];
 
-function ContractWorkflow({ status, history = [] }) {
+function ContractWorkflow({ status, history = [], workflowRuntime = null }) {
     const normalizedStatus = normalizeContractStatus(status);
+    const runtimeSteps = Array.isArray(workflowRuntime?.steps)
+        ? workflowRuntime.steps
+        : [];
+
+    if (runtimeSteps.length > 0) {
+        return (
+            <section className="contract-workflow-progress">
+                <div className="contract-workflow-heading">
+                    <div>
+                        <h3>{workflowRuntime.workflowName}</h3>
+                        <p>
+                            Contract Type workflow version {workflowRuntime.workflowVersionNumber}.
+                            Each step is assigned to one project member.
+                        </p>
+                    </div>
+                    {normalizedStatus === CONTRACT_STATUS.CANCELLED && (
+                        <StatusBadge status={CONTRACT_STATUS.CANCELLED} />
+                    )}
+                </div>
+                <div className="contract-workflow-steps">
+                    {runtimeSteps.map((step, index) => {
+                        const isCompleted = step.status === "COMPLETED";
+                        const isCurrent = step.status === "PENDING";
+                        return (
+                            <div
+                                key={step.id}
+                                className={[
+                                    "contract-workflow-step",
+                                    isCompleted ? "completed" : "",
+                                    isCurrent ? "current" : "",
+                                ].filter(Boolean).join(" ")}
+                                title={`Assigned to ${step.assignedUserName || "-"}`}
+                            >
+                                <span>{isCompleted ? "✓" : index + 1}</span>
+                                <small>{step.stepName}</small>
+                                <small>{step.assignedUserName || step.requiredRoleCode}</small>
+                            </div>
+                        );
+                    })}
+                </div>
+            </section>
+        );
+    }
     const cancelledFromStatus = normalizedStatus === CONTRACT_STATUS.CANCELLED
         ? normalizeContractStatus(history?.[0]?.fromStatus)
         : null;
@@ -1296,7 +1521,7 @@ function ContractTransitionModal({
         return null;
     }
 
-    const details = getContractActionDetails(action);
+    const details = getContractActionDetails(action, contract);
 
     return (
         <Modal
@@ -1325,29 +1550,13 @@ function ContractTransitionModal({
                         {details.description}
                     </p>
 
-                    {details.requiresSignerDateOfBirth && (
-                        <>
-                            <Alert variant="warning">
-                                The birth date is used only for the 18+ check and
-                                is not stored. If the signer is under 18, this
-                                contract will automatically become CANCELLED.
-                            </Alert>
-                            <label
-                                htmlFor="signerDateOfBirth"
-                                className="contract-form-label"
-                            >
-                                Signer Date of Birth
-                            </label>
-                            <input
-                                id="signerDateOfBirth"
-                                name="signerDateOfBirth"
-                                type="date"
-                                className="form-control"
-                                value={form.signerDateOfBirth}
-                                onChange={onChange}
-                                required
-                            />
-                        </>
+                    {details.verifiesAccountDateOfBirth && (
+                        <Alert variant="warning">
+                            The signer must be at least 18 years old. Date of
+                            birth is verified automatically from the signed-in
+                            user account. If the signer is under 18, this
+                            contract will automatically become CANCELLED.
+                        </Alert>
                     )}
 
                     <label

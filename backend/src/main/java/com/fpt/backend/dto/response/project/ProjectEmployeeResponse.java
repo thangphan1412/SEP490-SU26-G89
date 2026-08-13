@@ -1,6 +1,7 @@
 package com.fpt.backend.dto.response.project;
 
-import java.util.List;
+import com.fpt.backend.enums.UserStatus;
+
 import java.util.UUID;
 
 public record ProjectEmployeeResponse(
@@ -8,7 +9,6 @@ public record ProjectEmployeeResponse(
         String email,
         String firstName,
         String lastName,
-        List<ProjectRoleResponse> roles,
-        String status
+        UserStatus status
 ) {
 }
