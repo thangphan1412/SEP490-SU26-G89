@@ -1,0 +1,40 @@
+#@baseUrl = http://localhost:8080
+#@token = replace-with-valid-jwt
+#
+#### CPM-01: Get the company legal profile
+#GET {{baseUrl}}/api/company-profile
+#Authorization: Bearer {{token}}
+#Accept: application/json
+#
+#### CPM-02: Update company legal profile with notification email
+#PUT {{baseUrl}}/api/company-profile
+#Authorization: Bearer {{token}}
+#Content-Type: application/json
+#
+#{
+#  "companyName": "E-Contract Vietnam",
+#  "email": "legal@example.com",
+#  "taxCode": "0312345678",
+#  "phone": "02838225678",
+#  "registeredAddress": "Ho Chi Minh City",
+#  "businessRegistrationNumber": "0312345678",
+#  "legalRepresentative": "Nguyen Van A",
+#  "registrationDate": "2020-05-12"
+#}
+#
+#### CPM-03: Update company profile without notification email
+#PUT {{baseUrl}}/api/company-profile
+#Authorization: Bearer {{token}}
+#Content-Type: application/json
+#
+#{
+#  "companyName": "E-Contract Vietnam",
+#  "businessRegistrationNumber": "0312345678"
+#}
+#
+#### CPM-04: Empty body - expected 400 or service-level validation result
+#PUT {{baseUrl}}/api/company-profile
+#Authorization: Bearer {{token}}
+#Content-Type: application/json
+#
+#{}
