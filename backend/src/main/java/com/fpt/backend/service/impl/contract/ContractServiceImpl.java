@@ -236,6 +236,8 @@ public class ContractServiceImpl implements ContractService {
         return toResponse(savedContract);
     }
 
+    // doan chu ky o day
+    //CalculRSA
     @Override
     @Transactional
     public ContractResponse transitionContract(
