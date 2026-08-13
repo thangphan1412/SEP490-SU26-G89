@@ -1,6 +1,7 @@
 package com.fpt.backend.repository.department;
 
 import com.fpt.backend.entity.Departments;
+import com.fpt.backend.enums.DepartmentStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -23,14 +24,14 @@ public interface DepartmentRepository extends JpaRepository<Departments, UUID> {
                 OR LOWER(COALESCE(department.departmentCode, '')) LIKE CONCAT('%', CONCAT(:search, '%'))
             )
             AND (
-                :status = ''
-                OR LOWER(COALESCE(department.departmentStatus, '')) = :status
+                :status IS NULL
+                OR department.departmentStatus = :status
             )
             ORDER BY department.id DESC
             """)
     List<Departments> searchAndFilter(
             @Param("search") String search,
-            @Param("status") String status
+            @Param("status") DepartmentStatus status
     );
     Boolean existsByDepartmentCodeIgnoreCaseAndIdNot(String departmentCode, UUID id);
 

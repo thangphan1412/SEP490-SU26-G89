@@ -3,6 +3,7 @@ import { Alert, Button, Form, Spinner, Table } from "react-bootstrap";
 import {
     IconEdit,
     IconEye,
+    IconLock,
     IconPlus,
     IconRefresh,
     IconSearch,
@@ -39,6 +40,12 @@ function getRolesFromResponse(response) {
     }
 
     return [];
+}
+
+function getRoleViewPath(role) {
+    return role.systemRole
+        ? `/role-management/view/system-${encodeURIComponent(role.roleCode)}`
+        : `/role-management/view/${role.id}`;
 }
 
 function ListRole() {
@@ -124,7 +131,7 @@ function ListRole() {
                     <header className="role-panel-header">
                         <div>
                             <h1>Roles</h1>
-                            <p>Manage role codes, display names, descriptions, and audit information.</p>
+                            <p>System roles come from users and are read-only. Custom and project roles remain manageable here.</p>
                         </div>
                         <div className="role-header-actions">
                             <Button className="role-primary-button" onClick={() => navigate("/role-management/create")}>
@@ -163,6 +170,8 @@ function ListRole() {
                                     <tr>
                                         <th>Role Name</th>
                                         <th>Role Code</th>
+                                        <th>Type</th>
+                                        <th>Users</th>
                                         <th>Description</th>
                                         <th>Created At</th>
                                         <th>Updated At</th>
@@ -172,13 +181,13 @@ function ListRole() {
                                 <tbody>
                                     {isLoading ? (
                                         <tr>
-                                            <td colSpan={6} className="role-table-state">
+                                            <td colSpan={8} className="role-table-state">
                                                 <Spinner animation="border" size="sm" /> Loading roles...
                                             </td>
                                         </tr>
                                     ) : roles.length === 0 ? (
                                         <tr>
-                                            <td colSpan={6} className="role-table-state">
+                                            <td colSpan={8} className="role-table-state">
                                                 <span className="role-empty-icon"><IconShieldCheck size={26} /></span>
                                                 <strong>No roles found</strong>
                                                 <span>Try another search or create a new role.</span>
@@ -186,15 +195,22 @@ function ListRole() {
                                         </tr>
                                     ) : roles.map((role) => (
                                         <tr
-                                            key={role.id}
+                                            key={role.systemRole ? `system-${role.roleCode}` : role.id}
                                             className="role-table-row"
-                                            onClick={() => navigate(`/role-management/view/${role.id}`)}
+                                            onClick={() => navigate(getRoleViewPath(role))}
                                         >
                                             <td>
                                                 <span className="role-avatar"><IconShieldCheck size={19} /></span>
                                                 <strong>{role.roleName || "Unnamed role"}</strong>
                                             </td>
                                             <td><span className="role-code-badge">{role.roleCode || "-"}</span></td>
+                                            <td>
+                                                <span className={`role-type-badge role-type-badge--${role.systemRole ? "system" : "custom"}`}>
+                                                    {role.systemRole && <IconLock size={13} />}
+                                                    {role.systemRole ? "System" : "Custom / Project"}
+                                                </span>
+                                            </td>
+                                            <td>{role.assignedUserCount ?? 0}</td>
                                             <td className="role-description-cell">{role.roleDescription || "No description"}</td>
                                             <td>{formatDateTime(role.createdAt)}</td>
                                             <td>{formatDateTime(role.updatedAt)}</td>
@@ -204,28 +220,32 @@ function ListRole() {
                                                         variant="light"
                                                         className="role-table-action"
                                                         aria-label={`View ${role.roleName}`}
-                                                        onClick={(event) => openAction(event, `/role-management/view/${role.id}`)}
+                                                        onClick={(event) => openAction(event, getRoleViewPath(role))}
                                                     >
                                                         <IconEye size={16} /> View
                                                     </Button>
-                                                    <Button
-                                                        variant="light"
-                                                        className="role-table-action"
-                                                        aria-label={`Edit ${role.roleName}`}
-                                                        onClick={(event) => openAction(event, `/role-management/update/${role.id}`)}
-                                                    >
-                                                        <IconEdit size={16} /> Edit
-                                                    </Button>
-                                                    <Button
-                                                        variant="light"
-                                                        className="role-table-delete"
-                                                        disabled={deletingId === role.id}
-                                                        aria-label={`Delete ${role.roleName}`}
-                                                        onClick={(event) => handleDelete(event, role)}
-                                                    >
-                                                        {deletingId === role.id ? <Spinner animation="border" size="sm" /> : <IconTrash size={16} />}
-                                                        {deletingId === role.id ? "Deleting" : "Delete"}
-                                                    </Button>
+                                                    {!role.systemRole && (
+                                                        <>
+                                                            <Button
+                                                                variant="light"
+                                                                className="role-table-action"
+                                                                aria-label={`Edit ${role.roleName}`}
+                                                                onClick={(event) => openAction(event, `/role-management/update/${role.id}`)}
+                                                            >
+                                                                <IconEdit size={16} /> Edit
+                                                            </Button>
+                                                            <Button
+                                                                variant="light"
+                                                                className="role-table-delete"
+                                                                disabled={deletingId === role.id}
+                                                                aria-label={`Delete ${role.roleName}`}
+                                                                onClick={(event) => handleDelete(event, role)}
+                                                            >
+                                                                {deletingId === role.id ? <Spinner animation="border" size="sm" /> : <IconTrash size={16} />}
+                                                                {deletingId === role.id ? "Deleting" : "Delete"}
+                                                            </Button>
+                                                        </>
+                                                    )}
                                                 </div>
                                             </td>
                                         </tr>

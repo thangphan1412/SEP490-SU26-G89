@@ -1,5 +1,6 @@
 package com.fpt.backend.entity;
 
+import com.fpt.backend.enums.DepartmentStatus;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -22,8 +23,9 @@ public class Departments extends BaseEntity{
     private LocalDateTime departmentCreatedAt;
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
-    @Column(name = "department_status")
-    private String departmentStatus;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "department_status", nullable = false, length = 20)
+    private DepartmentStatus departmentStatus;
 
     /// Relation
     //User

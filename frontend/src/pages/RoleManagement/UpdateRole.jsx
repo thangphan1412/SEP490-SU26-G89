@@ -16,6 +16,7 @@ function UpdateRole() {
     const [isLoading, setIsLoading] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [loadFailed, setLoadFailed] = useState(false);
+    const [isSystemRole, setIsSystemRole] = useState(false);
     const [error, setError] = useState("");
 
     useEffect(() => {
@@ -29,6 +30,7 @@ function UpdateRole() {
                 const role = response.data?.data ?? response.data;
 
                 if (isMounted) {
+                    setIsSystemRole(Boolean(role?.systemRole));
                     setForm({
                         roleCode: role?.roleCode || "",
                         roleName: role?.roleName || "",
@@ -118,6 +120,11 @@ function UpdateRole() {
                     ) : (
                         <Form className="role-form" onSubmit={handleSubmit} noValidate>
                             {error && <Alert variant="danger" className="role-form-alert">{error}</Alert>}
+                            {isSystemRole && (
+                                <Alert variant="info" className="role-form-alert">
+                                    System roles are sourced from Users.role and are read-only.
+                                </Alert>
+                            )}
 
                             <div className="role-form-section">
                                 <div className="role-form-section-heading">
@@ -144,6 +151,7 @@ function UpdateRole() {
                                             name="roleName"
                                             value={form.roleName}
                                             onChange={handleChange}
+                                            readOnly={isSystemRole}
                                             maxLength={100}
                                             required
                                         />
@@ -157,6 +165,7 @@ function UpdateRole() {
                                             name="roleDescription"
                                             value={form.roleDescription}
                                             onChange={handleChange}
+                                            readOnly={isSystemRole}
                                             maxLength={255}
                                         />
                                         <Form.Text>{form.roleDescription.length} / 255 characters</Form.Text>
@@ -173,10 +182,12 @@ function UpdateRole() {
                                 >
                                     <IconArrowLeft size={18} /> Cancel
                                 </Button>
-                                <Button type="submit" className="role-primary-button" disabled={isSubmitting}>
-                                    {isSubmitting ? <Spinner animation="border" size="sm" /> : <IconDeviceFloppy size={18} />}
-                                    {isSubmitting ? "Saving..." : "Save Changes"}
-                                </Button>
+                                {!isSystemRole && (
+                                    <Button type="submit" className="role-primary-button" disabled={isSubmitting}>
+                                        {isSubmitting ? <Spinner animation="border" size="sm" /> : <IconDeviceFloppy size={18} />}
+                                        {isSubmitting ? "Saving..." : "Save Changes"}
+                                    </Button>
+                                )}
                             </div>
                         </Form>
                     )}

@@ -1,6 +1,7 @@
 package com.fpt.backend.dto.response.role;
 
 import com.fpt.backend.entity.Role;
+import com.fpt.backend.enums.SystemRoleCode;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -22,6 +23,9 @@ public class RoleResponseDTO {
     private String roleDescription;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private boolean systemRole;
+    private SystemRoleCode systemRoleCode;
+    private long assignedUserCount;
 
     public static RoleResponseDTO fromEntity(Role role) {
         return RoleResponseDTO.builder()
@@ -31,6 +35,7 @@ public class RoleResponseDTO {
                 .roleDescription(role.getRoleDescription())
                 .createdAt(role.getCreatedAt())
                 .updatedAt(role.getUpdatedAt())
+                .systemRole(false)
                 .build();
     }
 }

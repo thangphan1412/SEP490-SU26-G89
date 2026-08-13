@@ -15,6 +15,12 @@ const roleApi = {
         return axiosClient.get(ROLE_ENDPOINT + "/" + id);
     },
 
+    getSystemRoleByCode(roleCode) {
+        return axiosClient.get(
+            ROLE_ENDPOINT + "/system/" + encodeURIComponent(roleCode)
+        );
+    },
+
     createRole(data) {
         return axiosClient.post(ROLE_ENDPOINT, data);
     },

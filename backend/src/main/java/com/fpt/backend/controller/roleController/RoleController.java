@@ -81,6 +81,28 @@ public class RoleController {
         }
     }
 
+    @GetMapping("/system/{roleCode}")
+    public ResponseEntity<BaseResponse<RoleResponseDTO>>
+    getSystemRoleByCode(@PathVariable String roleCode) {
+        try {
+            RoleResponseDTO role = roleService.getSystemRoleByCode(roleCode);
+
+            return ResponseEntity.ok(
+                    BaseResponse.<RoleResponseDTO>builder()
+                            .status(HttpStatus.OK.value())
+                            .message("System role found")
+                            .data(role)
+                            .build()
+            );
+        } catch (Exception exception) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(BaseResponse.<RoleResponseDTO>builder()
+                            .status(HttpStatus.NOT_FOUND.value())
+                            .message(exception.getMessage())
+                            .build());
+        }
+    }
+
     @PostMapping
     public ResponseEntity<BaseResponse<RoleResponseDTO>>
     createRole(@RequestBody RoleRequestDTO request) {

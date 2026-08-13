@@ -7,8 +7,10 @@ import {
     IconFileDescription,
     IconHash,
     IconId,
+    IconLock,
     IconShieldCheck,
     IconTrash,
+    IconUsers,
 } from "@tabler/icons-react";
 import { useNavigate, useParams } from "react-router-dom";
 import roleApi from "../../services/RoleService/roleApi.js";
@@ -31,6 +33,9 @@ const formatDateTime = (value) => {
 function ViewRole() {
     const navigate = useNavigate();
     const { id } = useParams();
+    const systemRoleCode = id?.startsWith("system-")
+        ? decodeURIComponent(id.substring("system-".length))
+        : null;
     const [role, setRole] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isDeleting, setIsDeleting] = useState(false);
@@ -43,7 +48,9 @@ function ViewRole() {
             try {
                 setIsLoading(true);
                 setError("");
-                const response = await roleApi.getRoleById(id);
+                const response = systemRoleCode
+                    ? await roleApi.getSystemRoleByCode(systemRoleCode)
+                    : await roleApi.getRoleById(id);
 
                 if (isMounted) {
                     setRole(response.data?.data ?? response.data);
@@ -69,7 +76,7 @@ function ViewRole() {
         return () => {
             isMounted = false;
         };
-    }, [id]);
+    }, [id, systemRoleCode]);
 
     async function handleDelete() {
         if (!role || !window.confirm(`Delete role "${role.roleName}"?`)) {
@@ -99,13 +106,13 @@ function ViewRole() {
                     <header className="role-panel-header">
                         <div>
                             <h1>Role Details</h1>
-                            <p>Review role identity, description, and audit information.</p>
+                            <p>Review system-role usage or custom/project-role information.</p>
                         </div>
                         <div className="role-header-actions">
                             <Button className="role-secondary-button" onClick={() => navigate("/role-management/list")}>
                                 <IconArrowLeft size={18} /> Back
                             </Button>
-                            {role && (
+                            {role && !role.systemRole && (
                                 <>
                                     <Button className="role-primary-button" onClick={() => navigate(`/role-management/update/${role.id}`)}>
                                         <IconEdit size={18} /> Edit
@@ -133,6 +140,10 @@ function ViewRole() {
                                     <div>
                                         <h2>{role.roleName || "Unnamed role"}</h2>
                                         <span className="role-code-badge">{role.roleCode || "No code"}</span>
+                                        <span className={`role-type-badge role-type-badge--${role.systemRole ? "system" : "custom"}`}>
+                                            {role.systemRole && <IconLock size={13} />}
+                                            {role.systemRole ? "System · Read only" : "Custom / Project"}
+                                        </span>
                                     </div>
                                 </section>
 
@@ -153,6 +164,11 @@ function ViewRole() {
                                             <IconShieldCheck size={20} />
                                             <span>Role Name</span>
                                             <strong>{role.roleName || "-"}</strong>
+                                        </div>
+                                        <div className="role-info">
+                                            <IconUsers size={20} />
+                                            <span>Assigned Users</span>
+                                            <strong>{role.assignedUserCount ?? 0}</strong>
                                         </div>
                                         <div className="role-info">
                                             <IconCalendar size={20} />

@@ -3,6 +3,7 @@ package com.fpt.backend.service.impl.department;
 import com.fpt.backend.dto.request.department.DepartmentRequestDTO;
 import com.fpt.backend.dto.response.department.DepartmentResponseDTO;
 import com.fpt.backend.entity.Departments;
+import com.fpt.backend.enums.DepartmentStatus;
 import com.fpt.backend.repository.department.DepartmentRepository;
 import com.fpt.backend.service.interfaces.department.IDepartmentService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,7 +30,7 @@ public class DepartmentServiceImpl implements IDepartmentService {
     public List<DepartmentResponseDTO> searchDepartments(String search, String status) {
         return departmentRepository.searchAndFilter(
                         normalize(search).toLowerCase(Locale.ROOT),
-                        normalize(status).toLowerCase(Locale.ROOT)
+                        DepartmentStatus.fromNullableFilter(status)
                 )
                 .stream()
                 .map(DepartmentResponseDTO::fromEntity)
@@ -105,10 +106,8 @@ public class DepartmentServiceImpl implements IDepartmentService {
         return departmentCode.trim().toUpperCase(Locale.ROOT);
     }
 
-    private String resolveStatus(String departmentStatus) {
-        return departmentStatus == null || departmentStatus.isBlank()
-                ? "Active"
-                : departmentStatus;
+    private DepartmentStatus resolveStatus(DepartmentStatus departmentStatus) {
+        return departmentStatus == null ? DepartmentStatus.ACTIVE : departmentStatus;
     }
 
     private String normalize(String value) {
