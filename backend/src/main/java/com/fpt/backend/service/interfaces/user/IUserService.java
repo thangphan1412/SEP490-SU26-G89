@@ -19,7 +19,7 @@ public interface IUserService {
     Boolean existsByEmail(String email);
     void save(Users user);
 
-    RegisterResponse create(RegisterRequest registerRequest);
+//    RegisterResponse create(RegisterRequest registerRequest);
 
     List<UserResponseDTO> getAllUsers();
     UserResponseDTO getUserById(UUID id); // Sửa thành Integer

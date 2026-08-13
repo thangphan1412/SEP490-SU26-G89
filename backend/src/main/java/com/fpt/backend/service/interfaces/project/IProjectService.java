@@ -23,6 +23,8 @@ public interface IProjectService {
 
     ProjectDetailResponse updateProject(UUID id, ProjectUpdateRequest request);
 
+    void approveProject(UUID id);
+
     ProjectDeleteResult deleteProject(UUID id);
 
     List<ProjectEmployeeResponse> getEmployeesForProjectSelection();

@@ -63,7 +63,11 @@ function CreatePermissionPage() {
           return;
         }
 
-        setProjects(Array.isArray(projectPayload) ? projectPayload : []);
+        const availableProjects = Array.isArray(projectPayload)
+          ? projectPayload.filter((project) => project.canManage === true)
+          : [];
+
+        setProjects(availableProjects);
         setActionOptions(Array.isArray(actionPayload) ? actionPayload : []);
       } catch (requestError) {
         if (requestController.signal.aborted) {

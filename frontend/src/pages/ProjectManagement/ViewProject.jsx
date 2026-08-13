@@ -132,7 +132,7 @@ function ViewProject() {
     }
 
     function openPhase(phase) {
-        if (!isPhaseInProgress(phase.status)) {
+        if (!canViewPhase(phase, access)) {
             setActionError(
                 "Only an IN_PROGRESS phase can be accessed."
             );
@@ -216,6 +216,14 @@ function ViewProject() {
         access,
         PROJECT_ACTIONS.MANAGE_MEMBERS
     );
+    let canViewAllProjectData = false;
+
+    if (access) {
+        canViewAllProjectData = access.canViewAllProjectData === true;
+    }
+
+    const canViewMembers = canManageMembers
+        || canViewAllProjectData;
     const canOpenUpdate = canEditProject
         || canManageMembers;
     const canViewContracts = hasProjectAction(
@@ -348,13 +356,13 @@ function ViewProject() {
                                         projectPhases.map((phase) => (
                                             <tr
                                                 key={phase.id}
-                                                className={isPhaseInProgress(phase.status)
+                                                className={canViewPhase(phase, access)
                                                     ? "view-project-row view-project-phase-row"
                                                     : "view-project-row view-project-phase-row view-project-phase-row--locked"}
                                                 role="button"
                                                 tabIndex={0}
-                                                aria-disabled={!isPhaseInProgress(phase.status)}
-                                                title={isPhaseInProgress(phase.status)
+                                                aria-disabled={!canViewPhase(phase, access)}
+                                                title={canViewPhase(phase, access)
                                                     ? "Open phase"
                                                     : "This phase is available only when its status is IN_PROGRESS"}
                                                 onClick={() => openPhase(phase)}
@@ -381,7 +389,7 @@ function ViewProject() {
                         </div>
                     </Card>
 
-                    {canManageMembers && (
+                    {canViewMembers && (
                     <Card as="section" className="project-management-card">
                         <div className="view-project-section-header">
                             <Card.Title as="h2" className="project-management-card-title">
@@ -543,6 +551,18 @@ function clampProgress(progress) {
 
 function isPhaseInProgress(status) {
     return String(status || "").trim().toUpperCase() === "IN_PROGRESS";
+}
+
+function canViewPhase(phase, access) {
+    if (isPhaseInProgress(phase.status)) {
+        return true;
+    }
+
+    if (!access) {
+        return false;
+    }
+
+    return access.canViewAllProjectData === true;
 }
 
 function getApiErrorMessage(error) {

@@ -1,5 +1,6 @@
 package com.fpt.backend.controller.projectController;
 
+import com.fpt.backend.constant.ApiConstant;
 import com.fpt.backend.dto.request.project.ProjectCreateRequest;
 import com.fpt.backend.dto.request.project.ProjectListRequest;
 import com.fpt.backend.dto.request.project.ProjectPermissionConfigurationRequest;
@@ -30,12 +31,12 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/projects")
+@RequestMapping(ApiConstant.Project.PROJECTS)
 @RequiredArgsConstructor
 public class ProjectController {
     private final IProjectService projectService;
 
-    @GetMapping({"", "/list"})
+    @GetMapping
     public ResponseEntity<BaseResponse<ProjectListResponse>> getProjects(
             @ModelAttribute ProjectListRequest request) {
         ProjectListResponse projects = projectService.getProjects(request);
@@ -45,7 +46,7 @@ public class ProjectController {
                 .body(new BaseResponse<>(projects));
     }
 
-    @GetMapping({"/{id}", "/view/{id}"})
+    @GetMapping(ApiConstant.Project.BY_ID)
     public ResponseEntity<BaseResponse<ProjectDetailResponse>> getProjectById(@PathVariable UUID id) {
         ProjectDetailResponse project = projectService.getProjectById(id);
 
@@ -54,7 +55,7 @@ public class ProjectController {
                 .body(new BaseResponse<>(project));
     }
 
-    @GetMapping("/employees")
+    @GetMapping(ApiConstant.Project.EMPLOYEES)
     public ResponseEntity<BaseResponse<List<ProjectEmployeeResponse>>> getEmployeesForProjectSelection() {
         List<ProjectEmployeeResponse> employees = projectService.getEmployeesForProjectSelection();
 
@@ -63,7 +64,7 @@ public class ProjectController {
                 .body(new BaseResponse<>(employees));
     }
 
-    @GetMapping("/user-statuses")
+    @GetMapping(ApiConstant.Project.USER_STATUSES)
     public ResponseEntity<BaseResponse<List<UserStatus>>> getUserStatusesForProjectMemberFilter() {
         List<UserStatus> statuses = projectService.getUserStatusesForProjectMemberFilter();
 
@@ -72,7 +73,7 @@ public class ProjectController {
                 .body(new BaseResponse<>(statuses));
     }
 
-    @GetMapping("/{projectId}/permission-configurations")
+    @GetMapping(ApiConstant.Project.PERMISSION_CONFIGURATIONS)
     public ResponseEntity<BaseResponse<List<ProjectPermissionConfigurationResponse>>>
     getProjectPermissionConfigurations(@PathVariable UUID projectId) {
         return ResponseEntity.ok()
@@ -82,10 +83,7 @@ public class ProjectController {
                 ));
     }
 
-    @PutMapping({
-            "/{projectId}/permissions/{permissionId}",
-            "/{projectId}/permissions/{permissionId}/configure"
-    })
+    @PutMapping(ApiConstant.Project.PERMISSION_BY_ID)
     public ResponseEntity<BaseResponse<ProjectPermissionConfigurationResponse>>
     configureProjectPermission(
             @PathVariable UUID projectId,
@@ -96,7 +94,7 @@ public class ProjectController {
         ));
     }
 
-    @PostMapping({"", "/create"})
+    @PostMapping
     public ResponseEntity<BaseResponse<ProjectDetailResponse>> createProject(@RequestBody ProjectCreateRequest request) {
         ProjectDetailResponse project = projectService.createProject(request);
 
@@ -108,14 +106,26 @@ public class ProjectController {
                 ));
     }
 
-    @PutMapping({"/{id}", "/update/{id}"})
+    @PutMapping(ApiConstant.Project.BY_ID)
     public ResponseEntity<BaseResponse<ProjectDetailResponse>> updateProject(
             @PathVariable UUID id,
             @RequestBody ProjectUpdateRequest request) {
         return ResponseEntity.ok(new BaseResponse<>(projectService.updateProject(id, request)));
     }
 
-    @DeleteMapping({"/{id}", "/delete/{id}"})
+    @PostMapping(ApiConstant.Project.APPROVE_BY_ID)
+    public ResponseEntity<BaseResponse<Void>> approveProject(
+            @PathVariable UUID id) {
+        projectService.approveProject(id);
+
+        return ResponseEntity.ok(new BaseResponse<>(
+                HttpStatus.OK.value(),
+                "Project approved successfully",
+                null
+        ));
+    }
+
+    @DeleteMapping(ApiConstant.Project.BY_ID)
     public ResponseEntity<BaseResponse<Void>> deleteProject(@PathVariable UUID id) {
         ProjectDeleteResult deleteResult = projectService.deleteProject(id);
         String message;

@@ -9,7 +9,6 @@ public record ProjectUpdateRequest(
         LocalDate projectStartDate,
         LocalDate projectEndDate,
         String projectDescription,
-        String projectStatus,
         List<ProjectPhaseRequest> phases,
         List<ProjectMemberRequest> members
 ) {

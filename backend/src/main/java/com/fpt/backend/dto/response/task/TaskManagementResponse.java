@@ -14,6 +14,8 @@ public record TaskManagementResponse(
         UUID projectId,
         String projectName,
         boolean fullWorkScope,
+        boolean canCreateTasks,
+        boolean canApproveTasks,
         List<TaskStatus> statusOptions,
         List<TaskMemberOptionResponse> memberOptions,
         List<TaskItemResponse> tasks

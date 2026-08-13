@@ -119,6 +119,38 @@
   margin-bottom: 20px;
 }
 
+.task-create-message.alert {
+  margin-bottom: 20px;
+}
+
+.task-list-toolbar {
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.task-list-toolbar h2 {
+  margin: 0;
+  color: #263653;
+  font-size: 19px;
+  font-weight: 800;
+}
+
+.task-list-toolbar span {
+  color: #768299;
+  font-size: 12px;
+}
+
+.task-create-button.btn {
+  min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-weight: 700;
+}
+
 .task-table-wrap {
   overflow-x: auto;
   border: 1px solid #dce4f0;
@@ -127,7 +159,7 @@
 }
 
 .task-edit-table {
-  min-width: 1220px;
+  min-width: 1300px;
   vertical-align: top;
 }
 
@@ -154,6 +186,32 @@
 
 .task-edit-table tbody td:nth-child(2) {
   min-width: 230px;
+}
+
+.task-create-row td {
+  background: #f4f8ff;
+}
+
+.task-contract-cell {
+  min-width: 105px !important;
+  text-align: center;
+}
+
+.task-contract-buttons {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.task-contract-view-button.btn {
+  width: 36px;
+  height: 34px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .task-edit-table .form-control,
@@ -218,5 +276,10 @@
 
   .task-phase-summary {
     grid-template-columns: 1fr;
+  }
+
+  .task-list-toolbar {
+    align-items: stretch;
+    flex-direction: column;
   }
 }

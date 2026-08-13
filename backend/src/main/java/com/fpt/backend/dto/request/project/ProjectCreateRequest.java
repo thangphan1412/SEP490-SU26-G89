@@ -9,7 +9,6 @@ public record ProjectCreateRequest(
         LocalDate projectStartDate,
         LocalDate projectEndDate,
         String projectDescription,
-        String projectStatus,
         List<ProjectPhaseRequest> phases,
         List<ProjectMemberRequest> members
 ) {

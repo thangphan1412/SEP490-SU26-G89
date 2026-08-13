@@ -52,14 +52,9 @@ import java.util.UUID;
 @Transactional(readOnly = true)
 public class ProjectServiceImpl implements IProjectService {
     private static final int PAGE_SIZE = 7;
-    private static final String DEFAULT_PROJECT_STATUS = "Planning";
+    private static final String NEW_PROJECT_STATUS = "On Hold";
     private static final String CANCELLED_PROJECT_STATUS = "Cancelled";
     private static final String COMPLETED_PROJECT_STATUS = "Completed";
-    private static final List<String> CREATE_PROJECT_STATUSES = List.of(
-            "Planning",
-            "Active",
-            "On Hold"
-    );
     private static final ZoneId PROJECT_TIME_ZONE =
             ZoneId.of("Asia/Ho_Chi_Minh");
     private final ProjectRepository projectRepository;
@@ -69,6 +64,7 @@ public class ProjectServiceImpl implements IProjectService {
     private final ProjectPhaseService projectPhaseService;
     private final ProjectMemberService projectMemberService;
     private final ProjectPermissionService projectPermissionService;
+    private final ProjectApprovalService projectApprovalService;
     private final IPermissionAccessService permissionAccessService;
     private final CurrentUser currentUserUtil;
 
@@ -129,15 +125,19 @@ public class ProjectServiceImpl implements IProjectService {
                 request.projectStartDate(),
                 request.projectEndDate(),
                 request.projectDescription(),
-                request.projectStatus(),
                 null
         );
+        project.setProjectStatus(NEW_PROJECT_STATUS);
         project.setProjectCreatedBy(currentUser);
         project.setProjectCreatedAt(
                 LocalDate.now(PROJECT_TIME_ZONE).toString()
         );
 
         Projects savedProject = projectRepository.save(project);
+        projectApprovalService.createApprovalRequest(
+                savedProject,
+                currentUser
+        );
         UUID fullAccessPermissionId =
                 projectPermissionService.createProjectFullAccessPermission(
                         savedProject
@@ -217,7 +217,6 @@ public class ProjectServiceImpl implements IProjectService {
                     request.projectStartDate(),
                     request.projectEndDate(),
                     request.projectDescription(),
-                    request.projectStatus(),
                     id
             );
             projectRepository.save(project);
@@ -235,6 +234,15 @@ public class ProjectServiceImpl implements IProjectService {
         projectRepository.flush();
 
         return toDetail(project, access);
+    }
+
+    @Override
+    @Transactional
+    public void approveProject(UUID id) {
+        Projects project = findProject(id);
+        Users currentUser = currentUserUtil.getCurrentUser();
+        projectApprovalService.approveProject(project, currentUser);
+        projectRepository.flush();
     }
 
     @Override
@@ -367,7 +375,6 @@ public class ProjectServiceImpl implements IProjectService {
             LocalDate startDate,
             LocalDate endDate,
             String descriptionValue,
-            String statusValue,
             UUID currentProjectId) {
         String projectName = requireText(
                 projectNameValue,
@@ -380,18 +387,16 @@ public class ProjectServiceImpl implements IProjectService {
                 50
         );
         String description = normalize(descriptionValue);
-        String status = defaultIfBlank(
-                statusValue,
-                DEFAULT_PROJECT_STATUS
-        );
-
-        if (currentProjectId == null) {
-            status = getCreateProjectStatus(status);
-        }
 
         validateMaxLength(description, "Project description", 255);
-        validateMaxLength(status, "Project status", 50);
         validateProjectDateRange(startDate, endDate);
+
+        if (currentProjectId == null
+                && endDate.isBefore(LocalDate.now(PROJECT_TIME_ZONE))) {
+            throw new BadHttpException(
+                    "Project end date must not be before today"
+            );
+        }
 
         boolean duplicateCode;
 
@@ -415,7 +420,6 @@ public class ProjectServiceImpl implements IProjectService {
         project.setProjectStartDate(startDate);
         project.setProjectEndDate(endDate);
         project.setProjectDescription(description);
-        project.setProjectStatus(status);
     }
 
     private void validateProjectDateRange(
@@ -434,19 +438,6 @@ public class ProjectServiceImpl implements IProjectService {
                     "Start date must not be after end date"
             );
         }
-    }
-
-    private String getCreateProjectStatus(String status) {
-        for (String allowedStatus : CREATE_PROJECT_STATUSES) {
-            if (allowedStatus.equalsIgnoreCase(status)) {
-                return allowedStatus;
-            }
-        }
-
-        throw new BadHttpException(
-                "Project status must be Planning, Active, or On Hold "
-                        + "when creating a project"
-        );
     }
 
     private boolean isCompletedProject(Projects project) {
@@ -481,11 +472,15 @@ public class ProjectServiceImpl implements IProjectService {
     private ProjectListItemResponse toListItem(
             Projects project,
             Users currentUser) {
-        boolean canView = projectMemberRepository
+        boolean projectMember = projectMemberRepository
                 .countByProjectIdAndUserId(
                         project.getId(),
                         currentUser.getId()
                 ) > 0;
+        boolean canView = projectMember
+                || projectApprovalService.canReviewProjects(currentUser);
+        boolean canApprove = projectApprovalService
+                .canApproveProject(project, currentUser);
 
         return new ProjectListItemResponse(
                 project.getId(),
@@ -497,7 +492,8 @@ public class ProjectServiceImpl implements IProjectService {
                 project.getProjectEndDate(),
                 getUserName(project.getProjectCreatedBy()),
                 project.getProjectCreatedAt(),
-                canView
+                canView,
+                canApprove
         );
     }
 
@@ -509,6 +505,8 @@ public class ProjectServiceImpl implements IProjectService {
                 access,
                 "MANAGE_MEMBERS"
         );
+        boolean canViewMembers = canManageMembers
+                || access.canViewAllProjectData();
         boolean canViewContracts = permissionAccessService.hasAction(
                 access,
                 "VIEW_CONTRACTS"
@@ -519,8 +517,11 @@ public class ProjectServiceImpl implements IProjectService {
         List<ProjectPermissionOptionResponse> permissionOptions = List.of();
         List<ProjectContractResponse> contracts = List.of();
 
-        if (canManageMembers) {
+        if (canViewMembers) {
             users = projectMemberService.getProjectUsers(projectId);
+        }
+
+        if (canManageMembers) {
             permissionOptions = projectPermissionService.getOptions(projectId);
         }
 
@@ -551,8 +552,7 @@ public class ProjectServiceImpl implements IProjectService {
                 || request.projectCode() != null
                 || request.projectStartDate() != null
                 || request.projectEndDate() != null
-                || request.projectDescription() != null
-                || request.projectStatus() != null;
+                || request.projectDescription() != null;
     }
 
     private List<ProjectContractResponse> toProjectContracts(UUID projectId) {
@@ -622,16 +622,6 @@ public class ProjectServiceImpl implements IProjectService {
                             + maxLength + " characters"
             );
         }
-    }
-
-    private String defaultIfBlank(String value, String defaultValue) {
-        String normalizedValue = normalize(value);
-
-        if (normalizedValue.isBlank()) {
-            return defaultValue;
-        }
-
-        return normalizedValue;
     }
 
     private String normalize(String value) {

@@ -1,5 +1,6 @@
 package com.fpt.backend.controller.phaseController;
 
+import com.fpt.backend.constant.ApiConstant;
 import com.fpt.backend.dto.response.phase.PhaseDetailResponse;
 import com.fpt.backend.dto.response.phase.PhaseListItemResponse;
 import com.fpt.backend.service.interfaces.phase.IPhaseService;
@@ -16,12 +17,12 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/phases")
+@RequestMapping(ApiConstant.Phase.PHASES)
 @RequiredArgsConstructor
 public class PhaseController {
     private final IPhaseService phaseService;
 
-    @GetMapping("/project/{projectId}")
+    @GetMapping(ApiConstant.Phase.BY_PROJECT_ID)
     public ResponseEntity<BaseResponse<List<PhaseListItemResponse>>> getPhasesByProject(
             @PathVariable UUID projectId) {
         return ResponseEntity.ok()
@@ -29,7 +30,7 @@ public class PhaseController {
                 .body(new BaseResponse<>(phaseService.getPhasesByProjectId(projectId)));
     }
 
-    @GetMapping({"/{phaseId}", "/view/{phaseId}"})
+    @GetMapping(ApiConstant.Phase.BY_ID)
     public ResponseEntity<BaseResponse<PhaseDetailResponse>> getPhaseById(@PathVariable UUID phaseId) {
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.noStore())

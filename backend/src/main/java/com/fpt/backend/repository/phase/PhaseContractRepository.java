@@ -1,5 +1,6 @@
 package com.fpt.backend.repository.phase;
 
+import com.fpt.backend.entity.Contracts;
 import com.fpt.backend.entity.TimelineContract;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -20,6 +21,15 @@ public interface PhaseContractRepository extends JpaRepository<TimelineContract,
             ORDER BY phaseContract.linkedAt, phaseContract.id
             """)
     List<TimelineContract> findByPhaseId(@Param("phaseId") UUID phaseId);
+
+    @Query("""
+            SELECT contract
+            FROM Contracts contract
+            JOIN contract.timelineTask task
+            WHERE task.timeline.id = :phaseId
+            ORDER BY contract.contractCreatedAt, contract.id
+            """)
+    List<Contracts> findByTaskPhaseId(@Param("phaseId") UUID phaseId);
 
     @Modifying
     @Query("""

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Alert, Button, Modal, Spinner } from "react-bootstrap";
+import { useSearchParams } from "react-router-dom";
 import {
     IconCopy,
     IconEye,
@@ -59,6 +60,8 @@ function createPageNumbers(currentPage, totalPages) {
 }
 
 function ListContract() {
+    const [searchParameters, setSearchParameters] = useSearchParams();
+    const requestedContractId = searchParameters.get("viewContractId");
     const [contracts, setContracts] = useState([]);
     const [projects, setProjects] = useState([]);
     const [contractTypes, setContractTypes] = useState([]);
@@ -91,6 +94,42 @@ function ListContract() {
     const [transitioning, setTransitioning] = useState(false);
     const [reloadKey, setReloadKey] = useState(0);
     const currentActor = getCurrentContractActor();
+
+    useEffect(function () {
+        if (!requestedContractId) {
+            return;
+        }
+
+        let active = true;
+
+        async function openRequestedContract() {
+            try {
+                const response = await contractApi.getContractById(
+                    requestedContractId
+                );
+                const contract = unwrapApiResponse(response);
+
+                if (active) {
+                    setSelectedContract(contract);
+                    setModalError("");
+                    setModalMode("view");
+                }
+            } catch (error) {
+                if (active) {
+                    setErrorMessage(getApiErrorMessage(
+                        error,
+                        "Unable to load the selected contract."
+                    ));
+                }
+            }
+        }
+
+        openRequestedContract();
+
+        return function () {
+            active = false;
+        };
+    }, [requestedContractId]);
 
     const fetchContractOptions = useCallback(async () => {
         const [projectItems, typeResponse, templateResponse] =
@@ -338,6 +377,12 @@ function ListContract() {
         setProjectContext(null);
         setLoadingProjectContext(false);
         setModalError("");
+
+        if (requestedContractId) {
+            const updatedParameters = new URLSearchParams(searchParameters);
+            updatedParameters.delete("viewContractId");
+            setSearchParameters(updatedParameters, { replace: true });
+        }
     };
 
     const handleContractChange = (event) => {

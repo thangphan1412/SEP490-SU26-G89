@@ -22,6 +22,15 @@ export async function getTasksByPhaseId(phaseId, signal) {
   return getResponseData(response);
 }
 
+export async function createTask(phaseId, task) {
+  const response = await axiosClient.post(
+    `${TASK_API_BASE_URL}/phase/${phaseId}`,
+    task
+  );
+
+  return getResponseData(response);
+}
+
 export async function updateTask(taskId, task) {
   const response = await axiosClient.put(
     `${TASK_API_BASE_URL}/${taskId}`,
