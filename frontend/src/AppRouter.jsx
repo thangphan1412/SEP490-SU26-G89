@@ -42,6 +42,7 @@ import SignatureList from "./pages/signature/SignatureList.jsx";
 import CreateSignaturePage from "./pages/signature/CreateSignaturePage.jsx";
 import SignatureDetail from "./pages/signature/SignatureDetail.jsx";
 import UpdateSignature from "./pages/signature/UpdateSignature.jsx";
+import ContractSigningPage from "./pages/ContractManagement/ContractSigningPage.jsx";
 
 function AppRouter() {
     return (
@@ -143,6 +144,10 @@ function AppRouter() {
                 <Route
                     path="/contract-management/update/:id"
                     element={<Navigate to="/contract-management/list" replace />}
+                />
+                <Route
+                    path="/contract-management/:id/sign"
+                    element={<ContractSigningPage />}
                 />
                 <Route
                     path="/permission/create"

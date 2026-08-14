@@ -1,6 +1,7 @@
 package com.fpt.backend.service.impl.signature;
 
 import com.fpt.backend.entity.Contracts;
+import com.fpt.backend.entity.ElectronicSignatures;
 import com.fpt.backend.entity.Signature;
 import com.fpt.backend.enums.SignatureAlgorithm;
 import com.fpt.backend.enums.SignatureHash;
@@ -25,7 +26,8 @@ public class ContractSigningService {
     public Signature signContract(
             Contracts contract,
             byte[] document,
-            UUID userId
+            UUID userId,
+            ElectronicSignatures electronicSignature
     ) throws Exception {
 
         // =========================================
@@ -110,6 +112,10 @@ public class ContractSigningService {
 
                         // Contract
                         .contract(contract)
+
+                        // The visual electronic signature selected by the signer.
+                        .electronicSignatures(electronicSignature)
+                        .fileStorage(electronicSignature.getFileStorage())
 
                         .build();
 

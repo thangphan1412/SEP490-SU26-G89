@@ -24,4 +24,5 @@ public class ListElectronicResponse {
     private ElectronicStatus status;
     private boolean isDefault;
     private LocalDate uploadAt;
+    private String fileUrl;
 }
