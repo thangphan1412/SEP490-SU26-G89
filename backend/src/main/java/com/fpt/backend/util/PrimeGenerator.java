@@ -7,10 +7,13 @@ import java.security.SecureRandom;
 
 @Component
 public class PrimeGenerator {
-    public String primeGenerator() {
-        SecureRandom random = new SecureRandom();
-        BigInteger prime = BigInteger.probablePrime(128, random);
 
-        return prime.toString(16);
+    private final SecureRandom secureRandom = new SecureRandom();
+
+    public BigInteger generatePrime(int bitLength) {
+        return BigInteger.probablePrime(
+                bitLength,
+                secureRandom
+        );
     }
 }

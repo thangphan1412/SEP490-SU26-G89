@@ -3,11 +3,14 @@ package com.fpt.backend.controller.authencationController;
 import com.fpt.backend.configuration.JWTService;
 import com.fpt.backend.dto.request.authentication.AuthenticateRequest;
 import com.fpt.backend.dto.request.authentication.RegisterRequest;
+import com.fpt.backend.dto.request.user.UserCreateRequestDTO;
 import com.fpt.backend.dto.response.authentication.AuthenticateResponse;
 import com.fpt.backend.dto.response.authentication.RegisterResponse;
+import com.fpt.backend.dto.response.user.UserResponseDTO;
 import com.fpt.backend.entity.Users;
 import com.fpt.backend.service.impl.user.UserServiceImpl;
 import com.fpt.backend.util.BaseResponse;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -35,5 +38,7 @@ public class AuthenticationController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-
 }
+
+
+

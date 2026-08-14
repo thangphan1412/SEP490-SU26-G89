@@ -1,0 +1,59 @@
+#@baseUrl = http://localhost:8080
+#@token = replace-with-valid-jwt
+#
+#### UPM-01: Get the current user's profile
+#GET {{baseUrl}}/api/profile
+#Authorization: Bearer {{token}}
+#Accept: application/json
+#
+#### UPM-02: Update basic profile information without changing email
+#PUT {{baseUrl}}/api/profile
+#Authorization: Bearer {{token}}
+#Content-Type: application/json
+#
+#{
+#  "firstName": "Mai",
+#  "lastName": "Tran",
+#  "email": "current.user@example.com",
+#  "numberPhone": "0907654321"
+#}
+#
+#### UPM-03: Update profile and change email
+#PUT {{baseUrl}}/api/profile
+#Authorization: Bearer {{token}}
+#Content-Type: application/json
+#
+#{
+#  "firstName": "Mai",
+#  "lastName": "Tran",
+#  "email": "current.user.new@example.com",
+#  "numberPhone": "0907654321"
+#}
+#
+#### UPM-04: Use an email already owned by another account - expected 400
+#PUT {{baseUrl}}/api/profile
+#Authorization: Bearer {{token}}
+#Content-Type: application/json
+#
+#{
+#  "firstName": "Mai",
+#  "lastName": "Tran",
+#  "email": "existing.user@example.com",
+#  "numberPhone": "0907654321"
+#}
+#
+#### UPM-05: Invalid phone number - expected validation error
+#PUT {{baseUrl}}/api/profile
+#Authorization: Bearer {{token}}
+#Content-Type: application/json
+#
+#{
+#  "firstName": "Mai",
+#  "lastName": "Tran",
+#  "email": "current.user@example.com",
+#  "numberPhone": "123"
+#}
+#
+#### UPM-06: Missing or invalid token - expected 400/401 depending on security configuration
+#GET {{baseUrl}}/api/profile
+#Accept: application/json

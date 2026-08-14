@@ -30,8 +30,6 @@ public class Users extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "user_status")
     private UserStatus status;
-    @Column(name = "user_role")
-    private String role;
     @Column(name = "date_of_birth")
     private String dob;
     // THÊM TRƯỜNG NÀY ĐỂ LƯU THỜI GIAN HOẠT ĐỘNG CUỐI
