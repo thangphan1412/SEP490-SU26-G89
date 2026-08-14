@@ -13,9 +13,11 @@ import java.util.UUID;
 public class PhaseProgressService {
     private final PhaseTaskRepository phaseTaskRepository;
 
+    // Tính phần trăm tiến độ phase dựa trên tỷ lệ task đã hoàn thành.
     public double calculateProgress(UUID phaseId) {
         long totalTasks = phaseTaskRepository.countByPhaseId(phaseId);
 
+        // Trả về 0 để tránh phép chia cho không khi phase chưa có task.
         if (totalTasks == 0) {
             return 0;
         }

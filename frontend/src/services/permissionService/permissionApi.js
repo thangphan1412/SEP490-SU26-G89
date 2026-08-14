@@ -1,9 +1,6 @@
 import axiosClient from "../../config/api/axiosClient.js";
 
-const API_BASE_URL = String(
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:8080/api"
-).replace(/\/+$/, "");
-const PERMISSION_API_BASE_URL = `${API_BASE_URL}/permissions`;
+const PERMISSION_API_BASE_URL = "http://localhost:8080/api/permissions";
 
 function getResponseData(response) {
   return response.data?.data ?? response.data;

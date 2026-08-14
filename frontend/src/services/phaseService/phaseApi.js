@@ -1,9 +1,6 @@
 import axiosClient from "../../config/api/axiosClient.js";
 
-const API_BASE_URL = String(
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:8080/api"
-).replace(/\/+$/, "");
-const PHASE_API_BASE_URL = `${API_BASE_URL}/phases`;
+const PHASE_API_BASE_URL = "http://localhost:8080/api/phases";
 
 function getResponseData(response) {
   return response.data?.data ?? response.data;

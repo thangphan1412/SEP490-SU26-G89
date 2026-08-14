@@ -13,6 +13,7 @@ import java.util.UUID;
 
 @Repository
 public interface TaskRepository extends JpaRepository<TimelineTask, UUID> {
+    // Lấy toàn bộ task của một phase kèm người được giao.
     @Query("""
             SELECT task
             FROM TimelineTask task
@@ -22,6 +23,7 @@ public interface TaskRepository extends JpaRepository<TimelineTask, UUID> {
             """)
     List<TimelineTask> findByPhaseId(@Param("phaseId") UUID phaseId);
 
+    // Lấy các task của một phase được giao cho người dùng chỉ định.
     @Query("""
             SELECT task
             FROM TimelineTask task
@@ -35,6 +37,7 @@ public interface TaskRepository extends JpaRepository<TimelineTask, UUID> {
             @Param("userId") UUID userId
     );
 
+    // Lấy chi tiết task kèm phase, dự án và người được giao.
     @Query("""
             SELECT task
             FROM TimelineTask task
@@ -45,6 +48,7 @@ public interface TaskRepository extends JpaRepository<TimelineTask, UUID> {
             """)
     Optional<TimelineTask> findDetailById(@Param("taskId") UUID taskId);
 
+    // Lấy các hợp đồng đang liên kết với một task.
     @Query("""
             SELECT contract
             FROM Contracts contract

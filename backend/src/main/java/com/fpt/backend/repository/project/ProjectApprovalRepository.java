@@ -12,6 +12,7 @@ import java.util.UUID;
 public interface ProjectApprovalRepository
         extends JpaRepository<Approvals, UUID> {
 
+    // Đếm số lượt phê duyệt thành công tại một cấp duyệt của proposal.
     @Query("""
             SELECT COUNT(approval)
             FROM Approvals approval

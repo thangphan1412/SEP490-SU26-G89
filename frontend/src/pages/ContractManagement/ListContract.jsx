@@ -102,6 +102,7 @@ function ListContract() {
 
         let active = true;
 
+        // Tải và mở hợp đồng được truyền qua tham số điều hướng nếu component vẫn hoạt động.
         async function openRequestedContract() {
             try {
                 const response = await contractApi.getContractById(

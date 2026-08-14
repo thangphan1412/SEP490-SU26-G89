@@ -13,6 +13,7 @@ import java.util.UUID;
 
 @Repository
 public interface PhaseContractRepository extends JpaRepository<TimelineContract, UUID> {
+    // Lấy các hợp đồng liên kết trực tiếp với một phase.
     @Query("""
             SELECT phaseContract
             FROM TimelineContract phaseContract
@@ -22,6 +23,7 @@ public interface PhaseContractRepository extends JpaRepository<TimelineContract,
             """)
     List<TimelineContract> findByPhaseId(@Param("phaseId") UUID phaseId);
 
+    // Lấy các hợp đồng liên kết thông qua task thuộc một phase.
     @Query("""
             SELECT contract
             FROM Contracts contract
@@ -31,6 +33,7 @@ public interface PhaseContractRepository extends JpaRepository<TimelineContract,
             """)
     List<Contracts> findByTaskPhaseId(@Param("phaseId") UUID phaseId);
 
+    // Xóa các liên kết phase-hợp đồng thuộc một dự án.
     @Modifying
     @Query("""
             DELETE FROM TimelineContract phaseContract

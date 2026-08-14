@@ -52,8 +52,10 @@ public class PhaseServiceImpl implements IPhaseService {
     private final PhaseStatusService phaseStatusService;
     private final IPermissionAccessService permissionAccessService;
 
+    // Lấy danh sách phase của dự án sau khi kiểm tra quyền truy cập và làm mới trạng thái.
     @Override
     public List<PhaseListItemResponse> getPhasesByProjectId(UUID projectId) {
+        // Từ chối mã dự án thiếu hoặc không tồn tại.
         if (projectId == null || !projectRepository.existsById(projectId)) {
             throw new NotFoundException("Project not found");
         }
@@ -71,6 +73,7 @@ public class PhaseServiceImpl implements IPhaseService {
         return responses;
     }
 
+    // Lấy chi tiết phase cùng task, deliverable và hợp đồng mà người dùng được xem.
     @Override
     public PhaseDetailResponse getPhaseById(UUID phaseId) {
         Timeline phase = findPhase(phaseId);
@@ -81,6 +84,7 @@ public class PhaseServiceImpl implements IPhaseService {
         phaseStatusService.refreshProjectStatuses(project.getId());
         phase = findPhase(phaseId);
 
+        // Chỉ cho phép người có phạm vi toàn dự án xem phase chưa IN_PROGRESS.
         if (phase.getStatus() != PhaseStatus.IN_PROGRESS
                 && !access.canViewAllProjectData()) {
             throw new BadHttpException(
@@ -113,6 +117,7 @@ public class PhaseServiceImpl implements IPhaseService {
         );
     }
 
+    // Lấy các task hiển thị theo action và phạm vi dữ liệu của người dùng.
     private List<PhaseTaskResponse> getVisibleTasks(
             UUID phaseId,
             ProjectAccessResponse access) {
@@ -127,12 +132,14 @@ public class PhaseServiceImpl implements IPhaseService {
                 "EDIT_TASKS"
         );
 
+        // Không trả task khi người dùng không có action xem hoặc chỉnh sửa.
         if (!canViewTasks && !canEditTasks) {
             return responses;
         }
 
         List<TimelineTask> tasks;
 
+        // Chọn toàn bộ task hoặc chỉ task được giao theo work scope.
         if (permissionAccessService.hasFullWorkScope(
                 access,
                 "VIEW_TASKS"
@@ -152,11 +159,13 @@ public class PhaseServiceImpl implements IPhaseService {
         return responses;
     }
 
+    // Lấy deliverable của phase khi người dùng có action xem tương ứng.
     private List<PhaseDeliverableResponse> getVisibleDeliverables(
             UUID phaseId,
             ProjectAccessResponse access) {
         List<PhaseDeliverableResponse> responses = new ArrayList<>();
 
+        // Trả danh sách rỗng khi người dùng không có action xem deliverable.
         if (!permissionAccessService.hasAction(
                 access,
                 "VIEW_DELIVERABLES"
@@ -178,16 +187,18 @@ public class PhaseServiceImpl implements IPhaseService {
         return responses;
     }
 
+    // Hợp nhất các hợp đồng liên kết trực tiếp và qua task của phase.
     private List<PhaseContractResponse> getVisibleContracts(
             UUID phaseId,
             ProjectAccessResponse access) {
+        // Trả danh sách rỗng khi người dùng không có action xem hợp đồng.
         if (!permissionAccessService.hasAction(access, "VIEW_CONTRACTS")) {
             return new ArrayList<>();
         }
 
         Map<UUID, PhaseContractResponse> contractsById = new LinkedHashMap<>();
 
-        // Keep contracts that use the older timeline_contract relationship.
+        // Giữ các hợp đồng sử dụng quan hệ timeline_contract cũ.
         for (TimelineContract phaseContract
                 : phaseContractRepository.findByPhaseId(phaseId)) {
             Contracts contract = phaseContract.getContract();
@@ -197,7 +208,7 @@ public class PhaseServiceImpl implements IPhaseService {
             );
         }
 
-        // New contracts are linked to a phase through their selected task.
+        // Bổ sung hợp đồng mới liên kết với phase thông qua task đã chọn.
         for (Contracts contract
                 : phaseContractRepository.findByTaskPhaseId(phaseId)) {
             contractsById.putIfAbsent(
@@ -212,6 +223,7 @@ public class PhaseServiceImpl implements IPhaseService {
         return new ArrayList<>(contractsById.values());
     }
 
+    // Chuyển entity hợp đồng thành dữ liệu hợp đồng hiển thị trong phase.
     private PhaseContractResponse toContractResponse(
             Contracts contract,
             LocalDateTime linkedAt) {
@@ -226,12 +238,14 @@ public class PhaseServiceImpl implements IPhaseService {
         );
     }
 
+    // Chuyển entity task thành dữ liệu task hiển thị trong phase.
     private PhaseTaskResponse toTaskResponse(TimelineTask task) {
         Users assignedUser = task.getAssignedTo();
         UUID assignedUserId = null;
         String assignedUserName = null;
         String assignedUserEmail = null;
 
+        // Bổ sung thông tin người được giao khi task đã có assignee.
         if (assignedUser != null) {
             assignedUserId = assignedUser.getId();
             assignedUserName = getUserName(assignedUser);
@@ -250,6 +264,7 @@ public class PhaseServiceImpl implements IPhaseService {
         );
     }
 
+    // Chuyển entity phase thành phần tử hiển thị trong danh sách.
     private PhaseListItemResponse toListItem(Timeline phase) {
         Projects project = phase.getProject();
 
@@ -267,7 +282,9 @@ public class PhaseServiceImpl implements IPhaseService {
         );
     }
 
+    // Chuyển Date sang LocalDate theo múi giờ ứng dụng.
     private LocalDate toLocalDate(Date value) {
+        // Giữ nguyên giá trị thiếu thay vì phát sinh lỗi chuyển đổi.
         if (value == null) {
             return null;
         }
@@ -279,20 +296,24 @@ public class PhaseServiceImpl implements IPhaseService {
         return value.toInstant().atZone(APP_TIME_ZONE).toLocalDate();
     }
 
+    // Ghép tên người dùng và dùng email khi họ tên bị trống.
     private String getUserName(Users user) {
         String fullName = (normalize(user.getFirstName()) + " " + normalize(user.getLastName())).trim();
         return fullName.isBlank() ? user.getEmail() : fullName;
     }
 
+    // Chuẩn hóa chuỗi null thành rỗng và loại bỏ khoảng trắng hai đầu.
     private String normalize(String value) {
         return value == null ? "" : value.trim();
     }
 
+    // Tìm phase kèm dự án hoặc báo không tìm thấy.
     private Timeline findPhase(UUID phaseId) {
         Optional<Timeline> optionalPhase = phaseRepository.findDetailById(
                 phaseId
         );
 
+        // Báo lỗi khi phase không tồn tại.
         if (optionalPhase.isEmpty()) {
             throw new NotFoundException("Phase not found");
         }

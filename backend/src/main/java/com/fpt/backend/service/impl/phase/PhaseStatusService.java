@@ -24,12 +24,14 @@ public class PhaseStatusService {
     private final PhaseProgressService phaseProgressService;
     private final ProjectStatusService projectStatusService;
 
+    // Làm mới trạng thái phase cho toàn bộ dự án đang có timeline.
     public void refreshAllProjectStatuses() {
         for (UUID projectId : phaseRepository.findProjectIds()) {
             refreshProjectStatuses(projectId);
         }
     }
 
+    // Tính lại tiến độ và trạng thái tuần tự của các phase trong một dự án.
     public void refreshProjectStatuses(UUID projectId) {
         List<Timeline> phases = phaseRepository.findByProjectId(projectId);
         LocalDate today = LocalDate.now(APP_TIME_ZONE);
@@ -63,6 +65,7 @@ public class PhaseStatusService {
         projectStatusService.completeIfAllPhasesCompleted(phases);
     }
 
+    // Xác định trạng thái phase theo tiến độ, thời gian và trạng thái phase trước.
     private PhaseStatus calculateStatus(
             Timeline phase,
             double progress,
@@ -70,10 +73,12 @@ public class PhaseStatusService {
             boolean firstPhase,
             PhaseStatus previousStatus,
             boolean projectIsWaiting) {
+        // Đánh dấu hoàn thành khi mọi task của phase đã hoàn tất.
         if (progress >= 100D) {
             return PhaseStatus.COMPLETED;
         }
 
+        // Giữ phase ở PLANNING khi dự án đang chờ hoặc lên kế hoạch.
         if (projectIsWaiting) {
             return PhaseStatus.PLANNING;
         }
@@ -81,6 +86,7 @@ public class PhaseStatusService {
         LocalDate startDate = toLocalDate(phase.getStartDate());
         LocalDate endDate = toLocalDate(phase.getEndDate());
 
+        // Đánh dấu quá hạn khi ngày hiện tại vượt ngày kết thúc.
         if (today.isAfter(endDate)) {
             return PhaseStatus.OVER_DUE;
         }
@@ -90,6 +96,7 @@ public class PhaseStatusService {
         boolean previousPhaseIsCompleted = previousStatus
                 == PhaseStatus.COMPLETED;
 
+        // Chỉ kích hoạt phase trong thời gian chạy khi phase trước đã hoàn thành.
         if (dateIsInPhase
                 && (firstPhase || previousPhaseIsCompleted)) {
             return PhaseStatus.IN_PROGRESS;
@@ -98,6 +105,7 @@ public class PhaseStatusService {
         return PhaseStatus.PLANNING;
     }
 
+    // Chuyển Date sang LocalDate theo múi giờ ứng dụng.
     private LocalDate toLocalDate(Date value) {
         if (value instanceof java.sql.Date sqlDate) {
             return sqlDate.toLocalDate();

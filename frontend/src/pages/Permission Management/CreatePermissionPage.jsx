@@ -33,6 +33,7 @@ const initialPermission = {
   workScope: "FULL",
 };
 
+// Hiển thị biểu mẫu tạo quyền mới và tải các tùy chọn cấu hình cần thiết.
 function CreatePermissionPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -48,10 +49,11 @@ function CreatePermissionPage() {
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
-  // Lấy danh sách các dự án và hành động được phép khi component được mount
+  // Lấy danh sách dự án và action khả dụng khi component được mount.
   useEffect(function () {
     const requestController = new AbortController();
 
+    // Tải song song dự án có thể quản lý và permission action catalog.
     async function loadOptions() {
       try {
         const [projectPayload, actionPayload] = await Promise.all([
@@ -59,6 +61,7 @@ function CreatePermissionPage() {
           listPermissionActions(requestController.signal),
         ]);
 
+        // Bỏ qua response khi component đã hủy request.
         if (requestController.signal.aborted) {
           return;
         }
@@ -90,6 +93,7 @@ function CreatePermissionPage() {
     };
   }, []);
 
+  // Đồng bộ trường thông tin quyền vừa thay đổi vào state.
   function handleChange(event) {
     const { name, value } = event.target;
     setPermission((currentPermission) => ({
@@ -98,6 +102,7 @@ function CreatePermissionPage() {
     }));
   }
 
+  // Thêm hoặc loại bỏ một action trong cấu hình quyền hiện tại.
   function toggleAllowedAction(action) {
     setPermission(function (currentPermission) {
       const currentActions = currentPermission.allowedActions;
@@ -118,6 +123,7 @@ function CreatePermissionPage() {
     });
   }
 
+  // Cập nhật work scope được chọn cho quyền.
   function handleWorkScopeChange(event) {
     const workScope = event.target.value;
 
@@ -129,6 +135,7 @@ function CreatePermissionPage() {
     });
   }
 
+  // Xác định đường dẫn quay lại danh sách quyền hoặc dự án nguồn.
   function getBackPath() {
     if (returnProjectId) {
       return `/project-management/view?id=${encodeURIComponent(returnProjectId)}`
@@ -138,7 +145,9 @@ function CreatePermissionPage() {
     return "/permission/list";
   }
 
+  // Tạo đường dẫn mở quyền vừa tạo và giữ ngữ cảnh dự án nguồn.
   function getCreatedPermissionPath(permissionId) {
+    // Quay về màn hình trước khi backend không trả về id quyền mới.
     if (!permissionId) {
       return getBackPath();
     }
@@ -152,10 +161,12 @@ function CreatePermissionPage() {
     return path;
   }
 
+  // Điều hướng người dùng trở lại màn hình nguồn.
   function goBack() {
     navigate(getBackPath());
   }
 
+  // Chuẩn hóa biểu mẫu rồi gửi yêu cầu tạo quyền.
   async function handleSubmit(event) {
     event.preventDefault();
     setError("");

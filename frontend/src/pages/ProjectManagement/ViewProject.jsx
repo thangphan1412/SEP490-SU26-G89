@@ -15,17 +15,17 @@ import {
 } from "../../components/permissionComponents/permissionAccess.js";
 import "../../assets/styles/css/projectStyles/ViewProject.css";
 
-const PROJECT_ACCESS_DENIED_MESSAGE =
-    "Bạn không được quyền xem project này!";
-
+// Hiển thị ký hiệu trống cho giá trị chưa được cung cấp.
 function showValue(value) {
     return value === null || value === undefined || value === "" ? "-" : value;
 }
 
+// Chuẩn hóa văn bản để so khớp bộ lọc không phân biệt hoa thường.
 function normalizeText(value) {
     return String(value || "").trim().toLowerCase();
 }
 
+// Hiển thị một hàng thông tin chi tiết, hỗ trợ định dạng trạng thái.
 function DetailRow({ label, value, isStatus = false }) {
     return (
         <div className="view-project-detail-row">
@@ -39,6 +39,7 @@ function DetailRow({ label, value, isStatus = false }) {
     );
 }
 
+// Hiển thị một hàng thông báo khi bảng không có dữ liệu.
 function EmptyRow({ colSpan, message }) {
     return (
         <tr>
@@ -49,6 +50,7 @@ function EmptyRow({ colSpan, message }) {
     );
 }
 
+// Hiển thị chi tiết dự án theo quyền truy cập của người dùng hiện tại.
 function ViewProject() {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
@@ -67,9 +69,11 @@ function ViewProject() {
         openPermissionConfigure
     );
 
+    // Tải lại chi tiết dự án mỗi khi project id thay đổi.
     useEffect(function () {
         const requestController = new AbortController();
 
+        // Gọi API và đồng bộ chi tiết dự án vào state trang.
         async function loadProject() {
             try {
                 setLoading(true);
@@ -89,8 +93,9 @@ function ViewProject() {
                 console.error("Unable to load project detail:", apiError);
                 setProject(null);
 
+                // Hiển thị thông báo riêng khi backend từ chối quyền truy cập.
                 if (apiError.response?.status === 403) {
-                    setError(PROJECT_ACCESS_DENIED_MESSAGE);
+                    setError("Bạn không được quyền xem project này!");
                 } else {
                     setError("Unable to load this project. Please try again later.");
                 }
@@ -108,11 +113,13 @@ function ViewProject() {
         };
     }, [projectId]);
 
+    // Xác nhận rồi gửi yêu cầu xóa hoặc hủy dự án đang xem.
     async function handleDelete() {
         const confirmed = window.confirm(
             "Delete this project? If it has contracts, it will be kept and its status will be changed to Cancelled. If it has no contracts, it will be permanently deleted."
         );
 
+        // Hủy thao tác khi người dùng không xác nhận xóa.
         if (!confirmed) {
             return;
         }
@@ -125,13 +132,17 @@ function ViewProject() {
             navigate("/project-management/list");
         } catch (apiError) {
             console.error("Unable to delete project:", apiError);
-            setActionError(getApiErrorMessage(apiError));
+            setActionError(
+                "Unable to delete this project. It may still contain linked data."
+            );
         } finally {
             setDeleting(false);
         }
     }
 
+    // Kiểm tra quyền xem rồi điều hướng tới chi tiết phase.
     function openPhase(phase) {
+        // Từ chối mở phase bị khóa theo trạng thái và phạm vi truy cập.
         if (!canViewPhase(phase, access)) {
             setActionError(
                 "Only an IN_PROGRESS phase can be accessed."
@@ -143,6 +154,7 @@ function ViewProject() {
         navigate(`/phase-management/view/${projectId}/${phase.id}`);
     }
 
+    // Hỗ trợ mở phase bằng bàn phím trên hàng bảng.
     function handlePhaseKeyDown(event, phase) {
         if (event.key === "Enter" || event.key === " ") {
             event.preventDefault();
@@ -150,6 +162,7 @@ function ViewProject() {
         }
     }
 
+    // Xóa từ khóa và trạng thái lọc hợp đồng.
     function clearContractFilters() {
         setContractSearch("");
         setContractStatus("");
@@ -162,6 +175,7 @@ function ViewProject() {
     const contractSearchText = normalizeText(contractSearch);
     const contractStatusText = normalizeText(contractStatus);
 
+    // Kiểm tra thành viên có khớp từ khóa tìm kiếm hay không.
     function userMatchesSearch(user) {
         const values = [
             user.userName,
@@ -188,6 +202,7 @@ function ViewProject() {
             .filter((status) => normalizeText(status))
     )].sort();
 
+    // Kiểm tra hợp đồng có khớp từ khóa và trạng thái đang lọc hay không.
     function contractMatchesFilters(contract) {
         const matchesName = [contract.contractTitle, contract.contractNumber]
             .some((value) => normalizeText(value).includes(contractSearchText));
@@ -544,31 +559,30 @@ function ViewProject() {
     );
 }
 
+// Chuẩn hóa tiến độ thành số nguyên trong khoảng từ 0 đến 100.
 function clampProgress(progress) {
     const numberValue = Number(progress || 0);
     return Math.min(100, Math.max(0, Math.round(numberValue)));
 }
 
+// Kiểm tra phase có đang ở trạng thái IN_PROGRESS hay không.
 function isPhaseInProgress(status) {
     return String(status || "").trim().toUpperCase() === "IN_PROGRESS";
 }
 
+// Kiểm tra phase có thể mở theo trạng thái hoặc quyền xem toàn dự án.
 function canViewPhase(phase, access) {
+    // Phase đang chạy luôn có thể mở từ trang chi tiết dự án.
     if (isPhaseInProgress(phase.status)) {
         return true;
     }
 
+    // Từ chối phase khác trạng thái khi chưa có thông tin truy cập.
     if (!access) {
         return false;
     }
 
     return access.canViewAllProjectData === true;
-}
-
-function getApiErrorMessage(error) {
-    return error.response?.data?.message
-        || error.response?.data?.error
-        || "Unable to delete this project. It may still contain linked data.";
 }
 
 export default ViewProject;

@@ -11,11 +11,13 @@ import org.springframework.stereotype.Component;
 public class PhaseStatusScheduler {
     private final PhaseStatusService phaseStatusService;
 
+    // Làm mới trạng thái và tiến độ của mọi phase sau khi ứng dụng khởi động.
     @EventListener(ApplicationReadyEvent.class)
     public void refreshAfterStartup() {
         phaseStatusService.refreshAllProjectStatuses();
     }
 
+    // Làm mới trạng thái và tiến độ phase mỗi ngày theo lịch cấu hình.
     @Scheduled(
             cron = "${phase.status.refresh-cron:0 1 0 * * *}",
             zone = "${phase.status.time-zone:Asia/Ho_Chi_Minh}"

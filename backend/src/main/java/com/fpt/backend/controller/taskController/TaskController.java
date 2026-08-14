@@ -29,6 +29,7 @@ import java.util.UUID;
 public class TaskController {
     private final ITaskService taskService;
 
+    // Lấy dữ liệu quản lý task của một phase theo quyền truy cập hiện tại.
     @GetMapping(ApiConstant.Task.BY_PHASE_ID)
     public ResponseEntity<BaseResponse<TaskManagementResponse>>
     getTasksByPhaseId(@PathVariable UUID phaseId) {
@@ -39,6 +40,7 @@ public class TaskController {
                 ));
     }
 
+    // Tạo task mới trong phase sau khi request vượt qua Bean Validation.
     @PostMapping(ApiConstant.Task.BY_PHASE_ID)
     public ResponseEntity<BaseResponse<TaskItemResponse>> createTask(
             @PathVariable UUID phaseId,
@@ -56,6 +58,7 @@ public class TaskController {
                 ));
     }
 
+    // Cập nhật task hiện có sau khi kiểm tra dữ liệu request.
     @PutMapping(ApiConstant.Task.BY_ID)
     public ResponseEntity<BaseResponse<TaskItemResponse>> updateTask(
             @PathVariable UUID taskId,
@@ -65,6 +68,7 @@ public class TaskController {
         ));
     }
 
+    // Đánh dấu task hoàn thành khi trạng thái và quyền truy cập hợp lệ.
     @PatchMapping(ApiConstant.Task.MARK_DONE)
     public ResponseEntity<BaseResponse<TaskItemResponse>> markTaskAsDone(
             @PathVariable UUID taskId) {

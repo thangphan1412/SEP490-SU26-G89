@@ -54,6 +54,7 @@ public class TaskServiceImpl implements ITaskService {
     private final IPermissionAccessService permissionAccessService;
     private final PhaseStatusService phaseStatusService;
 
+    // Lấy dữ liệu quản lý task của phase theo action và work scope hiện tại.
     @Override
     @Transactional
     public TaskManagementResponse getTasksByPhaseId(UUID phaseId) {
@@ -85,6 +86,7 @@ public class TaskServiceImpl implements ITaskService {
 
         List<TimelineTask> tasks;
 
+        // Lấy toàn bộ task với phạm vi FULL hoặc chỉ task được giao với phạm vi OWN.
         if (fullWorkScope) {
             tasks = taskRepository.findByPhaseId(phaseId);
         } else {
@@ -110,6 +112,7 @@ public class TaskServiceImpl implements ITaskService {
         );
     }
 
+    // Tạo task mới trong phase sau khi kiểm tra quyền, trạng thái, ngày và assignee.
     @Override
     @Transactional
     public TaskItemResponse createTask(
@@ -152,6 +155,7 @@ public class TaskServiceImpl implements ITaskService {
         );
     }
 
+    // Cập nhật task hiện có sau khi kiểm tra mọi điều kiện chỉnh sửa.
     @Override
     @Transactional
     public TaskItemResponse updateTask(
@@ -202,6 +206,7 @@ public class TaskServiceImpl implements ITaskService {
         );
     }
 
+    // Đánh dấu task hoàn thành khi người dùng có quyền phê duyệt và chỉnh sửa task.
     @Override
     @Transactional
     public TaskItemResponse markTaskAsDone(UUID taskId) {
@@ -209,6 +214,7 @@ public class TaskServiceImpl implements ITaskService {
         UUID projectId = task.getTimeline().getProject().getId();
         ProjectAccessResponse access = requireEditTaskAccess(projectId);
 
+        // Yêu cầu action APPROVE_TASKS trước khi hoàn thành task.
         if (!permissionAccessService.hasAction(access, "APPROVE_TASKS")) {
             throw new ResponseStatusException(
                     HttpStatus.FORBIDDEN,
@@ -238,9 +244,11 @@ public class TaskServiceImpl implements ITaskService {
         );
     }
 
+    // Tìm phase kèm dự án hoặc báo không tìm thấy.
     private Timeline findPhase(UUID phaseId) {
         Optional<Timeline> optionalPhase = phaseRepository.findDetailById(phaseId);
 
+        // Báo lỗi khi phase không tồn tại.
         if (optionalPhase.isEmpty()) {
             throw new NotFoundException("Phase not found");
         }
@@ -248,9 +256,11 @@ public class TaskServiceImpl implements ITaskService {
         return optionalPhase.get();
     }
 
+    // Tìm task kèm phase, dự án và assignee hoặc báo không tìm thấy.
     private TimelineTask findTask(UUID taskId) {
         Optional<TimelineTask> optionalTask = taskRepository.findDetailById(taskId);
 
+        // Báo lỗi khi task không tồn tại.
         if (optionalTask.isEmpty()) {
             throw new NotFoundException("Task not found");
         }
@@ -258,10 +268,12 @@ public class TaskServiceImpl implements ITaskService {
         return optionalTask.get();
     }
 
+    // Lấy quyền truy cập và yêu cầu action chỉnh sửa task trong dự án.
     private ProjectAccessResponse requireEditTaskAccess(UUID projectId) {
         ProjectAccessResponse access = permissionAccessService
                 .getCurrentUserAccess(projectId);
 
+        // Từ chối khi người dùng không có action EDIT_TASKS.
         if (!permissionAccessService.hasAction(access, "EDIT_TASKS")) {
             throw new ResponseStatusException(
                     HttpStatus.FORBIDDEN,
@@ -272,10 +284,12 @@ public class TaskServiceImpl implements ITaskService {
         return access;
     }
 
+    // Lấy quyền truy cập và yêu cầu action tạo task trong dự án.
     private ProjectAccessResponse requireCreateTaskAccess(UUID projectId) {
         ProjectAccessResponse access = permissionAccessService
                 .getCurrentUserAccess(projectId);
 
+        // Từ chối khi người dùng không có action CREATE_TASKS.
         if (!permissionAccessService.hasAction(access, "CREATE_TASKS")) {
             throw new ResponseStatusException(
                     HttpStatus.FORBIDDEN,
@@ -286,7 +300,9 @@ public class TaskServiceImpl implements ITaskService {
         return access;
     }
 
+    // Kiểm tra task chưa hoàn thành để vẫn có thể chỉnh sửa.
     private void validateTaskIsEditable(TimelineTask task) {
+        // Không cho phép thay đổi task đã ở trạng thái DONE.
         if (TaskStatus.DONE.name().equalsIgnoreCase(task.getStatus())) {
             throw new BadHttpException(
                     "A completed task cannot be edited"
@@ -294,7 +310,9 @@ public class TaskServiceImpl implements ITaskService {
         }
     }
 
+    // Kiểm tra trạng thái cập nhật nằm trong tập trạng thái được phép chỉnh sửa.
     private void validateEditableStatus(TaskStatus status) {
+        // Từ chối trạng thái nằm ngoài tập trạng thái chỉnh sửa được hỗ trợ.
         if (!EDITABLE_TASK_STATUSES.contains(status)) {
             throw new BadHttpException(
                     "Task status must be TODO, IN_PROGRESS or ON_HOLD"
@@ -302,7 +320,9 @@ public class TaskServiceImpl implements ITaskService {
         }
     }
 
+    // Kiểm tra phase đang IN_PROGRESS trước khi quản lý task.
     private void validatePhaseIsInProgress(Timeline phase) {
+        // Chỉ cho phép quản lý task khi phase đang được thực hiện.
         if (phase.getStatus() != PhaseStatus.IN_PROGRESS) {
             throw new BadHttpException(
                     "Tasks can only be managed while the phase is IN_PROGRESS"
@@ -310,16 +330,19 @@ public class TaskServiceImpl implements ITaskService {
         }
     }
 
+    // Kiểm tra người dùng phạm vi OWN chỉ chỉnh sửa task được giao cho chính họ.
     private void validateTaskAccess(
             TimelineTask task,
             ProjectAccessResponse access,
             boolean fullWorkScope) {
+        // Bỏ qua giới hạn assignee khi người dùng có phạm vi FULL.
         if (fullWorkScope) {
             return;
         }
 
         Users assignedUser = task.getAssignedTo();
 
+        // Từ chối task chưa giao hoặc được giao cho người dùng khác.
         if (assignedUser == null
                 || !assignedUser.getId().equals(access.currentUserId())) {
             throw new ResponseStatusException(
@@ -329,14 +352,17 @@ public class TaskServiceImpl implements ITaskService {
         }
     }
 
+    // Kiểm tra người dùng phạm vi OWN chỉ được giao task cho chính họ.
     private void validateAssignee(
             ProjectAccessResponse access,
             Users assignedUser,
             boolean fullWorkScope) {
+        // Bỏ qua giới hạn assignee khi người dùng có phạm vi FULL.
         if (fullWorkScope) {
             return;
         }
 
+        // Từ chối assignee trống hoặc khác người dùng hiện tại.
         if (assignedUser == null
                 || !assignedUser.getId().equals(access.currentUserId())) {
             throw new ResponseStatusException(
@@ -346,6 +372,7 @@ public class TaskServiceImpl implements ITaskService {
         }
     }
 
+    // Kiểm tra ngày task hợp lệ và nằm trọn trong timeline của phase.
     private void validateDates(
             LocalDate startDate,
             LocalDate endDate,
@@ -353,12 +380,14 @@ public class TaskServiceImpl implements ITaskService {
         LocalDate phaseStartDate = toLocalDate(phase.getStartDate());
         LocalDate phaseEndDate = toLocalDate(phase.getEndDate());
 
+        // Ngăn ngày bắt đầu task nằm sau ngày kết thúc.
         if (startDate.isAfter(endDate)) {
             throw new BadHttpException(
                     "Task start date must not be after its end date"
             );
         }
 
+        // Ngăn task bắt đầu trước hoặc kết thúc sau phase.
         if (startDate.isBefore(phaseStartDate)
                 || endDate.isAfter(phaseEndDate)) {
             throw new BadHttpException(
@@ -367,7 +396,9 @@ public class TaskServiceImpl implements ITaskService {
         }
     }
 
+    // Tìm assignee trong danh sách thành viên dự án hoặc trả về null khi chưa gán.
     private Users findAssignedUser(UUID projectId, UUID assignedToId) {
+        // Cho phép task chưa được gán cho thành viên cụ thể.
         if (assignedToId == null) {
             return null;
         }
@@ -388,6 +419,7 @@ public class TaskServiceImpl implements ITaskService {
         );
     }
 
+    // Lấy danh sách thành viên có thể được chọn theo work scope của người dùng.
     private List<TaskMemberOptionResponse> getMemberOptions(
             UUID projectId,
             ProjectAccessResponse access,
@@ -411,6 +443,7 @@ public class TaskServiceImpl implements ITaskService {
         return options;
     }
 
+    // Chuyển danh sách entity task thành danh sách response.
     private List<TaskItemResponse> toTaskResponses(
             List<TimelineTask> tasks,
             boolean canViewContracts) {
@@ -423,6 +456,7 @@ public class TaskServiceImpl implements ITaskService {
         return responses;
     }
 
+    // Chuyển entity task thành dữ liệu chi tiết trả về cho client.
     private TaskItemResponse toTaskResponse(
             TimelineTask task,
             boolean canViewContracts) {
@@ -431,6 +465,7 @@ public class TaskServiceImpl implements ITaskService {
         String assignedUserName = null;
         String assignedUserEmail = null;
 
+        // Bổ sung thông tin assignee khi task đã được giao.
         if (assignedUser != null) {
             assignedUserId = assignedUser.getId();
             assignedUserName = getUserName(assignedUser);
@@ -450,11 +485,13 @@ public class TaskServiceImpl implements ITaskService {
         );
     }
 
+    // Lấy hợp đồng liên kết với task khi người dùng có action xem hợp đồng.
     private List<TaskContractResponse> getTaskContracts(
             UUID taskId,
             boolean canViewContracts) {
         List<TaskContractResponse> responses = new ArrayList<>();
 
+        // Không truy vấn hợp đồng khi người dùng không có quyền xem.
         if (!canViewContracts) {
             return responses;
         }
@@ -471,7 +508,9 @@ public class TaskServiceImpl implements ITaskService {
         return responses;
     }
 
+    // Chuyển Date sang LocalDate theo múi giờ ứng dụng.
     private LocalDate toLocalDate(Date value) {
+        // Giữ nguyên giá trị thiếu thay vì phát sinh lỗi chuyển đổi.
         if (value == null) {
             return null;
         }
@@ -483,6 +522,7 @@ public class TaskServiceImpl implements ITaskService {
         return value.toInstant().atZone(APP_TIME_ZONE).toLocalDate();
     }
 
+    // Ghép tên người dùng và dùng email khi họ tên bị trống.
     private String getUserName(Users user) {
         String firstName = user.getFirstName() == null
                 ? ""
@@ -492,6 +532,7 @@ public class TaskServiceImpl implements ITaskService {
                 : user.getLastName().trim();
         String fullName = (firstName + " " + lastName).trim();
 
+        // Ưu tiên họ tên khi người dùng đã cung cấp.
         if (!fullName.isBlank()) {
             return fullName;
         }

@@ -68,7 +68,7 @@ public class ProjectServiceImpl implements IProjectService {
     private final IPermissionAccessService permissionAccessService;
     private final CurrentUser currentUserUtil;
 
-    //Load danh sách các dự án dựa trên tìm kiếm, trạng thái dự án, quyền truy cập của người dùng hiện tại và phân trang.
+    // Lấy danh sách dự án theo bộ lọc, phạm vi truy cập và phân trang.
     @Override
     public ProjectListResponse getProjects(ProjectListRequest request) {
         String search = normalize(request.search());
@@ -99,7 +99,7 @@ public class ProjectServiceImpl implements IProjectService {
         );
     }
 
-    //Lấy chi tiết dự án dựa trên ID dự án và quyền truy cập của người dùng hiện tại.
+    // Lấy chi tiết dự án sau khi xác minh quyền truy cập của người dùng hiện tại.
     @Override
     @Transactional
     public ProjectDetailResponse getProjectById(UUID id) {
@@ -109,9 +109,11 @@ public class ProjectServiceImpl implements IProjectService {
         return toDetail(project, access);
     }
 
+    // Tạo dự án cùng yêu cầu phê duyệt, phase, quyền mặc định và thành viên ban đầu.
     @Override
     @Transactional
     public ProjectDetailResponse createProject(ProjectCreateRequest request) {
+        // Yêu cầu payload dự án phải tồn tại.
         if (request == null) {
             throw new BadHttpException("Project information is required");
         }
@@ -162,11 +164,13 @@ public class ProjectServiceImpl implements IProjectService {
         );
     }
 
+    // Cập nhật các phần thông tin, phase và thành viên được cung cấp của dự án.
     @Override
     @Transactional
     public ProjectDetailResponse updateProject(
             UUID id,
             ProjectUpdateRequest request) {
+        // Yêu cầu payload dự án phải tồn tại.
         if (request == null) {
             throw new BadHttpException("Project information is required");
         }
@@ -175,6 +179,7 @@ public class ProjectServiceImpl implements IProjectService {
         ProjectAccessResponse access =
                 permissionAccessService.getCurrentUserAccess(id);
 
+        // Không cho phép thay đổi dự án đã hoàn thành.
         if (isCompletedProject(project)) {
             throw new BadHttpException(
                     "Completed projects cannot be updated"
@@ -185,14 +190,17 @@ public class ProjectServiceImpl implements IProjectService {
         boolean updatePhases = request.phases() != null;
         boolean updateMembers = request.members() != null;
 
+        // Từ chối request không chứa bất kỳ thay đổi nào.
         if (!updateProjectInformation && !updatePhases && !updateMembers) {
             throw new BadHttpException("No project changes were provided");
         }
 
+        // Yêu cầu action chỉnh sửa dự án khi thay đổi thông tin hoặc phase.
         if (updateProjectInformation || updatePhases) {
             permissionAccessService.requireAction(id, "EDIT_PROJECT");
         }
 
+        // Áp dụng các trường thông tin dự án khi request có cung cấp.
         if (updateProjectInformation) {
             boolean projectDatesChanged = !Objects.equals(
                     project.getProjectStartDate(),
@@ -202,7 +210,9 @@ public class ProjectServiceImpl implements IProjectService {
                     request.projectEndDate()
             );
 
+            // Yêu cầu gửi lại phase khi timeline dự án thay đổi.
             if (projectDatesChanged) {
+                // Từ chối đổi timeline dự án khi request không kèm danh sách phase mới.
                 if (!updatePhases) {
                     throw new BadHttpException(
                             "Phases are required when project dates change"
@@ -222,10 +232,12 @@ public class ProjectServiceImpl implements IProjectService {
             projectRepository.save(project);
         }
 
+        // Đồng bộ phase khi request có danh sách phase.
         if (updatePhases) {
             projectPhaseService.syncPhases(project, request.phases());
         }
 
+        // Đồng bộ thành viên sau khi kiểm tra action quản lý thành viên.
         if (updateMembers) {
             permissionAccessService.requireAction(id, "MANAGE_MEMBERS");
             projectMemberService.syncMembers(project, request.members(), true);
@@ -236,6 +248,7 @@ public class ProjectServiceImpl implements IProjectService {
         return toDetail(project, access);
     }
 
+    // Ghi nhận lượt phê duyệt dự án của người dùng hiện tại.
     @Override
     @Transactional
     public void approveProject(UUID id) {
@@ -245,18 +258,21 @@ public class ProjectServiceImpl implements IProjectService {
         projectRepository.flush();
     }
 
+    // Xóa dự án chưa có hợp đồng hoặc chuyển sang Cancelled khi đã có hợp đồng.
     @Override
     @Transactional
     public ProjectDeleteResult deleteProject(UUID id) {
         Projects project = findProject(id);
         permissionAccessService.requireAction(id, "EDIT_PROJECT");
 
+        // Không cho phép xóa dự án đã hoàn thành.
         if (isCompletedProject(project)) {
             throw new BadHttpException(
                     "Completed projects cannot be deleted"
             );
         }
 
+        // Giữ dữ liệu và chuyển trạng thái khi dự án đã phát sinh hợp đồng.
         if (projectContractRepository.countByProjectId(id) > 0) {
             project.setProjectStatus(CANCELLED_PROJECT_STATUS);
             projectRepository.save(project);
@@ -279,17 +295,19 @@ public class ProjectServiceImpl implements IProjectService {
         }
     }
 
+    // Lấy danh sách nhân viên có thể chọn làm thành viên dự án.
     @Override
     public List<ProjectEmployeeResponse> getEmployeesForProjectSelection() {
         return projectMemberService.getEmployeesForSelection();
     }
 
-    //Lấy enum danh sách trạng thái người dùng để lọc thành viên dự án.
+    // Lấy toàn bộ trạng thái người dùng dùng để lọc thành viên dự án.
     @Override
     public List<UserStatus> getUserStatusesForProjectMemberFilter() {
         return List.of(UserStatus.values());
     }
 
+    // Lấy cấu hình quyền của dự án sau khi xác minh action quản lý thành viên.
     @Override
     public List<ProjectPermissionConfigurationResponse>
     getProjectPermissionConfigurations(UUID projectId) {
@@ -298,6 +316,7 @@ public class ProjectServiceImpl implements IProjectService {
         return projectPermissionService.getConfigurations(projectId);
     }
 
+    // Cập nhật một cấu hình quyền thuộc dự án.
     @Override
     @Transactional
     public ProjectPermissionConfigurationResponse configureProjectPermission(
@@ -313,10 +332,11 @@ public class ProjectServiceImpl implements IProjectService {
         );
     }
 
-    //Tìm kiếm dự án dựa trên ID dự án. Nếu không tìm thấy, ném NotFoundException.
+    // Tìm dự án theo mã định danh hoặc báo không tìm thấy.
     private Projects findProject(UUID id) {
         Optional<Projects> project = projectRepository.findById(id);
 
+        // Báo lỗi khi dự án không tồn tại.
         if (project.isEmpty()) {
             throw new NotFoundException("Project not found");
         }
@@ -324,13 +344,14 @@ public class ProjectServiceImpl implements IProjectService {
         return project.get();
     }
 
-    //Tìm kiếm các dự án dựa trên tìm kiếm theo từ khóa, trạng thái dự án, quyền truy cập của người dùng hiện tại và phân trang.
+    // Chọn truy vấn danh sách dự án phù hợp với bộ lọc và phạm vi người dùng.
     private Page<Projects> findProjects(
             String search,
             String status,
             boolean viewOnlyYourProjects,
             UUID currentUserId,
             Pageable pageable) {
+        // Giới hạn kết quả vào các dự án mà người dùng là thành viên khi được yêu cầu.
         if (viewOnlyYourProjects) {
             return projectRepository.searchViewableProjects(
                     search.toLowerCase(Locale.ROOT),
@@ -340,10 +361,12 @@ public class ProjectServiceImpl implements IProjectService {
             );
         }
 
+        // Dùng truy vấn mặc định khi không có từ khóa hoặc trạng thái.
         if (search.isBlank() && status.isBlank()) {
             return projectRepository.findAll(pageable);
         }
 
+        // Dùng truy vấn theo trạng thái khi không có từ khóa.
         if (search.isBlank()) {
             return projectRepository.findByProjectStatusIgnoreCase(
                     status,
@@ -358,6 +381,7 @@ public class ProjectServiceImpl implements IProjectService {
         );
     }
 
+    // Tạo cấu hình phân trang với số trang hợp lệ và dự án mới nhất trước.
     private Pageable createPageable(int page) {
         int validPage = Math.max(page, 0);
         Sort newestProjectFirst = Sort.by(
@@ -368,6 +392,7 @@ public class ProjectServiceImpl implements IProjectService {
         return PageRequest.of(validPage, PAGE_SIZE, newestProjectFirst);
     }
 
+    // Kiểm tra và áp dụng các trường thông tin cơ bản vào entity dự án.
     private void applyProjectInformation(
             Projects project,
             String projectNameValue,
@@ -391,6 +416,7 @@ public class ProjectServiceImpl implements IProjectService {
         validateMaxLength(description, "Project description", 255);
         validateProjectDateRange(startDate, endDate);
 
+        // Không cho phép tạo dự án mới đã kết thúc trong quá khứ.
         if (currentProjectId == null
                 && endDate.isBefore(LocalDate.now(PROJECT_TIME_ZONE))) {
             throw new BadHttpException(
@@ -400,6 +426,7 @@ public class ProjectServiceImpl implements IProjectService {
 
         boolean duplicateCode;
 
+        // Chọn cách kiểm tra trùng mã phù hợp cho thao tác tạo hoặc cập nhật.
         if (currentProjectId == null) {
             duplicateCode = projectRepository
                     .existsByProjectCodeIgnoreCase(projectCode);
@@ -411,6 +438,7 @@ public class ProjectServiceImpl implements IProjectService {
                     );
         }
 
+        // Ngăn tạo hoặc cập nhật thành mã dự án đã được sử dụng.
         if (duplicateCode) {
             throw new BadHttpException("Project code already exists");
         }
@@ -422,17 +450,21 @@ public class ProjectServiceImpl implements IProjectService {
         project.setProjectDescription(description);
     }
 
+    // Kiểm tra ngày bắt đầu và kết thúc của dự án hợp lệ.
     private void validateProjectDateRange(
             LocalDate startDate,
             LocalDate endDate) {
+        // Yêu cầu ngày bắt đầu dự án.
         if (startDate == null) {
             throw new BadHttpException("Start date is required");
         }
 
+        // Yêu cầu ngày kết thúc dự án.
         if (endDate == null) {
             throw new BadHttpException("End date is required");
         }
 
+        // Ngăn ngày bắt đầu nằm sau ngày kết thúc.
         if (startDate.isAfter(endDate)) {
             throw new BadHttpException(
                     "Start date must not be after end date"
@@ -440,17 +472,20 @@ public class ProjectServiceImpl implements IProjectService {
         }
     }
 
+    // Kiểm tra dự án có đang ở trạng thái Completed hay không.
     private boolean isCompletedProject(Projects project) {
         String status = normalize(project.getProjectStatus());
         return COMPLETED_PROJECT_STATUS.equalsIgnoreCase(status);
     }
 
+    // Tạo danh sách thành viên ban đầu và luôn gán toàn quyền cho người tạo dự án.
     private List<ProjectMemberRequest> createInitialMembers(
             List<ProjectMemberRequest> requestedMembers,
             UUID projectCreatorId,
             UUID fullAccessPermissionId) {
         List<ProjectMemberRequest> initialMembers = new ArrayList<>();
 
+        // Sao chép thành viên được chọn nhưng loại người tạo để tránh trùng lặp.
         if (requestedMembers != null) {
             for (ProjectMemberRequest member : requestedMembers) {
                 if (member != null
@@ -469,18 +504,11 @@ public class ProjectServiceImpl implements IProjectService {
         return initialMembers;
     }
 
-    private ProjectListItemResponse toListItem(
-            Projects project,
-            Users currentUser) {
-        boolean projectMember = projectMemberRepository
-                .countByProjectIdAndUserId(
-                        project.getId(),
-                        currentUser.getId()
-                ) > 0;
-        boolean canView = projectMember
-                || projectApprovalService.canReviewProjects(currentUser);
-        boolean canApprove = projectApprovalService
-                .canApproveProject(project, currentUser);
+    // Chuyển entity dự án thành phần tử danh sách kèm quyền xem và phê duyệt.
+    private ProjectListItemResponse toListItem(Projects project,Users currentUser) {
+        boolean isProjectMember = projectMemberRepository.countByProjectIdAndUserId(project.getId(),currentUser.getId()) > 0;
+        boolean canView = isProjectMember || projectApprovalService.canReviewProjects(currentUser);
+        boolean canApprove = projectApprovalService.canApproveProject(project, currentUser);
 
         return new ProjectListItemResponse(
                 project.getId(),
@@ -490,13 +518,14 @@ public class ProjectServiceImpl implements IProjectService {
                 project.getProjectStatus(),
                 project.getProjectStartDate(),
                 project.getProjectEndDate(),
-                getUserName(project.getProjectCreatedBy()),
+                project.getProjectCreatedBy().getFirstName() + " " + project.getProjectCreatedBy().getLastName(),
                 project.getProjectCreatedAt(),
                 canView,
                 canApprove
         );
     }
 
+    // Chuyển entity dự án thành dữ liệu chi tiết theo phạm vi truy cập.
     private ProjectDetailResponse toDetail(
             Projects project,
             ProjectAccessResponse access) {
@@ -517,14 +546,17 @@ public class ProjectServiceImpl implements IProjectService {
         List<ProjectPermissionOptionResponse> permissionOptions = List.of();
         List<ProjectContractResponse> contracts = List.of();
 
+        // Chỉ tải thành viên khi người dùng được phép xem dữ liệu thành viên.
         if (canViewMembers) {
             users = projectMemberService.getProjectUsers(projectId);
         }
 
+        // Chỉ tải tùy chọn quyền khi người dùng có thể quản lý thành viên.
         if (canManageMembers) {
             permissionOptions = projectPermissionService.getOptions(projectId);
         }
 
+        // Chỉ tải hợp đồng khi người dùng có action xem hợp đồng.
         if (canViewContracts) {
             contracts = toProjectContracts(projectId);
         }
@@ -537,7 +569,9 @@ public class ProjectServiceImpl implements IProjectService {
                 project.getProjectStatus(),
                 project.getProjectStartDate(),
                 project.getProjectEndDate(),
-                getUserName(project.getProjectCreatedBy()),
+                project.getProjectCreatedBy().getFirstName()
+                        + " "
+                        + project.getProjectCreatedBy().getLastName(),
                 project.getProjectCreatedAt(),
                 phases,
                 users,
@@ -547,6 +581,7 @@ public class ProjectServiceImpl implements IProjectService {
         );
     }
 
+    // Kiểm tra request cập nhật có chứa ít nhất một trường thông tin dự án.
     private boolean hasProjectInformation(ProjectUpdateRequest request) {
         return request.projectName() != null
                 || request.projectCode() != null
@@ -555,6 +590,7 @@ public class ProjectServiceImpl implements IProjectService {
                 || request.projectDescription() != null;
     }
 
+    // Chuyển danh sách hợp đồng của dự án thành dữ liệu rút gọn cho client.
     private List<ProjectContractResponse> toProjectContracts(UUID projectId) {
         List<Contracts> contracts =
                 projectContractRepository.findByProjectId(projectId);
@@ -572,34 +608,14 @@ public class ProjectServiceImpl implements IProjectService {
         return responses;
     }
 
-    private String getUserName(Users currentUser) {
-        String firstName = normalize(currentUser.getFirstName());
-        String lastName = normalize(currentUser.getLastName());
-        String fullName = (firstName + " " + lastName).trim();
-
-        if (!fullName.isBlank()) {
-            validateMaxLength(fullName, "Project creator", 50);
-            return fullName;
-        }
-
-        String email = normalize(currentUser.getEmail());
-
-        if (email.isBlank()) {
-            throw new BadHttpException(
-                    "Authenticated user information is missing"
-            );
-        }
-
-        validateMaxLength(email, "Project creator", 50);
-        return email;
-    }
-
+    // Chuẩn hóa trường bắt buộc và kiểm tra độ dài tối đa.
     private String requireText(
             String value,
             String message,
             int maxLength) {
         String normalizedValue = normalize(value);
 
+        // Từ chối giá trị rỗng sau khi loại bỏ khoảng trắng thừa.
         if (normalizedValue.isBlank()) {
             throw new BadHttpException(message);
         }
@@ -612,10 +628,12 @@ public class ProjectServiceImpl implements IProjectService {
         return normalizedValue;
     }
 
+    // Kiểm tra một chuỗi không vượt quá độ dài tối đa của trường.
     private void validateMaxLength(
             String value,
             String fieldName,
             int maxLength) {
+        // Từ chối giá trị dài hơn giới hạn lưu trữ của trường.
         if (value.length() > maxLength) {
             throw new BadHttpException(
                     fieldName + " must not be longer than "
@@ -624,6 +642,7 @@ public class ProjectServiceImpl implements IProjectService {
         }
     }
 
+    // Chuẩn hóa chuỗi null thành rỗng và loại bỏ khoảng trắng hai đầu.
     private String normalize(String value) {
         return value == null ? "" : value.trim();
     }

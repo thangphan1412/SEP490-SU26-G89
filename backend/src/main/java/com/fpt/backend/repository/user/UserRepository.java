@@ -18,19 +18,23 @@ import java.util.UUID;
 
 @Repository
 public interface UserRepository extends JpaRepository<Users, UUID> {
+        // Tìm người dùng theo email và nạp kèm danh sách vai trò để kiểm tra quyền.
         @EntityGraph(attributePaths = {
                         "userRoles",
                         "userRoles.role"
         })
         Optional<Users> findByEmail(String email);
 
+        // Kiểm tra email đã được sử dụng bởi người dùng nào trong hệ thống hay chưa.
         Boolean existsByEmail(String email);
 
-        // THÊM 3 HÀM TÌM KIẾM THEO PHÂN QUYỀN
+        // Tìm người dùng theo một vai trò cụ thể.
         List<Users> findByRole(String role);
 
+        // Tìm người dùng thuộc một trong các vai trò được cung cấp.
         List<Users> findByRoleIn(List<String> roles);
 
+        // Tìm người dùng theo đồng thời vai trò và phòng ban.
         List<Users> findByRoleAndDepartment(String role, Departments department);
 
 

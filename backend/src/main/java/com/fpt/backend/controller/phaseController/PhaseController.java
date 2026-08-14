@@ -22,6 +22,7 @@ import java.util.UUID;
 public class PhaseController {
     private final IPhaseService phaseService;
 
+    // Lấy danh sách phase thuộc một dự án để hiển thị theo tiến độ.
     @GetMapping(ApiConstant.Phase.BY_PROJECT_ID)
     public ResponseEntity<BaseResponse<List<PhaseListItemResponse>>> getPhasesByProject(
             @PathVariable UUID projectId) {
@@ -30,6 +31,7 @@ public class PhaseController {
                 .body(new BaseResponse<>(phaseService.getPhasesByProjectId(projectId)));
     }
 
+    // Lấy chi tiết một phase cùng dữ liệu mà người dùng được phép xem.
     @GetMapping(ApiConstant.Phase.BY_ID)
     public ResponseEntity<BaseResponse<PhaseDetailResponse>> getPhaseById(@PathVariable UUID phaseId) {
         return ResponseEntity.ok()

@@ -89,13 +89,6 @@ export function isCompletedProjectStatus(status) {
   return String(status || "").trim().toLowerCase() === "completed";
 }
 
-export function getApiErrorMessage(error, fallbackMessage) {
-  return error.response?.data?.message
-    || error.response?.data?.detail
-    || error.response?.data?.error
-    || fallbackMessage;
-}
-
 export function addOneDay(dateValue) {
   if (!dateValue) {
     return "";

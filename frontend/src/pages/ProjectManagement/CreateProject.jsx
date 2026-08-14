@@ -14,7 +14,6 @@ import {
     addOneDay,
     calculatePhaseStartDatesForDisplay,
     createClientId,
-    getApiErrorMessage,
     getEmployeeDescription,
     getEmployeeName,
     getEmployeeSearchText,
@@ -31,6 +30,7 @@ const initialProject = {
     members: [],
 };
 
+// Hiển thị biểu mẫu tạo dự án cùng phase và thành viên ban đầu.
 function CreateProject() {
     const navigate = useNavigate();
     const [project, setProject] = useState(initialProject);
@@ -51,10 +51,11 @@ function CreateProject() {
         minimumEndDate = project.projectStartDate;
     }
 
-    //Tải tài liệu phục vụ add member
+    // Tải dữ liệu nhân viên và trạng thái phục vụ chọn thành viên.
     useEffect(function () {
         const requestController = new AbortController();
 
+        // Gọi song song các API tùy chọn thành viên và đồng bộ vào state.
         async function loadMemberOptions() {
             try {
                 const [employeeData, statusData] = await Promise.all([
@@ -102,9 +103,11 @@ function CreateProject() {
         };
     }, []);
 
+    // Kiểm tra và đồng bộ trường thông tin dự án vừa thay đổi.
     function handleChange(event) {
         const { name, value } = event.target;
 
+        // Ngăn ngày bắt đầu mới nằm sau ngày kết thúc hiện tại.
         if (
             name === "projectStartDate"
             && value
@@ -115,11 +118,13 @@ function CreateProject() {
             return;
         }
 
+        // Yêu cầu chọn ngày bắt đầu trước khi chọn ngày kết thúc.
         if (name === "projectEndDate" && !project.projectStartDate) {
             setSubmitError("Select the project start date before selecting its end date.");
             return;
         }
 
+        // Ngăn ngày kết thúc dự án nằm trong quá khứ.
         if (
             name === "projectEndDate"
             && value
@@ -129,6 +134,7 @@ function CreateProject() {
             return;
         }
 
+        // Ngăn ngày kết thúc nằm trước ngày bắt đầu dự án.
         if (
             name === "projectEndDate"
             && value
@@ -175,7 +181,9 @@ function CreateProject() {
         });
     }
 
+    // Thêm phase mới nối tiếp phase cuối và kết thúc tại ngày kết thúc dự án.
     function addPhase() {
+        // Yêu cầu đầy đủ timeline dự án trước khi thêm phase.
         if (!project.projectStartDate || !project.projectEndDate) {
             setSubmitError("Select the project start date and end date before adding phases.");
             return;
@@ -188,6 +196,7 @@ function CreateProject() {
             nextStartDate = addOneDay(lastPhase.endDate);
         }
 
+        // Ngăn thêm phase khi timeline hiện tại đã phủ hết dự án.
         if (!nextStartDate || nextStartDate > project.projectEndDate) {
             setSubmitError("Shorten the current final phase before adding another phase.");
             return;
@@ -209,6 +218,7 @@ function CreateProject() {
         }));
     }
 
+    // Cập nhật một phase và tính lại ngày bắt đầu của các phase kế tiếp.
     function updatePhase(clientId, event) {
         const { name, value } = event.target;
 
@@ -232,6 +242,7 @@ function CreateProject() {
         });
     }
 
+    // Xóa một phase rồi nối lại timeline của các phase còn lại.
     function removePhase(clientId) {
         setProject(function (currentProject) {
             let phases = currentProject.phases.filter((phase) => phase.clientId !== clientId);
@@ -259,6 +270,7 @@ function CreateProject() {
         });
     }
 
+    // Đặt lại bộ lọc và mở modal chọn thành viên.
     function openMemberModal() {
         setMemberSearch("");
         setMemberStatusFilter("");
@@ -266,11 +278,13 @@ function CreateProject() {
         setShowMemberModal(true);
     }
 
+    // Đóng modal và xóa danh sách thành viên đang chọn tạm.
     function closeMemberModal() {
         setShowMemberModal(false);
         setPendingMemberIds([]);
     }
 
+    // Thêm hoặc loại một người dùng khỏi danh sách chọn tạm.
     function togglePendingMember(userId) {
         setPendingMemberIds(function (currentIds) {
             const isAlreadySelected = currentIds.includes(userId);
@@ -283,6 +297,7 @@ function CreateProject() {
         });
     }
 
+    // Thêm các người dùng đã chọn vào danh sách thành viên dự án.
     function addSelectedMembers() {
         setProject(function (currentProject) {
             const currentMemberIds = new Set(
@@ -301,6 +316,7 @@ function CreateProject() {
         closeMemberModal();
     }
 
+    // Loại một người dùng khỏi danh sách thành viên dự án.
     function removeMember(userId) {
         setProject((currentProject) => ({
             ...currentProject,
@@ -308,9 +324,11 @@ function CreateProject() {
         }));
     }
 
+    // Kiểm tra dữ liệu, chuẩn hóa payload rồi gửi yêu cầu tạo dự án.
     async function handleSubmit(event) {
         event.preventDefault();
 
+        // Từ chối gửi khi ngày kết thúc dự án nằm trong quá khứ.
         if (
             project.projectEndDate
             && project.projectEndDate < getTodayDate()
@@ -346,10 +364,9 @@ function CreateProject() {
             navigate(destination);
         } catch (error) {
             console.error("Unable to create project:", error);
-            setSubmitError(getApiErrorMessage(
-                error,
+            setSubmitError(
                 "Unable to create project. Please check the information and try again."
-            ));
+            );
         } finally {
             setSaving(false);
         }
@@ -367,6 +384,7 @@ function CreateProject() {
     const availableEmployees = employees.filter((employee) => !selectedMemberIds.has(employee.id));
     const normalizedMemberSearch = memberSearch.trim().toLowerCase();
 
+    // Kiểm tra nhân viên có khớp từ khóa và trạng thái đang lọc hay không.
     function employeeMatchesFilters(employee) {
         const matchesSearch = getEmployeeSearchText(employee).includes(normalizedMemberSearch);
         const matchesStatus = !memberStatusFilter || employee.status === memberStatusFilter;
@@ -376,6 +394,7 @@ function CreateProject() {
 
     const visibleAvailableEmployees = availableEmployees.filter(employeeMatchesFilters);
 
+    // Hiển thị một lựa chọn nhân viên trong modal thêm thành viên.
     function renderAvailableEmployee(employee) {
         const isSelected = pendingMemberIds.includes(employee.id);
         let employeeClassName = "create-project-modal-user";
@@ -411,7 +430,9 @@ function CreateProject() {
         );
     }
 
+    // Hiển thị danh sách biểu mẫu phase hoặc trạng thái rỗng.
     function renderPhaseContent() {
+        // Hiển thị hướng dẫn khi dự án chưa có phase.
         if (project.phases.length === 0) {
             return (
                 <div className="create-project-empty-state">
@@ -461,7 +482,9 @@ function CreateProject() {
         );
     }
 
+    // Hiển thị danh sách thành viên đã chọn hoặc trạng thái tải tương ứng.
     function renderProjectMemberContent() {
+        // Ưu tiên hiển thị lỗi tải dữ liệu nhân viên.
         if (employeeError) {
             return (
                 <Alert variant="warning" className="create-project-employee-alert">
@@ -470,12 +493,14 @@ function CreateProject() {
             );
         }
 
+        // Hiển thị trạng thái chờ trong khi tải nhân viên.
         if (loadingEmployees) {
             return (
                 <div className="create-project-empty-state">Loading employees...</div>
             );
         }
 
+        // Hiển thị hướng dẫn khi chưa chọn thành viên bổ sung.
         if (currentProjectMembers.length === 0) {
             return (
                 <div className="create-project-empty-state">
@@ -515,7 +540,9 @@ function CreateProject() {
         );
     }
 
+    // Hiển thị kết quả nhân viên khả dụng theo bộ lọc trong modal.
     function renderAvailableEmployeeContent() {
+        // Báo khi mọi người dùng đã được thêm vào dự án.
         if (availableEmployees.length === 0) {
             return (
                 <div className="create-project-modal-empty">
@@ -524,6 +551,7 @@ function CreateProject() {
             );
         }
 
+        // Báo khi không có người dùng khớp bộ lọc hiện tại.
         if (visibleAvailableEmployees.length === 0) {
             return (
                 <div className="create-project-modal-empty">
@@ -710,6 +738,7 @@ function CreateProject() {
     );
 }
 
+// Tạo chuỗi ngày hiện tại theo định dạng YYYY-MM-DD cho input date.
 function getTodayDate() {
     const today = new Date();
     const year = today.getFullYear();

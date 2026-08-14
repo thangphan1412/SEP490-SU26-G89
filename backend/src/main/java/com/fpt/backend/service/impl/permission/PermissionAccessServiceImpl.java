@@ -41,15 +41,18 @@ public class PermissionAccessServiceImpl
     private final ProjectApprovalService projectApprovalService;
     private final CurrentUser currentUser;
 
+    // Bảo đảm người dùng hiện tại có quyền truy cập cơ bản vào dự án.
     @Override
     public void requireProjectAccess(UUID projectId) {
         getCurrentUserAccess(projectId);
     }
 
+    // Bảo đảm người dùng hiện tại có action bắt buộc trong dự án.
     @Override
     public void requireAction(UUID projectId, String actionCode) {
         ProjectAccessResponse access = getCurrentUserAccess(projectId);
 
+        // Từ chối thao tác khi action yêu cầu không nằm trong quyền được cấp.
         if (!hasAction(access, actionCode)) {
             throw new ResponseStatusException(
                     HttpStatus.FORBIDDEN,
@@ -58,11 +61,12 @@ public class PermissionAccessServiceImpl
         }
     }
 
-    //Kiểm tra xem người dùng hiện tại có quyền thực hiện một hành động cụ thể trong dự án hay không
+    // Kiểm tra dữ liệu truy cập có chứa action cụ thể hay không.
     @Override
     public boolean hasAction(
             ProjectAccessResponse access,
             String actionCode) {
+        // Trả về false khi chưa có thông tin truy cập để kiểm tra.
         if (access == null) {
             return false;
         }
@@ -70,14 +74,17 @@ public class PermissionAccessServiceImpl
         return containsAction(access.allowedActions(), actionCode);
     }
 
+    // Kiểm tra action được cấp phạm vi toàn dự án hay chỉ dữ liệu sở hữu.
     @Override
     public boolean hasFullWorkScope(
             ProjectAccessResponse access,
             String actionCode) {
+        // Trả về false khi chưa có thông tin truy cập để xác định phạm vi.
         if (access == null) {
             return false;
         }
 
+        // Phạm vi FULL luôn cho phép thao tác trên toàn bộ dữ liệu dự án.
         if (WorkScope.FULL.name().equalsIgnoreCase(access.workScope())) {
             return true;
         }
@@ -86,12 +93,13 @@ public class PermissionAccessServiceImpl
                 && isViewAction(actionCode);
     }
 
-    //Danh sách các dự án mà người dùng hiện tại có quyền thực hiện một hành động cụ thể
+    // Lấy danh sách dự án mà người dùng hiện tại có action được yêu cầu.
     @Override
     public List<UUID> getCurrentUserProjectIdsWithAction(
             String actionCode) {
         Users user = currentUser.getCurrentUser();
 
+        // Cho phép người duyệt cấp điều hành xem toàn bộ dự án với các action xem dữ liệu.
         if (projectApprovalService.canReviewProjects(user)
                 && isViewAction(actionCode)) {
             List<UUID> projectIds = new ArrayList<>();
@@ -109,13 +117,16 @@ public class PermissionAccessServiceImpl
         );
     }
 
-    
+    // Tổng hợp vai trò thành viên, action và phạm vi truy cập của người dùng trong dự án.
     @Override
     public ProjectAccessResponse getCurrentUserAccess(UUID projectId) {
-        validateProjectExists(projectId);
+        Projects project = findProject(projectId);
         Users user = currentUser.getCurrentUser();
+        boolean projectCreator = user.getId().equals(
+                project.getProjectCreatedBy().getId()
+        );
 
-        //Kiểm tra xem người dùng hiện tại có phải là thành viên của dự án hay không
+        // Kiểm tra người dùng hiện tại có phải thành viên của dự án hay không.
         boolean projectMember = projectMemberRepository
                 .countByProjectIdAndUserId(
                         projectId,
@@ -124,11 +135,12 @@ public class PermissionAccessServiceImpl
         boolean executiveViewer = projectApprovalService
                 .canReviewProjects(user);
 
+        // Từ chối truy cập nếu người dùng không phải thành viên hoặc người duyệt điều hành.
         if (!projectMember && !executiveViewer) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You cannot access this project");
         }
 
-        //Lấy permission được gán cho người dùng hiện tại trong dự án
+        // Lấy quyền đang hoạt động được gán cho thành viên trong dự án.
         UserPermission assignedPermission = null;
 
         if (projectMember) {
@@ -141,6 +153,7 @@ public class PermissionAccessServiceImpl
         Set<String> allowedActions = new LinkedHashSet<>();
         WorkScope workScope = WorkScope.OWN;
 
+        // Tổng hợp action và phạm vi từ quyền đã gán nếu quyền còn hiệu lực.
         if (assignedPermission != null) {
             Permissions permission = assignedPermission.getPermission();
 
@@ -154,26 +167,44 @@ public class PermissionAccessServiceImpl
             }
         }
 
+        // Bổ sung các action chỉ xem dữ liệu cho người duyệt cấp điều hành.
         if (executiveViewer) {
             allowedActions.add("VIEW_TASKS");
             allowedActions.add("VIEW_DELIVERABLES");
             allowedActions.add("VIEW_CONTRACTS");
         }
 
+        List<String> allowedActionList = new ArrayList<>(allowedActions);
+        List<String> fullScopeActions = new ArrayList<>();
+
+        // Cấp toàn bộ action cho phạm vi FULL và chỉ action xem cho người duyệt điều hành.
+        if (workScope == WorkScope.FULL) {
+            fullScopeActions.addAll(allowedActionList);
+        } else if (executiveViewer) {
+            for (String actionCode : allowedActionList) {
+                if (isViewAction(actionCode)) {
+                    fullScopeActions.add(actionCode);
+                }
+            }
+        }
+
         return new ProjectAccessResponse(
                 projectId,
                 user.getId(),
+                projectCreator,
                 projectMember,
                 executiveViewer,
-                new ArrayList<>(allowedActions),
+                allowedActionList,
+                fullScopeActions,
                 workScope.name()
         );
     }
 
-    //Kiểm tra action có tồn tại trong danh sách các action được phép hay không
+    // Kiểm tra action có tồn tại trong tập action được phép hay không.
     private boolean containsAction(
             Iterable<String> actions,
             String actionCode) {
+        // Không đối chiếu khi danh sách hoặc action đầu vào không hợp lệ.
         if (actions == null || actionCode == null) {
             return false;
         }
@@ -187,21 +218,22 @@ public class PermissionAccessServiceImpl
         return false;
     }
 
-    //Kiểm tra xem dự án có tồn tại hay không
-    private void validateProjectExists(UUID projectId) {
+    // Kiểm tra mã dự án rồi trả về dự án tương ứng.
+    private Projects findProject(UUID projectId) {
+        // Yêu cầu mã dự án bắt buộc phải có.
         if (projectId == null) {
             throw new BadHttpException("Project is required");
         }
 
-        if (!projectRepository.existsById(projectId)) {
-            throw new NotFoundException("Project not found");
-        }
+        return projectRepository.findById(projectId)
+                .orElseThrow(() -> new NotFoundException("Project not found"));
     }
 
-    //Thêm các mã module đã được tích vào tập hợp actionCodes
+    // Thêm các mã action hợp lệ của một quyền vào tập kết quả.
     private void addActionCodes(
             Permissions permission,
             Set<String> actionCodes) {
+        // Bỏ qua quyền chưa có danh sách action.
         if (permission.getActions() == null) {
             return;
         }
@@ -219,6 +251,7 @@ public class PermissionAccessServiceImpl
         }
     }
 
+    // Xác định một mã action có phải action chỉ xem dữ liệu hay không.
     private boolean isViewAction(String actionCode) {
         return actionCode != null && actionCode.startsWith("VIEW_");
     }

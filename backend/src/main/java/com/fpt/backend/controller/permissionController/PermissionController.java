@@ -32,6 +32,7 @@ import java.util.UUID;
 public class PermissionController {
     private final IPermissionService permissionService;
 
+    // Lấy danh sách quyền theo bộ lọc, phân trang và thứ tự sắp xếp được yêu cầu.
     @GetMapping(ApiConstant.Permission.LIST)
     public ResponseEntity<BaseResponse<PermissionListResponse>> getPermissions(
             @RequestParam(defaultValue = "") String search,
@@ -56,6 +57,7 @@ public class PermissionController {
                 .body(new BaseResponse<>(permissions));
     }
 
+    // Lấy danh sách dự án mà người dùng có thể chọn khi tạo hoặc cập nhật quyền.
     @GetMapping(ApiConstant.Permission.PROJECTS)
     public ResponseEntity<BaseResponse<List<PermissionProjectResponse>>> getProjectsForPermissionSelection() {
         return ResponseEntity.ok()
@@ -63,6 +65,7 @@ public class PermissionController {
                 .body(new BaseResponse<>(permissionService.getProjectsForPermissionSelection()));
     }
 
+    // Lấy toàn bộ action khả dụng để cấu hình cho một quyền.
     @GetMapping(ApiConstant.Permission.ACTIONS)
     public ResponseEntity<BaseResponse<List<PermissionActionResponse>>>
     getAvailableActions() {
@@ -73,6 +76,7 @@ public class PermissionController {
                 ));
     }
 
+    // Lấy thông tin chi tiết của một quyền theo mã định danh.
     @GetMapping(ApiConstant.Permission.BY_ID)
     public ResponseEntity<BaseResponse<PermissionDetailResponse>> getPermissionById(@PathVariable UUID id) {
         return ResponseEntity.ok()
@@ -80,6 +84,7 @@ public class PermissionController {
                 .body(new BaseResponse<>(permissionService.getPermissionById(id)));
     }
 
+    // Tạo quyền mới từ dữ liệu người dùng gửi lên.
     @PostMapping
     public ResponseEntity<BaseResponse<PermissionDetailResponse>> createPermission(
             @RequestBody PermissionRequest request) {
@@ -89,6 +94,7 @@ public class PermissionController {
                 .body(new BaseResponse<>(HttpStatus.CREATED.value(), "Created", permission));
     }
 
+    // Cập nhật quyền hiện có theo mã định danh.
     @PutMapping(ApiConstant.Permission.BY_ID)
     public ResponseEntity<BaseResponse<PermissionDetailResponse>> updatePermission(
             @PathVariable UUID id,
@@ -96,6 +102,7 @@ public class PermissionController {
         return ResponseEntity.ok(new BaseResponse<>(permissionService.updatePermission(id, request)));
     }
 
+    // Xóa quyền theo mã định danh sau khi service kiểm tra điều kiện nghiệp vụ.
     @DeleteMapping(ApiConstant.Permission.BY_ID)
     public ResponseEntity<BaseResponse<Void>> deletePermission(@PathVariable UUID id) {
         permissionService.deletePermission(id);

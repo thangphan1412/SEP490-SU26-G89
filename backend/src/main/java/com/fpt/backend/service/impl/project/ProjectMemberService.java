@@ -42,7 +42,7 @@ public class ProjectMemberService {
     private final PermissionRepository permissionRepository;
     private final UserRepository userRepository;
 
-    //Lấy danh sách nhân viên để chọn khi tạo dự án
+    // Lấy danh sách nhân viên có thể chọn khi tạo hoặc cập nhật dự án.
     public List<ProjectEmployeeResponse> getEmployeesForSelection() {
         List<Users> users = userRepository.findAll(
                 Sort.by(
@@ -67,10 +67,12 @@ public class ProjectMemberService {
         return employees;
     }
 
+    // Đồng bộ danh sách thành viên và quyền được gán theo request của dự án.
     public void syncMembers(
             Projects project,
             List<ProjectMemberRequest> memberRequests,
             boolean keepExistingWhenMissing) {
+        // Giữ nguyên thành viên khi request cập nhật không gửi trường thành viên.
         if (memberRequests == null && keepExistingWhenMissing) {
             return;
         }
@@ -89,6 +91,7 @@ public class ProjectMemberService {
             Users user = findUser(request.userId());
             ProjectMember member = existingMemberByUserId.remove(user.getId());
 
+            // Tạo liên kết thành viên mới khi người dùng chưa thuộc dự án.
             if (member == null) {
                 member = new ProjectMember();
                 member.setProject(project);
@@ -97,6 +100,7 @@ public class ProjectMemberService {
                 projectMemberRepository.save(member);
             }
 
+            // Gán quyền được chọn khi request có permission id.
             if (request.permissionId() != null) {
                 Permissions permission = resolvePermission(
                         project,
@@ -114,6 +118,7 @@ public class ProjectMemberService {
         }
     }
 
+    // Lấy danh sách người dùng của dự án cùng quyền đang được gán.
     public List<ProjectUserResponse> getProjectUsers(UUID projectId) {
         List<ProjectMember> projectMembers =
                 projectMemberRepository.findByProjectId(projectId);
@@ -143,16 +148,19 @@ public class ProjectMemberService {
         return users;
     }
 
+    // Xóa toàn bộ liên kết thành viên trước khi xóa dự án.
     public void deleteProjectData(UUID projectId) {
         projectMemberRepository.deleteByProjectId(projectId);
     }
 
+    // Kiểm tra từng yêu cầu thành viên hợp lệ và không bị trùng người dùng.
     private Map<UUID, ProjectMemberRequest> validateMemberRequests(
             List<ProjectMemberRequest> requests) {
         Map<UUID, ProjectMemberRequest> requestByUserId =
                 new LinkedHashMap<>();
 
         for (ProjectMemberRequest request : requests) {
+            // Yêu cầu mỗi phần tử phải có mã người dùng hợp lệ.
             if (request == null || request.userId() == null) {
                 throw new BadHttpException("A valid user is required");
             }
@@ -162,6 +170,7 @@ public class ProjectMemberService {
                     request
             );
 
+            // Ngăn một người dùng xuất hiện nhiều lần trong cùng request.
             if (duplicate != null) {
                 throw new BadHttpException(
                         "A user cannot be added to the same project more than once"
@@ -172,6 +181,7 @@ public class ProjectMemberService {
         return requestByUserId;
     }
 
+    // Lập bản đồ thành viên hiện có và dọn các liên kết bị trùng trong dữ liệu cũ.
     private Map<UUID, ProjectMember> findExistingMembers(UUID projectId) {
         Map<UUID, ProjectMember> existingMemberByUserId =
                 new LinkedHashMap<>();
@@ -184,6 +194,7 @@ public class ProjectMemberService {
                     member
             );
 
+            // Xóa liên kết dư thừa khi dữ liệu cũ có cùng người dùng nhiều lần.
             if (duplicate != null) {
                 projectMemberRepository.delete(member);
             }
@@ -192,9 +203,11 @@ public class ProjectMemberService {
         return existingMemberByUserId;
     }
 
+    // Tìm người dùng theo mã định danh hoặc báo không tìm thấy.
     private Users findUser(UUID userId) {
         Optional<Users> optionalUser = userRepository.findById(userId);
 
+        // Báo lỗi khi người dùng được chọn không tồn tại.
         if (optionalUser.isEmpty()) {
             throw new NotFoundException("User not found with id: " + userId);
         }
@@ -202,6 +215,7 @@ public class ProjectMemberService {
         return optionalUser.get();
     }
 
+    // Xác minh và lấy quyền thuộc đúng dự án đang cấu hình.
     private Permissions resolvePermission(
             Projects project,
             UUID permissionId) {
@@ -211,6 +225,7 @@ public class ProjectMemberService {
                         project.getId()
                 );
 
+        // Từ chối quyền không tồn tại hoặc thuộc dự án khác.
         if (permission.isEmpty()) {
             throw new BadHttpException(
                     "Selected permission does not belong to this project"
@@ -220,6 +235,7 @@ public class ProjectMemberService {
         return permission.get();
     }
 
+    // Chuyển thành viên và quyền được gán thành dữ liệu trả về cho client.
     private ProjectUserResponse toProjectUser(
             Users user,
             ProjectMember member,
@@ -229,6 +245,7 @@ public class ProjectMemberService {
         String permissionCode = null;
         LocalDate joinDate = toProjectJoinDate(member.getJoinDate());
 
+        // Bổ sung thông tin quyền khi thành viên đã được gán quyền.
         if (permission != null) {
             permissionId = permission.getId();
             permissionName = getPermissionName(permission);
@@ -247,6 +264,7 @@ public class ProjectMemberService {
         );
     }
 
+    // Lấy tên hiển thị của người dùng với email và id làm giá trị dự phòng.
     private String getUserName(Users user) {
         String fullName = (
                 normalize(user.getFirstName())
@@ -254,12 +272,14 @@ public class ProjectMemberService {
                         + normalize(user.getLastName())
         ).trim();
 
+        // Ưu tiên họ tên khi người dùng đã cung cấp đầy đủ.
         if (!fullName.isBlank()) {
             return fullName;
         }
 
         String email = normalize(user.getEmail());
 
+        // Dùng email khi họ tên bị trống.
         if (!email.isBlank()) {
             return email;
         }
@@ -267,15 +287,18 @@ public class ProjectMemberService {
         return "User #" + user.getId();
     }
 
+    // Lấy tên hiển thị của quyền với mã quyền và id làm giá trị dự phòng.
     private String getPermissionName(Permissions permission) {
         String name = normalize(permission.getPermissionName());
 
+        // Ưu tiên tên quyền khi đã được cấu hình.
         if (!name.isBlank()) {
             return name;
         }
 
         String code = normalize(permission.getPermissionCode());
 
+        // Dùng mã quyền khi tên quyền bị trống.
         if (!code.isBlank()) {
             return code;
         }
@@ -283,13 +306,16 @@ public class ProjectMemberService {
         return "Permission #" + permission.getId();
     }
 
+    // Lấy thời điểm hiện tại theo múi giờ lưu trữ của cơ sở dữ liệu.
     private Date getCurrentDatabaseDateTime() {
         LocalDateTime utcDateTime =
                 LocalDateTime.now(DATABASE_TIME_ZONE);
         return java.sql.Timestamp.valueOf(utcDateTime);
     }
 
+    // Chuyển thời điểm tham gia từ UTC sang ngày theo múi giờ dự án.
     private LocalDate toProjectJoinDate(Date value) {
+        // Giữ nguyên giá trị thiếu thay vì phát sinh lỗi chuyển đổi.
         if (value == null) {
             return null;
         }
@@ -311,6 +337,7 @@ public class ProjectMemberService {
                 .toLocalDate();
     }
 
+    // Chuẩn hóa chuỗi null thành rỗng và loại bỏ khoảng trắng hai đầu.
     private String normalize(String value) {
         return value == null ? "" : value.trim();
     }
