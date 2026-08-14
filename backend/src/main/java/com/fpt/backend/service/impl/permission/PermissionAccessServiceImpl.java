@@ -71,7 +71,7 @@ public class PermissionAccessServiceImpl
             return false;
         }
 
-        return containsAction(access.allowedActions(), actionCode);
+        return containsAction(access.getAllowedActions(), actionCode);
     }
 
     // Kiểm tra action được cấp phạm vi toàn dự án hay chỉ dữ liệu sở hữu.
@@ -85,11 +85,11 @@ public class PermissionAccessServiceImpl
         }
 
         // Phạm vi FULL luôn cho phép thao tác trên toàn bộ dữ liệu dự án.
-        if (WorkScope.FULL.name().equalsIgnoreCase(access.workScope())) {
+        if (WorkScope.FULL.name().equalsIgnoreCase(access.getWorkScope())) {
             return true;
         }
 
-        return access.canViewAllProjectData()
+        return access.isExecutiveViewer()
                 && isViewAction(actionCode);
     }
 
@@ -122,33 +122,22 @@ public class PermissionAccessServiceImpl
     public ProjectAccessResponse getCurrentUserAccess(UUID projectId) {
         Projects project = findProject(projectId);
         Users user = currentUser.getCurrentUser();
-        boolean projectCreator = user.getId().equals(
-                project.getProjectCreatedBy().getId()
-        );
+        boolean isProjectCreator = user.getId().equals(project.getProjectCreatedBy().getId());
 
         // Kiểm tra người dùng hiện tại có phải thành viên của dự án hay không.
-        boolean projectMember = projectMemberRepository
-                .countByProjectIdAndUserId(
-                        projectId,
-                        user.getId()
-                ) > 0;
-        boolean executiveViewer = projectApprovalService
-                .canReviewProjects(user);
+        boolean isProjectMember = projectMemberRepository.countByProjectIdAndUserId(projectId,user.getId()) > 0;
+        boolean isExecutiveViewer = projectApprovalService.canReviewProjects(user);
 
         // Từ chối truy cập nếu người dùng không phải thành viên hoặc người duyệt điều hành.
-        if (!projectMember && !executiveViewer) {
+        if (!isProjectMember && !isExecutiveViewer) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You cannot access this project");
         }
 
         // Lấy quyền đang hoạt động được gán cho thành viên trong dự án.
         UserPermission assignedPermission = null;
 
-        if (projectMember) {
-            assignedPermission = userPermissionRepository
-                    .findActiveByUserIdAndProjectId(
-                            user.getId(),
-                            projectId
-                    );
+        if (isProjectMember) {
+            assignedPermission = userPermissionRepository.findActiveByUserIdAndProjectId(user.getId(), projectId);
         }
         Set<String> allowedActions = new LinkedHashSet<>();
         WorkScope workScope = WorkScope.OWN;
@@ -157,18 +146,22 @@ public class PermissionAccessServiceImpl
         if (assignedPermission != null) {
             Permissions permission = assignedPermission.getPermission();
 
-            if (permission != null
-                    && Boolean.TRUE.equals(permission.getStatus())) {
+            if (permission != null && Boolean.TRUE.equals(permission.getStatus())) {
                 if (permission.getWorkScope() == WorkScope.FULL) {
                     workScope = WorkScope.FULL;
                 }
 
-                addActionCodes(permission, allowedActions);
+                // Chỉ tổng hợp action khi quyền có danh sách action.
+                if (permission.getActions() != null) {
+                    for (PermissionAction action : permission.getActions()) {
+                        allowedActions.add(action.getActionCode());
+                    }
+                }
             }
         }
 
         // Bổ sung các action chỉ xem dữ liệu cho người duyệt cấp điều hành.
-        if (executiveViewer) {
+        if (isExecutiveViewer) {
             allowedActions.add("VIEW_TASKS");
             allowedActions.add("VIEW_DELIVERABLES");
             allowedActions.add("VIEW_CONTRACTS");
@@ -180,7 +173,7 @@ public class PermissionAccessServiceImpl
         // Cấp toàn bộ action cho phạm vi FULL và chỉ action xem cho người duyệt điều hành.
         if (workScope == WorkScope.FULL) {
             fullScopeActions.addAll(allowedActionList);
-        } else if (executiveViewer) {
+        } else if (isExecutiveViewer) {
             for (String actionCode : allowedActionList) {
                 if (isViewAction(actionCode)) {
                     fullScopeActions.add(actionCode);
@@ -191,9 +184,9 @@ public class PermissionAccessServiceImpl
         return new ProjectAccessResponse(
                 projectId,
                 user.getId(),
-                projectCreator,
-                projectMember,
-                executiveViewer,
+                isProjectCreator,
+                isProjectMember,
+                isExecutiveViewer,
                 allowedActionList,
                 fullScopeActions,
                 workScope.name()
@@ -227,28 +220,6 @@ public class PermissionAccessServiceImpl
 
         return projectRepository.findById(projectId)
                 .orElseThrow(() -> new NotFoundException("Project not found"));
-    }
-
-    // Thêm các mã action hợp lệ của một quyền vào tập kết quả.
-    private void addActionCodes(
-            Permissions permission,
-            Set<String> actionCodes) {
-        // Bỏ qua quyền chưa có danh sách action.
-        if (permission.getActions() == null) {
-            return;
-        }
-
-        for (PermissionAction action : permission.getActions()) {
-            if (action == null) {
-                continue;
-            }
-
-            String actionCode = action.getActionCode();
-
-            if (actionCode != null && !actionCode.isBlank()) {
-                actionCodes.add(actionCode);
-            }
-        }
     }
 
     // Xác định một mã action có phải action chỉ xem dữ liệu hay không.

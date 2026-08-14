@@ -142,7 +142,7 @@ public class ProjectMemberService {
         }
 
         users.sort(Comparator.comparing(
-                ProjectUserResponse::userName,
+                ProjectUserResponse::getUserName,
                 Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER)
         ));
         return users;
@@ -153,18 +153,13 @@ public class ProjectMemberService {
         projectMemberRepository.deleteByProjectId(projectId);
     }
 
-    // Kiểm tra từng yêu cầu thành viên hợp lệ và không bị trùng người dùng.
+    // Lập bản đồ yêu cầu thành viên và từ chối người dùng bị trùng.
     private Map<UUID, ProjectMemberRequest> validateMemberRequests(
             List<ProjectMemberRequest> requests) {
         Map<UUID, ProjectMemberRequest> requestByUserId =
                 new LinkedHashMap<>();
 
         for (ProjectMemberRequest request : requests) {
-            // Yêu cầu mỗi phần tử phải có mã người dùng hợp lệ.
-            if (request == null || request.userId() == null) {
-                throw new BadHttpException("A valid user is required");
-            }
-
             ProjectMemberRequest duplicate = requestByUserId.putIfAbsent(
                     request.userId(),
                     request

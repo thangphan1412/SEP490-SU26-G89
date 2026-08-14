@@ -525,7 +525,7 @@ function UpdateProject({ onUpdateProject }) {
 
                             <Form.Group as={Col} md={6} controlId="projectCode">
                                 <Form.Label className="project-management-field-label">Project Code</Form.Label>
-                                <Form.Control required maxLength={50} name="projectCode" value={project.projectCode} onChange={handleProjectChange} className="project-management-input" />
+                                <Form.Control required maxLength={50} name="projectCode" value={project.projectCode} onChange={handleProjectChange} placeholder="Example: PRJ-2026-Thời trang mùa đông" className="project-management-input" />
                             </Form.Group>
 
                             <Form.Group as={Col} md={6} controlId="projectStartDate">

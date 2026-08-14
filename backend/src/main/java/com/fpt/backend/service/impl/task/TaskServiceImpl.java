@@ -92,7 +92,7 @@ public class TaskServiceImpl implements ITaskService {
         } else {
             tasks = taskRepository.findByPhaseIdAndAssignedUserId(
                     phaseId,
-                    access.currentUserId()
+                    access.getCurrentUserId()
             );
         }
 
@@ -344,7 +344,7 @@ public class TaskServiceImpl implements ITaskService {
 
         // Từ chối task chưa giao hoặc được giao cho người dùng khác.
         if (assignedUser == null
-                || !assignedUser.getId().equals(access.currentUserId())) {
+                || !assignedUser.getId().equals(access.getCurrentUserId())) {
             throw new ResponseStatusException(
                     HttpStatus.FORBIDDEN,
                     "You can only edit tasks assigned to you"
@@ -364,7 +364,7 @@ public class TaskServiceImpl implements ITaskService {
 
         // Từ chối assignee trống hoặc khác người dùng hiện tại.
         if (assignedUser == null
-                || !assignedUser.getId().equals(access.currentUserId())) {
+                || !assignedUser.getId().equals(access.getCurrentUserId())) {
             throw new ResponseStatusException(
                     HttpStatus.FORBIDDEN,
                     "You cannot assign this task to another member"
@@ -431,7 +431,7 @@ public class TaskServiceImpl implements ITaskService {
             Users user = member.getUser();
 
             if (fullWorkScope
-                    || user.getId().equals(access.currentUserId())) {
+                    || user.getId().equals(access.getCurrentUserId())) {
                 options.add(new TaskMemberOptionResponse(
                         user.getId(),
                         getUserName(user),

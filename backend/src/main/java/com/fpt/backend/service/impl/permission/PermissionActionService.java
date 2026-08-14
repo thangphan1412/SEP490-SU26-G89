@@ -185,39 +185,17 @@ public class PermissionActionService {
         return action.getDisplayOrder();
     }
 
-    // Chuyển chuỗi phạm vi thành WorkScope và từ chối giá trị ngoài OWN/FULL.
+    // Chuyển chuỗi phạm vi đã được DTO kiểm tra thành WorkScope.
     private WorkScope parseWorkScope(String value) {
-        String normalizedValue = normalize(value);
-
-        try {
-            return WorkScope.valueOf(normalizedValue);
-        } catch (IllegalArgumentException exception) {
-            throw new BadHttpException(
-                    "Work scope must be OWN or FULL"
-            );
-        }
+        return WorkScope.valueOf(normalize(value));
     }
 
-    // Chuẩn hóa, loại trùng và kiểm tra danh sách mã action đầu vào.
+    // Chuẩn hóa và loại trùng danh sách mã action đầu vào.
     private Set<String> normalizeActionCodes(List<String> actionCodes) {
         Set<String> normalizedCodes = new LinkedHashSet<>();
 
-        // Xem danh sách null như không yêu cầu action nào.
-        if (actionCodes == null) {
-            return normalizedCodes;
-        }
-
         for (String actionCode : actionCodes) {
-            String normalizedCode = normalize(actionCode);
-
-            // Từ chối phần tử action rỗng sau khi chuẩn hóa.
-            if (normalizedCode.isBlank()) {
-                throw new BadHttpException(
-                        "Permission action code must not be blank"
-                );
-            }
-
-            normalizedCodes.add(normalizedCode);
+            normalizedCodes.add(normalize(actionCode));
         }
 
         return normalizedCodes;

@@ -12,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.CacheControl;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -30,17 +31,15 @@ public class TaskController {
     private final ITaskService taskService;
 
     // Lấy dữ liệu quản lý task của một phase theo quyền truy cập hiện tại.
+    @PreAuthorize("hasAnyAuthority('CEO', 'Administrator', 'Accountant', 'HeadOfDepartment', 'Employee')")
     @GetMapping(ApiConstant.Task.BY_PHASE_ID)
     public ResponseEntity<BaseResponse<TaskManagementResponse>>
     getTasksByPhaseId(@PathVariable UUID phaseId) {
-        return ResponseEntity.ok()
-                .cacheControl(CacheControl.noStore())
-                .body(new BaseResponse<>(
-                        taskService.getTasksByPhaseId(phaseId)
-                ));
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(new BaseResponse<>(taskService.getTasksByPhaseId(phaseId)));
     }
 
     // Tạo task mới trong phase sau khi request vượt qua Bean Validation.
+    @PreAuthorize("hasAnyAuthority('CEO', 'Administrator', 'Accountant', 'HeadOfDepartment', 'Employee')")
     @PostMapping(ApiConstant.Task.BY_PHASE_ID)
     public ResponseEntity<BaseResponse<TaskItemResponse>> createTask(
             @PathVariable UUID phaseId,
@@ -50,30 +49,23 @@ public class TaskController {
                 request
         );
 
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(new BaseResponse<>(
-                        HttpStatus.CREATED.value(),
-                        "Created",
-                        createdTask
-                ));
+        return ResponseEntity.status(HttpStatus.CREATED).body(new BaseResponse<>(HttpStatus.CREATED.value(), "Created", createdTask));
     }
 
     // Cập nhật task hiện có sau khi kiểm tra dữ liệu request.
+    @PreAuthorize("hasAnyAuthority('CEO', 'Administrator', 'Accountant', 'HeadOfDepartment', 'Employee')")
     @PutMapping(ApiConstant.Task.BY_ID)
     public ResponseEntity<BaseResponse<TaskItemResponse>> updateTask(
             @PathVariable UUID taskId,
             @Valid @RequestBody TaskUpdateRequest request) {
-        return ResponseEntity.ok(new BaseResponse<>(
-                taskService.updateTask(taskId, request)
-        ));
+        return ResponseEntity.ok(new BaseResponse<>(taskService.updateTask(taskId, request)));
     }
 
     // Đánh dấu task hoàn thành khi trạng thái và quyền truy cập hợp lệ.
+    @PreAuthorize("hasAnyAuthority('CEO', 'Administrator', 'Accountant', 'HeadOfDepartment', 'Employee')")
     @PatchMapping(ApiConstant.Task.MARK_DONE)
     public ResponseEntity<BaseResponse<TaskItemResponse>> markTaskAsDone(
             @PathVariable UUID taskId) {
-        return ResponseEntity.ok(new BaseResponse<>(
-                taskService.markTaskAsDone(taskId)
-        ));
+        return ResponseEntity.ok(new BaseResponse<>(taskService.markTaskAsDone(taskId)));
     }
 }

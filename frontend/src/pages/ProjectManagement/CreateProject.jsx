@@ -603,7 +603,7 @@ function CreateProject() {
 
                         <Form.Group as={Col} md={6} controlId="projectCode">
                             <Form.Label className="project-management-field-label">Project Code</Form.Label>
-                            <Form.Control required maxLength={50} name="projectCode" value={project.projectCode} onChange={handleChange} placeholder="Example: PRJ-2026-001" className="project-management-input" />
+                            <Form.Control required maxLength={50} name="projectCode" value={project.projectCode} onChange={handleChange} placeholder="Example: PRJ-2026-Thời trang mùa đông" className="project-management-input" />
                         </Form.Group>
 
                         <Form.Group as={Col} md={6} controlId="projectStartDate">

@@ -168,9 +168,9 @@ function ViewProject() {
         setContractStatus("");
     }
 
-    const projectPhases = Array.isArray(project?.phases) ? project.phases : [];
-    const projectUsers = Array.isArray(project?.users) ? project.users : [];
-    const projectContracts = Array.isArray(project?.contracts) ? project.contracts : [];
+    const projectPhases = project?.phases ?? [];
+    const projectUsers = project?.users ?? [];
+    const projectContracts = project?.contracts ?? [];
     const userSearchText = normalizeText(userSearch);
     const contractSearchText = normalizeText(contractSearch);
     const contractStatusText = normalizeText(contractStatus);
@@ -231,14 +231,14 @@ function ViewProject() {
         access,
         PROJECT_ACTIONS.MANAGE_MEMBERS
     );
-    let canViewAllProjectData = false;
+    let isExecutiveViewer = false;
 
     if (access) {
-        canViewAllProjectData = access.canViewAllProjectData === true;
+        isExecutiveViewer = access.isExecutiveViewer === true;
     }
 
     const canViewMembers = canManageMembers
-        || canViewAllProjectData;
+        || isExecutiveViewer;
     const canOpenUpdate = canEditProject
         || canManageMembers;
     const canViewContracts = hasProjectAction(
@@ -582,7 +582,7 @@ function canViewPhase(phase, access) {
         return false;
     }
 
-    return access.canViewAllProjectData === true;
+    return access.isExecutiveViewer === true;
 }
 
 export default ViewProject;

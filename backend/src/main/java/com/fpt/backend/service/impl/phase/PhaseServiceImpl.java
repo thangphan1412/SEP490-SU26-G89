@@ -86,7 +86,7 @@ public class PhaseServiceImpl implements IPhaseService {
 
         // Chỉ cho phép người có phạm vi toàn dự án xem phase chưa IN_PROGRESS.
         if (phase.getStatus() != PhaseStatus.IN_PROGRESS
-                && !access.canViewAllProjectData()) {
+                && !access.isExecutiveViewer()) {
             throw new BadHttpException(
                     "Only an IN_PROGRESS phase can be accessed"
             );
@@ -148,7 +148,7 @@ public class PhaseServiceImpl implements IPhaseService {
         } else {
             tasks = phaseTaskRepository.findByPhaseIdAndAssignedUserId(
                     phaseId,
-                    access.currentUserId()
+                    access.getCurrentUserId()
             );
         }
 

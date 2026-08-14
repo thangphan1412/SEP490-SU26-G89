@@ -85,10 +85,7 @@ public class ProjectServiceImpl implements IProjectService {
         List<ProjectListItemResponse> projectItems = new ArrayList<>();
 
         for (Projects project : projects.getContent()) {
-            ProjectListItemResponse projectItem = toListItem(
-                    project,
-                    currentUser
-            );
+            ProjectListItemResponse projectItem = toListItem(project,currentUser);
             projectItems.add(projectItem);
         }
 
@@ -113,11 +110,6 @@ public class ProjectServiceImpl implements IProjectService {
     @Override
     @Transactional
     public ProjectDetailResponse createProject(ProjectCreateRequest request) {
-        // Yêu cầu payload dự án phải tồn tại.
-        if (request == null) {
-            throw new BadHttpException("Project information is required");
-        }
-
         Users currentUser = currentUserUtil.getCurrentUser();
         Projects project = new Projects();
         applyProjectInformation(
@@ -170,11 +162,6 @@ public class ProjectServiceImpl implements IProjectService {
     public ProjectDetailResponse updateProject(
             UUID id,
             ProjectUpdateRequest request) {
-        // Yêu cầu payload dự án phải tồn tại.
-        if (request == null) {
-            throw new BadHttpException("Project information is required");
-        }
-
         Projects project = findProject(id);
         ProjectAccessResponse access =
                 permissionAccessService.getCurrentUserAccess(id);
@@ -189,6 +176,14 @@ public class ProjectServiceImpl implements IProjectService {
         boolean updateProjectInformation = hasProjectInformation(request);
         boolean updatePhases = request.phases() != null;
         boolean updateMembers = request.members() != null;
+
+        // Các trường thông tin cơ bản phải được gửi cùng nhau khi cập nhật.
+        if (updateProjectInformation
+                && !hasCompleteProjectInformation(request)) {
+            throw new BadHttpException(
+                    "Project name, code, start date and end date must be provided together"
+            );
+        }
 
         // Từ chối request không chứa bất kỳ thay đổi nào.
         if (!updateProjectInformation && !updatePhases && !updateMembers) {
@@ -381,15 +376,14 @@ public class ProjectServiceImpl implements IProjectService {
         );
     }
 
-    // Tạo cấu hình phân trang với số trang hợp lệ và dự án mới nhất trước.
+    // Tạo cấu hình phân trang và sắp xếp dự án mới nhất trước.
     private Pageable createPageable(int page) {
-        int validPage = Math.max(page, 0);
         Sort newestProjectFirst = Sort.by(
                 Sort.Direction.DESC,
                 "projectCreatedAt"
         );
 
-        return PageRequest.of(validPage, PAGE_SIZE, newestProjectFirst);
+        return PageRequest.of(page, PAGE_SIZE, newestProjectFirst);
     }
 
     // Kiểm tra và áp dụng các trường thông tin cơ bản vào entity dự án.
@@ -401,19 +395,10 @@ public class ProjectServiceImpl implements IProjectService {
             LocalDate endDate,
             String descriptionValue,
             UUID currentProjectId) {
-        String projectName = requireText(
-                projectNameValue,
-                "Project name is required",
-                50
-        );
-        String projectCode = requireText(
-                projectCodeValue,
-                "Project code is required",
-                50
-        );
+        String projectName = projectNameValue.trim();
+        String projectCode = projectCodeValue.trim();
         String description = normalize(descriptionValue);
 
-        validateMaxLength(description, "Project description", 255);
         validateProjectDateRange(startDate, endDate);
 
         // Không cho phép tạo dự án mới đã kết thúc trong quá khứ.
@@ -454,16 +439,6 @@ public class ProjectServiceImpl implements IProjectService {
     private void validateProjectDateRange(
             LocalDate startDate,
             LocalDate endDate) {
-        // Yêu cầu ngày bắt đầu dự án.
-        if (startDate == null) {
-            throw new BadHttpException("Start date is required");
-        }
-
-        // Yêu cầu ngày kết thúc dự án.
-        if (endDate == null) {
-            throw new BadHttpException("End date is required");
-        }
-
         // Ngăn ngày bắt đầu nằm sau ngày kết thúc.
         if (startDate.isAfter(endDate)) {
             throw new BadHttpException(
@@ -488,8 +463,7 @@ public class ProjectServiceImpl implements IProjectService {
         // Sao chép thành viên được chọn nhưng loại người tạo để tránh trùng lặp.
         if (requestedMembers != null) {
             for (ProjectMemberRequest member : requestedMembers) {
-                if (member != null
-                        && projectCreatorId.equals(member.userId())) {
+                if (projectCreatorId.equals(member.userId())) {
                     continue;
                 }
 
@@ -526,22 +500,13 @@ public class ProjectServiceImpl implements IProjectService {
     }
 
     // Chuyển entity dự án thành dữ liệu chi tiết theo phạm vi truy cập.
-    private ProjectDetailResponse toDetail(
-            Projects project,
-            ProjectAccessResponse access) {
+    private ProjectDetailResponse toDetail(Projects project, ProjectAccessResponse access) {
         UUID projectId = project.getId();
-        boolean canManageMembers = permissionAccessService.hasAction(
-                access,
-                "MANAGE_MEMBERS"
-        );
-        boolean canViewMembers = canManageMembers
-                || access.canViewAllProjectData();
-        boolean canViewContracts = permissionAccessService.hasAction(
-                access,
-                "VIEW_CONTRACTS"
-        );
-        List<ProjectPhaseResponse> phases =
-                projectPhaseService.getProjectPhases(projectId);
+        boolean canManageMembers = permissionAccessService.hasAction(access, "MANAGE_MEMBERS");
+        boolean canViewMembers = canManageMembers || access.isExecutiveViewer();
+        boolean canViewContracts = permissionAccessService.hasAction(access, "VIEW_CONTRACTS");
+
+        List<ProjectPhaseResponse> phases = projectPhaseService.getProjectPhases(projectId);
         List<ProjectUserResponse> users = List.of();
         List<ProjectPermissionOptionResponse> permissionOptions = List.of();
         List<ProjectContractResponse> contracts = List.of();
@@ -590,6 +555,14 @@ public class ProjectServiceImpl implements IProjectService {
                 || request.projectDescription() != null;
     }
 
+    // Kiểm tra nhóm thông tin bắt buộc được gửi đầy đủ khi cập nhật dự án.
+    private boolean hasCompleteProjectInformation(ProjectUpdateRequest request) {
+        return request.projectName() != null
+                && request.projectCode() != null
+                && request.projectStartDate() != null
+                && request.projectEndDate() != null;
+    }
+
     // Chuyển danh sách hợp đồng của dự án thành dữ liệu rút gọn cho client.
     private List<ProjectContractResponse> toProjectContracts(UUID projectId) {
         List<Contracts> contracts =
@@ -606,40 +579,6 @@ public class ProjectServiceImpl implements IProjectService {
         }
 
         return responses;
-    }
-
-    // Chuẩn hóa trường bắt buộc và kiểm tra độ dài tối đa.
-    private String requireText(
-            String value,
-            String message,
-            int maxLength) {
-        String normalizedValue = normalize(value);
-
-        // Từ chối giá trị rỗng sau khi loại bỏ khoảng trắng thừa.
-        if (normalizedValue.isBlank()) {
-            throw new BadHttpException(message);
-        }
-
-        validateMaxLength(
-                normalizedValue,
-                message.replace(" is required", ""),
-                maxLength
-        );
-        return normalizedValue;
-    }
-
-    // Kiểm tra một chuỗi không vượt quá độ dài tối đa của trường.
-    private void validateMaxLength(
-            String value,
-            String fieldName,
-            int maxLength) {
-        // Từ chối giá trị dài hơn giới hạn lưu trữ của trường.
-        if (value.length() > maxLength) {
-            throw new BadHttpException(
-                    fieldName + " must not be longer than "
-                            + maxLength + " characters"
-            );
-        }
     }
 
     // Chuẩn hóa chuỗi null thành rỗng và loại bỏ khoảng trắng hai đầu.

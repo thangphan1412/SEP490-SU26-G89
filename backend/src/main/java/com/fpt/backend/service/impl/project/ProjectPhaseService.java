@@ -40,9 +40,7 @@ public class ProjectPhaseService {
     public void syncPhases(
             Projects project,
             List<ProjectPhaseRequest> phaseRequests) {
-        List<ProjectPhaseRequest> requests = phaseRequests == null
-                ? List.of()
-                : phaseRequests;
+        List<ProjectPhaseRequest> requests = phaseRequests;
         validatePhaseSchedule(project, requests);
 
         Map<UUID, Timeline> existingPhases = new LinkedHashMap<>();
@@ -54,11 +52,6 @@ public class ProjectPhaseService {
         LocalDate nextStartDate = project.getProjectStartDate();
 
         for (ProjectPhaseRequest request : requests) {
-            // Yêu cầu mỗi phần tử phase phải có dữ liệu.
-            if (request == null) {
-                throw new BadHttpException("Phase information is required");
-            }
-
             Timeline phase;
 
             // Tạo phase mới hoặc lấy phase hiện có để cập nhật.
@@ -126,35 +119,13 @@ public class ProjectPhaseService {
     private void validatePhaseSchedule(
             Projects project,
             List<ProjectPhaseRequest> requests) {
-        // Yêu cầu dự án phải có ít nhất một phase.
-        if (requests.isEmpty()) {
-            throw new BadHttpException(
-                    "At least one phase is required to cover the full project timeline"
-            );
-        }
-
         LocalDate expectedStartDate = project.getProjectStartDate();
 
         for (int index = 0; index < requests.size(); index++) {
             ProjectPhaseRequest request = requests.get(index);
             int phaseNumber = index + 1;
 
-            // Yêu cầu thông tin của từng phase trong danh sách.
-            if (request == null) {
-                throw new BadHttpException(
-                        "Phase " + phaseNumber + " information is required"
-                );
-            }
-
             LocalDate endDate = request.endDate();
-
-            // Yêu cầu ngày kết thúc để xác định lịch phase liên tục.
-            if (endDate == null) {
-                throw new BadHttpException(
-                        "Phase " + phaseNumber
-                                + " end date is required"
-                );
-            }
 
             // Từ chối phase bắt đầu sau ngày kết thúc dự án.
             if (expectedStartDate.isAfter(project.getProjectEndDate())) {
@@ -202,15 +173,9 @@ public class ProjectPhaseService {
             ProjectPhaseRequest request,
             Projects project,
             LocalDate startDate) {
-        String title = requireText(
-                request.title(),
-                "Phase title is required",
-                150
-        );
+        String title = request.title().trim();
         String description = normalize(request.description());
         LocalDate endDate = request.endDate();
-
-        validateMaxLength(description, "Phase description", 500);
 
         phase.setTitle(title);
         phase.setDescription(description);
@@ -256,37 +221,6 @@ public class ProjectPhaseService {
         return value.toInstant()
                 .atZone(PROJECT_TIME_ZONE)
                 .toLocalDate();
-    }
-
-    // Chuẩn hóa trường bắt buộc và kiểm tra độ dài tối đa.
-    private String requireText(String value, String message, int maxLength) {
-        String normalizedValue = normalize(value);
-
-        // Từ chối giá trị rỗng sau khi loại bỏ khoảng trắng thừa.
-        if (normalizedValue.isBlank()) {
-            throw new BadHttpException(message);
-        }
-
-        validateMaxLength(
-                normalizedValue,
-                message.replace(" is required", ""),
-                maxLength
-        );
-        return normalizedValue;
-    }
-
-    // Kiểm tra một chuỗi không vượt quá độ dài tối đa của trường.
-    private void validateMaxLength(
-            String value,
-            String fieldName,
-            int maxLength) {
-        // Từ chối giá trị dài hơn giới hạn lưu trữ của trường.
-        if (value.length() > maxLength) {
-            throw new BadHttpException(
-                    fieldName + " must not be longer than "
-                            + maxLength + " characters"
-            );
-        }
     }
 
     // Chuẩn hóa chuỗi null thành rỗng và loại bỏ khoảng trắng hai đầu.

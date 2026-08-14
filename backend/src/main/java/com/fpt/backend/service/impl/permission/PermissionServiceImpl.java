@@ -35,7 +35,6 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -44,14 +43,6 @@ import java.util.UUID;
 public class PermissionServiceImpl implements IPermissionService {
     private static final int PAGE_SIZE = 7;
     private static final String DEFAULT_SORT_FIELD = "createdAt";
-    private static final Set<String> SORT_FIELDS = Set.of(
-            "id",
-            "permissionName",
-            "permissionCode",
-            "permissionDescription",
-            "status",
-            "projectName",
-            "createdAt");
 
     private final PermissionRepository permissionRepository;
     private final ProjectRepository projectRepository;
@@ -111,7 +102,7 @@ public class PermissionServiceImpl implements IPermissionService {
         );
 
         // Từ chối khi người dùng không thể quản lý hoặc xem toàn bộ dữ liệu dự án.
-        if (!canManage && !access.canViewAllProjectData()) {
+        if (!canManage && !access.isExecutiveViewer()) {
             throw new ResponseStatusException(
                     HttpStatus.FORBIDDEN,
                     "You cannot view this permission"
@@ -190,15 +181,9 @@ public class PermissionServiceImpl implements IPermissionService {
 
     // Kiểm tra request rồi áp dụng thông tin, dự án và action vào entity quyền.
     private void applyRequest(Permissions permission, PermissionRequest request, UUID currentId) {
-        // Yêu cầu payload quyền phải tồn tại.
-        if (request == null) {
-            throw new BadHttpException("Permission information is required");
-        }
-
-        String permissionName = requireText(request.permissionName(), "Permission name is required", 50);
-        String permissionCode = requireText(request.permissionCode(), "Permission code is required", 50);
+        String permissionName = request.permissionName().trim();
+        String permissionCode = request.permissionCode().trim();
         String permissionDescription = normalize(request.permissionDescription());
-        validateMaxLength(permissionDescription, "Permission description", 255);
         Projects project = findProject(request.projectId());
         permissionAccessService.requireAction(
                 project.getId(),
@@ -216,7 +201,7 @@ public class PermissionServiceImpl implements IPermissionService {
         permission.setPermissionName(permissionName);
         permission.setPermissionCode(permissionCode);
         permission.setPermissionDescription(permissionDescription);
-        permission.setStatus(request.status() == null || request.status());
+        permission.setStatus(request.status());
         permission.setProject(project);
 
         permissionActionService.configurePermission(
@@ -244,11 +229,6 @@ public class PermissionServiceImpl implements IPermissionService {
 
     // Kiểm tra mã dự án rồi trả về dự án tương ứng.
     private Projects findProject(UUID projectId) {
-        // Yêu cầu mã dự án bắt buộc phải có.
-        if (projectId == null) {
-            throw new BadHttpException("Project is required");
-        }
-
         Optional<Projects> project = projectRepository.findById(projectId);
 
         // Báo lỗi khi dự án không tồn tại.
@@ -289,10 +269,9 @@ public class PermissionServiceImpl implements IPermissionService {
         return project;
     }
 
-    // Chuẩn hóa trang, trường sắp xếp và chiều sắp xếp cho truy vấn quyền.
+    // Tạo cấu hình phân trang và ánh xạ trường sắp xếp cho truy vấn quyền.
     private Pageable createPageable(int page, String sortBy, String sortDirection) {
-        int validPage = Math.max(page, 0);
-        String sortField = sortBy != null && SORT_FIELDS.contains(sortBy) ? sortBy : DEFAULT_SORT_FIELD;
+        String sortField = sortBy == null ? DEFAULT_SORT_FIELD : sortBy;
 
         // Ánh xạ trường hiển thị projectName sang đường dẫn thuộc tính entity.
         if ("projectName".equals(sortField)) {
@@ -303,34 +282,7 @@ public class PermissionServiceImpl implements IPermissionService {
                 ? Sort.Direction.ASC
                 : Sort.Direction.DESC;
 
-        return PageRequest.of(validPage, PAGE_SIZE, Sort.by(direction, sortField));
-    }
-
-    // Chuẩn hóa trường bắt buộc và kiểm tra độ dài tối đa.
-    private String requireText(String value, String missingMessage, int maxLength) {
-        String normalizedValue = normalize(value);
-
-        // Từ chối giá trị rỗng sau khi loại bỏ khoảng trắng thừa.
-        if (normalizedValue.isBlank()) {
-            throw new BadHttpException(missingMessage);
-        }
-
-        // Từ chối giá trị vượt quá độ dài cho phép.
-        if (normalizedValue.length() > maxLength) {
-            throw new BadHttpException(
-                    "Value must not be longer than " + maxLength + " characters");
-        }
-
-        return normalizedValue;
-    }
-
-    // Kiểm tra một chuỗi không vượt quá độ dài tối đa của trường.
-    private void validateMaxLength(String value, String fieldName, int maxLength) {
-        // Từ chối giá trị dài hơn giới hạn lưu trữ của trường.
-        if (value.length() > maxLength) {
-            throw new BadHttpException(
-                    fieldName + " must not be longer than " + maxLength + " characters");
-        }
+        return PageRequest.of(page, PAGE_SIZE, Sort.by(direction, sortField));
     }
 
     // Chuẩn hóa chuỗi null thành rỗng và loại bỏ khoảng trắng hai đầu.

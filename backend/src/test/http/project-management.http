@@ -1,0 +1,415 @@
+# Bộ request kiểm thử thủ công cho Project / Permission / Phase / Task Management.
+# Bỏ dấu # ở request cần chạy và thay token, UUID bằng dữ liệu thực tế.
+#
+#@baseUrl = http://localhost:8080
+#@token = replace-with-valid-jwt
+#@projectId = replace-with-project-uuid
+#@permissionId = replace-with-permission-uuid
+#@phaseId = replace-with-phase-uuid
+#@taskId = replace-with-task-uuid
+#@employeeId = replace-with-employee-uuid
+#
+#### PM-01: Lấy danh sách tất cả dự án - thành công
+#GET {{baseUrl}}/api/projects?page=0&viewOnlyYourProjects=false
+#Authorization: Bearer {{token}}
+#Accept: application/json
+#
+#### PM-02: Lọc dự án của người dùng theo từ khóa và trạng thái
+#GET {{baseUrl}}/api/projects?page=0&viewOnlyYourProjects=true&search=Winter&status=Planning
+#Authorization: Bearer {{token}}
+#Accept: application/json
+#
+#### PM-03: Page âm - dự kiến lỗi validation 400
+#GET {{baseUrl}}/api/projects?page=-1&viewOnlyYourProjects=false
+#Authorization: Bearer {{token}}
+#Accept: application/json
+#
+#### PM-04: Xem chi tiết dự án - thành công khi có quyền truy cập
+#GET {{baseUrl}}/api/projects/{{projectId}}
+#Authorization: Bearer {{token}}
+#Accept: application/json
+#
+#### PM-05: Xem dự án không tồn tại - dự kiến 404
+#GET {{baseUrl}}/api/projects/00000000-0000-0000-0000-000000000000
+#Authorization: Bearer {{token}}
+#Accept: application/json
+#
+#### PM-06: Lấy danh sách nhân viên có thể chọn
+#GET {{baseUrl}}/api/projects/employees
+#Authorization: Bearer {{token}}
+#Accept: application/json
+#
+#### PM-07: Lấy danh sách trạng thái thành viên
+#GET {{baseUrl}}/api/projects/user-statuses
+#Authorization: Bearer {{token}}
+#Accept: application/json
+#
+#### PM-08: Tạo dự án hợp lệ cùng phase và thành viên
+#POST {{baseUrl}}/api/projects
+#Authorization: Bearer {{token}}
+#Content-Type: application/json
+#
+#{
+#  "projectName": "Winter Collection",
+#  "projectCode": "PRJ-2026-Thời trang mùa đông",
+#  "projectStartDate": "2026-09-01",
+#  "projectEndDate": "2026-10-31",
+#  "projectDescription": "Dự án bộ sưu tập thời trang mùa đông",
+#  "phases": [
+#    {
+#      "title": "Planning",
+#      "description": "Lập kế hoạch",
+#      "endDate": "2026-09-15"
+#    },
+#    {
+#      "title": "Implementation",
+#      "description": "Triển khai",
+#      "endDate": "2026-10-31"
+#    }
+#  ],
+#  "members": [
+#    {
+#      "userId": "{{employeeId}}",
+#      "permissionId": "{{permissionId}}"
+#    }
+#  ]
+#}
+#
+#### PM-09: Tạo dự án sai định dạng projectCode - dự kiến 400
+#POST {{baseUrl}}/api/projects
+#Authorization: Bearer {{token}}
+#Content-Type: application/json
+#
+#{
+#  "projectName": "Invalid Code Project",
+#  "projectCode": "PROJECT-2026-Invalid",
+#  "projectStartDate": "2026-09-01",
+#  "projectEndDate": "2026-09-30",
+#  "projectDescription": "Kiểm tra Bean Validation",
+#  "phases": [
+#    {
+#      "title": "Only phase",
+#      "endDate": "2026-09-30"
+#    }
+#  ],
+#  "members": []
+#}
+#
+#### PM-10: Tạo dự án có ngày bắt đầu sau ngày kết thúc - dự kiến 400
+#POST {{baseUrl}}/api/projects
+#Authorization: Bearer {{token}}
+#Content-Type: application/json
+#
+#{
+#  "projectName": "Invalid Date Project",
+#  "projectCode": "PRJ-2026-Invalid Date Project",
+#  "projectStartDate": "2026-10-01",
+#  "projectEndDate": "2026-09-01",
+#  "projectDescription": "Kiểm tra khoảng ngày",
+#  "phases": [
+#    {
+#      "title": "Only phase",
+#      "endDate": "2026-09-01"
+#    }
+#  ],
+#  "members": []
+#}
+#
+#### PM-11: Tạo dự án có phase cuối không phủ đến ngày kết thúc - dự kiến 400
+#POST {{baseUrl}}/api/projects
+#Authorization: Bearer {{token}}
+#Content-Type: application/json
+#
+#{
+#  "projectName": "Invalid Phase Schedule",
+#  "projectCode": "PRJ-2026-Invalid Phase Schedule",
+#  "projectStartDate": "2026-09-01",
+#  "projectEndDate": "2026-10-31",
+#  "projectDescription": "Kiểm tra lịch phase",
+#  "phases": [
+#    {
+#      "title": "Incomplete coverage",
+#      "endDate": "2026-09-30"
+#    }
+#  ],
+#  "members": []
+#}
+#
+#### PM-12: Cập nhật đồng thời thông tin, phase và thành viên
+#PUT {{baseUrl}}/api/projects/{{projectId}}
+#Authorization: Bearer {{token}}
+#Content-Type: application/json
+#
+#{
+#  "projectName": "Winter Collection Updated",
+#  "projectCode": "PRJ-2026-Thời trang mùa đông Updated",
+#  "projectStartDate": "2026-09-01",
+#  "projectEndDate": "2026-11-30",
+#  "projectDescription": "Nội dung sau cập nhật",
+#  "phases": [
+#    {
+#      "id": "{{phaseId}}",
+#      "title": "Planning Updated",
+#      "description": "Phase hiện có",
+#      "endDate": "2026-11-30"
+#    }
+#  ],
+#  "members": [
+#    {
+#      "userId": "{{employeeId}}",
+#      "permissionId": "{{permissionId}}"
+#    }
+#  ]
+#}
+#
+#### PM-13: Cập nhật nhưng không gửi thay đổi - dự kiến 400
+#PUT {{baseUrl}}/api/projects/{{projectId}}
+#Authorization: Bearer {{token}}
+#Content-Type: application/json
+#
+#{}
+#
+#### PM-14: CEO hoặc HeadOfDepartment phê duyệt dự án
+#POST {{baseUrl}}/api/projects/{{projectId}}/approve
+#Authorization: Bearer {{token}}
+#Accept: application/json
+#
+#### PM-15: Role không được duyệt gọi API approve - dự kiến 403
+#POST {{baseUrl}}/api/projects/{{projectId}}/approve
+#Authorization: Bearer {{token}}
+#Accept: application/json
+#
+#### PM-16: Xóa dự án; xóa hẳn nếu chưa có contract, ngược lại chuyển Cancelled
+#DELETE {{baseUrl}}/api/projects/{{projectId}}
+#Authorization: Bearer {{token}}
+#Accept: application/json
+#
+#### PM-17: Lấy cấu hình permission của dự án
+#GET {{baseUrl}}/api/projects/{{projectId}}/permission-configurations
+#Authorization: Bearer {{token}}
+#Accept: application/json
+#
+#### PM-18: Cấu hình action và work scope của permission trong dự án
+#PUT {{baseUrl}}/api/projects/{{projectId}}/permissions/{{permissionId}}
+#Authorization: Bearer {{token}}
+#Content-Type: application/json
+#
+#{
+#  "allowedActions": [
+#    "VIEW_PROJECT",
+#    "VIEW_PHASES",
+#    "VIEW_TASKS",
+#    "CREATE_TASKS",
+#    "EDIT_TASKS"
+#  ],
+#  "workScope": "FULL"
+#}
+#
+#### PM-19: Cấu hình permission không thuộc dự án - dự kiến 404
+#PUT {{baseUrl}}/api/projects/{{projectId}}/permissions/00000000-0000-0000-0000-000000000000
+#Authorization: Bearer {{token}}
+#Content-Type: application/json
+#
+#{
+#  "allowedActions": ["VIEW_PROJECT"],
+#  "workScope": "OWN"
+#}
+#
+#### PERM-01: Lấy danh sách permission
+#GET {{baseUrl}}/api/permissions/list?page=0&sortBy=createdAt&sortDirection=desc
+#Authorization: Bearer {{token}}
+#Accept: application/json
+#
+#### PERM-02: Lọc permission theo dự án, trạng thái và từ khóa
+#GET {{baseUrl}}/api/permissions/list?page=0&projectId={{projectId}}&status=true&search=Manager&sortBy=permissionName&sortDirection=asc
+#Authorization: Bearer {{token}}
+#Accept: application/json
+#
+#### PERM-03: Sort field không hỗ trợ - dự kiến 400
+#GET {{baseUrl}}/api/permissions/list?page=0&sortBy=invalidField&sortDirection=asc
+#Authorization: Bearer {{token}}
+#Accept: application/json
+#
+#### PERM-04: Lấy các dự án có thể cấu hình permission
+#GET {{baseUrl}}/api/permissions/projects
+#Authorization: Bearer {{token}}
+#Accept: application/json
+#
+#### PERM-05: Lấy permission action catalog
+#GET {{baseUrl}}/api/permissions/actions
+#Authorization: Bearer {{token}}
+#Accept: application/json
+#
+#### PERM-06: Xem chi tiết permission
+#GET {{baseUrl}}/api/permissions/{{permissionId}}
+#Authorization: Bearer {{token}}
+#Accept: application/json
+#
+#### PERM-07: Tạo permission hợp lệ
+#POST {{baseUrl}}/api/permissions
+#Authorization: Bearer {{token}}
+#Content-Type: application/json
+#
+#{
+#  "permissionName": "Task Manager",
+#  "permissionCode": "TASK_MANAGER",
+#  "permissionDescription": "Quản lý task trong dự án",
+#  "status": true,
+#  "projectId": "{{projectId}}",
+#  "allowedActions": [
+#    "VIEW_PROJECT",
+#    "VIEW_PHASES",
+#    "VIEW_TASKS",
+#    "CREATE_TASKS",
+#    "EDIT_TASKS",
+#    "APPROVE_TASKS"
+#  ],
+#  "workScope": "FULL"
+#}
+#
+#### PERM-08: Tạo permission trùng code trong cùng dự án - dự kiến 400
+#POST {{baseUrl}}/api/permissions
+#Authorization: Bearer {{token}}
+#Content-Type: application/json
+#
+#{
+#  "permissionName": "Duplicate Task Manager",
+#  "permissionCode": "TASK_MANAGER",
+#  "permissionDescription": "Kiểm tra trùng code",
+#  "status": true,
+#  "projectId": "{{projectId}}",
+#  "allowedActions": ["VIEW_PROJECT"],
+#  "workScope": "OWN"
+#}
+#
+#### PERM-09: Tạo permission có action không thuộc catalog - dự kiến 400
+#POST {{baseUrl}}/api/permissions
+#Authorization: Bearer {{token}}
+#Content-Type: application/json
+#
+#{
+#  "permissionName": "Invalid Action Permission",
+#  "permissionCode": "INVALID_ACTION_PERMISSION",
+#  "permissionDescription": "Kiểm tra action không hợp lệ",
+#  "status": true,
+#  "projectId": "{{projectId}}",
+#  "allowedActions": ["NOT_IN_CATALOG"],
+#  "workScope": "FULL"
+#}
+#
+#### PERM-10: Cập nhật permission
+#PUT {{baseUrl}}/api/permissions/{{permissionId}}
+#Authorization: Bearer {{token}}
+#Content-Type: application/json
+#
+#{
+#  "permissionName": "Task Manager Updated",
+#  "permissionCode": "TASK_MANAGER",
+#  "permissionDescription": "Permission sau cập nhật",
+#  "status": true,
+#  "projectId": "{{projectId}}",
+#  "allowedActions": ["VIEW_PROJECT", "VIEW_PHASES", "VIEW_TASKS"],
+#  "workScope": "OWN"
+#}
+#
+#### PERM-11: Xóa permission
+#DELETE {{baseUrl}}/api/permissions/{{permissionId}}
+#Authorization: Bearer {{token}}
+#Accept: application/json
+#
+#### PH-01: Lấy danh sách phase theo dự án
+#GET {{baseUrl}}/api/phases/project/{{projectId}}
+#Authorization: Bearer {{token}}
+#Accept: application/json
+#
+#### PH-02: Xem chi tiết phase đang được phép truy cập
+#GET {{baseUrl}}/api/phases/{{phaseId}}
+#Authorization: Bearer {{token}}
+#Accept: application/json
+#
+#### PH-03: Xem phase không tồn tại - dự kiến 404
+#GET {{baseUrl}}/api/phases/00000000-0000-0000-0000-000000000000
+#Authorization: Bearer {{token}}
+#Accept: application/json
+#
+#### PH-04: Thành viên thường xem phase chưa chạy - dự kiến 400 theo rule hiện tại
+#GET {{baseUrl}}/api/phases/{{phaseId}}
+#Authorization: Bearer {{token}}
+#Accept: application/json
+#
+#### TASK-01: Lấy màn hình quản lý task của phase
+#GET {{baseUrl}}/api/tasks/phase/{{phaseId}}
+#Authorization: Bearer {{token}}
+#Accept: application/json
+#
+#### TASK-02: Tạo task hợp lệ trong khoảng thời gian phase
+#POST {{baseUrl}}/api/tasks/phase/{{phaseId}}
+#Authorization: Bearer {{token}}
+#Content-Type: application/json
+#
+#{
+#  "title": "Prepare winter catalog",
+#  "startDate": "2026-09-02",
+#  "endDate": "2026-09-10",
+#  "assignedToId": "{{employeeId}}"
+#}
+#
+#### TASK-03: Tạo task có ngày ngoài phase - dự kiến 400
+#POST {{baseUrl}}/api/tasks/phase/{{phaseId}}
+#Authorization: Bearer {{token}}
+#Content-Type: application/json
+#
+#{
+#  "title": "Task outside phase",
+#  "startDate": "2025-01-01",
+#  "endDate": "2025-01-02",
+#  "assignedToId": "{{employeeId}}"
+#}
+#
+#### TASK-04: Tạo task gán cho user không thuộc dự án - dự kiến 400
+#POST {{baseUrl}}/api/tasks/phase/{{phaseId}}
+#Authorization: Bearer {{token}}
+#Content-Type: application/json
+#
+#{
+#  "title": "Invalid assignee",
+#  "startDate": "2026-09-02",
+#  "endDate": "2026-09-10",
+#  "assignedToId": "00000000-0000-0000-0000-000000000000"
+#}
+#
+#### TASK-05: Cập nhật task hợp lệ; status chỉ dùng TODO hoặc IN_PROGRESS
+#PUT {{baseUrl}}/api/tasks/{{taskId}}
+#Authorization: Bearer {{token}}
+#Content-Type: application/json
+#
+#{
+#  "title": "Prepare winter catalog updated",
+#  "startDate": "2026-09-02",
+#  "endDate": "2026-09-12",
+#  "status": "IN_PROGRESS",
+#  "assignedToId": "{{employeeId}}"
+#}
+#
+#### TASK-06: Cập nhật trực tiếp status DONE - dự kiến 400, phải dùng API done
+#PUT {{baseUrl}}/api/tasks/{{taskId}}
+#Authorization: Bearer {{token}}
+#Content-Type: application/json
+#
+#{
+#  "title": "Prepare winter catalog",
+#  "startDate": "2026-09-02",
+#  "endDate": "2026-09-12",
+#  "status": "DONE",
+#  "assignedToId": "{{employeeId}}"
+#}
+#
+#### TASK-07: Đánh dấu task hoàn thành
+#PATCH {{baseUrl}}/api/tasks/{{taskId}}/done
+#Authorization: Bearer {{token}}
+#Accept: application/json
+#
+#### TASK-08: Người dùng thiếu action tương ứng thao tác task - dự kiến 403
+#GET {{baseUrl}}/api/tasks/phase/{{phaseId}}
+#Authorization: Bearer {{token}}
+#Accept: application/json

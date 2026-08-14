@@ -74,41 +74,22 @@ public class ProjectPermissionService {
             Projects project,
             UUID permissionId,
             ProjectPermissionConfigurationRequest request) {
-        // Yêu cầu payload cấu hình quyền phải tồn tại.
-        if (request == null) {
-            throw new BadHttpException(
-                    "Permission configuration is required"
-            );
-        }
-
-        Optional<Permissions> optionalPermission =
-                permissionRepository.findByIdAndProjectId(
-                        permissionId,
-                        project.getId()
-                );
+        Optional<Permissions> optionalPermission = permissionRepository.findByIdAndProjectId(permissionId,project.getId());
 
         // Từ chối quyền không tồn tại hoặc không thuộc dự án được yêu cầu.
         if (optionalPermission.isEmpty()) {
-            throw new NotFoundException(
-                    "Permission does not belong to this project"
-            );
+            throw new NotFoundException("Permission does not belong to this project");
         }
 
         Permissions permission = optionalPermission.get();
-        permissionActionService.configurePermission(
-                permission,
-                request.allowedActions(),
-                request.workScope()
-        );
+        permissionActionService.configurePermission(permission, request.allowedActions(), request.workScope());
 
         return toConfiguration(permissionRepository.save(permission));
     }
 
     // Lấy danh sách quyền có thể chọn khi gán cho thành viên dự án.
     public List<ProjectPermissionOptionResponse> getOptions(UUID projectId) {
-        List<Permissions> permissions = new ArrayList<>(
-                permissionRepository.findByProjectId(projectId)
-        );
+        List<Permissions> permissions = new ArrayList<>(permissionRepository.findByProjectId(projectId));
         permissions.sort(Comparator.comparing(
                 this::getPermissionName,
                 String.CASE_INSENSITIVE_ORDER
