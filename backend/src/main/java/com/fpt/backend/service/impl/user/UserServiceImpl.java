@@ -118,15 +118,18 @@ public class UserServiceImpl implements IUserService {
         Users loggedInUser = currentUser.getCurrentUser();
         String currentRole = loggedInUser.getUserRoles().stream().map(UserRole::getRole).map(Role::getRoleName).findFirst().orElse("");
 
+        // Lấy Role của cái tài khoản BỊ XEM để đối chiếu
+        String targetRole = user.getUserRoles().stream().map(UserRole::getRole).map(Role::getRoleName).findFirst().orElse("");
+
         // CEO / Admin xem được Kế toán, Trưởng phòng, NV, Đối tác
         if ("CEO".equalsIgnoreCase(currentRole) || "Administrator".equalsIgnoreCase(currentRole)) {
-            if (!List.of("Accountant", "HeadOfDepartment", "Employee", "External Parners").contains(currentRole)) {
+            if (!List.of("Accountant", "HeadOfDepartment", "Employee", "External Parners").contains(targetRole)) {
                 throw new RuntimeException("Access Denied!");
             }
         }
         // Accountant xem được Trưởng phòng, NV, Đối tác
         else if ("Accountant".equalsIgnoreCase(currentRole)) {
-            if (!List.of("HeadOfDepartment", "Employee", "External Parners").contains(currentRole)) {
+            if (!List.of("HeadOfDepartment", "Employee", "External Parners").contains(targetRole)) {
                 throw new RuntimeException("Access Denied!");
             }
         }
@@ -134,7 +137,7 @@ public class UserServiceImpl implements IUserService {
         else if ("HeadOfDepartment".equalsIgnoreCase(currentRole)) {
             String myDept = loggedInUser.getDepartment() != null ? loggedInUser.getDepartment().getDepartmentName() : "";
             String targetDept = user.getDepartment() != null ? user.getDepartment().getDepartmentName() : "";
-            if (!myDept.equals(targetDept) || !"Employee".equalsIgnoreCase(currentRole)) {
+            if (!myDept.equals(targetDept) || !"Employee".equalsIgnoreCase(targetRole)) {
                 throw new RuntimeException("Access Denied: Bạn chỉ được phép xem thông tin nhân viên cùng phòng ban!");
             }
         }
@@ -206,7 +209,7 @@ public class UserServiceImpl implements IUserService {
 
 
         Users savedUser = userRepository.save(newUser);
-        userKeyService.generateUserKey(savedUser);
+//        userKeyService.generateUserKey(savedUser);
         if (request.getRole() != null && !request.getRole().isEmpty()) {
             Role roleEntity = roleRepository.findByRoleName(request.getRole()).orElseThrow(() -> new RuntimeException("Role không tồn tại"));
             UserRole userRole = UserRole.builder().user(savedUser).role(roleEntity).build();
@@ -230,19 +233,26 @@ public class UserServiceImpl implements IUserService {
         Users loggedInUser = currentUser.getCurrentUser();
         String currentRole = loggedInUser.getUserRoles().stream().map(UserRole::getRole).map(Role::getRoleName).findFirst().orElse("");
 
+        // Lấy Role hiện tại của tài khoản BỊ SỬA
+        String targetCurrentRole = existingUser.getUserRoles().stream().findFirst().map(ur -> ur.getRole().getRoleName()).orElse("");
 
         // 1. Phân quyền UPDATE
-        if ("CEO".equalsIgnoreCase(currentRole) || "Administrator".equalsIgnoreCase(currentRole)) {
+        if ("CEO".equalsIgnoreCase(currentRole)) {
             throw new RuntimeException("Access Denied: Bạn không có quyền chỉnh sửa tài khoản!");
+        } else if ("Administrator".equalsIgnoreCase(currentRole)) {
+            if (!List.of("Accountant", "HeadOfDepartment", "Employee", "External Parners").contains(targetCurrentRole) ||
+                    !List.of("Accountant", "HeadOfDepartment", "Employee", "External Parners").contains(request.getRole())) {
+                throw new RuntimeException("Access Denied: Admin chỉ được chỉnh sửa Accountant, HeadOfDepartment, Employee, External Parners!");
+            }
         } else if ("Accountant".equalsIgnoreCase(currentRole)) {
-            if (!List.of("HeadOfDepartment", "Employee", "External Parners").contains(currentRole) ||
+            if (!List.of("HeadOfDepartment", "Employee", "External Parners").contains(targetCurrentRole) ||
                     !List.of("HeadOfDepartment", "Employee", "External Parners").contains(request.getRole())) {
                 throw new RuntimeException("Access Denied: Bạn chỉ được chỉnh sửa quyền của HeadOfDepartment, Employee, External Parners!");
             }
         } else if ("HeadOfDepartment".equalsIgnoreCase(currentRole)) {
             String myDept = loggedInUser.getDepartment() != null ? loggedInUser.getDepartment().getDepartmentName() : "";
             String targetDept = existingUser.getDepartment() != null ? existingUser.getDepartment().getDepartmentName() : "";
-            if (!myDept.equals(targetDept) || !"Employee".equalsIgnoreCase(currentRole)) {
+            if (!myDept.equals(targetDept) || !"Employee".equalsIgnoreCase(targetCurrentRole)) {
                 throw new RuntimeException("Access Denied: Bạn chỉ có quyền sửa nhân viên cùng phòng ban!");
             }
             if (!"Employee".equalsIgnoreCase(request.getRole()) || !myDept.equals(request.getDepartmentName())) {
@@ -250,7 +260,7 @@ public class UserServiceImpl implements IUserService {
             }
         }
 
-        // 2. Tấm khiên kiểm soát số lượng Role duy nhất (Update)
+        // 2. Tấm khiên kiểm soát số lượng Role duy nhất
         if (UserStatus.ACTIVE.equals(request.getStatus())) {
             String roleToCheck = request.getRole();
             if (List.of("CEO", "Administrator", "Accountant").contains(roleToCheck)) {
@@ -269,12 +279,11 @@ public class UserServiceImpl implements IUserService {
         existingUser.setLastName(request.getLastName());
         existingUser.setNumberPhone(request.getNumberPhone());
 
-        if (request.getRole() != null && !request.getRole().equals(currentRole)) {
-//            currentRole(request.getRole());
+        // Update Role
+        if (request.getRole() != null && !request.getRole().equals(targetCurrentRole)) {
             Role newRoleEntity = roleRepository.findByRoleName(request.getRole()).orElseThrow(() -> new RuntimeException("Role không tồn tại"));
-            Optional<UserRole> existingUserRole = userRoleRepository.findByUser(existingUser);
-            if (existingUserRole.isPresent()) {
-                UserRole ur = existingUserRole.get();
+            if (existingUser.getUserRoles() != null && !existingUser.getUserRoles().isEmpty()) {
+                UserRole ur = existingUser.getUserRoles().get(0);
                 ur.setRole(newRoleEntity);
                 userRoleRepository.save(ur);
             } else {
