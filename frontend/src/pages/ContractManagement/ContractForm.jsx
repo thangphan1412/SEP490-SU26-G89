@@ -461,11 +461,30 @@ function WorkflowAssignments({
 }
 
 function normalizeRole(value) {
-    return String(value || "")
+    const normalized = String(value || "")
         .trim()
         .toUpperCase()
         .replaceAll("-", "_")
         .replaceAll(" ", "_");
+    const compact = normalized.replaceAll("_", "");
+
+    if (["ADMIN", "ADMINISTRATOR"].includes(compact)) {
+        return "ADMIN";
+    }
+    if (["MANAGER", "HEADOFDEPARTMENT", "DEPARTMENTHEAD"].includes(compact)) {
+        return "HEAD_OF_DEPARTMENT";
+    }
+    if ([
+        "PARTNER",
+        "EXTERNAL",
+        "EXTERNALPARTNER",
+        "EXTERNALPARTNERS",
+        "EXTERNALPARNER",
+        "EXTERNALPARNERS",
+    ].includes(compact)) {
+        return "EXTERNAL_PARTNER";
+    }
+    return normalized;
 }
 
 function PagedContractContentEditor({ value, onChange }) {

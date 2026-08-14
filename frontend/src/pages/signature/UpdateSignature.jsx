@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import PageHeader from "../../components/signature/createSignature/PageHeader.jsx";
@@ -6,9 +6,14 @@ import SignatureInformationCard from "../../components/signature/createSignature
 import SignatureCanvasCard from "../../components/signature/createSignature/SignatureCanvasCard.jsx";
 import DocumentAutomationPreview from "../../components/signature/createSignature/DocumentAutomationPreview.jsx";
 import InfoBanner from "../../components/signature/createSignature/InforBanner.jsx";
+import RsaKeyPairCard from "../../components/signature/createSignature/RsaKeyPairCard.jsx";
 
 import electronicSignatureService
     from "../../services/signatureService/electronicSignatureService.js";
+import {
+    downloadPrivateKeyPem,
+    generateRsaSigningKeys,
+} from "../ContractManagement/contractCrypto.js";
 
 function UpdateSignature() {
 
@@ -30,6 +35,13 @@ function UpdateSignature() {
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState("");
     const [success, setSuccess] = useState("");
+    const [rsaKeys, setRsaKeys] = useState({
+        privateKey: "",
+        publicKey: "",
+    });
+    const [keyFingerprint, setKeyFingerprint] = useState("");
+    const [keyRegistered, setKeyRegistered] = useState(false);
+    const [generatingKeys, setGeneratingKeys] = useState(false);
 
 
 
@@ -45,11 +57,6 @@ function UpdateSignature() {
                     await electronicSignatureService
                         .getElectronicSignatureById(id);
 
-                console.log(
-                    "DETAIL:",
-                    response.data
-                );
-
                 const data = response.data.data;
 
                 setForm({
@@ -60,11 +67,17 @@ function UpdateSignature() {
                         data.electronicSignatureType || "DRAW",
 
                     electronicStatus:
-                        data.electronicStatus || "ACTIVE",
+                        data.electronicSignatureStatus || "ACTIVE",
 
                     isDefault:
                         data.isDefault ?? false,
                 });
+                setRsaKeys({
+                    privateKey: "",
+                    publicKey: data.publicKey || "",
+                });
+                setKeyFingerprint(data.publicKeyFingerprint || "");
+                setKeyRegistered(Boolean(data.publicKey));
 
             } catch (error) {
 
@@ -88,6 +101,28 @@ function UpdateSignature() {
 
     }, [id]);
 
+    const handleGenerateKeys = async () => {
+        if (keyRegistered) {
+            return;
+        }
+        setGeneratingKeys(true);
+        setError("");
+        try {
+            setRsaKeys(await generateRsaSigningKeys());
+        } catch (error) {
+            setError(error?.message || "Cannot generate the RSA key pair.");
+        } finally {
+            setGeneratingKeys(false);
+        }
+    };
+
+    const handleDownloadPrivateKey = () => {
+        downloadPrivateKeyPem(
+            rsaKeys.privateKey,
+            form.electronicSignatureName
+        );
+    };
+
 
 
     const handleSave = async () => {
@@ -105,6 +140,13 @@ function UpdateSignature() {
             setSaving(true);
             setError("");
             setSuccess("");
+
+            const keys = keyRegistered || rsaKeys.publicKey
+                ? rsaKeys
+                : await generateRsaSigningKeys();
+            if (!keyRegistered && !rsaKeys.publicKey) {
+                setRsaKeys(keys);
+            }
 
             const formData = new FormData();
 
@@ -136,6 +178,9 @@ function UpdateSignature() {
                 );
 
             }
+            if (keys.publicKey) {
+                formData.append("publicKey", keys.publicKey);
+            }
 
             await electronicSignatureService
                 .updateElectronicSignature(
@@ -143,9 +188,18 @@ function UpdateSignature() {
                     formData
                 );
 
-            setSuccess(
-                "Signature updated successfully!"
-            );
+            if (!keyRegistered && keys.privateKey) {
+                downloadPrivateKeyPem(
+                    keys.privateKey,
+                    form.electronicSignatureName
+                );
+                setKeyRegistered(true);
+                setSuccess(
+                    "Signature updated and RSA key registered. The private key has been downloaded."
+                );
+            } else {
+                setSuccess("Signature updated successfully!");
+            }
 
         } catch (error) {
 
@@ -194,7 +248,7 @@ function UpdateSignature() {
 
                 <PageHeader
                     onCancel={() =>
-                        navigate("/signatures")
+                        navigate("/signature-management/list")
                     }
                     onSave={handleSave}
                     loading={saving}
@@ -227,12 +281,22 @@ function UpdateSignature() {
                     onFileChange={setSignatureFile}
                 />
 
+                <RsaKeyPairCard
+                    publicKey={rsaKeys.publicKey}
+                    fingerprint={keyFingerprint}
+                    privateKeyAvailable={Boolean(rsaKeys.privateKey)}
+                    registered={keyRegistered}
+                    generating={generatingKeys}
+                    onGenerate={handleGenerateKeys}
+                    onDownload={handleDownloadPrivateKey}
+                />
+
 
                 <DocumentAutomationPreview />
 
 
                 <InfoBanner
-                    text="Your signature information can be updated at any time."
+                    text="RSA public keys are immutable after registration. Create a new electronic signature if the private key is lost or compromised."
                 />
 
             </div>

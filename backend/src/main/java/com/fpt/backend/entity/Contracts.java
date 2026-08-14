@@ -14,7 +14,13 @@ import java.util.List;
 @Entity
 @Builder
 @SuppressWarnings("JpaDataSourceORMInspection")
-@Table(name = "contracts")
+@Table(
+        name = "contracts",
+        uniqueConstraints = @UniqueConstraint(
+                name = "UK_contract_number",
+                columnNames = "contract_number"
+        )
+)
 public class Contracts extends BaseEntity {
     @Column(name = "contract_number")
     private String contractNumber;
@@ -46,6 +52,26 @@ public class Contracts extends BaseEntity {
     private String contractContent;
     @Column(name = "contract_layout_json", columnDefinition = "nvarchar(max)")
     private String contractLayoutJson;
+    @Lob
+    @Basic(fetch = FetchType.LAZY)
+    @Column(name = "approved_pdf_content", columnDefinition = "varbinary(max)")
+    private byte[] approvedPdfContent;
+    @Column(name = "approved_pdf_sha256", length = 64)
+    private String approvedPdfHash;
+    @Column(name = "approved_pdf_generated_at")
+    private LocalDateTime approvedPdfGeneratedAt;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(
+            name = "approved_pdf_generated_by_user_id",
+            foreignKey = @ForeignKey(name = "FK_contracts_approved_pdf_user")
+    )
+    private Users approvedPdfGeneratedBy;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(
+            name = "approved_pdf_file_id",
+            foreignKey = @ForeignKey(name = "FK_contracts_approved_pdf_file")
+    )
+    private FileStorage approvedPdfFile;
 
     /// Relation
     // project

@@ -13,7 +13,7 @@ function SignatureRow({ signature }) {
 
     const handleEdit = () => {
         navigate(
-            `/signatures/${signature.id}/edit`
+            `/signature-management/update/${signature.id}`
         );
     };
 

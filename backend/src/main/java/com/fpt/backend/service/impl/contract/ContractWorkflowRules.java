@@ -17,17 +17,12 @@ final class ContractWorkflowRules {
                     ContractProjectActions.CREATE,
                     ContractProjectActions.SUBMIT
             );
-            case APPROVE -> List.of(
+            case APPROVE, APPROVE_AND_GENERATE_PDF, APPROVE_AND_SIGN -> List.of(
                     ContractProjectActions.VIEW,
                     ContractProjectActions.APPROVE
             );
             case SIGN -> List.of(
                     ContractProjectActions.VIEW,
-                    ContractProjectActions.SIGN
-            );
-            case APPROVE_AND_SIGN -> List.of(
-                    ContractProjectActions.VIEW,
-                    ContractProjectActions.APPROVE,
                     ContractProjectActions.SIGN
             );
         };
@@ -36,8 +31,9 @@ final class ContractWorkflowRules {
     static ContractStatus pendingStatus(ContractWorkflowActionType actionType) {
         return switch (actionType) {
             case CREATE -> ContractStatus.NEW;
-            case APPROVE -> ContractStatus.PENDING_APPROVAL;
-            case SIGN, APPROVE_AND_SIGN -> ContractStatus.PENDING_SIGNATURE;
+            case APPROVE, APPROVE_AND_GENERATE_PDF, APPROVE_AND_SIGN ->
+                    ContractStatus.PENDING_APPROVAL;
+            case SIGN -> ContractStatus.PENDING_SIGNATURE;
         };
     }
 
@@ -46,7 +42,8 @@ final class ContractWorkflowRules {
             case CREATE -> "SUBMIT";
             case APPROVE -> "APPROVE";
             case SIGN -> "SIGN";
-            case APPROVE_AND_SIGN -> "APPROVE_AND_SIGN";
+            case APPROVE_AND_GENERATE_PDF, APPROVE_AND_SIGN ->
+                    "APPROVE_AND_GENERATE_PDF";
         };
     }
 }

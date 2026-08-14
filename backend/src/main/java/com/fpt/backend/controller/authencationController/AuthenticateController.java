@@ -8,6 +8,8 @@ import com.fpt.backend.dto.request.authentication.ChangePasswordRequest;
 import com.fpt.backend.dto.request.authentication.ForgotPasswordRequest;
 import com.fpt.backend.dto.request.authentication.ResetPasswordRequest;
 import com.fpt.backend.dto.response.authentication.AuthenticateResponse;
+import com.fpt.backend.entity.Role;
+import com.fpt.backend.entity.UserRole;
 import com.fpt.backend.entity.Users;
 import com.fpt.backend.service.impl.user.UserServiceImpl;
 import com.fpt.backend.util.BaseResponse;
@@ -15,6 +17,7 @@ import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -39,7 +42,6 @@ public class AuthenticateController {
                     authenticateRequest.getEmail(),
                     authenticateRequest.getPassword()
             ));
-            System.out.println("password:"+ authenticateRequest.getPassword());
             MyUserDetail myUsersDetail = (MyUserDetail) authenticate.getPrincipal();
             Users users =  myUsersDetail.getUsers();
 
@@ -67,20 +69,18 @@ public class AuthenticateController {
 //            // ----------------------------------------
 
             var token  = jwtService.generateToken(myUsersDetail);
-            System.out.println(">>> Login controller called");
-            System.out.println(token);
             AuthenticateResponse authenticateResponse = new AuthenticateResponse();
             authenticateResponse.setToken(token);
-            authenticateResponse.setRole(users.getUserRoles().stream().findFirst().get().getRole().getRoleName());
+            authenticateResponse.setRole(primaryRoleName(users));
             authenticateResponse.setFullName(users.getFirstName()+" "+users.getLastName());
 
-//            // --- THÊM ĐOẠN CODE NÀY ---
-//            if (users.getDepartment() != null) {
-//                authenticateResponse.setDepartmentName(users.getDepartment().getDepartmentName());
-//            } else {
-//                authenticateResponse.setDepartmentName(""); // Đề phòng user chưa có phòng ban
-//            }
-//            // ---------------------------------------
+            // --- THÊM ĐOẠN CODE NÀY ---
+            if (users.getDepartment() != null) {
+                authenticateResponse.setDepartmentName(users.getDepartment().getDepartmentName());
+            } else {
+                authenticateResponse.setDepartmentName(""); // Đề phòng user chưa có phòng ban
+            }
+            // ---------------------------------------
 
             BaseResponse<AuthenticateResponse> response = new BaseResponse<>(
                     HttpStatus.CREATED.value(),
@@ -89,7 +89,10 @@ public class AuthenticateController {
             );
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            throw new ResponseStatusException(
+                    HttpStatus.UNAUTHORIZED,
+                    "Email or password is incorrect"
+            );
         }
 
     }
@@ -109,5 +112,18 @@ public class AuthenticateController {
     public ResponseEntity<BaseResponse<?>> resetPassword(@Valid @RequestBody ChangePasswordRequest changePasswordRequest)  {
         userServiceImpl.changePassword(changePasswordRequest);
         return ResponseEntity.status(HttpStatus.CREATED).body(new BaseResponse<>());
+    }
+
+    private String primaryRoleName(Users user) {
+        if (user == null || user.getUserRoles() == null) {
+            return "";
+        }
+        return user.getUserRoles().stream()
+                .map(UserRole::getRole)
+                .filter(java.util.Objects::nonNull)
+                .map(Role::getRoleName)
+                .filter(role -> role != null && !role.isBlank())
+                .findFirst()
+                .orElse("");
     }
 }

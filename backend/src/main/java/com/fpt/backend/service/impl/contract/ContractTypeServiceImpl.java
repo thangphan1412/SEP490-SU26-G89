@@ -10,6 +10,7 @@ import com.fpt.backend.dto.response.contract.ContractWorkflowStepDefinitionRespo
 import com.fpt.backend.entity.ContractTypeWorkflow;
 import com.fpt.backend.entity.ContractTypeWorkflowStep;
 import com.fpt.backend.entity.ContractTypes;
+import com.fpt.backend.entity.Users;
 import com.fpt.backend.enums.ContractWorkflowActionType;
 import com.fpt.backend.exception.BadHttpException;
 import com.fpt.backend.exception.NotFoundException;
@@ -19,6 +20,7 @@ import com.fpt.backend.repository.contract.ContractTypeRepository;
 import com.fpt.backend.repository.contract.ContractTypeWorkflowRepository;
 import com.fpt.backend.repository.role.RoleRepository;
 import com.fpt.backend.service.interfaces.contract.ContractTypeService;
+import com.fpt.backend.util.CurrentUser;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,6 +30,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -40,6 +43,7 @@ public class ContractTypeServiceImpl implements ContractTypeService {
     private final ContractRepository contractRepository;
     private final ContractTypeWorkflowRepository workflowRepository;
     private final RoleRepository roleRepository;
+    private final CurrentUser currentUser;
 
     @Override
     @Transactional(readOnly = true)
@@ -73,7 +77,7 @@ public class ContractTypeServiceImpl implements ContractTypeService {
                         ContractWorkflowActionType.CREATE.name(),
                         ContractWorkflowActionType.APPROVE.name(),
                         ContractWorkflowActionType.SIGN.name(),
-                        ContractWorkflowActionType.APPROVE_AND_SIGN.name()
+                        ContractWorkflowActionType.APPROVE_AND_GENERATE_PDF.name()
                 ),
                 roles
         );
@@ -92,6 +96,7 @@ public class ContractTypeServiceImpl implements ContractTypeService {
         LocalDateTime now = LocalDateTime.now();
         ContractTypes contractType = new ContractTypes();
         applyRequest(contractType, request);
+        contractType.setCreatedBy(currentUserName());
         contractType.setCreatedAt(now);
         contractType.setUpdatedAt(now);
 
@@ -117,9 +122,7 @@ public class ContractTypeServiceImpl implements ContractTypeService {
 
         String originalCreator = contractType.getCreatedBy();
         applyRequest(contractType, request);
-        if (isBlank(request.createdBy())) {
-            contractType.setCreatedBy(originalCreator);
-        }
+        contractType.setCreatedBy(originalCreator);
         contractType.setUpdatedAt(LocalDateTime.now());
 
         ContractTypes savedType = contractTypeRepository.save(contractType);
@@ -182,6 +185,14 @@ public class ContractTypeServiceImpl implements ContractTypeService {
                 isBlank(request.status()) ? DEFAULT_STATUS : request.status().trim()
         );
         contractType.setCreatedBy(normalizeToNull(request.createdBy()));
+    }
+
+    private String currentUserName() {
+        Users user = currentUser.getCurrentUser();
+        String fullName = ((user.getFirstName() == null ? "" : user.getFirstName())
+                + " "
+                + (user.getLastName() == null ? "" : user.getLastName())).trim();
+        return fullName.isBlank() ? user.getEmail() : fullName;
     }
 
     private ContractTypes findContractType(UUID id) {
@@ -323,6 +334,35 @@ public class ContractTypeServiceImpl implements ContractTypeService {
             );
         }
 
+        int pdfApprovalIndex = -1;
+        int firstSignatureIndex = -1;
+        for (int index = 0; index < normalized.size(); index++) {
+            NormalizedWorkflowStep step = normalized.get(index);
+            if (step.actionType().generatesApprovedPdf()) {
+                if (!Set.of("CEO", "DIRECTOR").contains(
+                        step.requiredRoleCode()
+                )) {
+                    throw new BadHttpException(
+                            "The PDF generation approval step must be assigned to CEO or DIRECTOR"
+                    );
+                }
+                if (pdfApprovalIndex < 0) {
+                    pdfApprovalIndex = index;
+                }
+            }
+            if (step.actionType().requiresSignature()
+                    && firstSignatureIndex < 0) {
+                firstSignatureIndex = index;
+            }
+        }
+        if (firstSignatureIndex >= 0
+                && (pdfApprovalIndex < 0
+                || pdfApprovalIndex >= firstSignatureIndex)) {
+            throw new BadHttpException(
+                    "CEO PDF approval must occur before the first signature step"
+            );
+        }
+
         return List.copyOf(normalized);
     }
 
@@ -404,13 +444,19 @@ public class ContractTypeServiceImpl implements ContractTypeService {
                         1, "Prepare and submit", "CREATE", "EMPLOYEE", true, false
                 ),
                 new ContractWorkflowStepRequest(
-                        2, "Internal approval", "APPROVE", "MANAGER", true, true
+                        2, "Internal approval", "APPROVE",
+                        "HEAD_OF_DEPARTMENT", true, true
                 ),
                 new ContractWorkflowStepRequest(
-                        3, "Company signature", "SIGN", "DIRECTOR", true, true
+                        3, "CEO approval and PDF generation",
+                        "APPROVE_AND_GENERATE_PDF", "CEO", true, true
                 ),
                 new ContractWorkflowStepRequest(
-                        4, "Counterparty signature", "SIGN", "PARTNER", true, true
+                        4, "Company signature", "SIGN", "CEO", true, true
+                ),
+                new ContractWorkflowStepRequest(
+                        5, "Counterparty signature", "SIGN",
+                        "EXTERNAL_PARTNER", true, true
                 )
         );
     }

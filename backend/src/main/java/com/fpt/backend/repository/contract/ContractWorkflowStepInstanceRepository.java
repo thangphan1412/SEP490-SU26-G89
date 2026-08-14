@@ -3,6 +3,7 @@ package com.fpt.backend.repository.contract;
 import com.fpt.backend.entity.ContractWorkflowStepInstance;
 import com.fpt.backend.enums.ContractWorkflowStepState;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -15,6 +16,10 @@ public interface ContractWorkflowStepInstanceRepository
     List<ContractWorkflowStepInstance> findByContractIdOrderByStepOrderAsc(
             UUID contractId
     );
+
+    @EntityGraph(attributePaths = {"assignedUser", "stepDefinition"})
+    List<ContractWorkflowStepInstance>
+    findByContractIdInOrderByStepOrderAsc(List<UUID> contractIds);
 
     Optional<ContractWorkflowStepInstance>
     findFirstByContractIdAndStatusOrderByStepOrderAsc(

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import PageHeader from "../../components/signature/createSignature/PageHeader.jsx";
@@ -6,9 +6,14 @@ import SignatureInformationCard from "../../components/signature/createSignature
 import SignatureCanvasCard from "../../components/signature/createSignature/SignatureCanvasCard.jsx";
 import DocumentAutomationPreview from "../../components/signature/createSignature/DocumentAutomationPreview.jsx";
 import InfoBanner from "../../components/signature/createSignature/InforBanner.jsx";
+import RsaKeyPairCard from "../../components/signature/createSignature/RsaKeyPairCard.jsx";
 
 import electronicSignatureService
     from "../../services/signatureService/electronicSignatureService.js";
+import {
+    downloadPrivateKeyPem,
+    generateRsaSigningKeys,
+} from "../ContractManagement/contractCrypto.js";
 
 function CreateSignaturePage() {
 
@@ -29,6 +34,30 @@ function CreateSignaturePage() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
     const [success, setSuccess] = useState("");
+    const [rsaKeys, setRsaKeys] = useState({
+        privateKey: "",
+        publicKey: "",
+    });
+    const [generatingKeys, setGeneratingKeys] = useState(false);
+
+    const handleGenerateKeys = async () => {
+        setGeneratingKeys(true);
+        setError("");
+        try {
+            setRsaKeys(await generateRsaSigningKeys());
+        } catch (error) {
+            setError(error?.message || "Cannot generate the RSA key pair.");
+        } finally {
+            setGeneratingKeys(false);
+        }
+    };
+
+    const handleDownloadPrivateKey = () => {
+        downloadPrivateKeyPem(
+            rsaKeys.privateKey,
+            form.electronicSignatureName
+        );
+    };
 
 
     const handleTypeChange = (type) => {
@@ -74,6 +103,13 @@ function CreateSignaturePage() {
 
             setLoading(true);
 
+            const keys = rsaKeys.publicKey
+                ? rsaKeys
+                : await generateRsaSigningKeys();
+            if (!rsaKeys.publicKey) {
+                setRsaKeys(keys);
+            }
+
             const formData = new FormData();
 
 
@@ -105,19 +141,19 @@ function CreateSignaturePage() {
                 "multipartFile",
                 signatureFile
             );
-
-            console.log("===== CREATE SIGNATURE =====");
-
-            for (const [key, value] of formData.entries()) {
-                console.log(key, value);
-            }
+            formData.append("publicKey", keys.publicKey);
 
 
             await electronicSignatureService
                 .createElectronicSignature(formData);
 
-
-            setSuccess("Signature created successfully!");
+            downloadPrivateKeyPem(
+                keys.privateKey,
+                form.electronicSignatureName
+            );
+            setSuccess(
+                "Signature created. Your RSA private key has been downloaded."
+            );
 
 
             setSignatureFile(null);
@@ -146,7 +182,7 @@ function CreateSignaturePage() {
     };
 
     const handleCancel = () => {
-        navigate("/signatures");
+        navigate("/signature-management/list");
     };
 
     return (
@@ -201,10 +237,19 @@ function CreateSignaturePage() {
                     }}
                 />
 
+                <RsaKeyPairCard
+                    publicKey={rsaKeys.publicKey}
+                    privateKeyAvailable={Boolean(rsaKeys.privateKey)}
+                    registered={false}
+                    generating={generatingKeys}
+                    onGenerate={handleGenerateKeys}
+                    onDownload={handleDownloadPrivateKey}
+                />
+
                 <DocumentAutomationPreview />
 
                 <InfoBanner
-                    text="Your signature will be available for personal use after saving."
+                    text="The public key is registered with this signature. Keep the downloaded private key secret; it is required when signing contracts."
                 />
 
             </div>
