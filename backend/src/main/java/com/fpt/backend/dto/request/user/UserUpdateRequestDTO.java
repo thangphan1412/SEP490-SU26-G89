@@ -55,6 +55,6 @@ public class UserUpdateRequestDTO {
 
     // KHÔNG CÒN @ValidStartDate Ở ĐÂY NỮA -> THẢ HỒ CHỌN QUÁ KHỨ!
     @NotBlank(message = "Ngày bắt đầu làm việc không được để trống")
-    @Pattern(regexp = "^\\d{4}-\'\\d{2}-\\d{2}$", message = "Ngày bắt đầu làm việc phải theo định dạng YYYY-MM-DD")
+    @Pattern(regexp = "^\\d{4}-\\d{2}-\\d{2}$", message = "Ngày bắt đầu làm việc phải theo định dạng YYYY-MM-DD")
     private String startDate;
 }
