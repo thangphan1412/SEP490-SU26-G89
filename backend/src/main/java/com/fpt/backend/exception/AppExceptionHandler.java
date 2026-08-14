@@ -10,6 +10,7 @@ import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -126,6 +127,17 @@ public class AppExceptionHandler {
                 null
         );
         return ResponseEntity.status(org.springframework.http.HttpStatus.BAD_REQUEST).body(response);
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<BaseResponse<Void>> handleMethodArgumentTypeMismatch(
+            MethodArgumentTypeMismatchException ex
+    ) {
+        String message = "Invalid value for parameter '" + ex.getName() + "'";
+
+        return ResponseEntity.badRequest().body(
+                new BaseResponse<>(HttpStatus.BAD_REQUEST.value(), message, null)
+        );
     }
 
 

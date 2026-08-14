@@ -1,5 +1,3 @@
-import CreateSignaturePage from "../../pages/signature/CreateSignaturePage.jsx";
-
 export const navConfig = [
     {
         key: "signature",
@@ -56,8 +54,6 @@ export const navConfig = [
         children: [
             { label: "List Department", path: "/department-management/list" },
             { label: "Create Department", path: "/department-management/create" },
-            { label: "View Department", path: "/department-management/view/:id" },
-            { label: "Update Department", path: "/department-management/update/:id" },
         ],
     },
     {
