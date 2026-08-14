@@ -18,7 +18,26 @@ import com.fpt.backend.dto.response.contract.ContractTaskOptionResponse;
 import com.fpt.backend.dto.response.contract.ContractWorkflowRuntimeResponse;
 import com.fpt.backend.dto.response.contract.ContractWorkflowStepRuntimeResponse;
 import com.fpt.backend.dto.response.project.ProjectAccessResponse;
-import com.fpt.backend.entity.*;
+import com.fpt.backend.entity.ContractAttributeValues;
+import com.fpt.backend.entity.ContractPositions;
+import com.fpt.backend.entity.ContractStatusHistory;
+import com.fpt.backend.entity.ContractTemplateVersions;
+import com.fpt.backend.entity.ContractTemplates;
+import com.fpt.backend.entity.ContractTypeWorkflow;
+import com.fpt.backend.entity.ContractTypeWorkflowStep;
+import com.fpt.backend.entity.ContractTypes;
+import com.fpt.backend.entity.ContractWorkflowStepInstance;
+import com.fpt.backend.entity.Contracts;
+import com.fpt.backend.entity.PermissionAction;
+import com.fpt.backend.entity.ProjectMember;
+import com.fpt.backend.entity.Projects;
+import com.fpt.backend.entity.Role;
+import com.fpt.backend.entity.Signature;
+import com.fpt.backend.entity.Timeline;
+import com.fpt.backend.entity.TimelineTask;
+import com.fpt.backend.entity.UserPermission;
+import com.fpt.backend.entity.UserRole;
+import com.fpt.backend.entity.Users;
 import com.fpt.backend.enums.ContractAction;
 import com.fpt.backend.enums.ContractStatus;
 import com.fpt.backend.enums.ContractWorkflowActionType;
@@ -38,6 +57,8 @@ import com.fpt.backend.repository.phase.PhaseRepository;
 import com.fpt.backend.repository.phase.PhaseTaskRepository;
 import com.fpt.backend.repository.project.ProjectMemberRepository;
 import com.fpt.backend.repository.project.ProjectRepository;
+import com.fpt.backend.repository.signature.SignatureRepository;
+import com.fpt.backend.service.impl.CloudinaryService;
 import com.fpt.backend.service.interfaces.contract.ContractService;
 import com.fpt.backend.service.interfaces.permission.IPermissionAccessService;
 import com.fpt.backend.util.CurrentUser;
@@ -65,6 +86,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -103,6 +125,9 @@ public class ContractServiceImpl implements ContractService {
     private final ContractTemplateLayoutMapper layoutMapper;
     private final ContractDocumentRenderer documentRenderer;
     private final ContractPdfGenerator pdfGenerator;
+    private final ContractSignatureService contractSignatureService;
+    private final CloudinaryService cloudinaryService;
+    private final SignatureRepository signatureRepository;
     private final IPermissionAccessService permissionAccessService;
     private final CurrentUser currentUser;
 
@@ -132,10 +157,36 @@ public class ContractServiceImpl implements ContractService {
         List<String> availableStatuses = Arrays.stream(ContractStatus.values())
                 .map(Enum::name)
                 .toList();
+        List<UUID> contractIds = contracts.getContent().stream()
+                .map(Contracts::getId)
+                .toList();
+        Map<UUID, List<ContractWorkflowStepInstance>> workflowStepsByContract =
+                contractIds.isEmpty()
+                        ? Map.of()
+                        : workflowStepRepository
+                                .findByContractIdInOrderByStepOrderAsc(contractIds)
+                                .stream()
+                                .collect(Collectors.groupingBy(
+                                        step -> step.getContract().getId(),
+                                        LinkedHashMap::new,
+                                        Collectors.toList()
+                                ));
+        Map<UUID, ProjectAccessResponse> projectAccessCache =
+                new LinkedHashMap<>();
 
         return new ContractListResponse(
                 DATA_SOURCE,
-                contracts.map(this::toResponse).getContent(),
+                contracts.getContent().stream()
+                        .map(contract -> toListResponse(
+                                contract,
+                                user,
+                                projectAccessCache,
+                                workflowStepsByContract.getOrDefault(
+                                        contract.getId(),
+                                        List.of()
+                                )
+                        ))
+                        .toList(),
                 contracts.getNumber(),
                 contracts.getSize(),
                 contracts.getTotalElements(),
@@ -160,6 +211,17 @@ public class ContractServiceImpl implements ContractService {
 
         return projectRepository.findAllById(projectIds)
                 .stream()
+                .filter(project -> {
+                    ProjectAccessResponse access = permissionAccessService
+                            .getCurrentUserAccess(project.getId());
+                    return permissionAccessService.hasAction(
+                            access,
+                            ContractProjectActions.VIEW
+                    ) && permissionAccessService.hasAction(
+                            access,
+                            ContractProjectActions.SUBMIT
+                    );
+                })
                 .sorted(Comparator.comparing(
                         project -> normalize(project.getProjectName()),
                         String.CASE_INSENSITIVE_ORDER
@@ -261,6 +323,12 @@ public class ContractServiceImpl implements ContractService {
         if (request == null) {
             throw new BadHttpException("Contract information is required");
         }
+        validateRequest(request);
+        if (contractRepository.existsByContractNumberIgnoreCase(
+                request.contractNumber().trim()
+        )) {
+            throw new BadHttpException("Contract number already exists");
+        }
 
         Users actor = currentUser.getCurrentUser();
         permissionAccessService.requireAction(
@@ -305,7 +373,14 @@ public class ContractServiceImpl implements ContractService {
     @Override
     @Transactional
     public ContractResponse updateContract(UUID id, ContractRequest request) {
-        Contracts contract = findContract(id);
+        validateRequest(request);
+        Contracts contract = findContractForUpdate(id);
+        if (contractRepository.existsByContractNumberIgnoreCaseAndIdNot(
+                request.contractNumber().trim(),
+                id
+        )) {
+            throw new BadHttpException("Contract number already exists");
+        }
         Users actor = currentUser.getCurrentUser();
         requireContractAction(
                 contract,
@@ -335,7 +410,7 @@ public class ContractServiceImpl implements ContractService {
             throw new BadHttpException("Contract transition information is required");
         }
 
-        Contracts contract = findContract(id);
+        Contracts contract = findContractForUpdate(id);
         Users actor = currentUser.getCurrentUser();
         ContractStatus currentStatus = readStatus(contract);
         ContractAction action = readAction(request.action());
@@ -370,29 +445,34 @@ public class ContractServiceImpl implements ContractService {
             requireText(request.comment(), "A cancellation or rejection reason is required");
         }
 
+        if (action == ContractAction.APPROVE_DIRECTOR) {
+            freezeApprovedPdf(contract, actor);
+        }
+
         Boolean signerAgeVerified = null;
         if (action == ContractAction.SIGN_DIRECTOR
                 || action == ContractAction.SIGN_PARTNER) {
             signerAgeVerified = validateSignerAge(actor.getDob());
 
             if (!signerAgeVerified) {
-                String ageFailureReason =
-                        "Signer must be at least " + MINIMUM_SIGNER_AGE + " years old";
-                applyStatus(
-                        contract,
-                        currentStatus,
-                        ContractStatus.CANCELLED,
-                        "AGE_VALIDATION_FAILED",
-                        actorName,
-                        actorRole,
-                        combineComments(ageFailureReason, request.comment()),
-                        false
+                throw new BadHttpException(
+                        "Signer must be at least " + MINIMUM_SIGNER_AGE + " years old"
                 );
-                return toResponse(contractRepository.save(contract));
             }
+            contractSignatureService.recordSignature(
+                    contract,
+                    null,
+                    actor,
+                    request.electronicSignatureId(),
+                    action.name(),
+                    requireApprovedPdf(contract),
+                    request.digitalSignature()
+            );
         }
 
-        ContractStatus targetStatus = resolveTargetStatus(action);
+        ContractStatus targetStatus = action == ContractAction.SIGN_PARTNER
+                ? resolveCompletedWorkflowStatus(contract)
+                : resolveTargetStatus(action);
         applyStatus(
                 contract,
                 currentStatus,
@@ -422,11 +502,34 @@ public class ContractServiceImpl implements ContractService {
                 ContractProjectActions.EXPORT,
                 actor
         );
+        ContractStatus status = readStatus(contract);
+        boolean completed = status == ContractStatus.PENDING_EFFECTIVE
+                || status == ContractStatus.ACTIVE
+                || status == ContractStatus.ENDED;
+        if (!completed && contract.getApprovedPdfContent() == null) {
+            throw new BadHttpException(
+                    "PDF export is available after CEO approval generates the document"
+            );
+        }
+
+        if (!completed) {
+            return new ContractPdfResponse(
+                    createApprovedPdfFileName(contract),
+                    requireApprovedPdf(contract)
+            );
+        }
 
         List<ContractStatusHistory> history = loadHistory(contract.getId());
+        List<Signature> signatures = signatureRepository
+                .findByContractIdOrderBySignedAtAsc(contract.getId());
         Map<String, String> attributeValues = readAttributeValues(contract.getId());
         ContractDocumentRenderer.RenderedDocument renderedDocument =
-                documentRenderer.render(contract, history, attributeValues);
+                documentRenderer.render(
+                        contract,
+                        history,
+                        attributeValues,
+                        signatures
+                );
 
         return new ContractPdfResponse(
                 createPdfFileName(contract),
@@ -434,10 +537,67 @@ public class ContractServiceImpl implements ContractService {
         );
     }
 
+    private void freezeApprovedPdf(Contracts contract, Users approvedBy) {
+        if (contract.getApprovedPdfContent() != null
+                && !isBlank(contract.getApprovedPdfHash())) {
+            byte[] existingPdf = requireApprovedPdf(contract);
+            if (contract.getApprovedPdfFile() == null) {
+                contract.setApprovedPdfFile(
+                        cloudinaryService.uploadPdfAndSave(
+                                existingPdf,
+                                createApprovedPdfFileName(contract),
+                                approvedBy
+                        )
+                );
+            }
+            return;
+        }
+        if (!signatureRepository.findByContractIdOrderBySignedAtAsc(
+                contract.getId()
+        ).isEmpty()) {
+            throw new BadHttpException(
+                    "The approved PDF must be generated before any signature"
+            );
+        }
+
+        Map<String, String> attributeValues = readAttributeValues(contract.getId());
+        ContractDocumentRenderer.RenderedDocument renderedDocument =
+                documentRenderer.render(
+                        contract,
+                        loadHistory(contract.getId()),
+                        attributeValues,
+                        List.of()
+                );
+        byte[] pdfContent = pdfGenerator.generate(contract, renderedDocument);
+        contract.setApprovedPdfContent(pdfContent);
+        contract.setApprovedPdfHash(
+                contractSignatureService.calculatePdfHash(pdfContent)
+        );
+        contract.setApprovedPdfFile(cloudinaryService.uploadPdfAndSave(
+                pdfContent,
+                createApprovedPdfFileName(contract),
+                approvedBy
+        ));
+        contract.setApprovedPdfGeneratedAt(LocalDateTime.now());
+        contract.setApprovedPdfGeneratedBy(approvedBy);
+    }
+
+    private byte[] requireApprovedPdf(Contracts contract) {
+        byte[] content = contract.getApprovedPdfContent();
+        String storedHash = contract.getApprovedPdfHash();
+        String actualHash = contractSignatureService.calculatePdfHash(content);
+        if (isBlank(storedHash) || !actualHash.equalsIgnoreCase(storedHash)) {
+            throw new BadHttpException(
+                    "The CEO-approved PDF failed its SHA-256 integrity check"
+            );
+        }
+        return content;
+    }
+
     @Override
     @Transactional
     public void deleteContract(UUID id) {
-        Contracts contract = findContract(id);
+        Contracts contract = findContractForUpdate(id);
         requireContractAction(
                 contract,
                 ContractProjectActions.DELETE,
@@ -531,11 +691,13 @@ public class ContractServiceImpl implements ContractService {
                     "COMPLETE_STEP is only available for configurable workflows"
             );
             case SUBMIT -> ContractProjectActions.SUBMIT;
-            case APPROVE_INTERNAL -> ContractProjectActions.APPROVE;
+            case APPROVE_INTERNAL, APPROVE_DIRECTOR ->
+                    ContractProjectActions.APPROVE;
             case SIGN_DIRECTOR, SIGN_PARTNER -> ContractProjectActions.SIGN;
             case CANCEL -> ContractProjectActions.CANCEL;
-            case REJECT -> currentStatus
+            case REJECT -> (currentStatus
                     == ContractStatus.PENDING_INTERNAL_APPROVAL
+                    || currentStatus == ContractStatus.PENDING_DIRECTOR_APPROVAL)
                     ? ContractProjectActions.APPROVE
                     : ContractProjectActions.SIGN;
         };
@@ -779,6 +941,13 @@ public class ContractServiceImpl implements ContractService {
                 .orElseThrow(() -> new BadHttpException(
                         "The contract has no pending workflow step"
                 ));
+        if (request.workflowStepId() == null
+                || !currentStep.getId().equals(request.workflowStepId())) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "The workflow step has already changed; reload the contract before continuing"
+            );
+        }
         requireCurrentAssignee(currentStep, actor);
         requireCurrentWorkflowPermissions(contract, currentStep, actor);
 
@@ -808,22 +977,23 @@ public class ContractServiceImpl implements ContractService {
         if (currentStep.getActionType().requiresSignature()) {
             signerAgeVerified = validateSignerAge(actor.getDob());
             if (!signerAgeVerified) {
-                String reason = "Signer must be at least "
-                        + MINIMUM_SIGNER_AGE + " years old";
-                rejectWorkflowStep(currentStep, reason);
-                cancelUnfinishedWorkflowSteps(contract, reason);
-                applyStatus(
-                        contract,
-                        currentStatus,
-                        ContractStatus.CANCELLED,
-                        "AGE_VALIDATION_FAILED",
-                        getUserDisplayName(actor),
-                        primaryRoleCode(actor),
-                        combineComments(reason, request.comment()),
-                        false
+                throw new BadHttpException(
+                        "Signer must be at least " + MINIMUM_SIGNER_AGE + " years old"
                 );
-                return toResponse(contract);
             }
+            contractSignatureService.recordSignature(
+                    contract,
+                    currentStep,
+                    actor,
+                    request.electronicSignatureId(),
+                    currentStep.getRequiredRoleCode(),
+                    requireApprovedPdf(contract),
+                    request.digitalSignature()
+            );
+        }
+
+        if (currentStep.getActionType().generatesApprovedPdf()) {
+            freezeApprovedPdf(contract, actor);
         }
 
         LocalDateTime now = LocalDateTime.now();
@@ -839,7 +1009,7 @@ public class ContractServiceImpl implements ContractService {
                         == ContractWorkflowStepState.WAITING)
                 .findFirst()
                 .orElse(null);
-        ContractStatus targetStatus = ContractStatus.ACTIVE;
+        ContractStatus targetStatus = resolveCompletedWorkflowStatus(contract);
         if (nextStep != null) {
             nextStep.setStatus(ContractWorkflowStepState.PENDING);
             nextStep.setActivatedAt(now);
@@ -857,7 +1027,7 @@ public class ContractServiceImpl implements ContractService {
                         currentStep.getActionType()
                 ),
                 getUserDisplayName(actor),
-                primaryRoleCode(actor),
+                currentStep.getRequiredRoleCode(),
                 normalizeToNull(request.comment()),
                 signerAgeVerified
         );
@@ -1065,12 +1235,15 @@ public class ContractServiceImpl implements ContractService {
             case SUBMIT -> currentStatus == ContractStatus.NEW;
             case APPROVE_INTERNAL ->
                     currentStatus == ContractStatus.PENDING_INTERNAL_APPROVAL;
+            case APPROVE_DIRECTOR ->
+                    currentStatus == ContractStatus.PENDING_DIRECTOR_APPROVAL;
             case SIGN_DIRECTOR ->
                     currentStatus == ContractStatus.PENDING_DIRECTOR_SIGNATURE;
             case SIGN_PARTNER ->
                     currentStatus == ContractStatus.PENDING_PARTNER_SIGNATURE;
             case CANCEL -> !currentStatus.isTerminal();
             case REJECT -> currentStatus == ContractStatus.PENDING_INTERNAL_APPROVAL
+                    || currentStatus == ContractStatus.PENDING_DIRECTOR_APPROVAL
                     || currentStatus == ContractStatus.PENDING_DIRECTOR_SIGNATURE
                     || currentStatus == ContractStatus.PENDING_PARTNER_SIGNATURE;
         };
@@ -1096,7 +1269,10 @@ public class ContractServiceImpl implements ContractService {
         Set<String> allowedRoles = switch (action) {
             case COMPLETE_STEP -> Set.of();
             case SUBMIT -> Set.of("EMPLOYEE", "MANAGER", "CEO", "DIRECTOR");
-            case APPROVE_INTERNAL -> Set.of("MANAGER");
+            case APPROVE_INTERNAL -> Set.of(
+                    "MANAGER", "HEAD_OF_DEPARTMENT", "ACCOUNTANT"
+            );
+            case APPROVE_DIRECTOR -> Set.of("CEO", "DIRECTOR");
             case SIGN_DIRECTOR -> Set.of("CEO", "DIRECTOR");
             case SIGN_PARTNER -> Set.of("PARTNER", "EXTERNAL", "EXTERNAL_PARTNER");
             case REJECT -> rolesForCurrentStage(currentStatus);
@@ -1113,7 +1289,10 @@ public class ContractServiceImpl implements ContractService {
 
     private Set<String> rolesForCurrentStage(ContractStatus status) {
         return switch (status) {
-            case PENDING_INTERNAL_APPROVAL -> Set.of("MANAGER");
+            case PENDING_INTERNAL_APPROVAL -> Set.of(
+                    "MANAGER", "HEAD_OF_DEPARTMENT", "ACCOUNTANT"
+            );
+            case PENDING_DIRECTOR_APPROVAL -> Set.of("CEO", "DIRECTOR");
             case PENDING_DIRECTOR_SIGNATURE -> Set.of("CEO", "DIRECTOR");
             case PENDING_PARTNER_SIGNATURE ->
                     Set.of("PARTNER", "EXTERNAL", "EXTERNAL_PARTNER");
@@ -1125,11 +1304,12 @@ public class ContractServiceImpl implements ContractService {
         return switch (status) {
             case NEW -> Set.of("EMPLOYEE", "MANAGER", "CEO", "DIRECTOR");
             case PENDING_INTERNAL_APPROVAL -> Set.of("MANAGER", "CEO", "DIRECTOR");
+            case PENDING_DIRECTOR_APPROVAL -> Set.of("CEO", "DIRECTOR");
             case PENDING_DIRECTOR_SIGNATURE -> Set.of("CEO", "DIRECTOR");
             case PENDING_PARTNER_SIGNATURE ->
                     Set.of("CEO", "DIRECTOR", "PARTNER", "EXTERNAL", "EXTERNAL_PARTNER");
             case PENDING_APPROVAL, PENDING_SIGNATURE -> Set.of();
-            case ACTIVE ->
+            case PENDING_EFFECTIVE, ACTIVE ->
                     Set.of("CEO", "DIRECTOR", "PARTNER", "EXTERNAL_PARTNER");
             case ENDED, CANCELLED -> Set.of();
         };
@@ -1165,7 +1345,8 @@ public class ContractServiceImpl implements ContractService {
                     "COMPLETE_STEP is only available for configurable workflows"
             );
             case SUBMIT -> ContractStatus.PENDING_INTERNAL_APPROVAL;
-            case APPROVE_INTERNAL -> ContractStatus.PENDING_DIRECTOR_SIGNATURE;
+            case APPROVE_INTERNAL -> ContractStatus.PENDING_DIRECTOR_APPROVAL;
+            case APPROVE_DIRECTOR -> ContractStatus.PENDING_DIRECTOR_SIGNATURE;
             case SIGN_DIRECTOR -> ContractStatus.PENDING_PARTNER_SIGNATURE;
             case SIGN_PARTNER -> ContractStatus.ACTIVE;
             case CANCEL, REJECT -> ContractStatus.CANCELLED;
@@ -1184,9 +1365,9 @@ public class ContractServiceImpl implements ContractService {
     }
 
     private TimelineTask resolveTask(UUID taskId, Projects project) {
-//        if (taskId == null) {
-//            throw new BadHttpException("A project task is required");
-//        }
+        if (taskId == null) {
+            throw new BadHttpException("A project task is required");
+        }
 
         TimelineTask task = phaseTaskRepository.findById(taskId)
                 .orElseThrow(() -> new NotFoundException(
@@ -1226,30 +1407,10 @@ public class ContractServiceImpl implements ContractService {
 
     private boolean userHasRole(Users user, String requiredRoleCode) {
         String required = normalizeRoleOrEmpty(requiredRoleCode);
-        if (required.isEmpty()) {
+        if (required.isEmpty() || user == null) {
             return false;
         }
-
-        if (required.equals(normalizeRoleOrEmpty(user.getUserRoles().stream()
-                .map(UserRole::getRole)
-                .filter(java.util.Objects::nonNull)
-                .map(Role::getRoleCode)
-                .filter(java.util.Objects::nonNull)
-                .findFirst()
-                .orElse(null)))) {
-            return true;
-        }
-        if (user.getUserRoles() == null) {
-            return false;
-        }
-        return user.getUserRoles().stream()
-                .map(UserRole::getRole)
-                .filter(java.util.Objects::nonNull)
-                .anyMatch(role -> required.equals(
-                        normalizeRoleOrEmpty(role.getRoleCode())
-                ) || required.equals(
-                        normalizeRoleOrEmpty(role.getRoleName())
-                ));
+        return roleCodes(user).contains(required);
     }
 
     private String primaryRoleCode(Users user) {
@@ -1257,37 +1418,26 @@ public class ContractServiceImpl implements ContractService {
         if (!assignedRole.isEmpty()) {
             return assignedRole;
         }
-        String legacyRole = normalizeRoleOrEmpty(user.getUserRoles().stream()
-                .map(UserRole::getRole)
-                .filter(java.util.Objects::nonNull)
-                .map(Role::getRoleCode)
-                .filter(java.util.Objects::nonNull)
-                .findFirst()
-                .orElse(null));
-        return legacyRole.isEmpty() ? "UNKNOWN" : legacyRole;
+        return "UNKNOWN";
     }
 
     private List<String> roleCodes(Users user) {
         LinkedHashSet<String> codes = new LinkedHashSet<>();
         if (user != null && user.getUserRoles() != null) {
             user.getUserRoles().stream()
+                    .filter(java.util.Objects::nonNull)
                     .map(UserRole::getRole)
                     .filter(java.util.Objects::nonNull)
-                    .map(role -> normalizeRoleOrEmpty(role.getRoleCode()))
-                    .filter(value -> !value.isEmpty())
-                    .forEach(codes::add);
-        }
-        if (user != null) {
-            String legacyRole = normalizeRoleOrEmpty(user.getUserRoles().stream()
-                    .map(UserRole::getRole)
-                    .filter(java.util.Objects::nonNull)
-                    .map(Role::getRoleCode)
-                    .filter(java.util.Objects::nonNull)
-                    .findFirst()
-                    .orElse(null));
-            if (!legacyRole.isEmpty()) {
-                codes.add(legacyRole);
-            }
+                    .forEach(role -> {
+                        String code = normalizeRoleOrEmpty(role.getRoleCode());
+                        String name = normalizeRoleOrEmpty(role.getRoleName());
+                        if (!code.isEmpty()) {
+                            codes.add(code);
+                        }
+                        if (!name.isEmpty()) {
+                            codes.add(name);
+                        }
+                    });
         }
         return List.copyOf(codes);
     }
@@ -1567,6 +1717,10 @@ public class ContractServiceImpl implements ContractService {
                     "Expiration date must be on or after the effective date"
             );
         }
+
+        if (isBlank(request.contractContent())) {
+            throw new BadHttpException("Contract content is required");
+        }
     }
 
     private Contracts findContract(UUID id) {
@@ -1574,6 +1728,26 @@ public class ContractServiceImpl implements ContractService {
                 .orElseThrow(() -> new NotFoundException(
                         "Contract not found with id: " + id
                 ));
+    }
+
+    private Contracts findContractForUpdate(UUID id) {
+        return contractRepository.findByIdForUpdate(id)
+                .orElseThrow(() -> new NotFoundException(
+                        "Contract not found with id: " + id
+                ));
+    }
+
+    private ContractStatus resolveCompletedWorkflowStatus(Contracts contract) {
+        LocalDate today = LocalDate.now();
+        if (contract.getExpirationDate() != null
+                && contract.getExpirationDate().isBefore(today)) {
+            return ContractStatus.ENDED;
+        }
+        if (contract.getEffectiveDate() != null
+                && contract.getEffectiveDate().isAfter(today)) {
+            return ContractStatus.PENDING_EFFECTIVE;
+        }
+        return ContractStatus.ACTIVE;
     }
 
     private void requireStatus(
@@ -1629,6 +1803,31 @@ public class ContractServiceImpl implements ContractService {
     }
 
     private ContractResponse toResponse(Contracts contract) {
+        return toResponse(contract, true, null, null, null);
+    }
+
+    private ContractResponse toListResponse(
+            Contracts contract,
+            Users responseUser,
+            Map<UUID, ProjectAccessResponse> projectAccessCache,
+            List<ContractWorkflowStepInstance> workflowSteps
+    ) {
+        return toResponse(
+                contract,
+                false,
+                responseUser,
+                projectAccessCache,
+                workflowSteps
+        );
+    }
+
+    private ContractResponse toResponse(
+            Contracts contract,
+            boolean includeDocumentDetails,
+            Users responseUser,
+            Map<UUID, ProjectAccessResponse> projectAccessCache,
+            List<ContractWorkflowStepInstance> prefetchedWorkflowSteps
+    ) {
         Projects project = contract.getProject();
         TimelineTask task = contract.getTimelineTask();
         Timeline phase = task == null ? null : task.getTimeline();
@@ -1637,17 +1836,42 @@ public class ContractServiceImpl implements ContractService {
         ContractTemplateVersions version = contract.getContractTemplateVersion();
         Contracts previousContract = contract.getPreviousContract();
         ContractStatus status = readStatus(contract);
-        List<ContractStatusHistory> historyEntities = loadHistory(contract.getId());
+        List<ContractStatusHistory> historyEntities = includeDocumentDetails
+                ? loadHistory(contract.getId())
+                : List.of();
         List<ContractStatusHistoryResponse> history = historyEntities.stream()
                 .map(this::toHistoryResponse)
                 .toList();
-        Map<String, String> attributeValues = readAttributeValues(contract.getId());
+        Map<String, String> attributeValues = includeDocumentDetails
+                ? readAttributeValues(contract.getId())
+                : Map.of();
+        List<Signature> signatures = includeDocumentDetails
+                ? signatureRepository.findByContractIdOrderBySignedAtAsc(
+                        contract.getId()
+                )
+                : List.of();
         ContractDocumentRenderer.RenderedDocument renderedDocument =
-                documentRenderer.render(contract, historyEntities, attributeValues);
-        boolean pdfAvailable = contract.getId() != null;
-        Users user = currentUser.getCurrentUser();
-        ProjectAccessResponse projectAccess = permissionAccessService
-                .getCurrentUserAccess(project.getId());
+                includeDocumentDetails
+                        ? documentRenderer.render(
+                                contract,
+                                historyEntities,
+                                attributeValues,
+                                signatures
+                        )
+                        : null;
+        boolean pdfAvailable = contract.getApprovedPdfContent() != null
+                || status == ContractStatus.PENDING_EFFECTIVE
+                || status == ContractStatus.ACTIVE
+                || status == ContractStatus.ENDED;
+        Users user = responseUser == null
+                ? currentUser.getCurrentUser()
+                : responseUser;
+        ProjectAccessResponse projectAccess = projectAccessCache == null
+                ? permissionAccessService.getCurrentUserAccess(project.getId())
+                : projectAccessCache.computeIfAbsent(
+                        project.getId(),
+                        permissionAccessService::getCurrentUserAccess
+                );
         ContractAccessResponse contractAccess = new ContractAccessResponse(
                 projectAccess.projectId(),
                 projectAccess.currentUserId(),
@@ -1663,7 +1887,8 @@ public class ContractServiceImpl implements ContractService {
                 toWorkflowRuntimeResponse(
                         contract,
                         user,
-                        projectAccess
+                        projectAccess,
+                        prefetchedWorkflowSteps
                 );
 
         return new ContractResponse(
@@ -1689,15 +1914,20 @@ public class ContractServiceImpl implements ContractService {
                 contract.getExpirationDate(),
                 contract.getContractCreateBy(),
                 contract.getContractCreatedAt(),
-                contract.getContractContent(),
-                renderedDocument.content(),
-                contract.getContractLayoutJson(),
+                includeDocumentDetails ? contract.getContractContent() : null,
+                renderedDocument == null ? null : renderedDocument.content(),
+                includeDocumentDetails ? contract.getContractLayoutJson() : null,
                 attributeValues,
-                renderedDocument.directorSignerName(),
-                renderedDocument.directorSignedAt(),
-                renderedDocument.partnerSignerName(),
-                renderedDocument.partnerSignedAt(),
+                renderedDocument == null ? null : renderedDocument.directorSignerName(),
+                renderedDocument == null ? null : renderedDocument.directorSignedAt(),
+                renderedDocument == null ? null : renderedDocument.partnerSignerName(),
+                renderedDocument == null ? null : renderedDocument.partnerSignedAt(),
                 pdfAvailable,
+                contract.getApprovedPdfHash(),
+                contract.getApprovedPdfFile() == null
+                        ? null
+                        : contract.getApprovedPdfFile().getFilePath(),
+                contract.getApprovedPdfGeneratedAt(),
                 contract.getContractStatusUpdatedAt(),
                 contract.getContractEndedAt(),
                 contract.getContractCancellationReason(),
@@ -1712,15 +1942,19 @@ public class ContractServiceImpl implements ContractService {
     private ContractWorkflowRuntimeResponse toWorkflowRuntimeResponse(
             Contracts contract,
             Users currentUser,
-            ProjectAccessResponse projectAccess
+            ProjectAccessResponse projectAccess,
+            List<ContractWorkflowStepInstance> prefetchedInstances
     ) {
         ContractTypeWorkflow workflow = contract.getWorkflowVersion();
         if (workflow == null || contract.getId() == null) {
             return null;
         }
 
-        List<ContractWorkflowStepInstance> instances = workflowStepRepository
-                .findByContractIdOrderByStepOrderAsc(contract.getId());
+        List<ContractWorkflowStepInstance> instances = prefetchedInstances == null
+                ? workflowStepRepository.findByContractIdOrderByStepOrderAsc(
+                        contract.getId()
+                )
+                : prefetchedInstances;
         ContractWorkflowStepInstance currentStep = instances.stream()
                 .filter(step -> step.getStatus()
                         == ContractWorkflowStepState.PENDING)
@@ -1838,6 +2072,12 @@ public class ContractServiceImpl implements ContractService {
         return "contract-" + safeNumber + ".pdf";
     }
 
+    private String createApprovedPdfFileName(Contracts contract) {
+        String fileName = createPdfFileName(contract);
+        return fileName.substring(0, fileName.length() - 4)
+                + "-approved.pdf";
+    }
+
     private ContractStatusHistoryResponse toHistoryResponse(
             ContractStatusHistory history
     ) {
@@ -1859,11 +2099,22 @@ public class ContractServiceImpl implements ContractService {
     }
 
     private String normalizeRoleOrEmpty(String value) {
-        return isBlank(value)
-                ? ""
-                : value.trim().toUpperCase(Locale.ROOT)
+        if (isBlank(value)) {
+            return "";
+        }
+        String normalized = value.trim().toUpperCase(Locale.ROOT)
                 .replace('-', '_')
                 .replace(' ', '_');
+        String compact = normalized.replace("_", "");
+        return switch (compact) {
+            case "ADMIN", "ADMINISTRATOR" -> "ADMIN";
+            case "MANAGER", "HEADOFDEPARTMENT", "DEPARTMENTHEAD" ->
+                    "HEAD_OF_DEPARTMENT";
+            case "PARTNER", "EXTERNAL", "EXTERNALPARTNER",
+                    "EXTERNALPARTNERS", "EXTERNALPARNER", "EXTERNALPARNERS" ->
+                    "EXTERNAL_PARTNER";
+            default -> normalized;
+        };
     }
 
     private boolean isContractOwner(Contracts contract, Users user) {

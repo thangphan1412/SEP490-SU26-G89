@@ -4,6 +4,8 @@ import com.fpt.backend.entity.Contracts;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.EntityGraph;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -13,9 +15,23 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
+import java.util.Optional;
+
+import jakarta.persistence.LockModeType;
 
 @Repository
 public interface ContractRepository extends JpaRepository<Contracts, UUID> {
+    boolean existsByContractNumberIgnoreCase(String contractNumber);
+
+    boolean existsByContractNumberIgnoreCaseAndIdNot(
+            String contractNumber,
+            UUID id
+    );
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT contract FROM Contracts contract WHERE contract.id = :id")
+    Optional<Contracts> findByIdForUpdate(@Param("id") UUID id);
+
     long countByContractTypeId(UUID contractTypeId);
 
     long countByContractTemplateId(UUID contractTemplateId);
@@ -58,6 +74,17 @@ public interface ContractRepository extends JpaRepository<Contracts, UUID> {
                 OR LOWER(COALESCE(contract.contractStatus, '')) = :status
             )
             """)
+    @EntityGraph(attributePaths = {
+            "project",
+            "contractType",
+            "contractTemplate",
+            "contractTemplateVersion",
+            "timelineTask",
+            "timelineTask.timeline",
+            "workflowVersion",
+            "previousContract",
+            "contractCreatedByUser"
+    })
     Page<Contracts> searchAccessibleContracts(
             @Param("projectIds") List<UUID> projectIds,
             @Param("fullScopeProjectIds") List<UUID> fullScopeProjectIds,
@@ -98,6 +125,38 @@ public interface ContractRepository extends JpaRepository<Contracts, UUID> {
             @Param("endedStatus") String endedStatus,
             @Param("today") LocalDate today,
             @Param("endedAt") LocalDateTime endedAt
+    );
+
+    @Query("""
+            SELECT contract.id
+            FROM Contracts contract
+            WHERE UPPER(COALESCE(contract.contractStatus, '')) = UPPER(:pendingStatus)
+                AND contract.effectiveDate IS NOT NULL
+                AND contract.effectiveDate <= :today
+            """)
+    List<UUID> findEffectivePendingContractIds(
+            @Param("pendingStatus") String pendingStatus,
+            @Param("today") LocalDate today
+    );
+
+    @Modifying(flushAutomatically = true)
+    @Query("""
+            UPDATE Contracts contract
+            SET contract.contractStatus = :activeStatus,
+                contract.contractStatusUpdatedAt = :activatedAt,
+                contract.contractEndedAt = NULL,
+                contract.contractCancellationReason = NULL
+            WHERE contract.id = :contractId
+                AND UPPER(COALESCE(contract.contractStatus, '')) = UPPER(:pendingStatus)
+                AND contract.effectiveDate IS NOT NULL
+                AND contract.effectiveDate <= :today
+            """)
+    int markEffectiveContractActive(
+            @Param("contractId") UUID contractId,
+            @Param("pendingStatus") String pendingStatus,
+            @Param("activeStatus") String activeStatus,
+            @Param("today") LocalDate today,
+            @Param("activatedAt") LocalDateTime activatedAt
     );
 
 

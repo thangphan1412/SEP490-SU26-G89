@@ -12,6 +12,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 
@@ -27,7 +28,7 @@ public class CloudinaryService {
             throw new BadHttpException("File is required");
         }
 
-        Map uploadResult = uploadToCloudinary(file);
+        Map<?, ?> uploadResult = uploadToCloudinary(file);
 
         String secureUrl = (String) uploadResult.get("secure_url");
         String publicId = (String) uploadResult.get("public_id");
@@ -46,7 +47,55 @@ public class CloudinaryService {
         return fileStorageRepository.save(fileStorage);
     }
 
-    private Map uploadToCloudinary(MultipartFile file) {
+    public FileStorage uploadPdfAndSave(
+            byte[] pdfContent,
+            String originalName,
+            Users user
+    ) {
+        requirePdf(pdfContent);
+        String normalizedName = normalizePdfName(originalName);
+        String publicId = normalizedName.substring(
+                0,
+                normalizedName.length() - 4
+        ) + "-" + UUID.randomUUID() + ".pdf";
+
+        try {
+            Map<?, ?> uploadResult = cloudinary.uploader().upload(
+                    pdfContent,
+                    ObjectUtils.asMap(
+                            "folder", "contracts/approved",
+                            "public_id", publicId,
+                            "resource_type", "raw",
+                            "overwrite", false
+                    )
+            );
+            String secureUrl = requireUploadValue(
+                    uploadResult,
+                    "secure_url"
+            );
+            String cloudinaryPublicId = requireUploadValue(
+                    uploadResult,
+                    "public_id"
+            );
+
+            return fileStorageRepository.save(FileStorage.builder()
+                    .originalName(normalizedName)
+                    .fileName(cloudinaryPublicId)
+                    .filePath(secureUrl)
+                    .mimeType("application/pdf")
+                    .fileSize((long) pdfContent.length)
+                    .uploadAt(LocalDateTime.now())
+                    .user(user)
+                    .isDeleted(false)
+                    .build());
+        } catch (IOException exception) {
+            throw new BadHttpException(
+                    "Failed to upload the approved contract PDF"
+            );
+        }
+    }
+
+    private Map<?, ?> uploadToCloudinary(MultipartFile file) {
         try {
             return cloudinary.uploader().upload(
                     file.getBytes(),
@@ -58,5 +107,40 @@ public class CloudinaryService {
         } catch (IOException e) {
             throw new BadHttpException("Failed to upload file: " + e.getMessage());
         }
+    }
+
+    private void requirePdf(byte[] content) {
+        if (content == null
+                || content.length < 5
+                || content[0] != '%'
+                || content[1] != 'P'
+                || content[2] != 'D'
+                || content[3] != 'F'
+                || content[4] != '-') {
+            throw new BadHttpException("A valid PDF file is required");
+        }
+    }
+
+    private String normalizePdfName(String originalName) {
+        String value = originalName == null ? "contract.pdf" : originalName;
+        value = value.trim().replaceAll("[^a-zA-Z0-9._-]", "-");
+        value = value.replaceAll("-+", "-");
+        if (value.isBlank() || value.equals(".pdf")) {
+            value = "contract.pdf";
+        }
+        if (!value.toLowerCase(Locale.ROOT).endsWith(".pdf")) {
+            value += ".pdf";
+        }
+        return value;
+    }
+
+    private String requireUploadValue(Map<?, ?> uploadResult, String key) {
+        Object value = uploadResult.get(key);
+        if (!(value instanceof String text) || text.isBlank()) {
+            throw new BadHttpException(
+                    "Cloudinary did not return " + key + " for the uploaded file"
+            );
+        }
+        return text;
     }
 }

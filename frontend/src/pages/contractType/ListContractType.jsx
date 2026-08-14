@@ -59,19 +59,25 @@ function createDefaultWorkflowSteps() {
             stepOrder: 2,
             stepName: "Internal approval",
             actionType: "APPROVE",
-            requiredRoleCode: "MANAGER",
+            requiredRoleCode: "HEAD_OF_DEPARTMENT",
         }),
         createWorkflowStep({
             stepOrder: 3,
-            stepName: "Company signature",
-            actionType: "SIGN",
-            requiredRoleCode: "DIRECTOR",
+            stepName: "CEO approval and PDF generation",
+            actionType: "APPROVE_AND_GENERATE_PDF",
+            requiredRoleCode: "CEO",
         }),
         createWorkflowStep({
             stepOrder: 4,
+            stepName: "Company signature",
+            actionType: "SIGN",
+            requiredRoleCode: "CEO",
+        }),
+        createWorkflowStep({
+            stepOrder: 5,
             stepName: "Counterparty signature",
             actionType: "SIGN",
-            requiredRoleCode: "PARTNER",
+            requiredRoleCode: "EXTERNAL_PARTNER",
         }),
     ];
 }
@@ -97,7 +103,12 @@ function ListContractType() {
     const [submitting, setSubmitting] = useState(false);
     const [deletingId, setDeletingId] = useState(null);
     const [workflowOptions, setWorkflowOptions] = useState({
-        actionTypes: ["CREATE", "APPROVE", "SIGN", "APPROVE_AND_SIGN"],
+        actionTypes: [
+            "CREATE",
+            "APPROVE",
+            "APPROVE_AND_GENERATE_PDF",
+            "SIGN",
+        ],
         roles: [],
     });
 
@@ -121,7 +132,12 @@ function ListContractType() {
                     setWorkflowOptions({
                         actionTypes: Array.isArray(workflowPayload?.actionTypes)
                             ? workflowPayload.actionTypes
-                            : ["CREATE", "APPROVE", "SIGN", "APPROVE_AND_SIGN"],
+                            : [
+                                "CREATE",
+                                "APPROVE",
+                                "APPROVE_AND_GENERATE_PDF",
+                                "SIGN",
+                            ],
                         roles: Array.isArray(workflowPayload?.roles)
                             ? workflowPayload.roles
                             : [],
@@ -331,6 +347,22 @@ function ListContractType() {
             (step) => !step.stepName.trim() || !step.requiredRoleCode
         )) {
             setModalError("Every workflow step needs a name and a role.");
+            return;
+        }
+
+        const pdfApprovalIndex = form.workflowSteps.findIndex((step) =>
+            ["APPROVE_AND_GENERATE_PDF", "APPROVE_AND_SIGN"]
+                .includes(step.actionType)
+        );
+        const firstSignatureIndex = form.workflowSteps.findIndex(
+            (step) => step.actionType === "SIGN"
+        );
+        if (firstSignatureIndex >= 0
+            && (pdfApprovalIndex < 0
+                || pdfApprovalIndex >= firstSignatureIndex)) {
+            setModalError(
+                "Add a CEO PDF approval step before the first signature step."
+            );
             return;
         }
 

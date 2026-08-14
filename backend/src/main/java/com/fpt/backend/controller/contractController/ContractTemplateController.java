@@ -10,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.CacheControl;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -54,6 +55,7 @@ public class ContractTemplateController {
     }
 
     @PostMapping
+    @PreAuthorize("hasAnyAuthority('CEO', 'Administrator', 'ADMIN')")
     public ResponseEntity<BaseResponse<ContractTemplateResponse>> createContractTemplate(
             @RequestBody ContractTemplateRequest request
     ) {
@@ -65,6 +67,7 @@ public class ContractTemplateController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('CEO', 'Administrator', 'ADMIN')")
     public ResponseEntity<BaseResponse<ContractTemplateResponse>> updateContractTemplate(
             @PathVariable UUID id,
             @RequestBody ContractTemplateRequest request
@@ -75,6 +78,7 @@ public class ContractTemplateController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('CEO', 'Administrator', 'ADMIN')")
     public ResponseEntity<BaseResponse<Void>> deleteContractTemplate(
             @PathVariable UUID id
     ) {
@@ -87,6 +91,7 @@ public class ContractTemplateController {
     }
 
     @PostMapping("/{id}/versions")
+    @PreAuthorize("hasAnyAuthority('CEO', 'Administrator', 'ADMIN')")
     public ResponseEntity<BaseResponse<ContractTemplateVersionResponse>>
             createContractTemplateVersion(
                     @PathVariable UUID id,

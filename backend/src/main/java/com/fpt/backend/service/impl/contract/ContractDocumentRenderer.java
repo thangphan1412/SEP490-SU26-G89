@@ -2,6 +2,8 @@ package com.fpt.backend.service.impl.contract;
 
 import com.fpt.backend.entity.ContractStatusHistory;
 import com.fpt.backend.entity.Contracts;
+import com.fpt.backend.entity.Signature;
+import com.fpt.backend.enums.SignatureStatus;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
@@ -32,8 +34,42 @@ public class ContractDocumentRenderer {
             List<ContractStatusHistory> history,
             Map<String, String> attributeValues
     ) {
-        SignatureInformation director = findSignature(history, "SIGN_DIRECTOR");
-        SignatureInformation partner = findSignature(history, "SIGN_PARTNER");
+        return render(contract, history, attributeValues, List.of());
+    }
+
+    public RenderedDocument render(
+            Contracts contract,
+            List<ContractStatusHistory> history,
+            Map<String, String> attributeValues,
+            List<Signature> signatures
+    ) {
+        List<SignatureInformation> persistedSignatures = findPersistedSignatures(
+                signatures
+        );
+        SignatureInformation director = findByRole(
+                persistedSignatures,
+                "DIRECTOR", "CEO", "INTERNAL"
+        );
+        SignatureInformation partner = findByRole(
+                persistedSignatures,
+                "PARTNER", "EXTERNAL"
+        );
+        if (director == null && !persistedSignatures.isEmpty()) {
+            director = persistedSignatures.getFirst();
+        }
+        if (partner == null) {
+            SignatureInformation selectedDirector = director;
+            partner = persistedSignatures.stream()
+                    .filter(signature -> signature != selectedDirector)
+                    .findFirst()
+                    .orElse(null);
+        }
+        if (director == null) {
+            director = findSignature(history, "SIGN_DIRECTOR");
+        }
+        if (partner == null) {
+            partner = findSignature(history, "SIGN_PARTNER");
+        }
         List<SignatureInformation> workflowSignatures = findWorkflowSignatures(
                 history
         );
@@ -55,9 +91,63 @@ public class ContractDocumentRenderer {
                 replacePlaceholders(contract.getContractContent(), values),
                 director == null ? null : director.actorName(),
                 director == null ? null : director.signedAt(),
+                director == null ? null : director.imagePath(),
+                director == null ? null : director.documentHash(),
                 partner == null ? null : partner.actorName(),
-                partner == null ? null : partner.signedAt()
+                partner == null ? null : partner.signedAt(),
+                partner == null ? null : partner.imagePath(),
+                partner == null ? null : partner.documentHash(),
+                Map.copyOf(values)
         );
+    }
+
+    private List<SignatureInformation> findPersistedSignatures(
+            List<Signature> signatures
+    ) {
+        if (signatures == null) {
+            return List.of();
+        }
+        return signatures.stream()
+                .filter(signature -> signature.getStatus() == SignatureStatus.SIGNED)
+                .filter(signature -> signature.getSignedBy() != null)
+                .map(signature -> new SignatureInformation(
+                        userDisplayName(signature),
+                        signature.getSignedAt(),
+                        signature.getSignerRole(),
+                        signature.getFileStorage() == null
+                                ? null
+                                : signature.getFileStorage().getFilePath(),
+                        signature.getDocumentHash()
+                ))
+                .toList();
+    }
+
+    private SignatureInformation findByRole(
+            List<SignatureInformation> signatures,
+            String... roleParts
+    ) {
+        return signatures.stream()
+                .filter(signature -> {
+                    String role = normalizeKey(signature.signerRole());
+                    return java.util.Arrays.stream(roleParts)
+                            .map(this::normalizeKey)
+                            .anyMatch(role::contains);
+                })
+                .findFirst()
+                .orElse(null);
+    }
+
+    private String userDisplayName(Signature signature) {
+        String firstName = signature.getSignedBy().getFirstName() == null
+                ? ""
+                : signature.getSignedBy().getFirstName().trim();
+        String lastName = signature.getSignedBy().getLastName() == null
+                ? ""
+                : signature.getSignedBy().getLastName().trim();
+        String fullName = (firstName + " " + lastName).trim();
+        return fullName.isBlank()
+                ? signature.getSignedBy().getEmail()
+                : fullName;
     }
 
     private Map<String, String> createPlaceholderValues(
@@ -78,6 +168,7 @@ public class ContractDocumentRenderer {
         values.put("contract_title", displayValue(contract.getContractTitle()));
         values.put("effective_date", formatDate(contract.getEffectiveDate()));
         values.put("expiration_date", formatDate(contract.getExpirationDate()));
+        values.put("contract_date", formatContractDate(contract));
         values.put(
                 "project_name",
                 contract.getProject() == null
@@ -131,7 +222,10 @@ public class ContractDocumentRenderer {
                         && !item.getActorName().isBlank())
                 .map(item -> new SignatureInformation(
                         item.getActorName().trim(),
-                        item.getChangedAt()
+                        item.getChangedAt(),
+                        null,
+                        null,
+                        null
                 ))
                 .findFirst()
                 .orElse(null);
@@ -145,10 +239,7 @@ public class ContractDocumentRenderer {
         }
 
         return history.stream()
-                .filter(item -> "SIGN".equalsIgnoreCase(item.getAction())
-                        || "APPROVE_AND_SIGN".equalsIgnoreCase(
-                        item.getAction()
-                ))
+                .filter(item -> "SIGN".equalsIgnoreCase(item.getAction()))
                 .filter(item -> Boolean.TRUE.equals(
                         item.getSignerAgeVerified()
                 ))
@@ -159,7 +250,10 @@ public class ContractDocumentRenderer {
                 ))
                 .map(item -> new SignatureInformation(
                         item.getActorName().trim(),
-                        item.getChangedAt()
+                        item.getChangedAt(),
+                        null,
+                        null,
+                        null
                 ))
                 .toList();
     }
@@ -211,6 +305,15 @@ public class ContractDocumentRenderer {
         return value == null ? "Chưa cập nhật" : DATE_TIME_FORMATTER.format(value);
     }
 
+    private String formatContractDate(Contracts contract) {
+        LocalDate date = contract.getContractCreatedAt() == null
+                ? LocalDate.now()
+                : contract.getContractCreatedAt().toLocalDate();
+        return "ngày " + date.getDayOfMonth()
+                + " tháng " + date.getMonthValue()
+                + " năm " + date.getYear();
+    }
+
     private String displayValue(String value) {
         return value == null || value.isBlank() ? "Chưa cập nhật" : value.trim();
     }
@@ -221,7 +324,10 @@ public class ContractDocumentRenderer {
 
     private record SignatureInformation(
             String actorName,
-            LocalDateTime signedAt
+            LocalDateTime signedAt,
+            String signerRole,
+            String imagePath,
+            String documentHash
     ) {
     }
 
@@ -229,8 +335,13 @@ public class ContractDocumentRenderer {
             String content,
             String directorSignerName,
             LocalDateTime directorSignedAt,
+            String directorSignatureImagePath,
+            String directorDocumentHash,
             String partnerSignerName,
-            LocalDateTime partnerSignedAt
+            LocalDateTime partnerSignedAt,
+            String partnerSignatureImagePath,
+            String partnerDocumentHash,
+            Map<String, String> placeholderValues
     ) {
         public boolean fullySigned() {
             return directorSignerName != null && partnerSignerName != null;

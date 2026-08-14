@@ -19,10 +19,10 @@ public class UserKeys extends BaseEntity{
     private long keySize;
     @Column(name = "create_at")
     private LocalDateTime createAt;
-    @Column(name = "public_key")
+    @Column(name = "public_key", columnDefinition = "nvarchar(max)")
     private String publicKey;
-    @Column(name = "private_key")
-    private String privateKey;
+    @Column(name = "key_fingerprint", length = 64)
+    private String keyFingerprint;
     @Column(name = "key_algorithm")
     @Enumerated(EnumType.STRING)
     private KeyAlgorithm keyAlgorithm;
@@ -34,4 +34,6 @@ public class UserKeys extends BaseEntity{
     //signature
     @OneToMany(mappedBy = "userKey")
     private List<Signature> signatures;
+    @OneToMany(mappedBy = "userKey")
+    private List<ElectronicSignatures> electronicSignatures;
 }

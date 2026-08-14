@@ -40,4 +40,10 @@ public class ElectronicSignatures extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
     private Users user;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(
+            name = "user_key_id",
+            foreignKey = @ForeignKey(name = "FK_electronic_signature_user_key")
+    )
+    private UserKeys userKey;
 }

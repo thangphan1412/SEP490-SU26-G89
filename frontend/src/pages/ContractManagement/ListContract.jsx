@@ -14,7 +14,9 @@ import {
 import contractApi from "../../services/contractService/contractApi.js";
 import contractTypeApi from "../../services/contractTypeService/contractTypeApi.js";
 import contractTemplateApi from "../../services/contractTemplateService/contractTemplateApi.js";
+import electronicSignatureService from "../../services/signatureService/electronicSignatureService.js";
 import ContractForm from "./ContractForm.jsx";
+import { signApprovedContractPdf } from "./contractCrypto.js";
 import { splitContractPages } from "./contractPageUtils.js";
 import {
     CONTRACT_STATUS,
@@ -89,11 +91,111 @@ function ListContract() {
     const [transitionContract, setTransitionContract] = useState(null);
     const [transitionForm, setTransitionForm] = useState({
         comment: "",
+        electronicSignatureId: "",
+        privateKey: "",
+        digitalSignature: "",
     });
+    const [electronicSignatures, setElectronicSignatures] = useState([]);
+    const [loadingSignatures, setLoadingSignatures] = useState(false);
+    const [signingPdfUrl, setSigningPdfUrl] = useState("");
+    const [signingPdfError, setSigningPdfError] = useState("");
+    const [loadingSigningPdf, setLoadingSigningPdf] = useState(false);
     const [transitionError, setTransitionError] = useState("");
     const [transitioning, setTransitioning] = useState(false);
     const [reloadKey, setReloadKey] = useState(0);
     const currentActor = getCurrentContractActor();
+
+    useEffect(() => {
+        const details = getContractActionDetails(
+            transitionAction,
+            transitionContract
+        );
+        if (!details.requiresElectronicSignature) {
+            return undefined;
+        }
+
+        let active = true;
+        electronicSignatureService.getAllElectronicSignature()
+            .then((response) => {
+                if (!active) {
+                    return;
+                }
+                const items = unwrapApiResponse(response);
+                const available = (Array.isArray(items) ? items : [])
+                    .filter((signature) => signature.status === "ACTIVE");
+                setElectronicSignatures(available);
+                setTransitionForm((current) => ({
+                    ...current,
+                    electronicSignatureId: current.electronicSignatureId
+                        || available.find((signature) => signature.default)?.id
+                        || available[0]?.id
+                        || "",
+                }));
+            })
+            .catch((error) => {
+                if (active) {
+                    setElectronicSignatures([]);
+                    setTransitionError(getApiErrorMessage(
+                        error,
+                        "Unable to load your electronic signatures."
+                    ));
+                }
+            })
+            .finally(() => {
+                if (active) {
+                    setLoadingSignatures(false);
+                }
+            });
+
+        return () => {
+            active = false;
+        };
+    }, [transitionAction, transitionContract]);
+
+    useEffect(() => {
+        const details = getContractActionDetails(
+            transitionAction,
+            transitionContract
+        );
+        if (!details.requiresElectronicSignature || !transitionContract?.id) {
+            return undefined;
+        }
+
+        let active = true;
+        let objectUrl = "";
+
+        contractApi.exportContractPdf(transitionContract.id)
+            .then((response) => {
+                if (!active) {
+                    return;
+                }
+                const pdfBlob = response.data instanceof Blob
+                    ? response.data
+                    : new Blob([response.data], { type: "application/pdf" });
+                objectUrl = URL.createObjectURL(pdfBlob);
+                setSigningPdfUrl(objectUrl);
+            })
+            .catch((error) => {
+                if (active) {
+                    setSigningPdfError(getApiErrorMessage(
+                        error,
+                        "Unable to load the CEO-approved PDF."
+                    ));
+                }
+            })
+            .finally(() => {
+                if (active) {
+                    setLoadingSigningPdf(false);
+                }
+            });
+
+        return () => {
+            active = false;
+            if (objectUrl) {
+                URL.revokeObjectURL(objectUrl);
+            }
+        };
+    }, [transitionAction, transitionContract]);
 
     useEffect(function () {
         if (!requestedContractId) {
@@ -294,13 +396,21 @@ function ListContract() {
         setModalMode("create");
     };
 
-    const openViewModal = (contract) => {
-        setSelectedContract(contract);
-        setModalError("");
-        setModalMode("view");
+    const openViewModal = async (contract) => {
+        try {
+            const response = await contractApi.getContractById(contract.id);
+            setSelectedContract(unwrapApiResponse(response));
+            setModalError("");
+            setModalMode("view");
+        } catch (error) {
+            setErrorMessage(getApiErrorMessage(
+                error,
+                "Unable to load the selected contract."
+            ));
+        }
     };
 
-    const openEditModal = (contract) => {
+    const openEditModal = async (contract) => {
         if (!canManageNewContract(
             contract,
             CONTRACT_PROJECT_ACTION.EDIT
@@ -311,12 +421,24 @@ function ListContract() {
             return;
         }
 
-        setSelectedContract(contract);
-        setContractForm(mapContractToForm(contract));
-        setProjectContext(null);
-        setLoadingProjectContext(false);
-        setModalError("");
-        setModalMode("edit");
+        try {
+            const detailedContract = contract.contractContent != null
+                ? contract
+                : unwrapApiResponse(
+                    await contractApi.getContractById(contract.id)
+                );
+            setSelectedContract(detailedContract);
+            setContractForm(mapContractToForm(detailedContract));
+            setProjectContext(null);
+            setLoadingProjectContext(false);
+            setModalError("");
+            setModalMode("edit");
+        } catch (error) {
+            setErrorMessage(getApiErrorMessage(
+                error,
+                "Unable to load the contract for editing."
+            ));
+        }
     };
 
     const openReplacementModal = (contract) => {
@@ -343,9 +465,23 @@ function ListContract() {
     };
 
     const openTransitionModal = (contract, action) => {
+        const isSigning = Boolean(
+            getContractActionDetails(action, contract)
+                .requiresElectronicSignature
+        );
+        setElectronicSignatures([]);
+        setLoadingSignatures(isSigning);
+        setSigningPdfUrl("");
+        setSigningPdfError("");
+        setLoadingSigningPdf(isSigning);
         setTransitionContract(contract);
         setTransitionAction(action);
-        setTransitionForm({ comment: "" });
+        setTransitionForm({
+            comment: "",
+            electronicSignatureId: "",
+            privateKey: "",
+            digitalSignature: "",
+        });
         setTransitionError("");
         setSelectedContract(null);
         setModalMode(null);
@@ -360,6 +496,9 @@ function ListContract() {
         setTransitionAction(null);
         setTransitionContract(null);
         setTransitionError("");
+        setSigningPdfUrl("");
+        setSigningPdfError("");
+        setLoadingSigningPdf(false);
 
         if (contract) {
             setSelectedContract(contract);
@@ -561,6 +700,32 @@ function ListContract() {
         }
     };
 
+    const handlePrivateKeyFileChange = async (event) => {
+        const file = event.target.files?.[0];
+        if (!file) {
+            return;
+        }
+        try {
+            const privateKey = await file.text();
+            if (!privateKey.includes("-----BEGIN PRIVATE KEY-----")) {
+                throw new Error("The selected file is not a PKCS#8 private key.");
+            }
+            setTransitionForm((current) => ({
+                ...current,
+                privateKey: privateKey.trim(),
+                digitalSignature: "",
+            }));
+            setTransitionError("");
+        } catch (error) {
+            setTransitionError(getApiErrorMessage(
+                error,
+                "Unable to read the RSA private key file."
+            ));
+        } finally {
+            event.target.value = "";
+        }
+    };
+
     const handleTransition = async (event) => {
         event.preventDefault();
 
@@ -583,14 +748,65 @@ function ListContract() {
             setTransitionError("A reason is required for this action.");
             return;
         }
+        if (actionDetails.requiresElectronicSignature
+            && !transitionForm.electronicSignatureId) {
+            setTransitionError(
+                "Select an active electronic signature before signing."
+            );
+            return;
+        }
+        if (actionDetails.requiresDigitalKey
+            && !transitionForm.privateKey.trim()) {
+            setTransitionError(
+                "Provide the RSA private key downloaded when the electronic signature was created."
+            );
+            return;
+        }
+        const selectedElectronicSignature = electronicSignatures.find(
+            (signature) => signature.id
+                === transitionForm.electronicSignatureId
+        );
+        if (actionDetails.requiresDigitalKey
+            && !selectedElectronicSignature?.publicKey) {
+            setTransitionError(
+                "This electronic signature has no registered RSA key. Open Signature Management and register one first."
+            );
+            return;
+        }
 
         setTransitioning(true);
         setTransitionError("");
 
         try {
+            let signedTransitionForm = transitionForm;
+            if (actionDetails.requiresDigitalKey) {
+                const pdfResponse = await contractApi.exportContractPdf(
+                    transitionContract.id
+                );
+                const pdfBlob = pdfResponse.data instanceof Blob
+                    ? pdfResponse.data
+                    : new Blob(
+                        [pdfResponse.data],
+                        { type: "application/pdf" }
+                    );
+                const cryptoProof = await signApprovedContractPdf(
+                    await pdfBlob.arrayBuffer(),
+                    transitionForm.privateKey,
+                    selectedElectronicSignature.publicKey
+                );
+                signedTransitionForm = {
+                    ...transitionForm,
+                    ...cryptoProof,
+                };
+            }
+
             const response = await contractApi.transitionContract(
                 transitionContract.id,
-                toTransitionRequest(transitionAction, transitionForm)
+                toTransitionRequest(
+                    transitionAction,
+                    signedTransitionForm,
+                    transitionContract
+                )
             );
             const updatedContract = unwrapApiResponse(response);
 
@@ -973,6 +1189,11 @@ function ListContract() {
                 action={transitionAction}
                 contract={transitionContract}
                 form={transitionForm}
+                electronicSignatures={electronicSignatures}
+                loadingSignatures={loadingSignatures}
+                signingPdfUrl={signingPdfUrl}
+                signingPdfError={signingPdfError}
+                loadingSigningPdf={loadingSigningPdf}
                 error={transitionError}
                 submitting={transitioning}
                 onChange={(event) => {
@@ -982,6 +1203,7 @@ function ListContract() {
                         [name]: value,
                     }));
                 }}
+                onPrivateKeyFileChange={handlePrivateKeyFileChange}
                 onClose={closeTransitionModal}
                 onSubmit={handleTransition}
             />
@@ -1271,6 +1493,29 @@ function ContractDetails({
                     value={formatContractDateTime(contract.partnerSignedAt)}
                 />
                 <DetailItem
+                    label="CEO-approved PDF SHA-256"
+                    value={contract.approvedPdfHash || "Not generated"}
+                    full
+                />
+                <DetailItem
+                    label="PDF Generated At"
+                    value={formatContractDateTime(
+                        contract.approvedPdfGeneratedAt
+                    )}
+                />
+                <DetailItem
+                    label="Cloudinary PDF"
+                    value={contract.approvedPdfUrl ? (
+                        <a
+                            href={contract.approvedPdfUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                        >
+                            Open approved PDF
+                        </a>
+                    ) : "Not uploaded"}
+                />
+                <DetailItem
                     label="Status Updated At"
                     value={formatContractDateTime(
                         contract.contractStatusUpdatedAt
@@ -1338,8 +1583,10 @@ function ContractDetails({
 const CONTRACT_WORKFLOW_STEPS = [
     CONTRACT_STATUS.NEW,
     CONTRACT_STATUS.PENDING_INTERNAL_APPROVAL,
+    CONTRACT_STATUS.PENDING_DIRECTOR_APPROVAL,
     CONTRACT_STATUS.PENDING_DIRECTOR_SIGNATURE,
     CONTRACT_STATUS.PENDING_PARTNER_SIGNATURE,
+    CONTRACT_STATUS.PENDING_EFFECTIVE,
     CONTRACT_STATUS.ACTIVE,
     CONTRACT_STATUS.ENDED,
 ];
@@ -1511,9 +1758,15 @@ function ContractTransitionModal({
     action,
     contract,
     form,
+    electronicSignatures,
+    loadingSignatures,
+    signingPdfUrl,
+    signingPdfError,
+    loadingSigningPdf,
     error,
     submitting,
     onChange,
+    onPrivateKeyFileChange,
     onClose,
     onSubmit,
 }) {
@@ -1522,64 +1775,288 @@ function ContractTransitionModal({
     }
 
     const details = getContractActionDetails(action, contract);
+    const selectedSignature = electronicSignatures.find(
+        (signature) => signature.id === form.electronicSignatureId
+    );
+    const isSigning = Boolean(details.requiresElectronicSignature);
+    const requiredRole = String(
+        contract.workflowRuntime?.currentStepRequiredRoleCode || ""
+    ).toUpperCase();
+    const signatureSide = requiredRole.includes("PARTNER")
+        || requiredRole.includes("EXTERNAL")
+        ? "partner"
+        : "company";
 
     return (
         <Modal
             show
             onHide={onClose}
             centered
+            size={isSigning ? "xl" : undefined}
+            dialogClassName={isSigning ? "contract-signing-dialog" : undefined}
             backdrop={submitting ? "static" : true}
-            className="contract-modal"
+            className={`contract-modal${
+                isSigning ? " contract-signing-modal" : ""
+            }`}
         >
-            <form onSubmit={onSubmit}>
+            <form onSubmit={onSubmit} className="contract-transition-form">
                 <Modal.Header closeButton>
                     <Modal.Title>{details.label}</Modal.Title>
                 </Modal.Header>
                 <Modal.Body>
                     {error && <Alert variant="danger">{error}</Alert>}
+                    <div className={
+                        isSigning ? "contract-signing-layout" : undefined
+                    }>
+                        <section className="contract-signing-controls">
+                            <div className="contract-transition-summary">
+                                <strong>{contract.contractNumber}</strong>
+                                <span>{contract.contractTitle}</span>
+                                <small>
+                                    {formatContractStatus(contract.contractStatus)}
+                                </small>
+                            </div>
 
-                    <div className="contract-transition-summary">
-                        <strong>{contract.contractNumber}</strong>
-                        <span>{contract.contractTitle}</span>
-                        <small>
-                            {formatContractStatus(contract.contractStatus)}
-                        </small>
+                            <p className="contract-transition-description">
+                                {details.description}
+                            </p>
+
+                            {details.verifiesAccountDateOfBirth && (
+                                <Alert variant="warning">
+                                    The signer must be at least 18 years old. Date
+                                    of birth is verified automatically from the
+                                    signed-in user account. An invalid signing
+                                    attempt is rejected without changing the
+                                    contract status.
+                                </Alert>
+                            )}
+
+                            {details.requiresElectronicSignature && (
+                                <div className="contract-signature-picker">
+                                    <label
+                                        htmlFor="electronicSignatureId"
+                                        className="contract-form-label"
+                                    >
+                                        Electronic signature
+                                    </label>
+                                    <select
+                                        id="electronicSignatureId"
+                                        name="electronicSignatureId"
+                                        className="form-select"
+                                        value={form.electronicSignatureId}
+                                        onChange={onChange}
+                                        disabled={submitting || loadingSignatures}
+                                        required
+                                    >
+                                        <option value="">
+                                            {loadingSignatures
+                                                ? "Loading signatures..."
+                                                : "Select an active signature"}
+                                        </option>
+                                        {electronicSignatures.map((signature) => (
+                                            <option
+                                                key={signature.id}
+                                                value={signature.id}
+                                            >
+                                                {signature.signatureName}
+                                                {signature.default
+                                                    ? " (Default)"
+                                                    : ""}
+                                            </option>
+                                        ))}
+                                    </select>
+                                    {!loadingSignatures
+                                        && electronicSignatures.length === 0 && (
+                                        <Alert
+                                            variant="warning"
+                                            className="mt-2 mb-0"
+                                        >
+                                            You do not have an active electronic
+                                            signature. Create or activate one in
+                                            Signature Management before signing.
+                                        </Alert>
+                                    )}
+                                    {selectedSignature?.imageUrl && (
+                                        <div className="contract-signature-preview">
+                                            <img
+                                                src={selectedSignature.imageUrl}
+                                                alt={selectedSignature.signatureName}
+                                            />
+                                            <div>
+                                                <strong>
+                                                    {selectedSignature.signatureName}
+                                                </strong>
+                                                <small>
+                                                    The image is shown on the PDF;
+                                                    the RSA proof protects its
+                                                    SHA-256 content.
+                                                </small>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {details.requiresDigitalKey && (
+                                <div className="contract-signing-keys">
+                                    <div className="contract-signing-key-header">
+                                        <div>
+                                            <strong>Registered RSA-2048 key</strong>
+                                            <small>
+                                                The server verifies with the public
+                                                key registered for this signature.
+                                            </small>
+                                        </div>
+                                    </div>
+
+                                    {selectedSignature
+                                        && !selectedSignature.publicKey && (
+                                        <Alert variant="warning">
+                                            This is a legacy signature without an
+                                            RSA key. Register a key in Signature
+                                            Management before using it.
+                                        </Alert>
+                                    )}
+
+                                    <label
+                                        htmlFor="privateKey"
+                                        className="contract-form-label"
+                                    >
+                                        Private / secret key (PKCS#8 PEM)
+                                    </label>
+                                    <textarea
+                                        id="privateKey"
+                                        name="privateKey"
+                                        className="form-control contract-key-input contract-private-key-input"
+                                        value={form.privateKey}
+                                        onChange={onChange}
+                                        disabled={submitting}
+                                        placeholder="-----BEGIN PRIVATE KEY-----"
+                                        autoComplete="off"
+                                        spellCheck="false"
+                                        required
+                                    />
+                                    <input
+                                        type="file"
+                                        className="form-control mt-2"
+                                        accept=".pem,.key,text/plain"
+                                        onChange={onPrivateKeyFileChange}
+                                        disabled={submitting}
+                                        aria-label="Load private key file"
+                                    />
+                                    {form.privateKey && (
+                                        <details className="contract-private-key-reveal">
+                                            <summary>Show private key</summary>
+                                            <pre>{form.privateKey}</pre>
+                                        </details>
+                                    )}
+
+                                    <label
+                                        htmlFor="publicKey"
+                                        className="contract-form-label mt-3"
+                                    >
+                                        Public key (X.509/SPKI PEM)
+                                    </label>
+                                    <textarea
+                                        id="publicKey"
+                                        className="form-control contract-key-input"
+                                        value={selectedSignature?.publicKey || ""}
+                                        placeholder="Select an RSA-enabled signature"
+                                        spellCheck="false"
+                                        readOnly
+                                    />
+                                    {selectedSignature?.publicKeyFingerprint && (
+                                        <small className="contract-key-fingerprint">
+                                            Fingerprint: {
+                                                selectedSignature
+                                                    .publicKeyFingerprint
+                                            }
+                                        </small>
+                                    )}
+                                </div>
+                            )}
+
+                            <label
+                                htmlFor="transitionComment"
+                                className="contract-form-label mt-3"
+                            >
+                                {details.requiresComment
+                                    ? "Reason / Required corrections"
+                                    : "Workflow note (optional)"}
+                            </label>
+                            <textarea
+                                id="transitionComment"
+                                name="comment"
+                                className="form-control contract-transition-comment"
+                                value={form.comment}
+                                onChange={onChange}
+                                placeholder={
+                                    details.requiresComment
+                                        ? "Explain the reason and clauses that must be corrected..."
+                                        : "Add a note to the status history..."
+                                }
+                                required={Boolean(details.requiresComment)}
+                            />
+                        </section>
+
+                        {isSigning && (
+                            <aside className="contract-signing-pdf-panel">
+                                <div className="contract-signing-pdf-header">
+                                    <div>
+                                        <strong>CEO-approved PDF</strong>
+                                        <small>
+                                            SHA-256: {contract.approvedPdfHash
+                                                || "Checking..."}
+                                        </small>
+                                    </div>
+                                    <span>Signature preview</span>
+                                </div>
+
+                                <div className="contract-signing-pdf-viewer">
+                                    {loadingSigningPdf && (
+                                        <div className="contract-signing-pdf-state">
+                                            <Spinner animation="border" />
+                                            <span>Loading approved PDF...</span>
+                                        </div>
+                                    )}
+                                    {signingPdfError && (
+                                        <Alert variant="danger" className="m-3">
+                                            {signingPdfError}
+                                        </Alert>
+                                    )}
+                                    {!loadingSigningPdf
+                                        && !signingPdfError
+                                        && signingPdfUrl && (
+                                        <>
+                                            <iframe
+                                                title="CEO-approved contract PDF"
+                                                src={`${signingPdfUrl}#toolbar=0&navpanes=0&view=FitH`}
+                                            />
+                                            {selectedSignature?.imageUrl && (
+                                                <div className={
+                                                    `contract-pdf-signature-stamp ${
+                                                        signatureSide
+                                                    }`
+                                                }>
+                                                    <span>Preview</span>
+                                                    <img
+                                                        src={selectedSignature.imageUrl}
+                                                        alt={
+                                                            selectedSignature
+                                                                .signatureName
+                                                        }
+                                                    />
+                                                    <small>
+                                                        {selectedSignature.signatureName}
+                                                    </small>
+                                                </div>
+                                            )}
+                                        </>
+                                    )}
+                                </div>
+                            </aside>
+                        )}
                     </div>
-
-                    <p className="contract-transition-description">
-                        {details.description}
-                    </p>
-
-                    {details.verifiesAccountDateOfBirth && (
-                        <Alert variant="warning">
-                            The signer must be at least 18 years old. Date of
-                            birth is verified automatically from the signed-in
-                            user account. If the signer is under 18, this
-                            contract will automatically become CANCELLED.
-                        </Alert>
-                    )}
-
-                    <label
-                        htmlFor="transitionComment"
-                        className="contract-form-label mt-3"
-                    >
-                        {details.requiresComment
-                            ? "Reason / Required corrections"
-                            : "Workflow note (optional)"}
-                    </label>
-                    <textarea
-                        id="transitionComment"
-                        name="comment"
-                        className="form-control contract-transition-comment"
-                        value={form.comment}
-                        onChange={onChange}
-                        placeholder={
-                            details.requiresComment
-                                ? "Explain the reason and clauses that must be corrected..."
-                                : "Add a note to the status history..."
-                        }
-                        required={Boolean(details.requiresComment)}
-                    />
                 </Modal.Body>
                 <Modal.Footer>
                     <Button
@@ -1592,7 +2069,10 @@ function ContractTransitionModal({
                     <Button
                         type="submit"
                         variant={details.tone}
-                        disabled={submitting}
+                        disabled={
+                            submitting
+                            || (isSigning && !selectedSignature?.publicKey)
+                        }
                     >
                         {submitting && <Spinner animation="border" size="sm" />}
                         {submitting ? "Processing..." : details.label}

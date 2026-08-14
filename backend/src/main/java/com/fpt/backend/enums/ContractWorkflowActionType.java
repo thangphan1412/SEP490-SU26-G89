@@ -6,10 +6,16 @@ public enum ContractWorkflowActionType {
     CREATE,
     APPROVE,
     SIGN,
+    APPROVE_AND_GENERATE_PDF,
     APPROVE_AND_SIGN;
 
     public boolean requiresSignature() {
-        return this == SIGN || this == APPROVE_AND_SIGN;
+        return this == SIGN;
+    }
+
+    public boolean generatesApprovedPdf() {
+        return this == APPROVE_AND_GENERATE_PDF
+                || this == APPROVE_AND_SIGN;
     }
 
     public static ContractWorkflowActionType fromValue(String value) {

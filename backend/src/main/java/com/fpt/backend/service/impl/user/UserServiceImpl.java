@@ -21,7 +21,6 @@ import com.fpt.backend.repository.department.DepartmentRepository;
 import com.fpt.backend.repository.role.RoleRepository;
 import com.fpt.backend.repository.user.UserRepository;
 import com.fpt.backend.repository.userRole.UserRoleRepository;
-import com.fpt.backend.service.impl.signature.UserKeyServiceImpl;
 import com.fpt.backend.service.interfaces.user.IUserService;
 import com.fpt.backend.util.CurrentUser;
 import com.fpt.backend.util.OTPGenerator;
@@ -60,8 +59,6 @@ public class UserServiceImpl implements IUserService {
     private RoleRepository roleRepository;
     @Autowired
     private UserRoleRepository userRoleRepository;
-    @Autowired
-    private UserKeyServiceImpl userKeyService;
     @Override
     public Boolean existsByEmail(String email) {
         return userRepository.existsByEmail(email);
@@ -209,7 +206,6 @@ public class UserServiceImpl implements IUserService {
 
 
         Users savedUser = userRepository.save(newUser);
-//        userKeyService.generateUserKey(savedUser);
         if (request.getRole() != null && !request.getRole().isEmpty()) {
             Role roleEntity = roleRepository.findByRoleName(request.getRole()).orElseThrow(() -> new RuntimeException("Role không tồn tại"));
             UserRole userRole = UserRole.builder().user(savedUser).role(roleEntity).build();

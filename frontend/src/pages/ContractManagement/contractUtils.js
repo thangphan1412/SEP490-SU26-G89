@@ -5,8 +5,10 @@ export const CONTRACT_STATUS = Object.freeze({
     PENDING_APPROVAL: "PENDING_APPROVAL",
     PENDING_SIGNATURE: "PENDING_SIGNATURE",
     PENDING_INTERNAL_APPROVAL: "PENDING_INTERNAL_APPROVAL",
+    PENDING_DIRECTOR_APPROVAL: "PENDING_DIRECTOR_APPROVAL",
     PENDING_DIRECTOR_SIGNATURE: "PENDING_DIRECTOR_SIGNATURE",
     PENDING_PARTNER_SIGNATURE: "PENDING_PARTNER_SIGNATURE",
+    PENDING_EFFECTIVE: "PENDING_EFFECTIVE",
     ACTIVE: "ACTIVE",
     ENDED: "ENDED",
     CANCELLED: "CANCELLED",
@@ -18,6 +20,7 @@ export const CONTRACT_ACTION = Object.freeze({
     COMPLETE_STEP: "COMPLETE_STEP",
     SUBMIT: "SUBMIT",
     APPROVE_INTERNAL: "APPROVE_INTERNAL",
+    APPROVE_DIRECTOR: "APPROVE_DIRECTOR",
     SIGN_DIRECTOR: "SIGN_DIRECTOR",
     SIGN_PARTNER: "SIGN_PARTNER",
     CANCEL: "CANCEL",
@@ -52,17 +55,26 @@ const ACTION_DETAILS = Object.freeze({
         description: "Complete internal approval and send the contract to the director.",
         tone: "primary",
     },
+    [CONTRACT_ACTION.APPROVE_DIRECTOR]: {
+        label: "CEO approve & generate PDF",
+        description: "Approve the contract and freeze an unsigned PDF with its SHA-256 hash. Signing remains a separate step.",
+        tone: "primary",
+    },
     [CONTRACT_ACTION.SIGN_DIRECTOR]: {
         label: "Director sign",
         description: "Verify the director's account age and confirm the director signature.",
         tone: "primary",
         verifiesAccountDateOfBirth: true,
+        requiresElectronicSignature: true,
+        requiresDigitalKey: true,
     },
     [CONTRACT_ACTION.SIGN_PARTNER]: {
         label: "Partner sign",
         description: "Verify the partner's account age and activate the signed contract.",
         tone: "primary",
         verifiesAccountDateOfBirth: true,
+        requiresElectronicSignature: true,
+        requiresDigitalKey: true,
     },
     [CONTRACT_ACTION.CANCEL]: {
         label: "Cancel contract",
@@ -327,7 +339,11 @@ export function canExportContractPdf(contract) {
     const status = normalizeContractStatus(contract?.contractStatus);
 
     const completed = Boolean(contract?.pdfAvailable)
-        || [CONTRACT_STATUS.ACTIVE, CONTRACT_STATUS.ENDED].includes(status);
+        || [
+            CONTRACT_STATUS.PENDING_EFFECTIVE,
+            CONTRACT_STATUS.ACTIVE,
+            CONTRACT_STATUS.ENDED,
+        ].includes(status);
 
     return completed && canUseContractProjectAction(
         contract,
@@ -344,11 +360,30 @@ export function formatContractStatus(status) {
 }
 
 export function normalizeContractRole(role) {
-    return String(role || "")
+    const normalized = String(role || "")
         .trim()
         .toUpperCase()
         .replaceAll("-", "_")
         .replaceAll(" ", "_");
+    const compact = normalized.replaceAll("_", "");
+
+    if (["ADMIN", "ADMINISTRATOR"].includes(compact)) {
+        return "ADMIN";
+    }
+    if (["MANAGER", "HEADOFDEPARTMENT", "DEPARTMENTHEAD"].includes(compact)) {
+        return "HEAD_OF_DEPARTMENT";
+    }
+    if ([
+        "PARTNER",
+        "EXTERNAL",
+        "EXTERNALPARTNER",
+        "EXTERNALPARTNERS",
+        "EXTERNALPARNER",
+        "EXTERNALPARNERS",
+    ].includes(compact)) {
+        return "EXTERNAL_PARTNER";
+    }
+    return normalized;
 }
 
 export function isContractEditable(contract) {
@@ -428,15 +463,20 @@ export function getContractActionDetails(action, contract = null) {
                 label: "Approve",
                 description: `Approve “${stepName}” and continue the workflow.`,
             },
+            APPROVE_AND_GENERATE_PDF: {
+                label: "CEO approve & generate PDF",
+                description: `Approve “${stepName}”, freeze the PDF and continue to the separate signing step.`,
+            },
             SIGN: {
                 label: "Sign contract",
                 description: `Sign at “${stepName}” and continue the workflow.`,
                 verifiesAccountDateOfBirth: true,
+                requiresElectronicSignature: true,
+                requiresDigitalKey: true,
             },
             APPROVE_AND_SIGN: {
-                label: "Approve and sign",
-                description: `Approve and sign at “${stepName}”, then continue the workflow.`,
-                verifiesAccountDateOfBirth: true,
+                label: "CEO approve & generate PDF",
+                description: `Approve “${stepName}”, freeze the PDF and continue to the separate signing step.`,
             },
         }[actionType] || {};
         return {
@@ -486,13 +526,33 @@ export function getAvailableContractActions(contract, role) {
 
     if (
         status === CONTRACT_STATUS.PENDING_INTERNAL_APPROVAL
-        && (isAdmin || normalizedRole === "MANAGER")
+        && (
+            isAdmin
+            || [
+                "MANAGER",
+                "HEAD_OF_DEPARTMENT",
+                "HEADOFDEPARTMENT",
+                "ACCOUNTANT",
+            ].includes(normalizedRole)
+        )
     ) {
         return canUseContractProjectAction(
             contract,
             CONTRACT_PROJECT_ACTION.APPROVE
         )
             ? [CONTRACT_ACTION.APPROVE_INTERNAL, CONTRACT_ACTION.REJECT]
+            : [];
+    }
+
+    if (
+        status === CONTRACT_STATUS.PENDING_DIRECTOR_APPROVAL
+        && (isAdmin || ["CEO", "DIRECTOR"].includes(normalizedRole))
+    ) {
+        return canUseContractProjectAction(
+            contract,
+            CONTRACT_PROJECT_ACTION.APPROVE
+        )
+            ? [CONTRACT_ACTION.APPROVE_DIRECTOR, CONTRACT_ACTION.REJECT]
             : [];
     }
 
@@ -524,7 +584,7 @@ export function getAvailableContractActions(contract, role) {
     }
 
     if (
-        status === CONTRACT_STATUS.ACTIVE
+        [CONTRACT_STATUS.PENDING_EFFECTIVE, CONTRACT_STATUS.ACTIVE].includes(status)
         && (
             isAdmin
             || ["CEO", "DIRECTOR", "PARTNER", "EXTERNAL_PARTNER"].includes(
@@ -557,6 +617,12 @@ export function getRoleContractTask(contract, role) {
         }
         const runtime = contract.workflowRuntime;
         if (!runtime.currentStepId) {
+            if (status === CONTRACT_STATUS.PENDING_EFFECTIVE) {
+                return {
+                    label: "Waiting for effective date",
+                    status: "WAITING",
+                };
+            }
             return status === CONTRACT_STATUS.ACTIVE
                 ? { label: "Monitor active contract", status: "IN_PROGRESS" }
                 : { label: "Workflow completed", status: "COMPLETED" };
@@ -586,16 +652,22 @@ export function getRoleContractTask(contract, role) {
     if (status === CONTRACT_STATUS.ENDED) {
         return { label: "Contract completed", status: "COMPLETED" };
     }
+    if (status === CONTRACT_STATUS.PENDING_EFFECTIVE) {
+        return { label: "Waiting for effective date", status: "WAITING" };
+    }
 
     if (actions.length > 0) {
         const actionTaskByStatus = {
             [CONTRACT_STATUS.NEW]: "Prepare and submit",
             [CONTRACT_STATUS.PENDING_INTERNAL_APPROVAL]:
                 "Internal review required",
+            [CONTRACT_STATUS.PENDING_DIRECTOR_APPROVAL]:
+                "CEO approval and PDF generation required",
             [CONTRACT_STATUS.PENDING_DIRECTOR_SIGNATURE]:
                 "Director signature required",
             [CONTRACT_STATUS.PENDING_PARTNER_SIGNATURE]:
                 "Partner signature required",
+            [CONTRACT_STATUS.PENDING_EFFECTIVE]: "Waiting for effective date",
             [CONTRACT_STATUS.ACTIVE]: "Monitor active contract",
         };
 
@@ -618,7 +690,12 @@ export function getRoleContractTask(contract, role) {
             : { label: "Creation task completed", status: "COMPLETED" };
     }
 
-    if (normalizedRole === "MANAGER") {
+    if ([
+        "MANAGER",
+        "HEAD_OF_DEPARTMENT",
+        "HEADOFDEPARTMENT",
+        "ACCOUNTANT",
+    ].includes(normalizedRole)) {
         if (status === CONTRACT_STATUS.NEW) {
             return { label: "Waiting for submission", status: "WAITING" };
         }
@@ -637,6 +714,14 @@ export function getRoleContractTask(contract, role) {
         ) {
             return { label: "Waiting for internal approval", status: "WAITING" };
         }
+        if (status === CONTRACT_STATUS.PENDING_DIRECTOR_APPROVAL) {
+            return actions.length > 0
+                ? {
+                    label: "Approve and generate PDF",
+                    status: "ACTION_REQUIRED",
+                }
+                : { label: "No approval permission", status: "READ_ONLY" };
+        }
         if (status === CONTRACT_STATUS.PENDING_DIRECTOR_SIGNATURE) {
             return actions.length > 0
                 ? { label: "Director signature required", status: "ACTION_REQUIRED" }
@@ -650,6 +735,7 @@ export function getRoleContractTask(contract, role) {
             [
                 CONTRACT_STATUS.NEW,
                 CONTRACT_STATUS.PENDING_INTERNAL_APPROVAL,
+                CONTRACT_STATUS.PENDING_DIRECTOR_APPROVAL,
                 CONTRACT_STATUS.PENDING_DIRECTOR_SIGNATURE,
             ].includes(status)
         ) {
@@ -666,7 +752,7 @@ export function getRoleContractTask(contract, role) {
     return { label: "Read only", status: "READ_ONLY" };
 }
 
-export function toTransitionRequest(action, form) {
+export function toTransitionRequest(action, form, contract = null) {
     const actor = getCurrentContractActor();
 
     return {
@@ -674,6 +760,9 @@ export function toTransitionRequest(action, form) {
         actorName: actor.actorName,
         actorRole: actor.actorRole,
         comment: form.comment.trim() || null,
+        workflowStepId: contract?.workflowRuntime?.currentStepId || null,
+        electronicSignatureId: form.electronicSignatureId || null,
+        digitalSignature: form.digitalSignature || null,
     };
 }
 
