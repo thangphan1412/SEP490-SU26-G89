@@ -1,0 +1,21 @@
+#@baseUrl = http://localhost:8080
+#@token = replace-with-valid-jwt
+#
+#### DB-01: Get dashboard overview
+#GET {{baseUrl}}/api/v1/dashboard/overview
+#Authorization: Bearer {{token}}
+#Accept: application/json
+#
+#### DB-02: Get statistical reports
+#GET {{baseUrl}}/api/v1/dashboard/statistical-reports
+#Authorization: Bearer {{token}}
+#Accept: application/json
+#
+#### DB-03: Get pending-signature dashboard
+#GET {{baseUrl}}/api/v1/dashboard/pending-signatures
+#Authorization: Bearer {{token}}
+#Accept: application/json
+#
+#### DB-04: Call with no token - expected 401/403
+#GET {{baseUrl}}/api/v1/dashboard/overview
+#Accept: application/json
