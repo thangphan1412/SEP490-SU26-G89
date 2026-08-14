@@ -44,7 +44,7 @@ public class AuthenticateController {
             Users users =  myUsersDetail.getUsers();
 
 //            // ==============================================================
-//            // --- 1. TẤM KHIÊN CHẶN TÀI KHOẢN BỊ KHÓA (INACTIVE) ---
+            // --- 1. TẤM KHIÊN CHẶN TÀI KHOẢN BỊ KHÓA (INACTIVE) ---
 //            if (!"ACTIVE".equalsIgnoreCase(users.getStatus().name())) {
 //                throw new RuntimeException("Tài khoản của bạn đã bị khóa hoặc chưa được kích hoạt. Vui lòng liên hệ Admin.");
 //            }
@@ -59,11 +59,11 @@ public class AuthenticateController {
 //                    throw new RuntimeException("Truy cập bị từ chối: Tài khoản của bạn sẽ được kích hoạt vào ngày " + users.getStartDate());
 //                }
 //            }
-//            // ==============================================================
-//
-//            // --- THÊM ĐÚNG 2 DÒNG NÀY VÀO ĐÂY NHÉ ---
-//            users.setLastActive(java.time.LocalDateTime.now());
-//            userServiceImpl.save(users); // Lưu thời gian đăng nhập xuống Database
+            // ==============================================================
+
+            // --- THÊM ĐÚNG 2 DÒNG NÀY VÀO ĐÂY NHÉ ---
+            users.setLastActive(java.time.LocalDateTime.now());
+            userServiceImpl.save(users); // Lưu thời gian đăng nhập xuống Database
 //            // ----------------------------------------
 
             var token  = jwtService.generateToken(myUsersDetail);
