@@ -24,76 +24,27 @@ public class DigitalSignatureVerificationService {
             UUID userId
     ) throws Exception {
 
-        // ========================================
-        // 1. Hash document again
-        // ========================================
+        MessageDigest digest = MessageDigest.getInstance("SHA-256");
 
-        MessageDigest digest =
-                MessageDigest.getInstance("SHA-256");
+        byte[] hash = digest.digest(document);
 
-        byte[] hash =
-                digest.digest(document);
-
-        BigInteger originalHash =
-                new BigInteger(
-                        1,
-                        hash
-                );
-
-        // ========================================
-        // 2. Get Public Key
-        // ========================================
-
-        UserKeys userKeys =
-                userKeysRepository
+        BigInteger originalHash = new BigInteger(1, hash);
+        UserKeys userKeys = userKeysRepository
                         .findByUserId(userId)
-                        .orElseThrow(() ->
-                                new IllegalArgumentException(
-                                        "User RSA key not found"
-                                )
-                        );
-
-        BigInteger[] publicKey =
-                RSAKeyConverter.decode(
-                        userKeys.getPublicKey()
-                );
-
-        BigInteger n =
-                publicKey[0];
-
-        BigInteger e =
-                publicKey[1];
-
-        // ========================================
+                        .orElseThrow(() -> new IllegalArgumentException("User RSA key not found"));
+        BigInteger[] publicKey = RSAKeyConverter.decode(userKeys.getPublicKey());
+        BigInteger n = publicKey[0];
+        BigInteger e = publicKey[1];
         // 3. Decode signature
-        // ========================================
-
         byte[] signatureBytes =
                 Base64.getDecoder()
                         .decode(signatureHash);
 
-        BigInteger signature =
-                new BigInteger(
-                        1,
-                        signatureBytes
-                );
-
-        // ========================================
+        BigInteger signature = new BigInteger(1, signatureBytes);
         // 4. RSA Verify
-        //
         // recoveredHash = signature^e mod n
-        // ========================================
-
-        BigInteger recoveredHash =
-                signature.modPow(
-                        e,
-                        n
-                );
-
-        // ========================================
+        BigInteger recoveredHash = signature.modPow(e, n);
         // 5. Compare
-        // ========================================
-
         return originalHash.equals(
                 recoveredHash
         );

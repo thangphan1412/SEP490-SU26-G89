@@ -33,6 +33,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -146,6 +147,7 @@ public class UserServiceImpl implements IUserService {
 
 //     3. Create User
     @Override
+    @Transactional
     public UserResponseDTO createUser(UserCreateRequestDTO request) {
         if (request.getPassword() == null || request.getPassword().isEmpty()) {
             throw new RuntimeException("Lỗi: Mật khẩu không được để trống!");
@@ -214,6 +216,10 @@ public class UserServiceImpl implements IUserService {
             Role roleEntity = roleRepository.findByRoleName(request.getRole()).orElseThrow(() -> new RuntimeException("Role không tồn tại"));
             UserRole userRole = UserRole.builder().user(savedUser).role(roleEntity).build();
             userRoleRepository.save(userRole);
+
+            if (canReceiveSigningPermission(roleEntity)) {
+                userKeyService.generateUserKey(savedUser);
+            }
         }
 
         if (Boolean.TRUE.equals(request.getSendWelcomeEmail())) {
@@ -224,6 +230,16 @@ public class UserServiceImpl implements IUserService {
             emailService.sendEmail(messageInfor);
         }
         return UserResponseDTO.fromEntity(savedUser);
+    }
+
+    private boolean canReceiveSigningPermission(Role role) {
+        String roleCode = role.getRoleCode() == null ? "" : role.getRoleCode();
+        String roleName = role.getRoleName() == null ? "" : role.getRoleName();
+        String normalized = (roleCode.isBlank() ? roleName : roleCode)
+                .replaceAll("[^A-Za-z]", "")
+                .toUpperCase();
+        return List.of("CEO", "HOD", "HEADOFDEPARTMENT", "EMPLOYEE", "EXTERNALPARTNERS", "EXTERNALPARNERS")
+                .contains(normalized);
     }
 
     // 4. Update User

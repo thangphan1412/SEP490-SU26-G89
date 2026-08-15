@@ -7,6 +7,7 @@ export const CONTRACT_STATUS = Object.freeze({
     PENDING_INTERNAL_APPROVAL: "PENDING_INTERNAL_APPROVAL",
     PENDING_DIRECTOR_SIGNATURE: "PENDING_DIRECTOR_SIGNATURE",
     PENDING_PARTNER_SIGNATURE: "PENDING_PARTNER_SIGNATURE",
+    SIGNED: "SIGNED",
     ACTIVE: "ACTIVE",
     ENDED: "ENDED",
     CANCELLED: "CANCELLED",
@@ -342,7 +343,7 @@ export function canExportContractPdf(contract) {
     const status = normalizeContractStatus(contract?.contractStatus);
 
     const completed = Boolean(contract?.pdfAvailable)
-        || [CONTRACT_STATUS.ACTIVE, CONTRACT_STATUS.ENDED].includes(status);
+        || [CONTRACT_STATUS.SIGNED, CONTRACT_STATUS.ACTIVE, CONTRACT_STATUS.ENDED].includes(status);
 
     return completed && canUseContractProjectAction(
         contract,
@@ -473,7 +474,8 @@ export function getAvailableContractActions(contract, role) {
     const normalizedRole = normalizeContractRole(role);
     const isAdmin = normalizedRole === "ADMIN";
 
-    if (status === CONTRACT_STATUS.ENDED
+    if (status === CONTRACT_STATUS.SIGNED
+        || status === CONTRACT_STATUS.ENDED
         || status === CONTRACT_STATUS.CANCELLED) {
         return [];
     }
@@ -567,6 +569,9 @@ export function getRoleContractTask(contract, role) {
         if (status === CONTRACT_STATUS.ENDED) {
             return { label: "Contract completed", status: "COMPLETED" };
         }
+        if (status === CONTRACT_STATUS.SIGNED) {
+            return { label: "Contract signed", status: "COMPLETED" };
+        }
         const runtime = contract.workflowRuntime;
         if (!runtime.currentStepId) {
             return status === CONTRACT_STATUS.ACTIVE
@@ -597,6 +602,10 @@ export function getRoleContractTask(contract, role) {
 
     if (status === CONTRACT_STATUS.ENDED) {
         return { label: "Contract completed", status: "COMPLETED" };
+    }
+
+    if (status === CONTRACT_STATUS.SIGNED) {
+        return { label: "Contract signed", status: "COMPLETED" };
     }
 
     if (actions.length > 0) {

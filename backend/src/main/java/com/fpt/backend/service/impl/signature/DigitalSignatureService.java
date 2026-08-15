@@ -17,6 +17,8 @@ public class DigitalSignatureService {
 
     private final UserKeysRepository userKeysRepository;
 
+    private final PrivateKeyProtectionService privateKeyProtectionService;
+
     public SignatureResult sign(
             byte[] document,
             UUID userId
@@ -36,7 +38,7 @@ public class DigitalSignatureService {
 
         // 3. Decode private key
         BigInteger[] privateKey = RSAKeyConverter.decode(
-                        userKeys.getPrivateKey()
+                        privateKeyProtectionService.decrypt(userKeys.getPrivateKey())
                 );
         BigInteger n = privateKey[0];
         BigInteger d = privateKey[1];

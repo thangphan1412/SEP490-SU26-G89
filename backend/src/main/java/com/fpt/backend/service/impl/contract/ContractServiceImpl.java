@@ -35,7 +35,9 @@ import com.fpt.backend.repository.contract.ContractTypeRepository;
 import com.fpt.backend.repository.contract.ContractTypeWorkflowRepository;
 import com.fpt.backend.repository.contract.ContractWorkflowStepInstanceRepository;
 import com.fpt.backend.repository.electronicSignature.ElectronicSignatureRepository;
+import com.fpt.backend.repository.signature.SignatureRepository;
 import com.fpt.backend.service.impl.signature.ContractSigningService;
+import com.fpt.backend.service.impl.CloudinaryService;
 import com.fpt.backend.repository.permission.UserPermissionRepository;
 import com.fpt.backend.repository.phase.PhaseRepository;
 import com.fpt.backend.repository.phase.PhaseTaskRepository;
@@ -51,6 +53,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
@@ -69,6 +72,8 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.Base64;
+import java.security.MessageDigest;
 
 @Service
 @RequiredArgsConstructor
@@ -109,9 +114,12 @@ public class ContractServiceImpl implements ContractService {
     private final ContractDocumentRenderer documentRenderer;
     private final ContractPdfGenerator pdfGenerator;
     private final ElectronicSignatureRepository electronicSignatureRepository;
+    private final SignatureRepository signatureRepository;
     private final ContractSigningService contractSigningService;
+    private final CloudinaryService cloudinaryService;
     private final IPermissionAccessService permissionAccessService;
     private final CurrentUser currentUser;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Override
     @Transactional(readOnly = true)
@@ -314,6 +322,8 @@ public class ContractServiceImpl implements ContractService {
                 null
         );
 
+        storeCanonicalDocument(savedContract, actor);
+
         return toResponse(savedContract);
     }
 
@@ -335,6 +345,7 @@ public class ContractServiceImpl implements ContractService {
         if (request.attributeValues() != null) {
             syncAttributeValues(savedContract, request.attributeValues());
         }
+        storeCanonicalDocument(savedContract, actor);
         return toResponse(savedContract);
     }
 
@@ -424,7 +435,7 @@ public class ContractServiceImpl implements ContractService {
         return toResponse(contractRepository.save(contract));
     }
 
-    private void registerElectronicSignatureWhenRequired(
+    private Signature registerElectronicSignatureWhenRequired(
             Contracts contract,
             ContractAction action,
             ContractTransitionRequest request,
@@ -443,7 +454,7 @@ public class ContractServiceImpl implements ContractService {
                     .orElse(false);
         }
         if (!legacySign && !workflowSign) {
-            return;
+            return null;
         }
         if (request.electronicSignatureId() == null) {
             throw new BadHttpException("Please select an electronic signature before signing");
@@ -458,21 +469,96 @@ public class ContractServiceImpl implements ContractService {
             throw new BadHttpException("Only an active electronic signature can be used");
         }
 
+        if (contract.getDocumentFile() == null) {
+            storeCanonicalDocument(
+                    contract,
+                    contract.getContractCreatedByUser() != null
+                            ? contract.getContractCreatedByUser()
+                            : actor
+            );
+        }
+        byte[] pdf = loadAndValidateCanonicalDocument(contract, actor);
+        try {
+            return contractSigningService.signContract(
+                    contract, pdf, actor.getId(), selected
+            );
+        } catch (Exception exception) {
+            throw new BadHttpException("Unable to sign the generated contract PDF");
+        }
+    }
+
+    private void storeCanonicalDocument(Contracts contract, Users owner) {
+        replaceCanonicalDocument(contract, owner);
+    }
+
+    private byte[] replaceCanonicalDocument(Contracts contract, Users owner) {
         List<ContractStatusHistory> history = loadHistory(contract.getId());
         Map<String, String> attributes = readAttributeValues(contract.getId());
         byte[] pdf = pdfGenerator.generate(
                 contract,
                 documentRenderer.render(contract, history, attributes)
         );
+        FileStorage previousFile = contract.getDocumentFile();
+        FileStorage uploaded = cloudinaryService.uploadPdfAndSave(
+                pdf, createPdfFileName(contract), owner
+        );
+        contract.setDocumentFile(uploaded);
+        contract.setDocumentHash(calculateDocumentHash(pdf));
+        contractRepository.save(contract);
+        if (previousFile != null) {
+            previousFile.setIsDeleted(true);
+        }
+        return pdf;
+    }
+
+    private byte[] loadAndValidateCanonicalDocument(
+            Contracts contract,
+            Users recoveryOwner
+    ) {
+        if (contract.getDocumentFile() == null || contract.getDocumentHash() == null) {
+            return recoverUnsignedCanonicalDocument(contract, recoveryOwner);
+        }
+        byte[] pdf;
         try {
-            contractSigningService.signContract(contract, pdf, actor.getId(), selected);
+            pdf = cloudinaryService.download(contract.getDocumentFile());
+        } catch (BadHttpException exception) {
+            return recoverUnsignedCanonicalDocument(contract, recoveryOwner);
+        }
+        String actualHash = calculateDocumentHash(pdf);
+        if (!MessageDigest.isEqual(
+                actualHash.getBytes(java.nio.charset.StandardCharsets.UTF_8),
+                contract.getDocumentHash().getBytes(java.nio.charset.StandardCharsets.UTF_8)
+        )) {
+            throw new BadHttpException("The stored contract PDF has been changed");
+        }
+        return pdf;
+    }
+
+    private byte[] recoverUnsignedCanonicalDocument(
+            Contracts contract,
+            Users recoveryOwner
+    ) {
+        if (signatureRepository.existsByContractId(contract.getId())) {
+            throw new BadHttpException(
+                    "The signed contract PDF is unavailable and cannot be regenerated "
+                            + "without invalidating its digital signatures"
+            );
+        }
+        return replaceCanonicalDocument(contract, recoveryOwner);
+    }
+
+    private String calculateDocumentHash(byte[] document) {
+        try {
+            return Base64.getEncoder().encodeToString(
+                    MessageDigest.getInstance("SHA-256").digest(document)
+            );
         } catch (Exception exception) {
-            throw new BadHttpException("Unable to sign the generated contract PDF");
+            throw new IllegalStateException("Unable to hash contract PDF", exception);
         }
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public ContractPdfResponse exportContractPdf(UUID id) {
         Contracts contract = findContract(id);
         Users actor = currentUser.getCurrentUser();
@@ -494,7 +580,9 @@ public class ContractServiceImpl implements ContractService {
 
         return new ContractPdfResponse(
                 createPdfFileName(contract),
-                pdfGenerator.generate(contract, renderedDocument)
+                contract.getDocumentFile() == null
+                        ? pdfGenerator.generate(contract, renderedDocument)
+                        : loadAndValidateCanonicalDocument(contract, actor)
         );
     }
 
@@ -867,6 +955,7 @@ public class ContractServiceImpl implements ContractService {
         }
 
         Boolean signerAgeVerified = null;
+        Signature completedSignature = null;
         if (currentStep.getActionType().requiresSignature()) {
             if (!userHasRole(actor, "CEO")
                     && !hasCompletedCeoSignature(contract.getId())) {
@@ -892,7 +981,7 @@ public class ContractServiceImpl implements ContractService {
                 );
                 return toResponse(contract);
             }
-            registerElectronicSignatureWhenRequired(
+            completedSignature = registerElectronicSignatureWhenRequired(
                     contract, action, request, actor
             );
         }
@@ -910,7 +999,7 @@ public class ContractServiceImpl implements ContractService {
                         == ContractWorkflowStepState.WAITING)
                 .findFirst()
                 .orElse(null);
-        ContractStatus targetStatus = ContractStatus.ACTIVE;
+        ContractStatus targetStatus = ContractStatus.SIGNED;
         if (nextStep != null) {
             nextStep.setStatus(ContractWorkflowStepState.PENDING);
             nextStep.setActivatedAt(now);
@@ -932,7 +1021,67 @@ public class ContractServiceImpl implements ContractService {
                 normalizeToNull(request.comment()),
                 signerAgeVerified
         );
+        publishSigningEmailEvent(
+                contract, currentStep, nextStep, actor, completedSignature, now
+        );
         return toResponse(contract);
+    }
+
+    private void publishSigningEmailEvent(
+            Contracts contract,
+            ContractWorkflowStepInstance completedStep,
+            ContractWorkflowStepInstance nextStep,
+            Users signer,
+            Signature signature,
+            LocalDateTime signedAt
+    ) {
+        if (signature == null || completedStep == null
+                || !completedStep.getActionType().requiresSignature()) {
+            return;
+        }
+
+        if (userHasRole(signer, "CEO")) {
+            if (nextStep == null || nextStep.getAssignedUser() == null) {
+                return;
+            }
+            eventPublisher.publishEvent(new ContractSigningEmailEvent(
+                    ContractSigningEmailEvent.Type.CEO_SIGNED,
+                    contract.getContractNumber(),
+                    contract.getContractTitle(),
+                    getUserDisplayName(signer),
+                    signer.getEmail(),
+                    getUserDisplayName(nextStep.getAssignedUser()),
+                    nextStep.getAssignedUser().getEmail(),
+                    signature.getUserKey().getPublicKey(),
+                    signedAt
+            ));
+            return;
+        }
+
+        ContractWorkflowStepInstance ceoSignatureStep = workflowStepRepository
+                .findByContractIdOrderByStepOrderAsc(contract.getId())
+                .stream()
+                .filter(step -> step.getActionType().requiresSignature())
+                .filter(step -> step.getAssignedUser() != null)
+                .filter(step -> userHasRole(step.getAssignedUser(), "CEO"))
+                .filter(step -> step.getStatus() == ContractWorkflowStepState.COMPLETED)
+                .findFirst()
+                .orElse(null);
+        if (ceoSignatureStep == null) {
+            return;
+        }
+        Users ceo = ceoSignatureStep.getAssignedUser();
+        eventPublisher.publishEvent(new ContractSigningEmailEvent(
+                ContractSigningEmailEvent.Type.PARTNER_SIGNED,
+                contract.getContractNumber(),
+                contract.getContractTitle(),
+                getUserDisplayName(signer),
+                signer.getEmail(),
+                getUserDisplayName(ceo),
+                ceo.getEmail(),
+                signature.getUserKey().getPublicKey(),
+                signedAt
+        ));
     }
 
     private void requireCurrentAssignee(
@@ -1192,7 +1341,7 @@ public class ContractServiceImpl implements ContractService {
             case PENDING_PARTNER_SIGNATURE ->
                     Set.of("CEO", "DIRECTOR", "PARTNER", "EXTERNAL", "EXTERNAL_PARTNER");
             case PENDING_APPROVAL, PENDING_SIGNATURE -> Set.of();
-            case ACTIVE ->
+            case SIGNED, ACTIVE ->
                     Set.of("CEO", "DIRECTOR", "PARTNER", "EXTERNAL_PARTNER");
             case ENDED, CANCELLED -> Set.of();
         };
@@ -1230,7 +1379,7 @@ public class ContractServiceImpl implements ContractService {
             case SUBMIT -> ContractStatus.PENDING_INTERNAL_APPROVAL;
             case APPROVE_INTERNAL -> ContractStatus.PENDING_DIRECTOR_SIGNATURE;
             case SIGN_DIRECTOR -> ContractStatus.PENDING_PARTNER_SIGNATURE;
-            case SIGN_PARTNER -> ContractStatus.ACTIVE;
+            case SIGN_PARTNER -> ContractStatus.SIGNED;
             case CANCEL, REJECT -> ContractStatus.CANCELLED;
         };
     }
@@ -1707,7 +1856,7 @@ public class ContractServiceImpl implements ContractService {
         Map<String, String> attributeValues = readAttributeValues(contract.getId());
         ContractDocumentRenderer.RenderedDocument renderedDocument =
                 documentRenderer.render(contract, historyEntities, attributeValues);
-        boolean pdfAvailable = contract.getId() != null;
+        boolean pdfAvailable = contract.getDocumentFile() != null;
         Users user = currentUser.getCurrentUser();
         ProjectAccessResponse projectAccess = permissionAccessService
                 .getCurrentUserAccess(project.getId());

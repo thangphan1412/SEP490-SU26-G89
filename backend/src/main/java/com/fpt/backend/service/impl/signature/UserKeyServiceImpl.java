@@ -21,6 +21,8 @@ public class UserKeyServiceImpl
 
     private final CalculateRSA calculateRSA;
 
+    private final PrivateKeyProtectionService privateKeyProtectionService;
+
     @Override
     @Transactional
     public UserKeys generateUserKey(Users user) {
@@ -64,7 +66,7 @@ public class UserKeyServiceImpl
                         .keyAlgorithm(KeyAlgorithm.RSA)
                         .keySize(2048)
                         .publicKey(publicKey)
-                        .privateKey(privateKey)
+                        .privateKey(privateKeyProtectionService.encrypt(privateKey))
                         .createAt(LocalDateTime.now())
                         .build();
 

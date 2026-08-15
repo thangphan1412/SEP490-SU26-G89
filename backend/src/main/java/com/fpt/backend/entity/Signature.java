@@ -25,6 +25,9 @@ public class Signature extends BaseEntity{
     private SignatureType signatureType;
     @Column(name = "document_hash")
     private String documentHash;
+    @Lob
+    @Column(name = "signature_value", columnDefinition = "nvarchar(max)")
+    private String signatureValue;
     @Column(name = "signature_algorithm")
     @Enumerated(EnumType.STRING)
     private SignatureAlgorithm signatureAlgorithm;
