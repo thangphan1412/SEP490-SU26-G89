@@ -139,12 +139,26 @@ export default function ContractSigningPage() {
                         </div>
                         <div className="contract-signing-key-info">
                             <strong>Digital signing key</strong>
-                            <span>{keyInfo?.available ? `${keyInfo.algorithm} · ${keyInfo.keySize} bit` : "Will be generated securely when you sign"}</span>
+                            <span>{keyInfo?.available ? `${keyInfo.algorithm} · ${keyInfo.keySize} bit` : "Generating securely..."}</span>
                             {keyInfo?.publicKeyFingerprint && (
-                                <small title={keyInfo.publicKey}>Public key: {keyInfo.publicKeyFingerprint}</small>
+                                <small>Fingerprint: {keyInfo.publicKeyFingerprint}</small>
                             )}
                             <small>Private key is encrypted on the server and is never returned to the browser.</small>
                         </div>
+                        {keyInfo?.publicKey && (
+                            <div className="contract-signing-public-key">
+                                <label htmlFor="contract-public-key">Public key</label>
+                                <textarea
+                                    id="contract-public-key"
+                                    readOnly
+                                    rows={5}
+                                    value={keyInfo.publicKey}
+                                    onFocus={(event) => event.currentTarget.select()}
+                                    aria-label="Your RSA public key"
+                                />
+                                <small>Select and copy this public key when it needs to be shared for signature verification.</small>
+                            </div>
+                        )}
                         {signatures.length === 0 ? (
                             <Alert variant="warning">You have no active signature. Create one in Signature Management first.</Alert>
                         ) : signatures.map((signature) => (

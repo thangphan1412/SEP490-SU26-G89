@@ -7,6 +7,7 @@ import com.fpt.backend.entity.UserKeys;
 import com.fpt.backend.repository.signature.SignatureRepository;
 import com.fpt.backend.repository.signature.UserKeysRepository;
 import com.fpt.backend.service.impl.signature.DigitalSignatureVerificationService;
+import com.fpt.backend.service.impl.signature.UserKeyServiceImpl;
 import com.fpt.backend.service.impl.CloudinaryService;
 import com.fpt.backend.util.BaseResponse;
 import com.fpt.backend.util.CurrentUser;
@@ -30,13 +31,15 @@ public class SignatureController {
     private final SignatureRepository signatureRepository;
     private final DigitalSignatureVerificationService verificationService;
     private final CloudinaryService cloudinaryService;
+    private final UserKeyServiceImpl userKeyService;
 
     @GetMapping("/keys/me")
     public ResponseEntity<BaseResponse<UserKeyInfoResponse>> getMyPublicKey() {
-        UUID userId = currentUser.getCurrentUser().getId();
+        var user = currentUser.getCurrentUser();
+        UUID userId = user.getId();
         UserKeyInfoResponse response = userKeysRepository.findByUserId(userId)
                 .map(this::toResponse)
-                .orElseGet(() -> new UserKeyInfoResponse(false, null, null, null, 0, null));
+                .orElseGet(() -> toResponse(userKeyService.generateUserKey(user)));
         return ResponseEntity.ok(new BaseResponse<>(response));
     }
 
