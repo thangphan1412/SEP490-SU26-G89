@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { IconPlus, IconTrash } from "@tabler/icons-react";
-import { formatContractStatus } from "./contractUtils.js";
+import { CONTRACT_WORKFLOW, formatContractStatus } from "./contractUtils.js";
 import {
     joinContractPages,
     splitContractPages,
@@ -41,7 +41,7 @@ function ContractForm({
     );
     const workflow = projectReadOnly
         ? contract.workflowDefinition
-        : selectedContractType?.activeWorkflow || contract.workflowDefinition;
+        : CONTRACT_WORKFLOW;
     const selectedTemplate = filteredTemplates.find(
         (template) => template.id === contract.contractTemplateId
     );
@@ -104,7 +104,7 @@ function ContractForm({
                     <option value="">
                         {loadingContractOptions
                             ? "Loading contract types..."
-                            : "Select contract type to load its workflow"}
+                            : "Select contract type"}
                     </option>
 
                     {contractTypes.map((contractType) => (
@@ -402,10 +402,11 @@ function WorkflowAssignments({
                         const memberRoles = Array.isArray(member.roleCodes)
                             ? member.roleCodes
                             : [member.roleCode];
-                        return memberRoles.some((role) =>
+                        const anyRole = normalizeRole(step.requiredRoleCode) === "ANY";
+                        return (anyRole || memberRoles.some((role) =>
                             normalizeRole(role)
                                 === normalizeRole(step.requiredRoleCode)
-                        ) && requiredPermissions.every((permission) =>
+                        )) && requiredPermissions.every((permission) =>
                             (member.allowedActions || []).includes(permission)
                         );
                     });
@@ -416,7 +417,7 @@ function WorkflowAssignments({
                             <div>
                                 <strong>{step.stepName}</strong>
                                 <small>
-                                    {formatContractStatus(step.actionType)} · {step.requiredRoleCode}
+                                    {formatContractStatus(step.actionType)} · {step.requiredRoleCode === "ANY" ? "Any assigned member" : step.requiredRoleCode}
                                     {requiredPermissions.length > 0
                                         ? ` · ${requiredPermissions.join(", ")}`
                                         : ""}
@@ -464,25 +465,11 @@ function normalizeRole(value) {
     const normalized = String(value || "")
         .trim()
         .toUpperCase()
-        .replaceAll("-", "_")
-        .replaceAll(" ", "_");
-    const compact = normalized.replaceAll("_", "");
-
-    if (["ADMIN", "ADMINISTRATOR"].includes(compact)) {
-        return "ADMIN";
-    }
-    if (["MANAGER", "HEADOFDEPARTMENT", "DEPARTMENTHEAD"].includes(compact)) {
-        return "HEAD_OF_DEPARTMENT";
-    }
-    if ([
-        "PARTNER",
-        "EXTERNAL",
-        "EXTERNALPARTNER",
-        "EXTERNALPARTNERS",
-        "EXTERNALPARNER",
-        "EXTERNALPARNERS",
-    ].includes(compact)) {
-        return "EXTERNAL_PARTNER";
+        .replaceAll("-", "")
+        .replaceAll("_", "")
+        .replaceAll(" ", "");
+    if (["HOD", "HEADDEPARTMENT", "DEPARTMENTHEAD"].includes(normalized)) {
+        return "HEADOFDEPARTMENT";
     }
     return normalized;
 }

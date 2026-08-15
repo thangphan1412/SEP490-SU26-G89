@@ -49,6 +49,16 @@ const contractApi = {
         );
     },
 
+    signContract(id, action, electronicSignatureId, comment = null) {
+        return this.transitionContract(id, {
+            action,
+            actorName: localStorage.getItem("fullName") || localStorage.getItem("email"),
+            actorRole: localStorage.getItem("role") || localStorage.getItem("roleName"),
+            comment,
+            electronicSignatureId,
+        });
+    },
+
     exportContractPdf(id) {
         return axiosClient.get(CONTRACT_ENDPOINT + "/" + id + "/pdf", {
             responseType: "blob",

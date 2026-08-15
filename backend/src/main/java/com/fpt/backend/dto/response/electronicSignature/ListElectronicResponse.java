@@ -25,9 +25,5 @@ public class ListElectronicResponse {
     private ElectronicStatus status;
     private boolean isDefault;
     private LocalDate uploadAt;
-    private String imageUrl;
-    private String publicKey;
-    private String publicKeyFingerprint;
-    private KeyAlgorithm keyAlgorithm;
-    private Long keySize;
+    private String fileUrl;
 }

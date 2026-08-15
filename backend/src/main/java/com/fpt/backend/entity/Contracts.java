@@ -92,7 +92,7 @@ public class Contracts extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "contract_type_id")
     private ContractTypes contractType;
-    // Immutable workflow version selected from the contract type.
+    // Legacy workflow reference. New contracts own their runtime workflow.
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(
             name = "contract_workflow_version_id",

@@ -15,52 +15,42 @@ import java.util.UUID;
 
 @Repository
 public interface ElectronicSignatureRepository extends JpaRepository<ElectronicSignatures, UUID> {
-@Query("""
-    select new com.fpt.backend.dto.response.electronicSignature.ListElectronicResponse(
-        es.id,
-            es.electronicSignatureName,
-        es.electronicSignatureType,
-        es.status,
-        es.isDefault,
-        es.createdAt,
-        es.fileStorage.filePath,
-        uk.publicKey,
-        uk.keyFingerprint,
-        uk.keyAlgorithm,
-        uk.keySize
-    )
-    from ElectronicSignatures es
-    left join es.userKey uk
-    where es.user.id = :userId
-    """)
-        List<ListElectronicResponse> getAllElectronicSignaturesById(@Param("userId") UUID userId);
-
+    @Query("""
+            select new com.fpt.backend.dto.response.electronicSignature.ListElectronicResponse(
+                es.id,
+                    es.electronicSignatureName,
+                es.electronicSignatureType,
+                es.status,
+                es.isDefault,
+                es.createdAt,
+                es.fileStorage.filePath
+            )
+            from ElectronicSignatures  es
+            where es.fileStorage.user.id = :userId
+            """)
+    List<ListElectronicResponse> getAllElectronicSignaturesById(@Param("userId") UUID userId);
 
     @Query("""
-        select new com.fpt.backend.dto.response.electronicSignature.ElectronicSignatureDetailResponse(
-                
-                        es.electronicSignatureName ,
-                        es.electronicSignatureType,
-                                es.status,
-                                        es.isDefault,
-                                                es.createdAt,
-                                                es.fileStorage.filePath,
-                                                uk.publicKey,
-                                                uk.keyFingerprint,
-                                                uk.keyAlgorithm,
-                                                uk.keySize
-                )
-                        from ElectronicSignatures es
-                        left join es.userKey uk
-                                where es.user.id =:userId and es.id =:signatureId
-        """)
-    ElectronicSignatureDetailResponse getElectronicSignaturesById(@Param("userId") UUID userId, @Param("signatureId") UUID signatureId);
+            select new com.fpt.backend.dto.response.electronicSignature.ElectronicSignatureDetailResponse(
 
-    Optional<ElectronicSignatures> findByIdAndUserIdAndStatus(
-            UUID id,
-            UUID userId,
-            ElectronicStatus status
-    );
+                            es.electronicSignatureName ,
+                            es.electronicSignatureType,
+                                    es.status,
+                                            es.isDefault,
+                                                    es.createdAt
+                    )
+                            from ElectronicSignatures es
+                                    where es.fileStorage.user.id =:userId and es.id =:signatureId
+            """)
+    ElectronicSignatureDetailResponse getElectronicSignaturesById(@Param("userId") UUID userId,
+            @Param("signatureId") UUID signatureId);
+
+    @Query("""
+            select es from ElectronicSignatures es
+            join fetch es.fileStorage
+            where es.id = :signatureId and es.user.id = :userId
+            """)
+    java.util.Optional<ElectronicSignatures> findOwnedById(
+            @Param("signatureId") UUID signatureId,
+            @Param("userId") UUID userId);
 }
-
-

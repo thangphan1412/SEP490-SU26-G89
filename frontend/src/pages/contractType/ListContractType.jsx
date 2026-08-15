@@ -57,27 +57,27 @@ function createDefaultWorkflowSteps() {
         }),
         createWorkflowStep({
             stepOrder: 2,
-            stepName: "Internal approval",
+            stepName: "Head of Department approval",
             actionType: "APPROVE",
-            requiredRoleCode: "HEAD_OF_DEPARTMENT",
+            requiredRoleCode: "HEADOFDEPARTMENT",
         }),
         createWorkflowStep({
             stepOrder: 3,
-            stepName: "CEO approval and PDF generation",
-            actionType: "APPROVE_AND_GENERATE_PDF",
+            stepName: "CEO final approval",
+            actionType: "APPROVE",
             requiredRoleCode: "CEO",
         }),
         createWorkflowStep({
             stepOrder: 4,
-            stepName: "Company signature",
+            stepName: "CEO electronic signature",
             actionType: "SIGN",
             requiredRoleCode: "CEO",
         }),
         createWorkflowStep({
             stepOrder: 5,
-            stepName: "Counterparty signature",
+            stepName: "Assigned representative signature",
             actionType: "SIGN",
-            requiredRoleCode: "EXTERNAL_PARTNER",
+            requiredRoleCode: "EMPLOYEE",
         }),
     ];
 }
@@ -103,12 +103,7 @@ function ListContractType() {
     const [submitting, setSubmitting] = useState(false);
     const [deletingId, setDeletingId] = useState(null);
     const [workflowOptions, setWorkflowOptions] = useState({
-        actionTypes: [
-            "CREATE",
-            "APPROVE",
-            "APPROVE_AND_GENERATE_PDF",
-            "SIGN",
-        ],
+        actionTypes: ["CREATE", "APPROVE", "SIGN"],
         roles: [],
     });
 
@@ -132,12 +127,7 @@ function ListContractType() {
                     setWorkflowOptions({
                         actionTypes: Array.isArray(workflowPayload?.actionTypes)
                             ? workflowPayload.actionTypes
-                            : [
-                                "CREATE",
-                                "APPROVE",
-                                "APPROVE_AND_GENERATE_PDF",
-                                "SIGN",
-                            ],
+                            : ["CREATE", "APPROVE", "SIGN"],
                         roles: Array.isArray(workflowPayload?.roles)
                             ? workflowPayload.roles
                             : [],
