@@ -290,6 +290,9 @@ public class ContractServiceImpl implements ContractService {
         }
 
         Users actor = currentUser.getCurrentUser();
+        if (!userHasRole(actor, "EMPLOYEE")) {
+            throw forbidden("Only an Employee can create a contract");
+        }
         permissionAccessService.requireAction(
                 request.projectId(),
                 ContractProjectActions.CREATE
@@ -1945,12 +1948,12 @@ public class ContractServiceImpl implements ContractService {
                 && currentStep.getAssignedUser().getId().equals(currentUser.getId())
                 && userHasRole(currentUser, currentStep.getRequiredRoleCode())
                 && (currentStep.getActionType() != ContractWorkflowActionType.SIGN
-                    || userHasRole(currentUser, "CEO")
-                    || hasCompletedCeoSignature(contract.getId()))
+                || userHasRole(currentUser, "CEO")
+                || hasCompletedCeoSignature(contract.getId()))
                 && contractActionsForCandidate(currentUser, contract.getProject().getId())
-                    .containsAll(ContractWorkflowRules.requiredPermissions(
-                            currentStep.getActionType()
-                    ))) {
+                .containsAll(ContractWorkflowRules.requiredPermissions(
+                        currentStep.getActionType()
+                ))) {
             allowedActions.add(ContractAction.COMPLETE_STEP.name());
             if (Boolean.TRUE.equals(currentStep.getCanReject())) {
                 allowedActions.add(ContractAction.REJECT.name());
