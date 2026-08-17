@@ -61,6 +61,11 @@ function createPageNumbers(currentPage, totalPages) {
 
 function ListContract() {
     const navigate = useNavigate();
+    const currentRole = String(localStorage.getItem("role") || "")
+        .toUpperCase()
+        .replace(/[^A-Z0-9]/g, "")
+        .replace(/^ROLE/, "");
+    const canCreateContract = currentRole === "EMPLOYEE";
     const [searchParameters, setSearchParameters] = useSearchParams();
     const requestedContractId = searchParameters.get("viewContractId");
     const [contracts, setContracts] = useState([]);
@@ -768,9 +773,11 @@ function ListContract() {
                 <Button
                     className="contract-primary-button"
                     onClick={openCreateModal}
-                    disabled={loadingOptions || projects.length === 0}
+                    disabled={!canCreateContract || loadingOptions || projects.length === 0}
                     title={
-                        !loadingOptions && projects.length === 0
+                        !canCreateContract
+                            ? "Only an Employee can create a contract."
+                            : !loadingOptions && projects.length === 0
                             ? "You need CREATE_CONTRACTS permission in a project."
                             : "Create a contract"
                     }

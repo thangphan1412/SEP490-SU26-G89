@@ -169,6 +169,10 @@ public class ContractServiceImpl implements ContractService {
     @Override
     @Transactional(readOnly = true)
     public List<ContractProjectOptionResponse> getProjectOptions() {
+        Users actor = currentUser.getCurrentUser();
+        if (!userHasRole(actor, "EMPLOYEE")) {
+            return List.of();
+        }
         List<UUID> projectIds = permissionAccessService
                 .getCurrentUserProjectIdsWithAction(
                         ContractProjectActions.CREATE
@@ -286,6 +290,9 @@ public class ContractServiceImpl implements ContractService {
         }
 
         Users actor = currentUser.getCurrentUser();
+        if (!userHasRole(actor, "EMPLOYEE")) {
+            throw forbidden("Only an Employee can create a contract");
+        }
         permissionAccessService.requireAction(
                 request.projectId(),
                 ContractProjectActions.CREATE
@@ -1438,7 +1445,7 @@ public class ContractServiceImpl implements ContractService {
 
     private boolean userHasRole(Users user, String requiredRoleCode) {
         String required = normalizeRoleOrEmpty(requiredRoleCode);
-        if (required.isEmpty()) {
+        if (required.isEmpty() || user == null || user.getUserRoles() == null) {
             return false;
         }
 
@@ -1450,9 +1457,6 @@ public class ContractServiceImpl implements ContractService {
                 .findFirst()
                 .orElse(null)))) {
             return true;
-        }
-        if (user.getUserRoles() == null) {
-            return false;
         }
         return user.getUserRoles().stream()
                 .map(UserRole::getRole)
@@ -2048,6 +2052,13 @@ public class ContractServiceImpl implements ContractService {
         Set<String> actions = new LinkedHashSet<>(
                 activeActionsForUser(user.getId(), projectId)
         );
+        if (userHasRole(user, "EMPLOYEE")) {
+            actions.add(ContractProjectActions.VIEW);
+            actions.add(ContractProjectActions.CREATE);
+            actions.add(ContractProjectActions.EDIT);
+            actions.add(ContractProjectActions.SUBMIT);
+            actions.add(ContractProjectActions.SIGN);
+        }
         if (userHasRole(user, "HEADOFDEPARTMENT")) {
             actions.add(ContractProjectActions.VIEW);
             actions.add(ContractProjectActions.APPROVE);
@@ -2055,6 +2066,13 @@ public class ContractServiceImpl implements ContractService {
         if (userHasRole(user, "CEO")) {
             actions.add(ContractProjectActions.VIEW);
             actions.add(ContractProjectActions.APPROVE);
+            actions.add(ContractProjectActions.SIGN);
+            actions.add(ContractProjectActions.EXPORT);
+        }
+        if (userHasRole(user, "PARTNER")
+                || userHasRole(user, "EXTERNAL")
+                || userHasRole(user, "EXTERNALPARTNER")) {
+            actions.add(ContractProjectActions.VIEW);
             actions.add(ContractProjectActions.SIGN);
             actions.add(ContractProjectActions.EXPORT);
         }
@@ -2129,6 +2147,9 @@ public class ContractServiceImpl implements ContractService {
                 .replace("-", "")
                 .replace("_", "")
                 .replace(" ", "");
+        if (normalized.startsWith("ROLE") && normalized.length() > 4) {
+            normalized = normalized.substring(4);
+        }
         return Set.of("HOD", "HEADDEPARTMENT", "DEPARTMENTHEAD")
                 .contains(normalized)
                 ? "HEADOFDEPARTMENT"
