@@ -19,10 +19,12 @@ public class UserKeys extends BaseEntity{
     private long keySize;
     @Column(name = "create_at")
     private LocalDateTime createAt;
+    @Lob
     @Column(name = "public_key", columnDefinition = "nvarchar(max)")
     private String publicKey;
-    @Column(name = "key_fingerprint", length = 64)
-    private String keyFingerprint;
+    @Lob
+    @Column(name = "private_key", columnDefinition = "nvarchar(max)")
+    private String privateKey;
     @Column(name = "key_algorithm")
     @Enumerated(EnumType.STRING)
     private KeyAlgorithm keyAlgorithm;

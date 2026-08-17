@@ -92,7 +92,7 @@ function SignatureInformationCard({
                             }}
                             options={[
                                 "DRAW",
-                                "UPLOAD",
+                                "UPLOADED",
                             ]}
                         />
 

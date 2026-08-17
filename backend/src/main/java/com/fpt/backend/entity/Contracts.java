@@ -73,6 +73,13 @@ public class Contracts extends BaseEntity {
     )
     private FileStorage approvedPdfFile;
 
+    @Column(name = "document_hash", length = 64)
+    private String documentHash;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "document_file_id")
+    private FileStorage documentFile;
+
     /// Relation
     // project
     @ManyToOne(fetch = FetchType.LAZY)

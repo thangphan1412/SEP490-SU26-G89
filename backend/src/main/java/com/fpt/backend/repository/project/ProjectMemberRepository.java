@@ -23,6 +23,9 @@ public interface ProjectMemberRepository extends JpaRepository<ProjectMember, UU
             @Param("userId") UUID userId
     );
 
+    @Query("SELECT member.project.id FROM ProjectMember member WHERE member.user.id = :userId")
+    List<UUID> findProjectIdsByUserId(@Param("userId") UUID userId);
+
     @Query("""
             SELECT member
             FROM ProjectMember member

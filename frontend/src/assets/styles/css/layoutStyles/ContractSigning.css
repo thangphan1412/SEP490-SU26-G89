@@ -6,6 +6,12 @@
 .contract-signing-workspace { display: grid; grid-template-columns: minmax(270px, 340px) minmax(0, 1fr); gap: 18px; min-height: 720px; }
 .contract-signature-panel, .contract-pdf-panel { background: #fff; border: 1px solid #dfe5ef; border-radius: 12px; box-shadow: 0 5px 20px rgba(27, 42, 72, .06); }
 .contract-signature-panel { padding: 18px; overflow-y: auto; }
+.contract-signing-key-info { display: grid; gap: 6px; padding: 12px; margin-bottom: 14px; border: 1px solid #dbe4ff; border-radius: 10px; background: #f7f9ff; color: #25304a; }
+.contract-signing-key-info span, .contract-signing-key-info small { overflow-wrap: anywhere; color: #62708f; }
+.contract-signing-public-key { display: grid; gap: 6px; margin-bottom: 14px; }
+.contract-signing-public-key label { font-weight: 600; color: #25304a; }
+.contract-signing-public-key textarea { width: 100%; resize: vertical; padding: 10px; border: 1px solid #ccd6e8; border-radius: 8px; background: #f8fafc; color: #25304a; font: 12px/1.45 monospace; overflow-wrap: anywhere; }
+.contract-signing-public-key small { color: #68748a; }
 .contract-signing-section-title h2 { font-size: 17px; margin: 0 0 6px; color: #17233d; }
 .contract-signing-section-title p { color: #65718a; font-size: 13px; margin-bottom: 16px; }
 .contract-signature-choice { display: grid; grid-template-columns: 20px 1fr; gap: 6px 10px; padding: 12px; margin-bottom: 12px; border: 1px solid #dfe5ef; border-radius: 10px; cursor: pointer; }

@@ -15,6 +15,10 @@ import java.time.LocalDateTime;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 
 @Service
 @RequiredArgsConstructor
@@ -28,7 +32,7 @@ public class CloudinaryService {
             throw new BadHttpException("File is required");
         }
 
-        Map<?, ?> uploadResult = uploadToCloudinary(file);
+        Map uploadResult = uploadToCloudinary(file);
 
         String secureUrl = (String) uploadResult.get("secure_url");
         String publicId = (String) uploadResult.get("public_id");
@@ -37,6 +41,8 @@ public class CloudinaryService {
                 .originalName(file.getOriginalFilename())
                 .fileName(publicId + "-" + UUID.randomUUID())
                 .filePath(secureUrl)
+                .storageProvider("CLOUDINARY")
+                .storageKey(publicId)
                 .mimeType(file.getContentType())
                 .fileSize(file.getSize())
                 .uploadAt(LocalDateTime.now())
@@ -47,55 +53,60 @@ public class CloudinaryService {
         return fileStorageRepository.save(fileStorage);
     }
 
-    public FileStorage uploadPdfAndSave(
-            byte[] pdfContent,
-            String originalName,
-            Users user
-    ) {
-        requirePdf(pdfContent);
-        String normalizedName = normalizePdfName(originalName);
-        String publicId = normalizedName.substring(
-                0,
-                normalizedName.length() - 4
-        ) + "-" + UUID.randomUUID() + ".pdf";
-
+    public FileStorage uploadPdfAndSave(byte[] pdf, String originalName, Users user) {
+        if (pdf == null || pdf.length == 0) {
+            throw new BadHttpException("Contract PDF is empty");
+        }
         try {
-            Map<?, ?> uploadResult = cloudinary.uploader().upload(
-                    pdfContent,
+            Map uploadResult = cloudinary.uploader().upload(
+                    pdf,
                     ObjectUtils.asMap(
-                            "folder", "contracts/approved",
-                            "public_id", publicId,
+                            "folder", "contracts",
                             "resource_type", "raw",
-                            "overwrite", false
+                            "public_id", UUID.randomUUID() + ".pdf"
                     )
             );
-            String secureUrl = requireUploadValue(
-                    uploadResult,
-                    "secure_url"
-            );
-            String cloudinaryPublicId = requireUploadValue(
-                    uploadResult,
-                    "public_id"
-            );
-
+            String secureUrl = (String) uploadResult.get("secure_url");
+            String publicId = (String) uploadResult.get("public_id");
             return fileStorageRepository.save(FileStorage.builder()
-                    .originalName(normalizedName)
-                    .fileName(cloudinaryPublicId)
+                    .originalName(originalName)
+                    .fileName(publicId)
                     .filePath(secureUrl)
+                    .storageProvider("CLOUDINARY")
+                    .storageKey(publicId)
                     .mimeType("application/pdf")
-                    .fileSize((long) pdfContent.length)
+                    .fileSize((long) pdf.length)
                     .uploadAt(LocalDateTime.now())
                     .user(user)
                     .isDeleted(false)
                     .build());
         } catch (IOException exception) {
-            throw new BadHttpException(
-                    "Failed to upload the approved contract PDF"
-            );
+            throw new BadHttpException("Failed to upload contract PDF: " + exception.getMessage());
         }
     }
 
-    private Map<?, ?> uploadToCloudinary(MultipartFile file) {
+    public byte[] download(FileStorage fileStorage) {
+        if (fileStorage == null || fileStorage.getFilePath() == null) {
+            throw new BadHttpException("Contract PDF is unavailable");
+        }
+        try {
+            HttpRequest request = HttpRequest.newBuilder(URI.create(fileStorage.getFilePath())).GET().build();
+            HttpResponse<byte[]> response = HttpClient.newHttpClient().send(
+                    request, HttpResponse.BodyHandlers.ofByteArray()
+            );
+            if (response.statusCode() < 200 || response.statusCode() >= 300) {
+                throw new BadHttpException("Unable to download contract PDF from Cloudinary");
+            }
+            return response.body();
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            throw new BadHttpException("Contract PDF download was interrupted");
+        } catch (IOException exception) {
+            throw new BadHttpException("Unable to download contract PDF: " + exception.getMessage());
+        }
+    }
+
+    private Map uploadToCloudinary(MultipartFile file) {
         try {
             return cloudinary.uploader().upload(
                     file.getBytes(),

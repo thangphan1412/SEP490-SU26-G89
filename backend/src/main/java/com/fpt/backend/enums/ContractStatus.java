@@ -7,16 +7,15 @@ public enum ContractStatus {
     PENDING_APPROVAL,
     PENDING_SIGNATURE,
     PENDING_INTERNAL_APPROVAL,
-    PENDING_DIRECTOR_APPROVAL,
     PENDING_DIRECTOR_SIGNATURE,
     PENDING_PARTNER_SIGNATURE,
-    PENDING_EFFECTIVE,
+    SIGNED,
     ACTIVE,
     ENDED,
     CANCELLED;
 
     public boolean isTerminal() {
-        return this == ENDED || this == CANCELLED;
+        return this == SIGNED || this == ENDED || this == CANCELLED;
     }
 
     public static ContractStatus fromValue(String value) {
