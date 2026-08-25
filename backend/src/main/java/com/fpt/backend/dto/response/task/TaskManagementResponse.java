@@ -16,6 +16,7 @@ public record TaskManagementResponse(
         boolean fullWorkScope,
         boolean canCreateTasks,
         boolean canApproveTasks,
+        boolean canChangeTaskStatus,
         List<TaskStatus> statusOptions,
         List<TaskMemberOptionResponse> memberOptions,
         List<TaskItemResponse> tasks

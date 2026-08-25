@@ -13,14 +13,19 @@ import java.util.UUID;
 
 @Repository
 public interface ProjectRepository extends JpaRepository<Projects, UUID> {
+    // Kiểm tra mã dự án đã tồn tại mà không phân biệt chữ hoa chữ thường.
     boolean existsByProjectCodeIgnoreCase(String projectCode);
 
+    // Kiểm tra mã dự án trùng với bản ghi khác khi cập nhật.
     boolean existsByProjectCodeIgnoreCaseAndIdNot(String projectCode, UUID id);
 
+    // Lấy trang dự án theo trạng thái không phân biệt chữ hoa chữ thường.
     Page<Projects> findByProjectStatusIgnoreCase(String projectStatus, Pageable pageable);
 
+    // Lấy toàn bộ dự án theo trạng thái không phân biệt chữ hoa chữ thường.
     List<Projects> findAllByProjectStatusIgnoreCase(String projectStatus);
 
+    // Tìm kiếm dự án trên toàn hệ thống theo từ khóa và trạng thái.
     @Query("""
             SELECT project
             FROM Projects project
@@ -52,6 +57,7 @@ public interface ProjectRepository extends JpaRepository<Projects, UUID> {
             Pageable pageable
     );
 
+    // Tìm kiếm dự án mà người dùng hiện tại là thành viên.
     @Query("""
             SELECT project
             FROM Projects project

@@ -7,7 +7,9 @@ import java.util.List;
 import java.util.UUID;
 
 public interface IPhaseService {
+    // Lấy danh sách phase thuộc một dự án.
     List<PhaseListItemResponse> getPhasesByProjectId(UUID projectId);
 
+    // Lấy thông tin chi tiết của một phase.
     PhaseDetailResponse getPhaseById(UUID phaseId);
 }

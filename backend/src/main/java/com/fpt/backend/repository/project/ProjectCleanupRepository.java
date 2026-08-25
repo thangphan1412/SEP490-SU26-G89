@@ -11,6 +11,7 @@ import java.util.UUID;
 public class ProjectCleanupRepository {
     private final EntityManager entityManager;
 
+    // Xóa các bản ghi phụ thuộc còn lại trước khi xóa dự án.
     public void deleteProjectRecords(UUID projectId) {
         executeDelete(
                 "DELETE FROM Approvals approval WHERE approval.proposal.id IN "
@@ -31,6 +32,7 @@ public class ProjectCleanupRepository {
         );
     }
 
+    // Thực thi một câu lệnh xóa JPQL với mã dự án được truyền vào.
     private void executeDelete(String query, UUID projectId) {
         entityManager.createQuery(query)
                 .setParameter("projectId", projectId)

@@ -1,24 +1,12 @@
 import { useEffect, useState } from "react";
 import { Alert, Button, Card, Col, Form, Modal, Row, Stack } from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
-import {
-    createProject,
-    listProjectEmployees,
-    listProjectUserStatuses,
-} from "../../services/projectService/projectApi.js";
+import {createProject,listProjectEmployees,listProjectUserStatuses,} from "../../services/projectService/projectApi.js";
 import CancelButton from "../../components/projectComponents/CancelButton.jsx";
 import Icon from "../../components/projectComponents/Icon.jsx";
 import PagePanel from "../../components/projectComponents/PagePanel.jsx";
 import PrimaryButton from "../../components/projectComponents/PrimaryButton.jsx";
-import {
-    addOneDay,
-    calculatePhaseStartDatesForDisplay,
-    createClientId,
-    getApiErrorMessage,
-    getEmployeeDescription,
-    getEmployeeName,
-    getEmployeeSearchText,
-} from "../../components/projectComponents/projectFormUtils.js";
+import {addOneDay,calculatePhaseStartDatesForDisplay,createClientId,getEmployeeDescription,getEmployeeName,getEmployeeSearchText,getProjectErrorMessage,} from "../../components/projectComponents/projectFormUtils.js";
 import "../../assets/styles/css/projectStyles/CreateProject.css";
 
 const initialProject = {
@@ -31,6 +19,7 @@ const initialProject = {
     members: [],
 };
 
+// Hiển thị biểu mẫu tạo dự án cùng phase tùy chọn và thành viên ban đầu.
 function CreateProject() {
     const navigate = useNavigate();
     const [project, setProject] = useState(initialProject);
@@ -51,10 +40,11 @@ function CreateProject() {
         minimumEndDate = project.projectStartDate;
     }
 
-    //Tải tài liệu phục vụ add member
+    // Tải dữ liệu nhân viên và trạng thái phục vụ chọn thành viên.
     useEffect(function () {
         const requestController = new AbortController();
 
+        // Gọi song song các API tùy chọn thành viên và đồng bộ vào state.
         async function loadMemberOptions() {
             try {
                 const [employeeData, statusData] = await Promise.all([
@@ -102,9 +92,11 @@ function CreateProject() {
         };
     }, []);
 
+    // Kiểm tra và đồng bộ trường thông tin dự án vừa thay đổi.
     function handleChange(event) {
         const { name, value } = event.target;
 
+        // Ngăn ngày bắt đầu mới nằm sau ngày kết thúc hiện tại.
         if (
             name === "projectStartDate"
             && value
@@ -115,11 +107,13 @@ function CreateProject() {
             return;
         }
 
+        // Yêu cầu chọn ngày bắt đầu trước khi chọn ngày kết thúc.
         if (name === "projectEndDate" && !project.projectStartDate) {
             setSubmitError("Select the project start date before selecting its end date.");
             return;
         }
 
+        // Ngăn ngày kết thúc dự án nằm trong quá khứ.
         if (
             name === "projectEndDate"
             && value
@@ -129,6 +123,7 @@ function CreateProject() {
             return;
         }
 
+        // Ngăn ngày kết thúc nằm trước ngày bắt đầu dự án.
         if (
             name === "projectEndDate"
             && value
@@ -175,7 +170,9 @@ function CreateProject() {
         });
     }
 
+    // Thêm phase mới nối tiếp phase cuối và kết thúc tại ngày kết thúc dự án.
     function addPhase() {
+        // Yêu cầu đầy đủ timeline dự án trước khi thêm phase.
         if (!project.projectStartDate || !project.projectEndDate) {
             setSubmitError("Select the project start date and end date before adding phases.");
             return;
@@ -188,6 +185,7 @@ function CreateProject() {
             nextStartDate = addOneDay(lastPhase.endDate);
         }
 
+        // Ngăn thêm phase khi timeline hiện tại đã phủ hết dự án.
         if (!nextStartDate || nextStartDate > project.projectEndDate) {
             setSubmitError("Shorten the current final phase before adding another phase.");
             return;
@@ -209,6 +207,7 @@ function CreateProject() {
         }));
     }
 
+    // Cập nhật một phase và tính lại ngày bắt đầu của các phase kế tiếp.
     function updatePhase(clientId, event) {
         const { name, value } = event.target;
 
@@ -232,6 +231,7 @@ function CreateProject() {
         });
     }
 
+    // Xóa một phase rồi nối lại timeline của các phase còn lại.
     function removePhase(clientId) {
         setProject(function (currentProject) {
             let phases = currentProject.phases.filter((phase) => phase.clientId !== clientId);
@@ -259,6 +259,7 @@ function CreateProject() {
         });
     }
 
+    // Đặt lại bộ lọc và mở modal chọn thành viên.
     function openMemberModal() {
         setMemberSearch("");
         setMemberStatusFilter("");
@@ -266,11 +267,13 @@ function CreateProject() {
         setShowMemberModal(true);
     }
 
+    // Đóng modal và xóa danh sách thành viên đang chọn tạm.
     function closeMemberModal() {
         setShowMemberModal(false);
         setPendingMemberIds([]);
     }
 
+    // Thêm hoặc loại một người dùng khỏi danh sách chọn tạm.
     function togglePendingMember(userId) {
         setPendingMemberIds(function (currentIds) {
             const isAlreadySelected = currentIds.includes(userId);
@@ -283,6 +286,7 @@ function CreateProject() {
         });
     }
 
+    // Thêm các người dùng đã chọn vào danh sách thành viên dự án.
     function addSelectedMembers() {
         setProject(function (currentProject) {
             const currentMemberIds = new Set(
@@ -301,6 +305,7 @@ function CreateProject() {
         closeMemberModal();
     }
 
+    // Loại một người dùng khỏi danh sách thành viên dự án.
     function removeMember(userId) {
         setProject((currentProject) => ({
             ...currentProject,
@@ -308,9 +313,11 @@ function CreateProject() {
         }));
     }
 
+    // Kiểm tra dữ liệu, chuẩn hóa payload rồi gửi yêu cầu tạo dự án.
     async function handleSubmit(event) {
         event.preventDefault();
 
+        // Từ chối gửi khi ngày kết thúc dự án nằm trong quá khứ.
         if (
             project.projectEndDate
             && project.projectEndDate < getTodayDate()
@@ -346,10 +353,12 @@ function CreateProject() {
             navigate(destination);
         } catch (error) {
             console.error("Unable to create project:", error);
-            setSubmitError(getApiErrorMessage(
-                error,
-                "Unable to create project. Please check the information and try again."
-            ));
+            setSubmitError(
+                getProjectErrorMessage(
+                    error,
+                    "Unable to create project. Please check the information and try again."
+                )
+            );
         } finally {
             setSaving(false);
         }
@@ -367,6 +376,7 @@ function CreateProject() {
     const availableEmployees = employees.filter((employee) => !selectedMemberIds.has(employee.id));
     const normalizedMemberSearch = memberSearch.trim().toLowerCase();
 
+    // Kiểm tra nhân viên có khớp từ khóa và trạng thái đang lọc hay không.
     function employeeMatchesFilters(employee) {
         const matchesSearch = getEmployeeSearchText(employee).includes(normalizedMemberSearch);
         const matchesStatus = !memberStatusFilter || employee.status === memberStatusFilter;
@@ -376,6 +386,7 @@ function CreateProject() {
 
     const visibleAvailableEmployees = availableEmployees.filter(employeeMatchesFilters);
 
+    // Hiển thị một lựa chọn nhân viên trong modal thêm thành viên.
     function renderAvailableEmployee(employee) {
         const isSelected = pendingMemberIds.includes(employee.id);
         let employeeClassName = "create-project-modal-user";
@@ -411,11 +422,13 @@ function CreateProject() {
         );
     }
 
+    // Hiển thị danh sách biểu mẫu phase hoặc trạng thái rỗng.
     function renderPhaseContent() {
+        // Thông báo rằng người dùng có thể tạo dự án trước và thêm phase sau.
         if (project.phases.length === 0) {
             return (
                 <div className="create-project-empty-state">
-                    No phases yet. Select "Add Phase" to create one.
+                    No phases yet. You can create the project now and add phases later.
                 </div>
             );
         }
@@ -441,14 +454,30 @@ function CreateProject() {
                             </Col>
                             <Col md={3}>
                                 <Form.Label className="project-management-field-label">Start Date</Form.Label>
-                                <Form.Control readOnly required type="date" name="startDate" value={phase.startDate} className="project-management-input create-project-phase-start-input" />
+                                <ProjectDateInput
+                                    readOnly
+                                    required
+                                    name="startDate"
+                                    value={phase.startDate}
+                                    className="project-management-input create-project-phase-start-input"
+                                    aria-label={`Phase ${index + 1} start date`}
+                                />
                                 <Form.Text className="create-project-phase-date-note">
                                     Preview only. The server calculates this date when saving.
                                 </Form.Text>
                             </Col>
                             <Col md={3}>
                                 <Form.Label className="project-management-field-label">End Date</Form.Label>
-                                <Form.Control required type="date" name="endDate" min={phase.startDate || project.projectStartDate} max={project.projectEndDate} value={phase.endDate} onChange={(event) => updatePhase(phase.clientId, event)} className="project-management-input" />
+                                <ProjectDateInput
+                                    required
+                                    name="endDate"
+                                    min={phase.startDate || project.projectStartDate}
+                                    max={project.projectEndDate}
+                                    value={phase.endDate}
+                                    onChange={(event) => updatePhase(phase.clientId, event)}
+                                    className="project-management-input"
+                                    aria-label={`Phase ${index + 1} end date`}
+                                />
                             </Col>
                             <Col xs={12}>
                                 <Form.Label className="project-management-field-label">Description</Form.Label>
@@ -461,7 +490,9 @@ function CreateProject() {
         );
     }
 
+    // Hiển thị danh sách thành viên đã chọn hoặc trạng thái tải tương ứng.
     function renderProjectMemberContent() {
+        // Ưu tiên hiển thị lỗi tải dữ liệu nhân viên.
         if (employeeError) {
             return (
                 <Alert variant="warning" className="create-project-employee-alert">
@@ -470,12 +501,14 @@ function CreateProject() {
             );
         }
 
+        // Hiển thị trạng thái chờ trong khi tải nhân viên.
         if (loadingEmployees) {
             return (
                 <div className="create-project-empty-state">Loading employees...</div>
             );
         }
 
+        // Hiển thị hướng dẫn khi chưa chọn thành viên bổ sung.
         if (currentProjectMembers.length === 0) {
             return (
                 <div className="create-project-empty-state">
@@ -515,7 +548,9 @@ function CreateProject() {
         );
     }
 
+    // Hiển thị kết quả nhân viên khả dụng theo bộ lọc trong modal.
     function renderAvailableEmployeeContent() {
+        // Báo khi mọi người dùng đã được thêm vào dự án.
         if (availableEmployees.length === 0) {
             return (
                 <div className="create-project-modal-empty">
@@ -524,6 +559,7 @@ function CreateProject() {
             );
         }
 
+        // Báo khi không có người dùng khớp bộ lọc hiện tại.
         if (visibleAvailableEmployees.length === 0) {
             return (
                 <div className="create-project-modal-empty">
@@ -558,7 +594,7 @@ function CreateProject() {
     return (
         <PagePanel
             title="Create Project"
-            description="Create the project, its phases, and the initial member permissions."
+            description="Create the project, optionally add phases, and select its initial members."
             action={pageAction}
         >
             <Form id="create-project-form" onSubmit={handleSubmit}>
@@ -575,17 +611,34 @@ function CreateProject() {
 
                         <Form.Group as={Col} md={6} controlId="projectCode">
                             <Form.Label className="project-management-field-label">Project Code</Form.Label>
-                            <Form.Control required maxLength={50} name="projectCode" value={project.projectCode} onChange={handleChange} placeholder="Example: PRJ-2026-001" className="project-management-input" />
+                            <Form.Control required maxLength={50} name="projectCode" value={project.projectCode} onChange={handleChange} placeholder="Example: PRJ-2026-Thời trang mùa đông" className="project-management-input" />
                         </Form.Group>
 
                         <Form.Group as={Col} md={6} controlId="projectStartDate">
                             <Form.Label className="project-management-field-label">Start Date</Form.Label>
-                            <Form.Control required type="date" name="projectStartDate" max={project.projectEndDate} value={project.projectStartDate} onChange={handleChange} className="project-management-input" />
+                            <ProjectDateInput
+                                required
+                                id="projectStartDate"
+                                name="projectStartDate"
+                                max={project.projectEndDate}
+                                value={project.projectStartDate}
+                                onChange={handleChange}
+                                className="project-management-input"
+                            />
                         </Form.Group>
 
                         <Form.Group as={Col} md={6} controlId="projectEndDate">
                             <Form.Label className="project-management-field-label">End Date</Form.Label>
-                            <Form.Control required disabled={!project.projectStartDate} type="date" min={minimumEndDate} name="projectEndDate" value={project.projectEndDate} onChange={handleChange} className="project-management-input" />
+                            <ProjectDateInput
+                                required
+                                disabled={!project.projectStartDate}
+                                id="projectEndDate"
+                                min={minimumEndDate}
+                                name="projectEndDate"
+                                value={project.projectEndDate}
+                                onChange={handleChange}
+                                className="project-management-input"
+                            />
                         </Form.Group>
 
                     </Row>
@@ -601,7 +654,7 @@ function CreateProject() {
                     <div className="create-project-section-header">
                         <div>
                             <Card.Title as="h2" className="project-management-card-title">Project Phases</Card.Title>
-                            <p className="create-project-section-note">Phases must cover the full project timeline without gaps or overlapping dates.</p>
+                            <p className="create-project-section-note">Phases are optional. If added, they must cover the full project timeline without gaps or overlapping dates.</p>
                         </div>
                         <Button type="button" variant="light" className="create-project-add-button" onClick={addPhase}>
                             <Icon name="plus" size={18} /> Add Phase
@@ -710,6 +763,7 @@ function CreateProject() {
     );
 }
 
+// Tạo chuỗi ngày hiện tại theo định dạng YYYY-MM-DD cho input date.
 function getTodayDate() {
     const today = new Date();
     const year = today.getFullYear();
@@ -717,6 +771,58 @@ function getTodayDate() {
     const day = String(today.getDate()).padStart(2, "0");
 
     return year + "-" + month + "-" + day;
+}
+
+// Hiển thị ngày theo dd/mm/yyyy nhưng vẫn dùng input date để mở lịch và lưu YYYY-MM-DD.
+function ProjectDateInput({
+    value = "",
+    className = "",
+    disabled = false,
+    readOnly = false,
+    ...inputProperties
+}) {
+    function openDatePicker(event) {
+        if (!readOnly && typeof event.currentTarget.showPicker === "function") {
+            event.currentTarget.showPicker();
+        }
+    }
+
+    return (
+        <div className="project-date-input">
+            <input
+                type="text"
+                value={formatDateForInput(value)}
+                placeholder="dd/mm/yyyy"
+                className={`form-control project-date-input__display ${className}`}
+                readOnly
+                disabled={disabled}
+                tabIndex={-1}
+                aria-hidden="true"
+            />
+            <input
+                {...inputProperties}
+                type="date"
+                value={value}
+                disabled={disabled}
+                readOnly={readOnly}
+                className="project-date-input__native"
+                onClick={openDatePicker}
+            />
+            <span className="project-date-input__icon" aria-hidden="true">
+                <Icon name="calendar" size={18} color="#5f6f89" />
+            </span>
+        </div>
+    );
+}
+
+function formatDateForInput(value) {
+    const matchedDate = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+
+    if (!matchedDate) {
+        return "";
+    }
+
+    return matchedDate[3] + "/" + matchedDate[2] + "/" + matchedDate[1];
 }
 
 export default CreateProject;

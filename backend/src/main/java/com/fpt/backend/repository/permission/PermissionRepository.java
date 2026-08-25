@@ -14,10 +14,13 @@ import java.util.UUID;
 
 @Repository
 public interface PermissionRepository extends JpaRepository<Permissions, UUID> {
+    // Kiểm tra mã quyền đã tồn tại mà không phân biệt chữ hoa chữ thường.
     boolean existsByPermissionCodeIgnoreCase(String permissionCode);
 
+    // Kiểm tra mã quyền trùng với bản ghi khác khi cập nhật.
     boolean existsByPermissionCodeIgnoreCaseAndIdNot(String permissionCode, UUID id);
 
+    // Lấy các quyền thuộc một dự án theo thứ tự định danh.
     @Query("""
             SELECT permission
             FROM Permissions permission
@@ -26,6 +29,7 @@ public interface PermissionRepository extends JpaRepository<Permissions, UUID> {
             """)
     List<Permissions> findByProjectId(@Param("projectId") UUID projectId);
 
+    // Tìm một quyền theo đồng thời mã quyền và mã dự án.
     @Query("""
             SELECT permission
             FROM Permissions permission
@@ -37,6 +41,7 @@ public interface PermissionRepository extends JpaRepository<Permissions, UUID> {
             @Param("projectId") UUID projectId
     );
 
+    // Tìm kiếm và phân trang quyền trong phạm vi dự án mà người dùng được phép xem.
     @Query("""
             SELECT DISTINCT permission
             FROM Permissions permission

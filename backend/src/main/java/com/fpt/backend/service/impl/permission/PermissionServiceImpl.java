@@ -35,7 +35,6 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -44,14 +43,6 @@ import java.util.UUID;
 public class PermissionServiceImpl implements IPermissionService {
     private static final int PAGE_SIZE = 7;
     private static final String DEFAULT_SORT_FIELD = "createdAt";
-    private static final Set<String> SORT_FIELDS = Set.of(
-            "id",
-            "permissionName",
-            "permissionCode",
-            "permissionDescription",
-            "status",
-            "projectName",
-            "createdAt");
 
     private final PermissionRepository permissionRepository;
     private final ProjectRepository projectRepository;
@@ -60,6 +51,7 @@ public class PermissionServiceImpl implements IPermissionService {
     private final ProjectApprovalService projectApprovalService;
     private final CurrentUser currentUser;
 
+    // Tìm kiếm và phân trang các quyền mà người dùng hiện tại được phép xem.
     @Override
     public PermissionListResponse getPermissions(PermissionListRequest request) {
         String search = normalize(request.search());
@@ -99,6 +91,7 @@ public class PermissionServiceImpl implements IPermissionService {
                 permissions.isLast());
     }
 
+    // Lấy chi tiết quyền và kiểm tra quyền xem của người dùng hiện tại.
     @Override
     public PermissionDetailResponse getPermissionById(UUID id) {
         Permissions permission = findPermission(id);
@@ -108,7 +101,8 @@ public class PermissionServiceImpl implements IPermissionService {
                 "MANAGE_MEMBERS"
         );
 
-        if (!canManage && !access.canViewAllProjectData()) {
+        // Từ chối khi người dùng không thể quản lý hoặc xem toàn bộ dữ liệu dự án.
+        if (!canManage && !access.isExecutiveViewer()) {
             throw new ResponseStatusException(
                     HttpStatus.FORBIDDEN,
                     "You cannot view this permission"
@@ -118,6 +112,7 @@ public class PermissionServiceImpl implements IPermissionService {
         return toDetail(permission, canManage);
     }
 
+    // Tạo quyền mới sau khi kiểm tra và chuẩn hóa toàn bộ dữ liệu đầu vào.
     @Override
     @Transactional
     public PermissionDetailResponse createPermission(PermissionRequest request) {
@@ -126,6 +121,7 @@ public class PermissionServiceImpl implements IPermissionService {
         return toDetail(permissionRepository.save(permission), true);
     }
 
+    // Cập nhật quyền hiện có sau khi xác minh quyền quản lý thành viên.
     @Override
     @Transactional
     public PermissionDetailResponse updatePermission(UUID id, PermissionRequest request) {
@@ -135,6 +131,7 @@ public class PermissionServiceImpl implements IPermissionService {
         return toDetail(permissionRepository.save(permission), true);
     }
 
+    // Xóa quyền hiện có khi người dùng có action quản lý thành viên.
     @Override
     @Transactional
     public void deletePermission(UUID id) {
@@ -143,7 +140,7 @@ public class PermissionServiceImpl implements IPermissionService {
         permissionRepository.delete(permission);
     }
 
-    // Trả về danh sách các dự án mà người dùng hiện tại có quyền quản lý thành viên
+    // Lấy danh sách dự án mà người dùng có thể chọn khi cấu hình quyền.
     @Override
     public List<PermissionProjectResponse> getProjectsForPermissionSelection() {
         Users user = currentUser.getCurrentUser();
@@ -151,12 +148,13 @@ public class PermissionServiceImpl implements IPermissionService {
                 .getCurrentUserProjectIdsWithAction("MANAGE_MEMBERS");
         List<Projects> projects;
 
+        // Người duyệt điều hành thấy mọi dự án, người dùng khác chỉ thấy dự án được quản lý.
         if (projectApprovalService.canReviewProjects(user)) {
             projects = projectRepository.findAll();
         } else {
             projects = projectRepository.findAllById(projectIds);
         }
-        //Sắp xếp danh sách dự án theo tên dự án (không phân biệt chữ hoa chữ thường)
+        // Sắp xếp dự án theo tên mà không phân biệt chữ hoa chữ thường.
         projects.sort(
                 Comparator.comparing(
                         Projects::getProjectName,
@@ -175,20 +173,17 @@ public class PermissionServiceImpl implements IPermissionService {
         return responses;
     }
 
+    // Lấy danh sách action có thể gán từ permission catalog.
     @Override
     public List<PermissionActionResponse> getAvailableActions() {
         return permissionActionService.getAvailableActions();
     }
 
+    // Kiểm tra request rồi áp dụng thông tin, dự án và action vào entity quyền.
     private void applyRequest(Permissions permission, PermissionRequest request, UUID currentId) {
-        if (request == null) {
-            throw new BadHttpException("Permission information is required");
-        }
-
-        String permissionName = requireText(request.permissionName(), "Permission name is required", 50);
-        String permissionCode = requireText(request.permissionCode(), "Permission code is required", 50);
+        String permissionName = request.permissionName().trim();
+        String permissionCode = request.permissionCode().trim();
         String permissionDescription = normalize(request.permissionDescription());
-        validateMaxLength(permissionDescription, "Permission description", 255);
         Projects project = findProject(request.projectId());
         permissionAccessService.requireAction(
                 project.getId(),
@@ -198,6 +193,7 @@ public class PermissionServiceImpl implements IPermissionService {
                 ? permissionRepository.existsByPermissionCodeIgnoreCase(permissionCode)
                 : permissionRepository.existsByPermissionCodeIgnoreCaseAndIdNot(permissionCode, currentId);
 
+        // Ngăn tạo hoặc cập nhật thành mã quyền đã được sử dụng.
         if (duplicateCode) {
             throw new BadHttpException("Permission code already exists");
         }
@@ -205,7 +201,7 @@ public class PermissionServiceImpl implements IPermissionService {
         permission.setPermissionName(permissionName);
         permission.setPermissionCode(permissionCode);
         permission.setPermissionDescription(permissionDescription);
-        permission.setStatus(request.status() == null || request.status());
+        permission.setStatus(request.status());
         permission.setProject(project);
 
         permissionActionService.configurePermission(
@@ -213,14 +209,17 @@ public class PermissionServiceImpl implements IPermissionService {
                 request.allowedActions(),
                 request.workScope());
 
+        // Chỉ thiết lập thời điểm tạo cho bản ghi mới.
         if (permission.getCreatedAt() == null) {
             permission.setCreatedAt(LocalDateTime.now());
         }
     }
 
+    // Tìm quyền theo mã định danh hoặc báo không tìm thấy.
     private Permissions findPermission(UUID id) {
         Optional<Permissions> permission = permissionRepository.findById(id);
 
+        // Báo lỗi khi quyền không tồn tại.
         if (permission.isEmpty()) {
             throw new NotFoundException("Permission not found");
         }
@@ -228,13 +227,11 @@ public class PermissionServiceImpl implements IPermissionService {
         return permission.get();
     }
 
+    // Kiểm tra mã dự án rồi trả về dự án tương ứng.
     private Projects findProject(UUID projectId) {
-        if (projectId == null) {
-            throw new BadHttpException("Project is required");
-        }
-
         Optional<Projects> project = projectRepository.findById(projectId);
 
+        // Báo lỗi khi dự án không tồn tại.
         if (project.isEmpty()) {
             throw new NotFoundException("Project not found");
         }
@@ -242,6 +239,7 @@ public class PermissionServiceImpl implements IPermissionService {
         return project.get();
     }
 
+    // Bảo đảm người dùng có action quản lý thành viên của dự án chứa quyền.
     private void requireManagePermission(Permissions permission) {
         Projects project = requirePermissionProject(permission);
         permissionAccessService.requireAction(
@@ -249,6 +247,7 @@ public class PermissionServiceImpl implements IPermissionService {
                 "MANAGE_MEMBERS");
     }
 
+    // Lấy thông tin truy cập dự án liên kết với quyền.
     private ProjectAccessResponse getPermissionAccess(
             Permissions permission) {
         Projects project = requirePermissionProject(permission);
@@ -257,9 +256,11 @@ public class PermissionServiceImpl implements IPermissionService {
         );
     }
 
+    // Lấy dự án liên kết và từ chối quyền không thuộc dự án nào.
     private Projects requirePermissionProject(Permissions permission) {
         Projects project = permission.getProject();
 
+        // Bảo đảm mọi quyền nghiệp vụ đều được gắn với một dự án.
         if (project == null) {
             throw new BadHttpException(
                     "Permission is not connected to a project");
@@ -268,10 +269,11 @@ public class PermissionServiceImpl implements IPermissionService {
         return project;
     }
 
+    // Tạo cấu hình phân trang và ánh xạ trường sắp xếp cho truy vấn quyền.
     private Pageable createPageable(int page, String sortBy, String sortDirection) {
-        int validPage = Math.max(page, 0);
-        String sortField = sortBy != null && SORT_FIELDS.contains(sortBy) ? sortBy : DEFAULT_SORT_FIELD;
+        String sortField = sortBy == null ? DEFAULT_SORT_FIELD : sortBy;
 
+        // Ánh xạ trường hiển thị projectName sang đường dẫn thuộc tính entity.
         if ("projectName".equals(sortField)) {
             sortField = "project.projectName";
         }
@@ -280,35 +282,15 @@ public class PermissionServiceImpl implements IPermissionService {
                 ? Sort.Direction.ASC
                 : Sort.Direction.DESC;
 
-        return PageRequest.of(validPage, PAGE_SIZE, Sort.by(direction, sortField));
+        return PageRequest.of(page, PAGE_SIZE, Sort.by(direction, sortField));
     }
 
-    private String requireText(String value, String missingMessage, int maxLength) {
-        String normalizedValue = normalize(value);
-
-        if (normalizedValue.isBlank()) {
-            throw new BadHttpException(missingMessage);
-        }
-
-        if (normalizedValue.length() > maxLength) {
-            throw new BadHttpException(
-                    "Value must not be longer than " + maxLength + " characters");
-        }
-
-        return normalizedValue;
-    }
-
-    private void validateMaxLength(String value, String fieldName, int maxLength) {
-        if (value.length() > maxLength) {
-            throw new BadHttpException(
-                    fieldName + " must not be longer than " + maxLength + " characters");
-        }
-    }
-
+    // Chuẩn hóa chuỗi null thành rỗng và loại bỏ khoảng trắng hai đầu.
     private String normalize(String value) {
         return value == null ? "" : value.trim();
     }
 
+    // Chuyển entity quyền thành phần tử hiển thị trong danh sách.
     private PermissionListItemResponse toListItem(
             Permissions permission,
             boolean canManage) {
@@ -327,6 +309,7 @@ public class PermissionServiceImpl implements IPermissionService {
                 canManage);
     }
 
+    // Chuyển entity quyền thành dữ liệu chi tiết trả về cho client.
     private PermissionDetailResponse toDetail(
             Permissions permission,
             boolean canManage) {

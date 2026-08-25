@@ -1857,13 +1857,13 @@ public class ContractServiceImpl implements ContractService {
         ProjectAccessResponse projectAccess = permissionAccessService
                 .getCurrentUserAccess(project.getId());
         ContractAccessResponse contractAccess = new ContractAccessResponse(
-                projectAccess.projectId(),
-                projectAccess.currentUserId(),
-                projectAccess.projectCreator(),
-                projectAccess.projectMember(),
-                projectAccess.allowedActions(),
-                projectAccess.fullScopeActions(),
-                projectAccess.workScope(),
+                projectAccess.getProjectId(),
+                projectAccess.getCurrentUserId(),
+                projectAccess.isProjectCreator(),
+                projectAccess.isProjectMember(),
+                projectAccess.getAllowedActions(),
+                projectAccess.getFullScopeActions(),
+                projectAccess.getWorkScope(),
                 isContractOwner(contract, user),
                 isWorkflowParticipant(contract, user)
         );
