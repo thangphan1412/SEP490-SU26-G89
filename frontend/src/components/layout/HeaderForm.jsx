@@ -78,7 +78,10 @@ function HeaderForm(){
                         </span>
                      }  id="basic-nav-dropdown">
 
-                         <NavDropdown.Item as={NavLink} to="/dashboard/agreement-statistics">Dashboard</NavDropdown.Item>
+                         {/* --- ĐÃ FIX Ở ĐÂY: GIẤU DASHBOARD VỚI CÁC ROLE KHÁC --- */}
+                         {['CEO', 'Administrator', 'Accountant'].includes(role) && (
+                             <NavDropdown.Item as={NavLink} to="/dashboard/agreement-statistics">Dashboard</NavDropdown.Item>
+                         )}
                          <NavDropdown.Item as={NavLink} to="/user-profile/view">My profile</NavDropdown.Item>
                          <NavDropdown.Item as={NavLink} to="/company-profile/view">
                             Company profile

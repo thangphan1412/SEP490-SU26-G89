@@ -24,6 +24,10 @@ function ViewProfile({ onEditProfile }) {
     const [profile, setProfile] = useState(null);
     const [loading, setLoading] = useState(true);
 
+    // Ở ViewProfile.jsx, xác định quyền Edit:
+    const currentUserRole = localStorage.getItem("role");
+    const canEditProfile = currentUserRole === 'Accountant';
+
     // Gọi API lấy dữ liệu Company Profile
     useEffect(() => {
         const fetchProfile = async () => {
@@ -64,15 +68,13 @@ function ViewProfile({ onEditProfile }) {
                                 Manage your company's legal identity information for automatic use in contracts and documents.
                             </p>
                         </div>
-                        <Button
-                            variant="primary"
-                            className="fw-bold px-4 d-flex align-items-center gap-2"
-                            onClick={handleEditProfile}
-                            disabled={loading}
-                        >
-                            <IconEdit size={19} color="#ffffff" />
-                            <span>Edit Profile</span>
-                        </Button>
+                        {/*Ẩn nút Edit nếu không phải Accountant:*/}
+                        {canEditProfile && (
+                            <Button variant="primary" onClick={handleEditProfile} disabled={loading}>
+                                <IconEdit size={19} color="#ffffff" />
+                                <span>Edit Profile</span>
+                            </Button>
+                        )}
                     </div>
 
                     {/* Check Loading State */}
@@ -99,28 +101,8 @@ function ViewProfile({ onEditProfile }) {
                                             <strong className="text-dark w-50 text-break">{profile.email}</strong>
                                         </Col>
                                         <Col md={6} className="d-flex py-3 border-bottom border-light px-2">
-                                            <span className="text-muted w-50 fw-medium">Tax Code (MST)</span>
-                                            <strong className="text-dark w-50">{profile.taxCode}</strong>
-                                        </Col>
-                                        <Col md={6} className="d-flex py-3 border-bottom border-light px-2">
-                                            <span className="text-muted w-50 fw-medium">Phone</span>
-                                            <strong className="text-dark w-50">{profile.phone}</strong>
-                                        </Col>
-                                        <Col md={6} className="d-flex py-3 border-bottom border-light px-2">
                                             <span className="text-muted w-50 fw-medium">Registered Address</span>
                                             <strong className="text-dark w-50">{profile.registeredAddress}</strong>
-                                        </Col>
-                                        <Col md={6} className="d-flex py-3 border-bottom border-light px-2">
-                                            <span className="text-muted w-50 fw-medium">Business Registration No.</span>
-                                            <strong className="text-dark w-50">{profile.businessRegistrationNumber}</strong>
-                                        </Col>
-                                        <Col md={6} className="d-flex py-3 px-2 border-bottom-0">
-                                            <span className="text-muted w-50 fw-medium">Legal Representative</span>
-                                            <strong className="text-dark w-50">{profile.legalRepresentative}</strong>
-                                        </Col>
-                                        <Col md={6} className="d-flex py-3 px-2 border-bottom-0">
-                                            <span className="text-muted w-50 fw-medium">Registration Date</span>
-                                            <strong className="text-dark w-50">{profile.registrationDate}</strong>
                                         </Col>
                                     </Row>
                                 </Card.Body>

@@ -90,5 +90,9 @@ public class Users extends BaseEntity {
     private List<TimelineTask>  timelineTasks;
     @OneToMany(mappedBy = "user")
     private List<ElectronicSignatures>  electronicSignatures;
+    /// THÊM LIÊN KẾT NÀY VÀO TRONG USERS ENTITY
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "company_id")
+    private Company company;
 
 }

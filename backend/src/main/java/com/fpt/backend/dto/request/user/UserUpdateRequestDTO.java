@@ -57,4 +57,10 @@ public class UserUpdateRequestDTO {
     @NotBlank(message = "Ngày bắt đầu làm việc không được để trống")
     @Pattern(regexp = "^\\d{4}-\\d{2}-\\d{2}$", message = "Ngày bắt đầu làm việc phải theo định dạng YYYY-MM-DD")
     private String startDate;
+
+    // --- CÁC TRƯỜNG THÔNG TIN COMPANY KHI TẠO/SỬA USER ---
+    private String companyName;
+    private String companyEmail;
+    private String registeredAddress;
+
 }

@@ -3,11 +3,12 @@ package com.fpt.backend.service.impl.company;
 import com.fpt.backend.dto.request.companyProfile.CompanyProfileRequestDTO;
 import com.fpt.backend.dto.response.companyProfile.CompanyProfileResponseDTO;
 import com.fpt.backend.entity.Company;
+import com.fpt.backend.entity.Users;
 import com.fpt.backend.repository.company.CompanyRepository;
 import com.fpt.backend.service.interfaces.company.ICompanyService;
-// Nhớ import 2 thư viện mail của bạn vào nhé
 import com.fpt.backend.mail.EmailService;
 import com.fpt.backend.mail.MessageInfor;
+import com.fpt.backend.util.CurrentUser;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -19,50 +20,55 @@ public class CompanyServiceImpl implements ICompanyService {
     @Autowired
     private CompanyRepository companyRepository;
 
-    // THÊM: Inject EmailService vào đây
     @Autowired
     private EmailService emailService;
 
+    // THÊM: Tiêm CurrentUser vào để biết ai đang gọi API
+    @Autowired
+    private CurrentUser currentUser;
+
     @Override
     public CompanyProfileResponseDTO getCompanyProfile(UUID id) {
-        Company company = companyRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Company not found with id: " + id));
+        // 1. Lấy thông tin user đang đăng nhập từ Token
+        Users loggedInUser = currentUser.getCurrentUser();
+
+        // 2. Lấy đúng hồ sơ công ty được móc nối với User đó (Đối tác ra đối tác, nội bộ ra nội bộ)
+        Company company = loggedInUser.getCompany();
+
+        // 3. Fallback (Phòng hờ): Nếu user nội bộ cũ chưa kịp có liên kết, thì lấy mặc định công ty nội bộ
+        if (company == null) {
+            company = companyRepository.findByIsInternalTrue()
+                    .orElseThrow(() -> new RuntimeException("Company profile not found. Please initialize it."));
+        }
+
         return CompanyProfileResponseDTO.fromEntity(company);
     }
 
     @Override
     public CompanyProfileResponseDTO updateCompanyProfile(UUID id, CompanyProfileRequestDTO request) {
-        Company existingCompany = companyRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Company not found with id: " + id));
+        // Màn Update Company Profile chỉ dành cho Accountant (Nội bộ), nên luôn luôn lấy công ty nội bộ để sửa
+        Company existingCompany = companyRepository.findByIsInternalTrue()
+                .orElse(new Company());
 
-        // Chỉ cập nhật những trường thực sự có trong Database
+        existingCompany.setIsInternal(true);
         existingCompany.setCompanyName(request.getCompanyName());
-        existingCompany.setCompanyCode(request.getBusinessRegistrationNumber());
+        existingCompany.setEmail(request.getEmail());
+        existingCompany.setRegisteredAddress(request.getRegisteredAddress());
 
         Company updatedCompany = companyRepository.save(existingCompany);
 
-        // --- BẮT ĐẦU ĐOẠN CODE GỬI EMAIL TỰ ĐỘNG ---
+        // Gửi Mail
         try {
-            // Kiểm tra xem frontend có truyền email xuống không
             if (request.getEmail() != null && !request.getEmail().isEmpty()) {
                 MessageInfor messageInfor = new MessageInfor();
-                messageInfor.setEmail(request.getEmail()); // Lấy email từ request để gửi
+                messageInfor.setEmail(request.getEmail());
                 messageInfor.setTitle("System Alert: Company Legal Profile Updated");
-
-                String emailBody = "Hello,\n\n" +
-                        "This is an automated notification to inform you that the Legal Profile for company '" + request.getCompanyName() + "' has been successfully updated in the E-CONTRACT system.\n\n" +
-                        "The updated information includes Company Name, Tax Code, Registered Address, and other legal identifiers used in contract templates.\n\n" +
-                        "If your authorized administrator did not make these changes, please verify the system audit logs or contact technical support immediately.\n\n" +
-                        "Best regards,\nE-CONTRACT Security System";
-
-                messageInfor.setText(emailBody);
+                messageInfor.setText("The Legal Profile for company '" + request.getCompanyName() + "' has been successfully updated.");
                 emailService.sendEmail(messageInfor);
             }
         } catch (Exception e) {
-            // Bọc try-catch để lỡ cấu hình mail lỗi thì hệ thống vẫn lưu thông tin công ty bình thường
-            System.err.println("Lỗi khi gửi email thông báo update company profile: " + e.getMessage());
+            System.err.println("Mail Error: " + e.getMessage());
         }
-        // --- KẾT THÚC ĐOẠN CODE GỬI EMAIL ---
 
         return CompanyProfileResponseDTO.fromEntity(updatedCompany);
     }

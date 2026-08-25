@@ -33,6 +33,15 @@ function UpdateProfile({ initialProfile, onSaveProfile, onCancel }) {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isLoadingData, setIsLoadingData] = useState(true);
 
+    // Ở UpdateProfile.jsx, chặn truy cập nếu User biết link URL mà cố tình vào
+    useEffect(() => {
+        const role = localStorage.getItem("role");
+        if (role !== 'Accountant') {
+            alert("Access Denied: Chỉ Accountant mới được phép sửa hồ sơ công ty.");
+            navigate("/company-profile/view");
+        }
+    }, []);
+
     // Tự động tải thông tin công ty hiện tại khi vào trang update
     useEffect(() => {
         const fetchCurrentProfile = async () => {
@@ -70,8 +79,15 @@ function UpdateProfile({ initialProfile, onSaveProfile, onCancel }) {
         setIsSubmitting(true);
 
         try {
+            // Gom đúng 3 biến cần thiết, loại bỏ các biến thừa (như id) để Spring Boot không báo lỗi 400
+            const payload = {
+                companyName: profile.companyName,
+                email: profile.email,
+                registeredAddress: profile.registeredAddress
+            };
+
             // Gọi API Update profile công ty
-            await updateCompanyProfile(profile);
+            await updateCompanyProfile(payload);
 
             onSaveProfile?.(profile);
 
@@ -174,27 +190,6 @@ function UpdateProfile({ initialProfile, onSaveProfile, onCancel }) {
                                         </Form.Group>
                                     </Col>
 
-                                    {/* Tax Code */}
-                                    <Col md={6}>
-                                        <Form.Group>
-                                            <Form.Label className="small fw-bold text-secondary">
-                                                Tax Code (MST) <span className="text-danger">*</span>
-                                            </Form.Label>
-                                            <Form.Control id="taxCode" name="taxCode" type="text" value={profile.taxCode} onChange={handleChange} required disabled={isSubmitting} className="py-2 fw-semibold" />
-                                            <Form.Text className="text-muted">Enter your 10-digit Tax Code as issued by the tax authority.</Form.Text>
-                                        </Form.Group>
-                                    </Col>
-
-                                    {/* Phone */}
-                                    <Col md={6}>
-                                        <Form.Group>
-                                            <Form.Label className="small fw-bold text-secondary">
-                                                Phone <span className="text-danger">*</span>
-                                            </Form.Label>
-                                            <Form.Control id="phone" name="phone" type="tel" value={profile.phone} onChange={handleChange} required disabled={isSubmitting} className="py-2 fw-semibold" />
-                                        </Form.Group>
-                                    </Col>
-
                                     {/* Registered Address */}
                                     <Col md={6}>
                                         <Form.Group>
@@ -206,46 +201,6 @@ function UpdateProfile({ initialProfile, onSaveProfile, onCancel }) {
                                         </Form.Group>
                                     </Col>
 
-                                    {/* Business Registration No */}
-                                    <Col md={6}>
-                                        <Form.Group>
-                                            <Form.Label className="small fw-bold text-secondary">
-                                                Business Registration No. <span className="text-danger">*</span>
-                                            </Form.Label>
-                                            <Form.Control id="businessRegistrationNumber" name="businessRegistrationNumber" type="text" value={profile.businessRegistrationNumber} onChange={handleChange} required disabled={isSubmitting} className="py-2 fw-semibold" />
-                                            <Form.Text className="text-muted">Your company's business registration number.</Form.Text>
-                                        </Form.Group>
-                                    </Col>
-
-                                    {/* Legal Representative */}
-                                    <Col md={6}>
-                                        <Form.Group>
-                                            <Form.Label className="small fw-bold text-secondary">
-                                                Legal Representative <span className="text-danger">*</span>
-                                            </Form.Label>
-                                            <Form.Control id="legalRepresentative" name="legalRepresentative" type="text" value={profile.legalRepresentative} onChange={handleChange} required disabled={isSubmitting} className="py-2 fw-semibold" />
-                                            <Form.Text className="text-muted">Full name of the legal representative.</Form.Text>
-                                        </Form.Group>
-                                    </Col>
-
-                                    {/* Registration Date */}
-                                    <Col md={6}>
-                                        <Form.Group>
-                                            <Form.Label className="small fw-bold text-secondary">
-                                                Registration Date <span className="text-danger">*</span>
-                                            </Form.Label>
-                                            <Form.Control
-                                                type="date"
-                                                name="registrationDate"
-                                                value={profile.registrationDate}
-                                                onChange={handleChange}
-                                                required
-                                                disabled={isSubmitting}
-                                                className="py-2 fw-semibold"
-                                            />
-                                            <Form.Text className="text-muted">Date of business registration.</Form.Text>
-                                        </Form.Group>
-                                    </Col>
                                 </Row>
                             </Card>
 

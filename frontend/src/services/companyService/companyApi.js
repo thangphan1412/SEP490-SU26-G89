@@ -2,22 +2,20 @@ import axios from "axios";
 
 const COMPANY_API_BASE_URL = "http://localhost:8080/api/company-profile";
 
-// Lấy thông tin công ty
+// Khai báo hàm lấy Token giống hệt bên userApi.js
+const getAuthHeader = () => {
+    const token = localStorage.getItem("token");
+    return token ? { "Authorization": `Bearer ${token}` } : {};
+};
+
 export const getCompanyProfile = () => {
     return axios.get(COMPANY_API_BASE_URL, {
-        headers: {
-            "Cache-Control": "no-cache",
-            // "Authorization": `Bearer ${localStorage.getItem("token")}` // Bật lên nếu FE đã cấu hình token
-        },
+        headers: { "Cache-Control": "no-cache", ...getAuthHeader() },
     });
 };
 
-// Cập nhật thông tin công ty
 export const updateCompanyProfile = (profileData) => {
     return axios.put(COMPANY_API_BASE_URL, profileData, {
-        headers: {
-            "Cache-Control": "no-cache",
-            // "Authorization": `Bearer ${localStorage.getItem("token")}`
-        },
+        headers: { "Cache-Control": "no-cache", ...getAuthHeader() },
     });
 };

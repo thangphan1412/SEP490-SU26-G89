@@ -59,6 +59,9 @@ function UpdateUser({ onUpdateUser }) {
         startDate: "",
         dob: "",
         sendUpdateEmail: true,
+        companyName: "",
+        companyEmail: "",
+        registeredAddress: ""
     });
 
     useEffect(() => {
@@ -95,6 +98,9 @@ function UpdateUser({ onUpdateUser }) {
                     dob: data.dob || "",
                     employeeId: data.employeeId || "N/A",
                     startDate: data.startDate || "",
+                    companyName: data.companyName || "",
+                    companyEmail: data.companyEmail || "",
+                    registeredAddress: data.registeredAddress || "",
                 }));
             } catch (error) {
                 console.error("Lỗi khi tải dữ liệu user:", error);
@@ -133,7 +139,10 @@ function UpdateUser({ onUpdateUser }) {
                 departmentName: user.department,
                 sendWelcomeEmail: user.sendUpdateEmail,
                 dob: user.dob,
-                startDate: user.startDate
+                startDate: user.startDate,
+                companyName: user.companyName,
+                companyEmail: user.companyEmail,
+                registeredAddress: user.registeredAddress
             };
 
             await updateUser(id, payload);
@@ -411,6 +420,33 @@ function UpdateUser({ onUpdateUser }) {
                                     </div>
                                 </Stack>
                             </Card>
+
+                            {/*Dưới khối User Info, dùng LỆNH IF (Toán tử 3 ngôi) ĐỂ CHỈ HIỂN THỊ KHI LÀ ĐỐI TÁC*/}
+                            {user.role === 'External Parners' && (
+                                <Card className="mx-4 mb-4 border rounded-3 p-4">
+                                    <h2 className="h5 fw-bold mb-4 text-dark">Partner Company Information</h2>
+                                    <Row className="g-4">
+                                        <Col md={6}>
+                                            <Form.Group>
+                                                <Form.Label className="small fw-bold">Company Name <span className="text-danger">*</span></Form.Label>
+                                                <Form.Control type="text" name="companyName" value={user.companyName} onChange={handleChange} required disabled={isSubmitting} />
+                                            </Form.Group>
+                                        </Col>
+                                        <Col md={6}>
+                                            <Form.Group>
+                                                <Form.Label className="small fw-bold">Company Email <span className="text-danger">*</span></Form.Label>
+                                                <Form.Control type="email" name="companyEmail" value={user.companyEmail} onChange={handleChange} required disabled={isSubmitting} />
+                                            </Form.Group>
+                                        </Col>
+                                        <Col md={12}>
+                                            <Form.Group>
+                                                <Form.Label className="small fw-bold">Registered Address <span className="text-danger">*</span></Form.Label>
+                                                <Form.Control as="textarea" rows={2} name="registeredAddress" value={user.registeredAddress} onChange={handleChange} required disabled={isSubmitting} />
+                                            </Form.Group>
+                                        </Col>
+                                    </Row>
+                                </Card>
+                            )}
 
                             {/* --- ACCESS PREVIEW SECTION --- */}
                             <Card className="mx-4 mb-4 border rounded-3 p-4">

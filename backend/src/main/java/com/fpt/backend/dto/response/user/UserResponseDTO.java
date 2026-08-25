@@ -1,5 +1,6 @@
 package com.fpt.backend.dto.response.user;
 
+import com.fpt.backend.entity.Company;
 import com.fpt.backend.entity.Users;
 import com.fpt.backend.enums.UserStatus;
 import lombok.AllArgsConstructor;
@@ -30,12 +31,19 @@ public class UserResponseDTO {
     private String lastActive;
     private String startDate;
 
+    // --- BỔ SUNG TRƯỜNG ĐỂ TRẢ VỀ VIEW USER ---
+    private String companyName;
+    private String companyEmail;
+    private String registeredAddress;
+
     public static UserResponseDTO fromEntity(Users user) {
-        // 2. XỬ LÝ LOGIC CẮT UUID THÀNH MÃ NHÂN VIÊN TẠI ĐÂY
         String generateEmpId = "N/A";
         if (user.getId() != null) {
             generateEmpId = "UID-" + user.getId().toString().substring(0, 8).toUpperCase();
         }
+
+        Company c = user.getCompany(); // Lấy công ty của User
+
         return UserResponseDTO.builder()
                 .id(user.getId())
                 .email(user.getEmail())
@@ -43,14 +51,16 @@ public class UserResponseDTO {
                 .lastName(user.getLastName())
                 .numberPhone(user.getNumberPhone())
                 .role(user.getUserRoles() != null && !user.getUserRoles().isEmpty() ? user.getUserRoles().get(0).getRole().getRoleName(): "N/A")
-                // Truyền thẳng Enum vào đây. Nếu null thì set mặc định là Inactive
                 .status(user.getStatus() != null ? user.getStatus() : UserStatus.INACTIVE)
-                // Lấy tên department (nếu user có department)
                 .departmentName(user.getDepartment() != null ? user.getDepartment().getDepartmentName() : "N/A")
-                .dob(user.getDob()) // MAP TRƯỜNG DOB
+                .dob(user.getDob())
                 .lastActive(user.getLastActive() != null ? user.getLastActive().toString() : null)
                 .startDate(user.getStartDate())
                 .employeeId(generateEmpId)
+                // Map thông tin Company
+                .companyName(c != null ? c.getCompanyName() : "N/A")
+                .companyEmail(c != null ? c.getEmail() : "N/A")
+                .registeredAddress(c != null ? c.getRegisteredAddress() : "N/A")
                 .build();
     }
 }

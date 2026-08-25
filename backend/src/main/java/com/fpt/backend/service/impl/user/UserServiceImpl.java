@@ -10,13 +10,11 @@ import com.fpt.backend.dto.request.userProfile.UserProfileRequestDTO;
 import com.fpt.backend.dto.response.authentication.RegisterResponse;
 import com.fpt.backend.dto.response.user.UserResponseDTO;
 import com.fpt.backend.dto.response.userProfile.UserProfileResponseDTO;
-import com.fpt.backend.entity.Departments;
-import com.fpt.backend.entity.Role;
-import com.fpt.backend.entity.UserRole;
-import com.fpt.backend.entity.Users;
+import com.fpt.backend.entity.*;
 import com.fpt.backend.enums.UserStatus;
 import com.fpt.backend.mail.EmailService;
 import com.fpt.backend.mail.MessageInfor;
+import com.fpt.backend.repository.company.CompanyRepository;
 import com.fpt.backend.repository.department.DepartmentRepository;
 import com.fpt.backend.repository.role.RoleRepository;
 import com.fpt.backend.repository.user.UserRepository;
@@ -62,6 +60,8 @@ public class UserServiceImpl implements IUserService {
     private UserRoleRepository userRoleRepository;
     @Autowired
     private UserKeyServiceImpl userKeyService;
+    @Autowired
+    private CompanyRepository companyRepository;
     @Override
     public Boolean existsByEmail(String email) {
         return userRepository.existsByEmail(email);
@@ -207,6 +207,37 @@ public class UserServiceImpl implements IUserService {
         }
 
 
+        // --- BẮT ĐẦU XỬ LÝ COMPANY ---
+        Company company;
+        if ("External Parners".equalsIgnoreCase(request.getRole())) {
+            // 1. Nếu là đối tác -> Luôn tạo công ty mới từ form
+            company = new Company();
+            company.setIsInternal(false);
+            company.setCompanyName(request.getCompanyName());
+            company.setEmail(request.getCompanyEmail());
+            company.setRegisteredAddress(request.getRegisteredAddress());
+            company = companyRepository.save(company);
+        } else {
+            // 2. Nếu là nội bộ -> Kiểm tra DB xem đã có công ty nội bộ chưa
+            Optional<Company> optInternalCompany = companyRepository.findByIsInternalTrue();
+
+            if (optInternalCompany.isPresent()) {
+                // ĐÃ CÓ: Lấy công ty cũ dùng luôn, KHÔNG tạo mới, KHÔNG ghi đè
+                company = optInternalCompany.get();
+            } else {
+                // CHƯA CÓ (Lần đầu tiên tạo user nội bộ): Tạo công ty nội bộ mới từ data của form
+                company = new Company();
+                company.setIsInternal(true);
+                company.setCompanyName(request.getCompanyName());
+                company.setEmail(request.getCompanyEmail());
+                company.setRegisteredAddress(request.getRegisteredAddress());
+                company = companyRepository.save(company);
+            }
+        }
+
+        newUser.setCompany(company); // Móc nối vào User
+        // --- KẾT THÚC XỬ LÝ COMPANY ---
+
 
         Users savedUser = userRepository.save(newUser);
 //        userKeyService.generateUserKey(savedUser);
@@ -310,7 +341,41 @@ public class UserServiceImpl implements IUserService {
             existingUser.setPassword(passwordEncoder.encode(request.getPassword()));
         }
 
+
+        // --- BẮT ĐẦU XỬ LÝ SỬA COMPANY (Chỉ sửa khi là External Parners) ---
+        if ("External Parners".equalsIgnoreCase(targetCurrentRole)) {
+            Company existingCompany = existingUser.getCompany();
+            if (existingCompany == null) {
+                existingCompany = new Company();
+                existingCompany.setIsInternal(false);
+            }
+            existingCompany.setCompanyName(request.getCompanyName());
+            existingCompany.setEmail(request.getCompanyEmail());
+            existingCompany.setRegisteredAddress(request.getRegisteredAddress());
+
+            companyRepository.save(existingCompany);
+            existingUser.setCompany(existingCompany);
+        }
+        // --- KẾT THÚC XỬ LÝ COMPANY ---
+
+
         Users updatedUser = userRepository.save(existingUser);
+        // --- BẮT ĐẦU CHÈN ĐOẠN GỬI MAIL VÀO ĐÂY ---
+        if (Boolean.TRUE.equals(request.getSendWelcomeEmail())) {
+            try {
+                MessageInfor messageInfor = new MessageInfor();
+                messageInfor.setEmail(updatedUser.getEmail());
+                messageInfor.setTitle("E-CONTRACT: Account Information Updated");
+                messageInfor.setText("Hello " + updatedUser.getFirstName() + ",\n\n" +
+                        "Your account information or permissions have been updated by the Administrator. " +
+                        "Please log in to check your new details.\n\n" +
+                        "Best regards,\nE-CONTRACT System");
+                emailService.sendEmail(messageInfor);
+            } catch (Exception e) {
+                System.err.println("Lỗi khi gửi email thông báo update user: " + e.getMessage());
+            }
+        }
+        // --- KẾT THÚC CHÈN CODE GỬI MAIL ---
         return UserResponseDTO.fromEntity(updatedUser);
     }
 
