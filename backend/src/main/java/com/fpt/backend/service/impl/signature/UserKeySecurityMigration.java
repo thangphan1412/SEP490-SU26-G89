@@ -1,6 +1,7 @@
 package com.fpt.backend.service.impl.signature;
 
-import com.fpt.backend.repository.signature.UserKeyRepository;
+
+import com.fpt.backend.repository.signature.UserKeysRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
@@ -12,7 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class UserKeySecurityMigration {
 
-    private final UserKeyRepository userKeysRepository;
+    private final UserKeysRepository userKeysRepository;
     private final PrivateKeyProtectionService protectionService;
 
     @Order(20)
