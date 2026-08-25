@@ -10,6 +10,7 @@ import java.util.UUID;
 
 @Repository
 public interface SignatureRepository extends JpaRepository<Signature, UUID> {
+<<<<<<< HEAD
     @EntityGraph(attributePaths = {
             "signedBy",
             "electronicSignatures",
@@ -22,4 +23,22 @@ public interface SignatureRepository extends JpaRepository<Signature, UUID> {
             UUID contractId,
             UUID workflowStepInstanceId
     );
+=======
+    boolean existsByContractId(UUID contractId);
+//    @Query("""
+//            select new com.fpt.backend.dto.response.signature.SignatureListResponse(
+//                                                                                         s.signatureName,
+//                                                                                         new com.fpt.backend.dto.response.electronicSignature.ListElectronicResponse(
+//                                                                                             es.electronicSignatureType,
+//                                                                                             es.status,
+//                                                                                             es.isDefault,
+//                                                                                             es.createdAt
+//                                                                                         )
+//                                                                                     )
+//                                                                                     from Signature s
+//                                                                                     join s.electronicSignatures es
+//                                                                                     where s.userKey.user.id = :userId
+//        """)
+//    List<SignatureListResponse> findAll(@Param("userId") UUID userId);
+>>>>>>> 7d6eb51fe9c660b46d1a1bc0200bcbbc73cf5f51
 }

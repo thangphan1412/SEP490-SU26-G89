@@ -66,10 +66,12 @@ public class ProjectApprovalService {
             return true;
         }
 
-        return !isLevelApproved(
-                proposal.get().getId(),
-                approvalLevel
+        boolean alreadyApproved = isLevelApproved(
+                proposal.get().getId(), approvalLevel
         );
+        // Older records may contain CEO approval but remain On Hold because
+        // the previous rule also waited for Head of Department approval.
+        return !alreadyApproved || CEO_LEVEL.equals(approvalLevel);
     }
 
     public void approveProject(
@@ -94,6 +96,10 @@ public class ProjectApprovalService {
         Proposals proposal = getOrCreateProposal(project, approvedBy);
 
         if (isLevelApproved(proposal.getId(), approvalLevel)) {
+            if (CEO_LEVEL.equals(approvalLevel)) {
+                finalizeApprovedProject(project, proposal);
+                return;
+            }
             throw new BadHttpException(
                     "This approval level has already approved the project"
             );
@@ -108,22 +114,29 @@ public class ProjectApprovalService {
         approvalRepository.saveAndFlush(approval);
 
         if (hasRequiredApprovals(proposal.getId())) {
-            proposal.setStatus(APPROVED_STATUS);
-            project.setProjectStatus(PLANNING_STATUS);
-            projectStatusService.activateIfStarted(project);
-            projectRepository.save(project);
+            finalizeApprovedProject(project, proposal);
         }
 
         proposal.setUpdateAt(LocalDate.now(APP_TIME_ZONE).toString());
         proposalRepository.save(proposal);
     }
 
+    private void finalizeApprovedProject(
+            Projects project,
+            Proposals proposal
+    ) {
+        proposal.setStatus(APPROVED_STATUS);
+        proposal.setUpdateAt(LocalDate.now(APP_TIME_ZONE).toString());
+        project.setProjectStatus(PLANNING_STATUS);
+        projectStatusService.activateIfStarted(project);
+        projectRepository.save(project);
+        proposalRepository.save(proposal);
+    }
+
     private boolean hasRequiredApprovals(UUID proposalId) {
-        return isLevelApproved(proposalId, CEO_LEVEL)
-                && isLevelApproved(
-                        proposalId,
-                        HEAD_OF_DEPARTMENT_LEVEL
-                );
+        // The Head of Department may review first, but CEO approval is the
+        // final decision that releases the project from On Hold.
+        return isLevelApproved(proposalId, CEO_LEVEL);
     }
 
     private boolean isLevelApproved(
@@ -216,14 +229,28 @@ public class ProjectApprovalService {
             Role role = userRole.getRole();
 
             for (String acceptedValue : acceptedValues) {
-                if (acceptedValue.equalsIgnoreCase(role.getRoleCode())
-                        || acceptedValue.equalsIgnoreCase(
-                                role.getRoleName())) {
+                if (matchesRoleValue(role.getRoleCode(), acceptedValue)
+                        || matchesRoleValue(role.getRoleName(), acceptedValue)) {
                     return true;
                 }
             }
         }
 
         return false;
+    }
+
+    private boolean matchesRoleValue(String actualValue, String acceptedValue) {
+        if (actualValue == null || acceptedValue == null) {
+            return false;
+        }
+        String actual = normalizeRoleValue(actualValue);
+        String accepted = normalizeRoleValue(acceptedValue);
+        return actual.equals(accepted)
+                || actual.equals("ROLE" + accepted);
+    }
+
+    private String normalizeRoleValue(String value) {
+        return value.toUpperCase(java.util.Locale.ROOT)
+                .replaceAll("[^A-Z0-9]", "");
     }
 }

@@ -23,11 +23,15 @@ public interface ElectronicSignatureRepository extends JpaRepository<ElectronicS
         es.status,
         es.isDefault,
         es.createdAt,
+<<<<<<< HEAD
         es.fileStorage.filePath,
         uk.publicKey,
         uk.keyFingerprint,
         uk.keyAlgorithm,
         uk.keySize
+=======
+        es.fileStorage.filePath
+>>>>>>> 7d6eb51fe9c660b46d1a1bc0200bcbbc73cf5f51
     )
     from ElectronicSignatures es
     left join es.userKey uk
@@ -56,10 +60,21 @@ public interface ElectronicSignatureRepository extends JpaRepository<ElectronicS
         """)
     ElectronicSignatureDetailResponse getElectronicSignaturesById(@Param("userId") UUID userId, @Param("signatureId") UUID signatureId);
 
+<<<<<<< HEAD
     Optional<ElectronicSignatures> findByIdAndUserIdAndStatus(
             UUID id,
             UUID userId,
             ElectronicStatus status
+=======
+    @Query("""
+        select es from ElectronicSignatures es
+        join fetch es.fileStorage
+        where es.id = :signatureId and es.user.id = :userId
+        """)
+    java.util.Optional<ElectronicSignatures> findOwnedById(
+            @Param("signatureId") UUID signatureId,
+            @Param("userId") UUID userId
+>>>>>>> 7d6eb51fe9c660b46d1a1bc0200bcbbc73cf5f51
     );
 }
 

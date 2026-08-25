@@ -26,6 +26,14 @@ import "../../assets/styles/css/projectStyles/ListProject.css";
 const PROJECT_ACCESS_DENIED_MESSAGE =
     "Bạn không được quyền xem project này!";
 
+function normalizeRole(value) {
+    return String(value || "")
+        .trim()
+        .toUpperCase()
+        .replace(/[^A-Z0-9]/g, "")
+        .replace(/^ROLE/, "");
+}
+
 const PROJECT_COLUMN_LABELS = [
     "Project",
     "Code",
@@ -71,6 +79,7 @@ function createPageNumbers(currentPage, totalPages) {
 
 function ListProject() {
     const navigate = useNavigate();
+    const currentUserIsCeo = normalizeRole(localStorage.getItem("role")) === "CEO";
     const [projects, setProjects] = useState([]);
     const [searchInput, setSearchInput] = useState("");
     const [search, setSearch] = useState("");
@@ -419,7 +428,12 @@ function ListProject() {
                                     </td>
 
                                     <td className="list-project-td list-project-action-cell">
-                                        {project.canApprove ? (
+                                        {(project.canApprove || (
+                                            currentUserIsCeo
+                                            && String(project.projectStatus || "")
+                                                .trim()
+                                                .toLowerCase() === "on hold"
+                                        )) ? (
                                             <Button
                                                 type="button"
                                                 variant="success"

@@ -76,8 +76,12 @@ public class ContractTypeServiceImpl implements ContractTypeService {
                 List.of(
                         ContractWorkflowActionType.CREATE.name(),
                         ContractWorkflowActionType.APPROVE.name(),
+<<<<<<< HEAD
                         ContractWorkflowActionType.SIGN.name(),
                         ContractWorkflowActionType.APPROVE_AND_GENERATE_PDF.name()
+=======
+                        ContractWorkflowActionType.SIGN.name()
+>>>>>>> 7d6eb51fe9c660b46d1a1bc0200bcbbc73cf5f51
                 ),
                 roles
         );
@@ -311,6 +315,11 @@ public class ContractTypeServiceImpl implements ContractTypeService {
             } catch (IllegalArgumentException exception) {
                 throw new BadHttpException(exception.getMessage());
             }
+            if (actionType == ContractWorkflowActionType.APPROVE_AND_SIGN) {
+                throw new BadHttpException(
+                        "APPROVE_AND_SIGN is no longer supported. Add one APPROVE step followed by one SIGN step"
+                );
+            }
             if (actionType == ContractWorkflowActionType.CREATE) {
                 createStepCount++;
             }
@@ -334,6 +343,7 @@ public class ContractTypeServiceImpl implements ContractTypeService {
             );
         }
 
+<<<<<<< HEAD
         int pdfApprovalIndex = -1;
         int firstSignatureIndex = -1;
         for (int index = 0; index < normalized.size(); index++) {
@@ -361,6 +371,27 @@ public class ContractTypeServiceImpl implements ContractTypeService {
             throw new BadHttpException(
                     "CEO PDF approval must occur before the first signature step"
             );
+=======
+        int ceoSignIndex = -1;
+        for (int index = 0; index < normalized.size(); index++) {
+            NormalizedWorkflowStep step = normalized.get(index);
+            if (step.actionType() != ContractWorkflowActionType.SIGN) {
+                continue;
+            }
+            if ("CEO".equals(step.requiredRoleCode())) {
+                ceoSignIndex = index;
+            }
+        }
+        for (int index = 0; index < normalized.size(); index++) {
+            NormalizedWorkflowStep step = normalized.get(index);
+            if (step.actionType() == ContractWorkflowActionType.SIGN
+                    && !"CEO".equals(step.requiredRoleCode())
+                    && (ceoSignIndex < 0 || ceoSignIndex > index)) {
+                throw new BadHttpException(
+                        "The CEO SIGN step must come before every other signer"
+                );
+            }
+>>>>>>> 7d6eb51fe9c660b46d1a1bc0200bcbbc73cf5f51
         }
 
         return List.copyOf(normalized);
@@ -444,6 +475,7 @@ public class ContractTypeServiceImpl implements ContractTypeService {
                         1, "Prepare and submit", "CREATE", "EMPLOYEE", true, false
                 ),
                 new ContractWorkflowStepRequest(
+<<<<<<< HEAD
                         2, "Internal approval", "APPROVE",
                         "HEAD_OF_DEPARTMENT", true, true
                 ),
@@ -457,6 +489,18 @@ public class ContractTypeServiceImpl implements ContractTypeService {
                 new ContractWorkflowStepRequest(
                         5, "Counterparty signature", "SIGN",
                         "EXTERNAL_PARTNER", true, true
+=======
+                        2, "Head of Department approval", "APPROVE", "HEADOFDEPARTMENT", true, true
+                ),
+                new ContractWorkflowStepRequest(
+                        3, "CEO final approval", "APPROVE", "CEO", true, true
+                ),
+                new ContractWorkflowStepRequest(
+                        4, "CEO electronic signature", "SIGN", "CEO", true, true
+                ),
+                new ContractWorkflowStepRequest(
+                        5, "Assigned representative signature", "SIGN", "EMPLOYEE", true, true
+>>>>>>> 7d6eb51fe9c660b46d1a1bc0200bcbbc73cf5f51
                 )
         );
     }
@@ -493,4 +537,8 @@ public class ContractTypeServiceImpl implements ContractTypeService {
     private boolean isBlank(String value) {
         return value == null || value.isBlank();
     }
+<<<<<<< HEAD
+=======
+
+>>>>>>> 7d6eb51fe9c660b46d1a1bc0200bcbbc73cf5f51
 }

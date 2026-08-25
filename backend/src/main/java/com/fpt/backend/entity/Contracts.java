@@ -73,6 +73,13 @@ public class Contracts extends BaseEntity {
     )
     private FileStorage approvedPdfFile;
 
+    @Column(name = "document_hash", length = 64)
+    private String documentHash;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "document_file_id")
+    private FileStorage documentFile;
+
     /// Relation
     // project
     @ManyToOne(fetch = FetchType.LAZY)
@@ -92,7 +99,7 @@ public class Contracts extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "contract_type_id")
     private ContractTypes contractType;
-    // Immutable workflow version selected from the contract type.
+    // Legacy workflow reference. New contracts own their runtime workflow.
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(
             name = "contract_workflow_version_id",

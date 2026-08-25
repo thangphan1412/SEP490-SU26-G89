@@ -35,7 +35,7 @@ import java.time.LocalDateTime;
 )
 @SuppressWarnings("JpaDataSourceORMInspection")
 public class ContractWorkflowStepInstance extends BaseEntity {
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(
             name = "contract_id",
             nullable = false,
@@ -46,7 +46,6 @@ public class ContractWorkflowStepInstance extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(
             name = "step_definition_id",
-            nullable = false,
             foreignKey = @ForeignKey(name = "FK_contract_runtime_step_definition")
     )
     private ContractTypeWorkflowStep stepDefinition;

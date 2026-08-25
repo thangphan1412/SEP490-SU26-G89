@@ -54,6 +54,11 @@ export const navConfig = [
         children: [
             { label: "List Department", path: "/department-management/list" },
             { label: "Create Department", path: "/department-management/create" },
+<<<<<<< HEAD
+=======
+            // { label: "View Department", path: "/department-management/view/:id" },
+            // { label: "Update Department", path: "/department-management/update/:id" },
+>>>>>>> 7d6eb51fe9c660b46d1a1bc0200bcbbc73cf5f51
         ],
     },
     {
