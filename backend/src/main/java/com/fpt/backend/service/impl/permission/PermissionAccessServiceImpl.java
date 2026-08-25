@@ -92,6 +92,10 @@ public class PermissionAccessServiceImpl
             String actionCode) {
         Users user = currentUser.getCurrentUser();
 
+        if (isEmployee(user) && isEmployeeContractAction(actionCode)) {
+            return projectMemberRepository.findProjectIdsByUserId(user.getId());
+        }
+
         if (projectApprovalService.canReviewProjects(user)
                 && isViewAction(actionCode)) {
             List<UUID> projectIds = new ArrayList<>();
@@ -160,6 +164,14 @@ public class PermissionAccessServiceImpl
             allowedActions.add("VIEW_CONTRACTS");
         }
 
+        if (projectMember && isEmployee(user)) {
+            allowedActions.add("VIEW_CONTRACTS");
+            allowedActions.add("CREATE_CONTRACTS");
+            allowedActions.add("EDIT_CONTRACTS");
+            allowedActions.add("SUBMIT_CONTRACTS");
+            allowedActions.add("SIGN_CONTRACTS");
+        }
+
         return new ProjectAccessResponse(
                 projectId,
                 user.getId(),
@@ -221,6 +233,35 @@ public class PermissionAccessServiceImpl
 
     private boolean isViewAction(String actionCode) {
         return actionCode != null && actionCode.startsWith("VIEW_");
+    }
+
+    private boolean isEmployeeContractAction(String actionCode) {
+        return "VIEW_CONTRACTS".equals(actionCode)
+                || "CREATE_CONTRACTS".equals(actionCode)
+                || "EDIT_CONTRACTS".equals(actionCode)
+                || "SUBMIT_CONTRACTS".equals(actionCode);
+    }
+
+    private boolean isEmployee(Users user) {
+        if (user == null || user.getUserRoles() == null) {
+            return false;
+        }
+        return user.getUserRoles().stream()
+                .filter(java.util.Objects::nonNull)
+                .map(com.fpt.backend.entity.UserRole::getRole)
+                .filter(java.util.Objects::nonNull)
+                .anyMatch(role -> roleValueIsEmployee(role.getRoleCode())
+                        || roleValueIsEmployee(role.getRoleName()));
+    }
+
+    private boolean roleValueIsEmployee(String value) {
+        if (value == null) {
+            return false;
+        }
+        String normalized = value.toUpperCase(java.util.Locale.ROOT)
+                .replaceAll("[^A-Z0-9]", "")
+                .replaceFirst("^ROLE", "");
+        return "EMPLOYEE".equals(normalized);
     }
 
 }

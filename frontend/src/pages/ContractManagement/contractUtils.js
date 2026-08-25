@@ -7,6 +7,7 @@ export const CONTRACT_STATUS = Object.freeze({
     PENDING_INTERNAL_APPROVAL: "PENDING_INTERNAL_APPROVAL",
     PENDING_DIRECTOR_SIGNATURE: "PENDING_DIRECTOR_SIGNATURE",
     PENDING_PARTNER_SIGNATURE: "PENDING_PARTNER_SIGNATURE",
+    SIGNED: "SIGNED",
     ACTIVE: "ACTIVE",
     ENDED: "ENDED",
     CANCELLED: "CANCELLED",
@@ -34,6 +35,18 @@ export const CONTRACT_PROJECT_ACTION = Object.freeze({
     SIGN: "SIGN_CONTRACTS",
     CANCEL: "CANCEL_CONTRACTS",
     EXPORT: "EXPORT_CONTRACTS",
+});
+
+export const CONTRACT_WORKFLOW = Object.freeze({
+    workflowName: "Contract approval and signing workflow",
+    versionNumber: 1,
+    steps: [
+        { id: "contract-step-1", stepOrder: 1, stepName: "Prepare and submit", actionType: "CREATE", requiredRoleCode: "EMPLOYEE", requiredPermissionCodes: ["VIEW_CONTRACTS", "CREATE_CONTRACTS", "SUBMIT_CONTRACTS"] },
+        { id: "contract-step-2", stepOrder: 2, stepName: "Head of Department approval", actionType: "APPROVE", requiredRoleCode: "HEADOFDEPARTMENT", requiredPermissionCodes: ["VIEW_CONTRACTS", "APPROVE_CONTRACTS"] },
+        { id: "contract-step-3", stepOrder: 3, stepName: "CEO final approval", actionType: "APPROVE", requiredRoleCode: "CEO", requiredPermissionCodes: ["VIEW_CONTRACTS", "APPROVE_CONTRACTS"] },
+        { id: "contract-step-4", stepOrder: 4, stepName: "CEO electronic signature", actionType: "SIGN", requiredRoleCode: "CEO", requiredPermissionCodes: ["VIEW_CONTRACTS", "SIGN_CONTRACTS"] },
+        { id: "contract-step-5", stepOrder: 5, stepName: "Assigned representative signature", actionType: "SIGN", requiredRoleCode: "ANY", requiredPermissionCodes: ["VIEW_CONTRACTS", "SIGN_CONTRACTS"] },
+    ],
 });
 
 const ACTION_DETAILS = Object.freeze({
@@ -116,7 +129,7 @@ export function createEmptyContract(projectId = "") {
         templateVersionNote: "",
         previousContractId: "",
         previousContractNumber: "",
-        workflowDefinition: null,
+        workflowDefinition: CONTRACT_WORKFLOW,
         workflowAssignees: [],
     };
 }
@@ -214,6 +227,9 @@ export function toContractRequest(contract, isCreating = false) {
         workflowAssignees: (contract.workflowAssignees || []).map(
             (assignment) => ({
                 workflowStepId: assignment.workflowStepId,
+                stepOrder: contract.workflowDefinition?.steps?.find(
+                    (step) => step.id === assignment.workflowStepId
+                )?.stepOrder || assignment.stepOrder,
                 userId: assignment.userId,
             })
         ),
@@ -327,7 +343,7 @@ export function canExportContractPdf(contract) {
     const status = normalizeContractStatus(contract?.contractStatus);
 
     const completed = Boolean(contract?.pdfAvailable)
-        || [CONTRACT_STATUS.ACTIVE, CONTRACT_STATUS.ENDED].includes(status);
+        || [CONTRACT_STATUS.SIGNED, CONTRACT_STATUS.ACTIVE, CONTRACT_STATUS.ENDED].includes(status);
 
     return completed && canUseContractProjectAction(
         contract,
@@ -418,7 +434,9 @@ export function getContractActionDetails(action, contract = null) {
         && contract?.workflowRuntime) {
         const stepName = contract.workflowRuntime.currentStepName
             || "current workflow step";
-        const actionType = contract.workflowRuntime.currentStepActionType;
+        const actionType = String(
+            contract.workflowRuntime.currentStepActionType || ""
+        ).trim().toUpperCase();
         const actionDetails = {
             CREATE: {
                 label: "Submit contract",
@@ -431,11 +449,6 @@ export function getContractActionDetails(action, contract = null) {
             SIGN: {
                 label: "Sign contract",
                 description: `Sign at “${stepName}” and continue the workflow.`,
-                verifiesAccountDateOfBirth: true,
-            },
-            APPROVE_AND_SIGN: {
-                label: "Approve and sign",
-                description: `Approve and sign at “${stepName}”, then continue the workflow.`,
                 verifiesAccountDateOfBirth: true,
             },
         }[actionType] || {};
@@ -461,7 +474,8 @@ export function getAvailableContractActions(contract, role) {
     const normalizedRole = normalizeContractRole(role);
     const isAdmin = normalizedRole === "ADMIN";
 
-    if (status === CONTRACT_STATUS.ENDED
+    if (status === CONTRACT_STATUS.SIGNED
+        || status === CONTRACT_STATUS.ENDED
         || status === CONTRACT_STATUS.CANCELLED) {
         return [];
     }
@@ -555,6 +569,9 @@ export function getRoleContractTask(contract, role) {
         if (status === CONTRACT_STATUS.ENDED) {
             return { label: "Contract completed", status: "COMPLETED" };
         }
+        if (status === CONTRACT_STATUS.SIGNED) {
+            return { label: "Contract signed", status: "COMPLETED" };
+        }
         const runtime = contract.workflowRuntime;
         if (!runtime.currentStepId) {
             return status === CONTRACT_STATUS.ACTIVE
@@ -585,6 +602,10 @@ export function getRoleContractTask(contract, role) {
 
     if (status === CONTRACT_STATUS.ENDED) {
         return { label: "Contract completed", status: "COMPLETED" };
+    }
+
+    if (status === CONTRACT_STATUS.SIGNED) {
+        return { label: "Contract signed", status: "COMPLETED" };
     }
 
     if (actions.length > 0) {

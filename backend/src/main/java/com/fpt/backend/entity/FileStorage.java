@@ -23,6 +23,12 @@ public class FileStorage extends BaseEntity{
     @Column(name = "file_path", nullable = false)
     private String filePath;
 
+    @Column(name = "storage_provider")
+    private String storageProvider;
+
+    @Column(name = "storage_key")
+    private String storageKey;
+
     @Column(name = "mime_type", nullable = false)
     private String mimeType;
 
@@ -47,4 +53,7 @@ public class FileStorage extends BaseEntity{
     //signature
     @OneToMany(mappedBy = "fileStorage")
     private List<Signature> signatures;
+
+    @OneToMany(mappedBy = "documentFile")
+    private List<Contracts> contracts;
 }

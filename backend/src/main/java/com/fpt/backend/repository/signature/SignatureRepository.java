@@ -12,6 +12,7 @@ import java.util.UUID;
 
 @Repository
 public interface SignatureRepository extends JpaRepository<Signature, UUID> {
+    boolean existsByContractId(UUID contractId);
 //    @Query("""
 //            select new com.fpt.backend.dto.response.signature.SignatureListResponse(
 //                                                                                         s.signatureName,

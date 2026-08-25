@@ -57,21 +57,27 @@ function createDefaultWorkflowSteps() {
         }),
         createWorkflowStep({
             stepOrder: 2,
-            stepName: "Internal approval",
+            stepName: "Head of Department approval",
             actionType: "APPROVE",
-            requiredRoleCode: "MANAGER",
+            requiredRoleCode: "HEADOFDEPARTMENT",
         }),
         createWorkflowStep({
             stepOrder: 3,
-            stepName: "Company signature",
-            actionType: "SIGN",
-            requiredRoleCode: "DIRECTOR",
+            stepName: "CEO final approval",
+            actionType: "APPROVE",
+            requiredRoleCode: "CEO",
         }),
         createWorkflowStep({
             stepOrder: 4,
-            stepName: "Counterparty signature",
+            stepName: "CEO electronic signature",
             actionType: "SIGN",
-            requiredRoleCode: "PARTNER",
+            requiredRoleCode: "CEO",
+        }),
+        createWorkflowStep({
+            stepOrder: 5,
+            stepName: "Assigned representative signature",
+            actionType: "SIGN",
+            requiredRoleCode: "EMPLOYEE",
         }),
     ];
 }
@@ -97,7 +103,7 @@ function ListContractType() {
     const [submitting, setSubmitting] = useState(false);
     const [deletingId, setDeletingId] = useState(null);
     const [workflowOptions, setWorkflowOptions] = useState({
-        actionTypes: ["CREATE", "APPROVE", "SIGN", "APPROVE_AND_SIGN"],
+        actionTypes: ["CREATE", "APPROVE", "SIGN"],
         roles: [],
     });
 
@@ -121,7 +127,7 @@ function ListContractType() {
                     setWorkflowOptions({
                         actionTypes: Array.isArray(workflowPayload?.actionTypes)
                             ? workflowPayload.actionTypes
-                            : ["CREATE", "APPROVE", "SIGN", "APPROVE_AND_SIGN"],
+                            : ["CREATE", "APPROVE", "SIGN"],
                         roles: Array.isArray(workflowPayload?.roles)
                             ? workflowPayload.roles
                             : [],

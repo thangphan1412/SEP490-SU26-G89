@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { IconPlus, IconTrash } from "@tabler/icons-react";
-import { formatContractStatus } from "./contractUtils.js";
+import { CONTRACT_WORKFLOW, formatContractStatus } from "./contractUtils.js";
 import {
     joinContractPages,
     splitContractPages,
@@ -41,7 +41,7 @@ function ContractForm({
     );
     const workflow = projectReadOnly
         ? contract.workflowDefinition
-        : selectedContractType?.activeWorkflow || contract.workflowDefinition;
+        : CONTRACT_WORKFLOW;
     const selectedTemplate = filteredTemplates.find(
         (template) => template.id === contract.contractTemplateId
     );
@@ -104,7 +104,7 @@ function ContractForm({
                     <option value="">
                         {loadingContractOptions
                             ? "Loading contract types..."
-                            : "Select contract type to load its workflow"}
+                            : "Select contract type"}
                     </option>
 
                     {contractTypes.map((contractType) => (
@@ -402,11 +402,32 @@ function WorkflowAssignments({
                         const memberRoles = Array.isArray(member.roleCodes)
                             ? member.roleCodes
                             : [member.roleCode];
-                        return memberRoles.some((role) =>
+                        const normalizedRoles = memberRoles.map(normalizeRole);
+                        const anyRole = normalizeRole(step.requiredRoleCode) === "ANY";
+                        const roleActions = new Set(member.allowedActions || []);
+                        if (normalizedRoles.includes("EMPLOYEE")) {
+                            ["VIEW_CONTRACTS", "CREATE_CONTRACTS", "EDIT_CONTRACTS", "SUBMIT_CONTRACTS", "SIGN_CONTRACTS"]
+                                .forEach((action) => roleActions.add(action));
+                        }
+                        if (normalizedRoles.includes("HEADOFDEPARTMENT")) {
+                            ["VIEW_CONTRACTS", "APPROVE_CONTRACTS"]
+                                .forEach((action) => roleActions.add(action));
+                        }
+                        if (normalizedRoles.includes("CEO")) {
+                            ["VIEW_CONTRACTS", "APPROVE_CONTRACTS", "SIGN_CONTRACTS", "EXPORT_CONTRACTS"]
+                                .forEach((action) => roleActions.add(action));
+                        }
+                        if (normalizedRoles.some((role) =>
+                            ["PARTNER", "EXTERNAL", "EXTERNALPARTNER"].includes(role)
+                        )) {
+                            ["VIEW_CONTRACTS", "SIGN_CONTRACTS", "EXPORT_CONTRACTS"]
+                                .forEach((action) => roleActions.add(action));
+                        }
+                        return (anyRole || memberRoles.some((role) =>
                             normalizeRole(role)
                                 === normalizeRole(step.requiredRoleCode)
-                        ) && requiredPermissions.every((permission) =>
-                            (member.allowedActions || []).includes(permission)
+                        )) && requiredPermissions.every((permission) =>
+                            roleActions.has(permission)
                         );
                     });
 
@@ -416,7 +437,7 @@ function WorkflowAssignments({
                             <div>
                                 <strong>{step.stepName}</strong>
                                 <small>
-                                    {formatContractStatus(step.actionType)} · {step.requiredRoleCode}
+                                    {formatContractStatus(step.actionType)} · {step.requiredRoleCode === "ANY" ? "Any assigned member" : step.requiredRoleCode}
                                     {requiredPermissions.length > 0
                                         ? ` · ${requiredPermissions.join(", ")}`
                                         : ""}
@@ -461,11 +482,16 @@ function WorkflowAssignments({
 }
 
 function normalizeRole(value) {
-    return String(value || "")
+    const normalized = String(value || "")
         .trim()
         .toUpperCase()
-        .replaceAll("-", "_")
-        .replaceAll(" ", "_");
+        .replaceAll("-", "")
+        .replaceAll("_", "")
+        .replaceAll(" ", "");
+    if (["HOD", "HEADDEPARTMENT", "DEPARTMENTHEAD"].includes(normalized)) {
+        return "HEADOFDEPARTMENT";
+    }
+    return normalized;
 }
 
 function PagedContractContentEditor({ value, onChange }) {

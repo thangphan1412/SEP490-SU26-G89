@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Alert, Button, Modal, Spinner } from "react-bootstrap";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
     IconCopy,
     IconEye,
@@ -60,6 +60,12 @@ function createPageNumbers(currentPage, totalPages) {
 }
 
 function ListContract() {
+    const navigate = useNavigate();
+    const currentRole = String(localStorage.getItem("role") || "")
+        .toUpperCase()
+        .replace(/[^A-Z0-9]/g, "")
+        .replace(/^ROLE/, "");
+    const canCreateContract = currentRole === "EMPLOYEE";
     const [searchParameters, setSearchParameters] = useSearchParams();
     const requestedContractId = searchParameters.get("viewContractId");
     const [contracts, setContracts] = useState([]);
@@ -286,7 +292,22 @@ function ListContract() {
         };
     }, [page, reloadKey, search, status]);
 
-    const openCreateModal = () => {
+    const openCreateModal = async () => {
+        setLoadingOptions(true);
+        try {
+            const options = await fetchContractOptions();
+            setProjects(options.projectItems);
+            setContractTypes(options.typeItems);
+            setContractTemplates(options.templateItems);
+        } catch (error) {
+            setErrorMessage(getApiErrorMessage(
+                error,
+                "Unable to refresh contract creation options."
+            ));
+            setLoadingOptions(false);
+            return;
+        }
+        setLoadingOptions(false);
         setSelectedContract(null);
         setContractForm(createEmptyContract());
         setProjectContext(null);
@@ -334,7 +355,7 @@ function ListContract() {
         );
         setContractForm({
             ...replacement,
-            workflowDefinition: selectedType?.activeWorkflow || null,
+            workflowDefinition: contractForm.workflowDefinition,
         });
         setProjectContext(null);
         setLoadingProjectContext(false);
@@ -342,8 +363,52 @@ function ListContract() {
         setModalMode("create");
     };
 
-    const openTransitionModal = (contract, action) => {
-        setTransitionContract(contract);
+    const openTransitionModal = async (contract, action) => {
+        let currentContract = contract;
+        if (action === "COMPLETE_STEP") {
+            try {
+                const response = await contractApi.getContractById(contract.id);
+                currentContract = unwrapApiResponse(response);
+            } catch (error) {
+                setModalError(getApiErrorMessage(
+                    error,
+                    "Unable to verify the current workflow step."
+                ));
+                return;
+            }
+        }
+        const currentStepAction = String(
+            currentContract?.workflowRuntime?.currentStepActionType || ""
+        ).trim().toUpperCase();
+        const steps = currentContract?.workflowRuntime?.steps || [];
+        const currentStep = steps.find((step) =>
+            step.id === currentContract?.workflowRuntime?.currentStepId
+        );
+        const ceoAlreadySigned = steps.some((step) =>
+            String(step.actionType || "").toUpperCase() === "SIGN"
+            && String(step.requiredRoleCode || "").toUpperCase() === "CEO"
+            && String(step.status || "").toUpperCase() === "COMPLETED"
+        );
+        const currentSignerRole = String(
+            currentStep?.requiredRoleCode || ""
+        ).trim().toUpperCase();
+        if (currentStepAction === "SIGN"
+                && currentSignerRole !== "CEO"
+                && !ceoAlreadySigned) {
+            setModalError(
+                "Workflow is invalid: the HOD approval cannot be a SIGN step. Update the Contract Type to HOD APPROVE → CEO APPROVE → CEO SIGN."
+            );
+            return;
+        }
+        const requiresSigningWorkspace = action === "SIGN_DIRECTOR"
+            || action === "SIGN_PARTNER"
+            || (action === "COMPLETE_STEP"
+                && currentStepAction === "SIGN");
+        if (requiresSigningWorkspace) {
+            navigate(`/contract-management/${currentContract.id}/sign?action=${encodeURIComponent(action)}`);
+            return;
+        }
+        setTransitionContract(currentContract);
         setTransitionAction(action);
         setTransitionForm({ comment: "" });
         setTransitionError("");
@@ -428,7 +493,7 @@ function ListContract() {
                     saveAsTemplateVersion: false,
                     templateVersionName: "",
                     templateVersionNote: "",
-                    workflowDefinition: selectedType?.activeWorkflow || null,
+                    workflowDefinition: current.workflowDefinition,
                     workflowAssignees: [],
                 };
             }
@@ -568,6 +633,18 @@ function ListContract() {
             return;
         }
 
+        const stepActionType = String(
+            transitionContract?.workflowRuntime?.currentStepActionType || ""
+        ).trim().toUpperCase();
+        if (transitionAction === "COMPLETE_STEP"
+                && stepActionType === "SIGN") {
+            const contractId = transitionContract.id;
+            setTransitionAction(null);
+            setTransitionContract(null);
+            navigate(`/contract-management/${contractId}/sign?action=COMPLETE_STEP`);
+            return;
+        }
+
         const actionDetails = getContractActionDetails(
             transitionAction,
             transitionContract
@@ -696,9 +773,11 @@ function ListContract() {
                 <Button
                     className="contract-primary-button"
                     onClick={openCreateModal}
-                    disabled={loadingOptions || projects.length === 0}
+                    disabled={!canCreateContract || loadingOptions || projects.length === 0}
                     title={
-                        !loadingOptions && projects.length === 0
+                        !canCreateContract
+                            ? "Only an Employee can create a contract."
+                            : !loadingOptions && projects.length === 0
                             ? "You need CREATE_CONTRACTS permission in a project."
                             : "Create a contract"
                     }
@@ -1150,6 +1229,18 @@ function ContractDetails({
     const completedPages = splitContractPages(
         contract.renderedContractContent || contract.contractContent
     );
+    const workflowSteps = contract?.workflowRuntime?.steps || [];
+    const hasCompletedCeoSignature = workflowSteps.some((step) =>
+        step.actionType === "SIGN"
+        && step.status === "COMPLETED"
+        && String(step.requiredRoleCode || "").toUpperCase() === "CEO"
+    );
+    const invalidSignerOrder =
+        contract?.workflowRuntime?.currentStepActionType === "SIGN"
+        && String(contract?.workflowRuntime?.steps?.find(
+            (step) => step.id === contract.workflowRuntime.currentStepId
+        )?.requiredRoleCode || "").toUpperCase() !== "CEO"
+        && !hasCompletedCeoSignature;
 
     return (
         <>
@@ -1166,6 +1257,13 @@ function ContractDetails({
                 </div>
                 <TaskBadge task={currentTask} />
             </div>
+
+            {invalidSignerOrder && (
+                <Alert variant="warning">
+                    This contract uses an outdated signer order. The CEO must
+                    complete the first SIGN step before the assigned second signer.
+                </Alert>
+            )}
 
             {availableActions.length > 0 && (
                 <section className="contract-workflow-actions">
@@ -1340,6 +1438,7 @@ const CONTRACT_WORKFLOW_STEPS = [
     CONTRACT_STATUS.PENDING_INTERNAL_APPROVAL,
     CONTRACT_STATUS.PENDING_DIRECTOR_SIGNATURE,
     CONTRACT_STATUS.PENDING_PARTNER_SIGNATURE,
+    CONTRACT_STATUS.SIGNED,
     CONTRACT_STATUS.ACTIVE,
     CONTRACT_STATUS.ENDED,
 ];
