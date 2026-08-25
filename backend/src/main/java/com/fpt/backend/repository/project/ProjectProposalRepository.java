@@ -13,6 +13,7 @@ import java.util.UUID;
 public interface ProjectProposalRepository
         extends JpaRepository<Proposals, UUID> {
 
+    // Tìm proposal phê duyệt của dự án theo mã proposal ổn định.
     @Query("""
             SELECT proposal
             FROM Proposals proposal

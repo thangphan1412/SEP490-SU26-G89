@@ -28,7 +28,9 @@ public class ProjectPermissionService {
     private final PermissionRepository permissionRepository;
     private final PermissionActionService permissionActionService;
 
+    // Tạo quyền toàn phần mặc định cho người tạo dự án.
     public UUID createProjectFullAccessPermission(Projects project) {
+        // Yêu cầu dự án phải được lưu trước khi tạo quyền liên kết.
         if (project == null || project.getId() == null) {
             throw new BadHttpException(
                     "Project must be saved before creating its permission"
@@ -52,6 +54,7 @@ public class ProjectPermissionService {
         return permissionRepository.save(permission).getId();
     }
 
+    // Lấy toàn bộ cấu hình quyền của một dự án.
     public List<ProjectPermissionConfigurationResponse> getConfigurations(
             UUID projectId) {
         List<Permissions> permissions =
@@ -66,42 +69,27 @@ public class ProjectPermissionService {
         return responses;
     }
 
+    // Cập nhật action và work scope của một quyền thuộc dự án.
     public ProjectPermissionConfigurationResponse configure(
             Projects project,
             UUID permissionId,
             ProjectPermissionConfigurationRequest request) {
-        if (request == null) {
-            throw new BadHttpException(
-                    "Permission configuration is required"
-            );
-        }
+        Optional<Permissions> optionalPermission = permissionRepository.findByIdAndProjectId(permissionId,project.getId());
 
-        Optional<Permissions> optionalPermission =
-                permissionRepository.findByIdAndProjectId(
-                        permissionId,
-                        project.getId()
-                );
-
+        // Từ chối quyền không tồn tại hoặc không thuộc dự án được yêu cầu.
         if (optionalPermission.isEmpty()) {
-            throw new NotFoundException(
-                    "Permission does not belong to this project"
-            );
+            throw new NotFoundException("Permission does not belong to this project");
         }
 
         Permissions permission = optionalPermission.get();
-        permissionActionService.configurePermission(
-                permission,
-                request.allowedActions(),
-                request.workScope()
-        );
+        permissionActionService.configurePermission(permission, request.allowedActions(), request.workScope());
 
         return toConfiguration(permissionRepository.save(permission));
     }
 
+    // Lấy danh sách quyền có thể chọn khi gán cho thành viên dự án.
     public List<ProjectPermissionOptionResponse> getOptions(UUID projectId) {
-        List<Permissions> permissions = new ArrayList<>(
-                permissionRepository.findByProjectId(projectId)
-        );
+        List<Permissions> permissions = new ArrayList<>(permissionRepository.findByProjectId(projectId));
         permissions.sort(Comparator.comparing(
                 this::getPermissionName,
                 String.CASE_INSENSITIVE_ORDER
@@ -122,6 +110,7 @@ public class ProjectPermissionService {
         return responses;
     }
 
+    // Xóa toàn bộ quyền thuộc dự án trước khi xóa dự án.
     public void deleteProjectData(UUID projectId) {
         List<Permissions> permissions =
                 permissionRepository.findByProjectId(projectId);
@@ -129,6 +118,7 @@ public class ProjectPermissionService {
         permissionRepository.flush();
     }
 
+    // Chuyển entity quyền thành cấu hình quyền trả về cho client.
     private ProjectPermissionConfigurationResponse toConfiguration(
             Permissions permission) {
         return new ProjectPermissionConfigurationResponse(
@@ -142,15 +132,18 @@ public class ProjectPermissionService {
         );
     }
 
+    // Lấy tên hiển thị của quyền với mã quyền và id làm giá trị dự phòng.
     private String getPermissionName(Permissions permission) {
         String name = normalize(permission.getPermissionName());
 
+        // Ưu tiên tên quyền khi đã được cấu hình.
         if (!name.isBlank()) {
             return name;
         }
 
         String code = normalize(permission.getPermissionCode());
 
+        // Dùng mã quyền khi tên quyền bị trống.
         if (!code.isBlank()) {
             return code;
         }
@@ -158,6 +151,7 @@ public class ProjectPermissionService {
         return "Permission #" + permission.getId();
     }
 
+    // Chuẩn hóa chuỗi null thành rỗng và loại bỏ khoảng trắng hai đầu.
     private String normalize(String value) {
         return value == null ? "" : value.trim();
     }

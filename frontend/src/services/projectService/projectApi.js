@@ -1,12 +1,19 @@
 import axiosClient from "../../config/api/axiosClient.js";
 
-const API_BASE_URL = String(
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:8080/api"
-).replace(/\/+$/, "");
-const PROJECT_API_BASE_URL = `${API_BASE_URL}/projects`;
+const PROJECT_API_BASE_URL = "http://localhost:8080/api/projects";
 
 function getResponseData(response) {
-  return response.data?.data ?? response.data;
+  const responseBody = response.data;
+
+  if (responseBody !== null && responseBody !== undefined) {
+    const actualData = responseBody.data;
+
+    if (actualData !== null && actualData !== undefined) {
+      return actualData;
+    }
+  }
+
+  return responseBody;
 }
 
 export async function listProjects(params, signal) {

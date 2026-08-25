@@ -13,10 +13,11 @@ import com.fpt.backend.enums.ProjectDeleteResult;
 import com.fpt.backend.enums.UserStatus;
 import com.fpt.backend.service.interfaces.project.IProjectService;
 import com.fpt.backend.util.BaseResponse;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.CacheControl;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
@@ -36,100 +37,96 @@ import java.util.UUID;
 public class ProjectController {
     private final IProjectService projectService;
 
+    // Lấy danh sách dự án theo điều kiện lọc và phân trang.
+    @PreAuthorize("hasAnyAuthority('CEO', 'Administrator', 'Accountant', 'HeadOfDepartment', 'Employee')")
     @GetMapping
-    public ResponseEntity<BaseResponse<ProjectListResponse>> getProjects(
-            @ModelAttribute ProjectListRequest request) {
+    public ResponseEntity<BaseResponse<ProjectListResponse>> getProjects(@Valid @ModelAttribute ProjectListRequest request) {
         ProjectListResponse projects = projectService.getProjects(request);
 
-        return ResponseEntity.ok()
-                .cacheControl(CacheControl.noStore())
-                .body(new BaseResponse<>(projects));
+        return ResponseEntity.ok(new BaseResponse<>(projects));
     }
 
+    // Lấy thông tin chi tiết của một dự án theo mã định danh.
+    @PreAuthorize("hasAnyAuthority('CEO', 'Administrator', 'Accountant', 'HeadOfDepartment', 'Employee')")
     @GetMapping(ApiConstant.Project.BY_ID)
     public ResponseEntity<BaseResponse<ProjectDetailResponse>> getProjectById(@PathVariable UUID id) {
         ProjectDetailResponse project = projectService.getProjectById(id);
 
-        return ResponseEntity.ok()
-                .cacheControl(CacheControl.noStore())
-                .body(new BaseResponse<>(project));
+        return ResponseEntity.ok(new BaseResponse<>(project));
     }
 
+    // Lấy danh sách nhân viên có thể được thêm vào dự án.
+    @PreAuthorize("hasAnyAuthority('CEO', 'Administrator', 'Accountant', 'HeadOfDepartment', 'Employee')")
     @GetMapping(ApiConstant.Project.EMPLOYEES)
     public ResponseEntity<BaseResponse<List<ProjectEmployeeResponse>>> getEmployeesForProjectSelection() {
         List<ProjectEmployeeResponse> employees = projectService.getEmployeesForProjectSelection();
 
-        return ResponseEntity.ok()
-                .cacheControl(CacheControl.noStore())
-                .body(new BaseResponse<>(employees));
+        return ResponseEntity.ok(new BaseResponse<>(employees));
     }
 
+    // Lấy các trạng thái người dùng dùng cho bộ lọc thành viên dự án.
+    @PreAuthorize("hasAnyAuthority('CEO', 'Administrator', 'Accountant', 'HeadOfDepartment', 'Employee')")
     @GetMapping(ApiConstant.Project.USER_STATUSES)
     public ResponseEntity<BaseResponse<List<UserStatus>>> getUserStatusesForProjectMemberFilter() {
         List<UserStatus> statuses = projectService.getUserStatusesForProjectMemberFilter();
 
-        return ResponseEntity.ok()
-                .cacheControl(CacheControl.noStore())
-                .body(new BaseResponse<>(statuses));
+        return ResponseEntity.ok(new BaseResponse<>(statuses));
     }
 
+    // Lấy cấu hình quyền hiện tại của một dự án.
+    @PreAuthorize("hasAnyAuthority('CEO', 'Administrator', 'Accountant', 'HeadOfDepartment', 'Employee')")
     @GetMapping(ApiConstant.Project.PERMISSION_CONFIGURATIONS)
-    public ResponseEntity<BaseResponse<List<ProjectPermissionConfigurationResponse>>>
-    getProjectPermissionConfigurations(@PathVariable UUID projectId) {
-        return ResponseEntity.ok()
-                .cacheControl(CacheControl.noStore())
-                .body(new BaseResponse<>(
-                        projectService.getProjectPermissionConfigurations(projectId)
-                ));
+    public ResponseEntity<BaseResponse<List<ProjectPermissionConfigurationResponse>>> getProjectPermissionConfigurations(
+            @PathVariable UUID projectId) {
+        return ResponseEntity.ok(new BaseResponse<>(projectService.getProjectPermissionConfigurations(projectId)));
     }
 
+    // Cập nhật các action và phạm vi làm việc cho một quyền trong dự án.
+    @PreAuthorize("hasAnyAuthority('CEO', 'Administrator', 'Accountant', 'HeadOfDepartment', 'Employee')")
     @PutMapping(ApiConstant.Project.PERMISSION_BY_ID)
-    public ResponseEntity<BaseResponse<ProjectPermissionConfigurationResponse>>
-    configureProjectPermission(
+    public ResponseEntity<BaseResponse<ProjectPermissionConfigurationResponse>> configureProjectPermission(
             @PathVariable UUID projectId,
             @PathVariable UUID permissionId,
-            @RequestBody ProjectPermissionConfigurationRequest request) {
-        return ResponseEntity.ok(new BaseResponse<>(
-                projectService.configureProjectPermission(projectId, permissionId, request)
-        ));
+            @Valid @RequestBody ProjectPermissionConfigurationRequest request) {
+        return ResponseEntity.ok(new BaseResponse<>(projectService.configureProjectPermission(projectId, permissionId, request)));
     }
 
+    // Tạo dự án mới cùng các thông tin cấu hình liên quan.
+    @PreAuthorize("hasAnyAuthority('CEO', 'Administrator', 'Accountant', 'HeadOfDepartment', 'Employee')")
     @PostMapping
-    public ResponseEntity<BaseResponse<ProjectDetailResponse>> createProject(@RequestBody ProjectCreateRequest request) {
+    public ResponseEntity<BaseResponse<ProjectDetailResponse>> createProject(
+            @Valid @RequestBody ProjectCreateRequest request) {
         ProjectDetailResponse project = projectService.createProject(request);
 
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(new BaseResponse<>(
-                        HttpStatus.CREATED.value(),
-                        "Created",
-                        project
-                ));
+        return ResponseEntity.status(HttpStatus.CREATED).body(new BaseResponse<>(HttpStatus.CREATED.value(), "Created", project));
     }
 
+    // Cập nhật thông tin và cấu hình của một dự án hiện có.
+    @PreAuthorize("hasAnyAuthority('CEO', 'Administrator', 'Accountant', 'HeadOfDepartment', 'Employee')")
     @PutMapping(ApiConstant.Project.BY_ID)
     public ResponseEntity<BaseResponse<ProjectDetailResponse>> updateProject(
             @PathVariable UUID id,
-            @RequestBody ProjectUpdateRequest request) {
+            @Valid @RequestBody ProjectUpdateRequest request) {
         return ResponseEntity.ok(new BaseResponse<>(projectService.updateProject(id, request)));
     }
 
+    // Phê duyệt dự án theo cấp duyệt của người dùng hiện tại.
+    @PreAuthorize("hasAnyAuthority('CEO', 'HeadOfDepartment')")
     @PostMapping(ApiConstant.Project.APPROVE_BY_ID)
-    public ResponseEntity<BaseResponse<Void>> approveProject(
-            @PathVariable UUID id) {
+    public ResponseEntity<BaseResponse<Void>> approveProject(@PathVariable UUID id) {
         projectService.approveProject(id);
 
-        return ResponseEntity.ok(new BaseResponse<>(
-                HttpStatus.OK.value(),
-                "Project approved successfully",
-                null
-        ));
+        return ResponseEntity.ok(new BaseResponse<>(HttpStatus.OK.value(), "Project approved successfully", null));
     }
 
+    // Xóa dự án hoặc chuyển dự án sang trạng thái hủy khi đã có hợp đồng.
+    @PreAuthorize("hasAnyAuthority('CEO', 'Administrator', 'Accountant', 'HeadOfDepartment', 'Employee')")
     @DeleteMapping(ApiConstant.Project.BY_ID)
     public ResponseEntity<BaseResponse<Void>> deleteProject(@PathVariable UUID id) {
         ProjectDeleteResult deleteResult = projectService.deleteProject(id);
         String message;
 
+        // Chọn thông báo phản hồi theo kết quả xóa thực tế của dự án.
         if (deleteResult == ProjectDeleteResult.DELETED_PERMANENTLY) {
             message = "Project deleted permanently";
         } else {

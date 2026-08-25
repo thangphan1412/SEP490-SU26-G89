@@ -12,6 +12,7 @@ import java.util.UUID;
 
 @Repository
 public interface ProjectMemberRepository extends JpaRepository<ProjectMember, UUID> {
+    // Đếm số liên kết thành viên giữa một người dùng và một dự án.
     @Query("""
             SELECT COUNT(member)
             FROM ProjectMember member
@@ -23,9 +24,7 @@ public interface ProjectMemberRepository extends JpaRepository<ProjectMember, UU
             @Param("userId") UUID userId
     );
 
-    @Query("SELECT member.project.id FROM ProjectMember member WHERE member.user.id = :userId")
-    List<UUID> findProjectIdsByUserId(@Param("userId") UUID userId);
-
+    // Lấy danh sách thành viên của dự án kèm thông tin người dùng.
     @Query("""
             SELECT member
             FROM ProjectMember member
@@ -35,6 +34,7 @@ public interface ProjectMemberRepository extends JpaRepository<ProjectMember, UU
             """)
     List<ProjectMember> findByProjectId(@Param("projectId") UUID projectId);
 
+    // Xóa toàn bộ thành viên thuộc một dự án.
     @Modifying
     @Query("DELETE FROM ProjectMember member WHERE member.project.id = :projectId")
     void deleteByProjectId(@Param("projectId") UUID projectId);

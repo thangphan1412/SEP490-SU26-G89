@@ -12,6 +12,7 @@ import java.util.UUID;
 
 @Repository
 public interface PhaseDeliverableRepository extends JpaRepository<Deliverable, UUID> {
+    // Lấy các deliverable của một phase theo hạn hoàn thành.
     @Query("""
             SELECT deliverable
             FROM Deliverable deliverable
@@ -20,9 +21,11 @@ public interface PhaseDeliverableRepository extends JpaRepository<Deliverable, U
             """)
     List<Deliverable> findByPhaseId(@Param("phaseId") UUID phaseId);
 
+    // Đếm tổng số deliverable thuộc một phase.
     @Query("SELECT COUNT(deliverable) FROM Deliverable deliverable WHERE deliverable.timeline.id = :phaseId")
     long countByPhaseId(@Param("phaseId") UUID phaseId);
 
+    // Xóa các deliverable thuộc tất cả phase của một dự án.
     @Modifying
     @Query("""
             DELETE FROM Deliverable deliverable

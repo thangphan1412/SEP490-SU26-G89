@@ -6,11 +6,19 @@ const API_BASE_URL = String(
 const TASK_API_BASE_URL = `${API_BASE_URL}/tasks`;
 
 function getResponseData(response) {
-  if (response.data && response.data.data !== undefined) {
-    return response.data.data;
+  const responseBody = response.data;
+
+  // Backend thường đặt dữ liệu cần dùng trong thuộc tính data của BaseResponse.
+  if (responseBody !== null && responseBody !== undefined) {
+    const actualData = responseBody.data;
+
+    if (actualData !== null && actualData !== undefined) {
+      return actualData;
+    }
   }
 
-  return response.data;
+  // Trả về toàn bộ response body nếu dữ liệu không được bọc trong BaseResponse.
+  return responseBody;
 }
 
 export async function getTasksByPhaseId(phaseId, signal) {

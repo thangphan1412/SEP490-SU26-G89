@@ -11,11 +11,13 @@ import org.springframework.stereotype.Component;
 public class ProjectStatusScheduler {
     private final ProjectStatusService projectStatusService;
 
+    // Kích hoạt các dự án đã đến ngày bắt đầu sau khi ứng dụng khởi động.
     @EventListener(ApplicationReadyEvent.class)
     public void refreshAfterStartup() {
         projectStatusService.refreshPlanningProjects();
     }
 
+    // Kiểm tra và kích hoạt dự án Planning mỗi ngày theo lịch cấu hình.
     @Scheduled(
             cron = "${project.status.refresh-cron:0 0 0 * * *}",
             zone = "${project.status.time-zone:Asia/Ho_Chi_Minh}"

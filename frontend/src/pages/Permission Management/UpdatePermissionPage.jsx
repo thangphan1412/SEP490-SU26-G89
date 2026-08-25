@@ -31,6 +31,7 @@ const initialPermission = {
   createdAt: null,
 };
 
+// Hiển thị biểu mẫu tải và cập nhật một quyền hiện có.
 function UpdatePermissionPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -44,10 +45,13 @@ function UpdatePermissionPage() {
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
+  // Tải quyền, dự án và action mỗi khi permission id thay đổi.
   useEffect(function () {
     const requestController = new AbortController();
 
+    // Tải song song dữ liệu quyền và các tùy chọn cấu hình.
     async function loadPage() {
+      // Dừng tải và báo lỗi khi route không có permission id.
       if (!permissionId) {
         setError("Permission id is missing. Please choose a permission from the list.");
         setLoadFailed(true);
@@ -65,6 +69,7 @@ function UpdatePermissionPage() {
           listPermissionActions(requestController.signal),
         ]);
 
+        // Bỏ qua response khi component đã hủy request.
         if (requestController.signal.aborted) {
           return;
         }
@@ -112,6 +117,7 @@ function UpdatePermissionPage() {
     };
   }, [permissionId]);
 
+  // Đồng bộ trường thông tin quyền vừa thay đổi vào state.
   function handleChange(event) {
     const { name, value } = event.target;
     setPermission((currentPermission) => ({
@@ -120,6 +126,7 @@ function UpdatePermissionPage() {
     }));
   }
 
+  // Thêm hoặc loại bỏ một action trong cấu hình quyền hiện tại.
   function toggleAllowedAction(action) {
     setPermission(function (currentPermission) {
       const currentActions = currentPermission.allowedActions;
@@ -140,6 +147,7 @@ function UpdatePermissionPage() {
     });
   }
 
+  // Cập nhật work scope được chọn cho quyền.
   function handleWorkScopeChange(event) {
     const workScope = event.target.value;
 
@@ -151,9 +159,11 @@ function UpdatePermissionPage() {
     });
   }
 
+  // Chuẩn hóa biểu mẫu rồi gửi yêu cầu cập nhật quyền.
   async function handleSubmit(event) {
     event.preventDefault();
 
+    // Không gửi request khi route thiếu permission id.
     if (!permissionId) {
       return;
     }
@@ -182,6 +192,7 @@ function UpdatePermissionPage() {
     }
   }
 
+  // Xác định đường dẫn quay lại dự án nguồn hoặc chi tiết quyền.
   function getReturnPath(currentPermissionId = permissionId) {
     if (returnProjectId) {
       return `/project-management/view?id=${encodeURIComponent(returnProjectId)}`;
@@ -194,6 +205,7 @@ function UpdatePermissionPage() {
     return "/permission/list";
   }
 
+  // Điều hướng người dùng trở lại màn hình nguồn.
   function goBack() {
     navigate(getReturnPath());
   }

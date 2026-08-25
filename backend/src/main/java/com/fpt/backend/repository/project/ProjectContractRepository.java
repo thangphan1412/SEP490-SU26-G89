@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.UUID;
 
 public interface ProjectContractRepository extends Repository<Contracts, UUID> {
+    // Lấy toàn bộ hợp đồng thuộc một dự án.
     @Query("""
             SELECT contract
             FROM Contracts contract
@@ -17,6 +18,7 @@ public interface ProjectContractRepository extends Repository<Contracts, UUID> {
             """)
     List<Contracts> findByProjectId(@Param("projectId") UUID projectId);
 
+    // Đếm số hợp đồng hiện có của một dự án.
     @Query("""
             SELECT COUNT(contract)
             FROM Contracts contract

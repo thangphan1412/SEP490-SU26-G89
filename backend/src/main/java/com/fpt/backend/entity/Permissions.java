@@ -3,6 +3,7 @@ package com.fpt.backend.entity;
 import com.fpt.backend.enums.WorkScope;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.Nationalized;
 
 import java.time.LocalDateTime;
 import java.util.LinkedHashSet;
@@ -17,11 +18,14 @@ import java.util.Set;
 @Builder
 @Table(name = "permissions")
 public class Permissions extends BaseEntity {
-    @Column(name = "permission_name", columnDefinition = "nvarchar(50)")
+    @Nationalized
+    @Column(name = "permission_name", length = 50)
     private String permissionName;
+
+    @Nationalized
     @Column(
             name = "permission_code",
-            columnDefinition = "nvarchar(50)",
+            length = 50,
             unique = true
     )
     private String permissionCode;

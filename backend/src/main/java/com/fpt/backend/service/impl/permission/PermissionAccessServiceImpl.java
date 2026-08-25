@@ -41,15 +41,18 @@ public class PermissionAccessServiceImpl
     private final ProjectApprovalService projectApprovalService;
     private final CurrentUser currentUser;
 
+    // Bảo đảm người dùng hiện tại có quyền truy cập cơ bản vào dự án.
     @Override
     public void requireProjectAccess(UUID projectId) {
         getCurrentUserAccess(projectId);
     }
 
+    // Bảo đảm người dùng hiện tại có action bắt buộc trong dự án.
     @Override
     public void requireAction(UUID projectId, String actionCode) {
         ProjectAccessResponse access = getCurrentUserAccess(projectId);
 
+        // Từ chối thao tác khi action yêu cầu không nằm trong quyền được cấp.
         if (!hasAction(access, actionCode)) {
             throw new ResponseStatusException(
                     HttpStatus.FORBIDDEN,
@@ -58,11 +61,12 @@ public class PermissionAccessServiceImpl
         }
     }
 
-    //Kiểm tra xem người dùng hiện tại có quyền thực hiện một hành động cụ thể trong dự án hay không
+    // Kiểm tra dữ liệu truy cập có chứa action cụ thể hay không.
     @Override
     public boolean hasAction(
             ProjectAccessResponse access,
             String actionCode) {
+        // Trả về false khi chưa có thông tin truy cập để kiểm tra.
         if (access == null) {
             return false;
         }
@@ -70,32 +74,32 @@ public class PermissionAccessServiceImpl
         return containsAction(access.allowedActions(), actionCode);
     }
 
+    // Kiểm tra action được cấp phạm vi toàn dự án hay chỉ dữ liệu sở hữu.
     @Override
     public boolean hasFullWorkScope(
             ProjectAccessResponse access,
             String actionCode) {
+        // Trả về false khi chưa có thông tin truy cập để xác định phạm vi.
         if (access == null) {
             return false;
         }
 
+        // Phạm vi FULL luôn cho phép thao tác trên toàn bộ dữ liệu dự án.
         if (WorkScope.FULL.name().equalsIgnoreCase(access.workScope())) {
             return true;
         }
 
-        return access.canViewAllProjectData()
+        return access.isExecutiveViewer()
                 && isViewAction(actionCode);
     }
 
-    //Danh sách các dự án mà người dùng hiện tại có quyền thực hiện một hành động cụ thể
+    // Lấy danh sách dự án mà người dùng hiện tại có action được yêu cầu.
     @Override
     public List<UUID> getCurrentUserProjectIdsWithAction(
             String actionCode) {
         Users user = currentUser.getCurrentUser();
 
-        if (isEmployee(user) && isEmployeeContractAction(actionCode)) {
-            return projectMemberRepository.findProjectIdsByUserId(user.getId());
-        }
-
+        // Cho phép người duyệt cấp điều hành xem toàn bộ dự án với các action xem dữ liệu.
         if (projectApprovalService.canReviewProjects(user)
                 && isViewAction(actionCode)) {
             List<UUID> projectIds = new ArrayList<>();
@@ -113,79 +117,87 @@ public class PermissionAccessServiceImpl
         );
     }
 
-    
+    // Tổng hợp vai trò thành viên, action và phạm vi truy cập của người dùng trong dự án.
     @Override
     public ProjectAccessResponse getCurrentUserAccess(UUID projectId) {
-        validateProjectExists(projectId);
+        Projects project = findProject(projectId);
         Users user = currentUser.getCurrentUser();
+        boolean isProjectCreator = user.getId().equals(project.getProjectCreatedBy().getId());
 
-        //Kiểm tra xem người dùng hiện tại có phải là thành viên của dự án hay không
-        boolean projectMember = projectMemberRepository
-                .countByProjectIdAndUserId(
-                        projectId,
-                        user.getId()
-                ) > 0;
-        boolean executiveViewer = projectApprovalService
-                .canReviewProjects(user);
+        // Kiểm tra người dùng hiện tại có phải thành viên của dự án hay không.
+        boolean isProjectMember = projectMemberRepository.countByProjectIdAndUserId(projectId,user.getId()) > 0;
+        boolean isExecutiveViewer = projectApprovalService.canReviewProjects(user);
 
-        if (!projectMember && !executiveViewer) {
+        // Từ chối truy cập nếu người dùng không phải thành viên hoặc người duyệt điều hành.
+        if (!isProjectMember && !isExecutiveViewer) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You cannot access this project");
         }
 
-        //Lấy permission được gán cho người dùng hiện tại trong dự án
+        // Lấy quyền đang hoạt động được gán cho thành viên trong dự án.
         UserPermission assignedPermission = null;
 
-        if (projectMember) {
-            assignedPermission = userPermissionRepository
-                    .findActiveByUserIdAndProjectId(
-                            user.getId(),
-                            projectId
-                    );
+        if (isProjectMember) {
+            assignedPermission = userPermissionRepository.findActiveByUserIdAndProjectId(user.getId(), projectId);
         }
         Set<String> allowedActions = new LinkedHashSet<>();
         WorkScope workScope = WorkScope.OWN;
 
+        // Tổng hợp action và phạm vi từ quyền đã gán nếu quyền còn hiệu lực.
         if (assignedPermission != null) {
             Permissions permission = assignedPermission.getPermission();
 
-            if (permission != null
-                    && Boolean.TRUE.equals(permission.getStatus())) {
+            if (permission != null && Boolean.TRUE.equals(permission.getStatus())) {
                 if (permission.getWorkScope() == WorkScope.FULL) {
                     workScope = WorkScope.FULL;
                 }
 
-                addActionCodes(permission, allowedActions);
+                // Chỉ tổng hợp action khi quyền có danh sách action.
+                if (permission.getActions() != null) {
+                    for (PermissionAction action : permission.getActions()) {
+                        allowedActions.add(action.getActionCode());
+                    }
+                }
             }
         }
 
-        if (executiveViewer) {
+        // Bổ sung các action chỉ xem dữ liệu cho người duyệt cấp điều hành.
+        if (isExecutiveViewer) {
             allowedActions.add("VIEW_TASKS");
             allowedActions.add("VIEW_DELIVERABLES");
             allowedActions.add("VIEW_CONTRACTS");
         }
 
-        if (projectMember && isEmployee(user)) {
-            allowedActions.add("VIEW_CONTRACTS");
-            allowedActions.add("CREATE_CONTRACTS");
-            allowedActions.add("EDIT_CONTRACTS");
-            allowedActions.add("SUBMIT_CONTRACTS");
-            allowedActions.add("SIGN_CONTRACTS");
+        List<String> allowedActionList = new ArrayList<>(allowedActions);
+        List<String> fullScopeActions = new ArrayList<>();
+
+        // Cấp toàn bộ action cho phạm vi FULL và chỉ action xem cho người duyệt điều hành.
+        if (workScope == WorkScope.FULL) {
+            fullScopeActions.addAll(allowedActionList);
+        } else if (isExecutiveViewer) {
+            for (String actionCode : allowedActionList) {
+                if (isViewAction(actionCode)) {
+                    fullScopeActions.add(actionCode);
+                }
+            }
         }
 
         return new ProjectAccessResponse(
                 projectId,
                 user.getId(),
-                projectMember,
-                executiveViewer,
-                new ArrayList<>(allowedActions),
+                isProjectCreator,
+                isProjectMember,
+                isExecutiveViewer,
+                allowedActionList,
+                fullScopeActions,
                 workScope.name()
         );
     }
 
-    //Kiểm tra action có tồn tại trong danh sách các action được phép hay không
+    // Kiểm tra action có tồn tại trong tập action được phép hay không.
     private boolean containsAction(
             Iterable<String> actions,
             String actionCode) {
+        // Không đối chiếu khi danh sách hoặc action đầu vào không hợp lệ.
         if (actions == null || actionCode == null) {
             return false;
         }
@@ -199,69 +211,20 @@ public class PermissionAccessServiceImpl
         return false;
     }
 
-    //Kiểm tra xem dự án có tồn tại hay không
-    private void validateProjectExists(UUID projectId) {
+    // Kiểm tra mã dự án rồi trả về dự án tương ứng.
+    private Projects findProject(UUID projectId) {
+        // Yêu cầu mã dự án bắt buộc phải có.
         if (projectId == null) {
             throw new BadHttpException("Project is required");
         }
 
-        if (!projectRepository.existsById(projectId)) {
-            throw new NotFoundException("Project not found");
-        }
+        return projectRepository.findById(projectId)
+                .orElseThrow(() -> new NotFoundException("Project not found"));
     }
 
-    //Thêm các mã module đã được tích vào tập hợp actionCodes
-    private void addActionCodes(
-            Permissions permission,
-            Set<String> actionCodes) {
-        if (permission.getActions() == null) {
-            return;
-        }
-
-        for (PermissionAction action : permission.getActions()) {
-            if (action == null) {
-                continue;
-            }
-
-            String actionCode = action.getActionCode();
-
-            if (actionCode != null && !actionCode.isBlank()) {
-                actionCodes.add(actionCode);
-            }
-        }
-    }
-
+    // Xác định một mã action có phải action chỉ xem dữ liệu hay không.
     private boolean isViewAction(String actionCode) {
         return actionCode != null && actionCode.startsWith("VIEW_");
-    }
-
-    private boolean isEmployeeContractAction(String actionCode) {
-        return "VIEW_CONTRACTS".equals(actionCode)
-                || "CREATE_CONTRACTS".equals(actionCode)
-                || "EDIT_CONTRACTS".equals(actionCode)
-                || "SUBMIT_CONTRACTS".equals(actionCode);
-    }
-
-    private boolean isEmployee(Users user) {
-        if (user == null || user.getUserRoles() == null) {
-            return false;
-        }
-        return user.getUserRoles().stream()
-                .filter(java.util.Objects::nonNull)
-                .map(com.fpt.backend.entity.UserRole::getRole)
-                .filter(java.util.Objects::nonNull)
-                .anyMatch(role -> roleValueIsEmployee(role.getRoleCode())
-                        || roleValueIsEmployee(role.getRoleName()));
-    }
-
-    private boolean roleValueIsEmployee(String value) {
-        if (value == null) {
-            return false;
-        }
-        String normalized = value.toUpperCase(java.util.Locale.ROOT)
-                .replaceAll("[^A-Z0-9]", "")
-                .replaceFirst("^ROLE", "");
-        return "EMPLOYEE".equals(normalized);
     }
 
 }

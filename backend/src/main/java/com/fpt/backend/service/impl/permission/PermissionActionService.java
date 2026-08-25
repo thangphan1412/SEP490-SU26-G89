@@ -24,10 +24,12 @@ import java.util.Set;
 public class PermissionActionService {
     private final PermissionActionRepository permissionActionRepository;
 
+    // Áp dụng danh sách action và phạm vi làm việc được yêu cầu cho một quyền.
     public void configurePermission(
             Permissions permission,
             List<String> allowedActionCodes,
             String workScopeValue) {
+        // Yêu cầu đối tượng quyền phải tồn tại trước khi cấu hình action.
         if (permission == null) {
             throw new BadHttpException("Permission is required");
         }
@@ -51,11 +53,13 @@ public class PermissionActionService {
         List<String> unsupportedCodes = new ArrayList<>();
 
         for (String requestedCode : requestedCodes) {
+            // Thu thập các mã action không tồn tại trong permission catalog.
             if (!availableActionByCode.containsKey(requestedCode)) {
                 unsupportedCodes.add(requestedCode);
             }
         }
 
+        // Từ chối mọi mã action không tồn tại trong catalog.
         if (!unsupportedCodes.isEmpty()) {
             throw new BadHttpException(
                     "Unsupported permission actions: "
@@ -75,7 +79,9 @@ public class PermissionActionService {
         permission.setWorkScope(workScope);
     }
 
+    // Cấp toàn bộ action trong catalog và phạm vi FULL cho một quyền.
     public void configureFullAccess(Permissions permission) {
+        // Yêu cầu đối tượng quyền phải tồn tại trước khi cấp toàn quyền.
         if (permission == null) {
             throw new BadHttpException("Permission is required");
         }
@@ -83,6 +89,7 @@ public class PermissionActionService {
         List<PermissionAction> availableActions =
                 findAllActionEntities();
 
+        // Không cho phép cấu hình toàn quyền khi catalog chưa có action.
         if (availableActions.isEmpty()) {
             throw new BadHttpException(
                     "The permission action catalog is empty"
@@ -93,6 +100,7 @@ public class PermissionActionService {
         permission.setWorkScope(WorkScope.FULL);
     }
 
+    // Lấy danh sách mã action đã được gán cho một quyền theo thứ tự hiển thị.
     public List<String> getAllowedActionCodes(Permissions permission) {
         List<String> actionCodes = new ArrayList<>();
 
@@ -103,6 +111,7 @@ public class PermissionActionService {
         return actionCodes;
     }
 
+    // Chuyển các action đã gán thành dữ liệu chi tiết trả về cho client.
     public List<PermissionActionResponse> getActionDetails(
             Permissions permission) {
         List<PermissionActionResponse> responses = new ArrayList<>();
@@ -114,7 +123,9 @@ public class PermissionActionService {
         return responses;
     }
 
+    // Lấy phạm vi làm việc của quyền và mặc định FULL khi chưa được cấu hình.
     public String getWorkScope(Permissions permission) {
+        // Dùng FULL làm giá trị an toàn cho quyền cũ chưa có work scope.
         if (permission == null || permission.getWorkScope() == null) {
             return WorkScope.FULL.name();
         }
@@ -122,6 +133,7 @@ public class PermissionActionService {
         return permission.getWorkScope().name();
     }
 
+    // Lấy toàn bộ action khả dụng trong catalog dưới dạng response.
     public List<PermissionActionResponse> getAvailableActions() {
         List<PermissionActionResponse> responses = new ArrayList<>();
 
@@ -132,12 +144,15 @@ public class PermissionActionService {
         return responses;
     }
 
+    // Đọc toàn bộ entity action theo thứ tự hiển thị ổn định.
     private List<PermissionAction> findAllActionEntities() {
         return permissionActionRepository
                 .findAllByOrderByDisplayOrderAscActionCodeAsc();
     }
 
+    // Lấy và sắp xếp các action đã gán cho một quyền.
     private List<PermissionAction> getActions(Permissions permission) {
+        // Trả về danh sách rỗng khi quyền hoặc tập action chưa được khởi tạo.
         if (permission == null || permission.getActions() == null) {
             return List.of();
         }
@@ -161,6 +176,7 @@ public class PermissionActionService {
                 .toList();
     }
 
+    // Lấy thứ tự hiển thị của action và đẩy giá trị thiếu xuống cuối danh sách.
     private int getDisplayOrder(PermissionAction action) {
         if (action == null || action.getDisplayOrder() == null) {
             return Integer.MAX_VALUE;
@@ -169,40 +185,23 @@ public class PermissionActionService {
         return action.getDisplayOrder();
     }
 
+    // Chuyển chuỗi phạm vi đã được DTO kiểm tra thành WorkScope.
     private WorkScope parseWorkScope(String value) {
-        String normalizedValue = normalize(value);
-
-        try {
-            return WorkScope.valueOf(normalizedValue);
-        } catch (IllegalArgumentException exception) {
-            throw new BadHttpException(
-                    "Work scope must be OWN or FULL"
-            );
-        }
+        return WorkScope.valueOf(normalize(value));
     }
 
+    // Chuẩn hóa và loại trùng danh sách mã action đầu vào.
     private Set<String> normalizeActionCodes(List<String> actionCodes) {
         Set<String> normalizedCodes = new LinkedHashSet<>();
 
-        if (actionCodes == null) {
-            return normalizedCodes;
-        }
-
         for (String actionCode : actionCodes) {
-            String normalizedCode = normalize(actionCode);
-
-            if (normalizedCode.isBlank()) {
-                throw new BadHttpException(
-                        "Permission action code must not be blank"
-                );
-            }
-
-            normalizedCodes.add(normalizedCode);
+            normalizedCodes.add(normalize(actionCode));
         }
 
         return normalizedCodes;
     }
 
+    // Chuyển entity action thành dữ liệu trả về cho API.
     private PermissionActionResponse toResponse(PermissionAction action) {
         return new PermissionActionResponse(
                 action.getId(),
@@ -214,6 +213,7 @@ public class PermissionActionService {
         );
     }
 
+    // Chuẩn hóa chuỗi về chữ hoa và loại bỏ khoảng trắng thừa.
     private String normalize(String value) {
         return value == null
                 ? ""
