@@ -1,23 +1,12 @@
 import { useEffect, useState } from "react";
 import { Alert, Button, Card, Col, Form, Modal, Row, Stack } from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
-import {
-    createProject,
-    listProjectEmployees,
-    listProjectUserStatuses,
-} from "../../services/projectService/projectApi.js";
+import {createProject,listProjectEmployees,listProjectUserStatuses,} from "../../services/projectService/projectApi.js";
 import CancelButton from "../../components/projectComponents/CancelButton.jsx";
 import Icon from "../../components/projectComponents/Icon.jsx";
 import PagePanel from "../../components/projectComponents/PagePanel.jsx";
 import PrimaryButton from "../../components/projectComponents/PrimaryButton.jsx";
-import {
-    addOneDay,
-    calculatePhaseStartDatesForDisplay,
-    createClientId,
-    getEmployeeDescription,
-    getEmployeeName,
-    getEmployeeSearchText,
-} from "../../components/projectComponents/projectFormUtils.js";
+import {addOneDay,calculatePhaseStartDatesForDisplay,createClientId,getEmployeeDescription,getEmployeeName,getEmployeeSearchText,getProjectErrorMessage,} from "../../components/projectComponents/projectFormUtils.js";
 import "../../assets/styles/css/projectStyles/CreateProject.css";
 
 const initialProject = {
@@ -30,7 +19,7 @@ const initialProject = {
     members: [],
 };
 
-// Hiển thị biểu mẫu tạo dự án cùng phase và thành viên ban đầu.
+// Hiển thị biểu mẫu tạo dự án cùng phase tùy chọn và thành viên ban đầu.
 function CreateProject() {
     const navigate = useNavigate();
     const [project, setProject] = useState(initialProject);
@@ -365,7 +354,10 @@ function CreateProject() {
         } catch (error) {
             console.error("Unable to create project:", error);
             setSubmitError(
-                "Unable to create project. Please check the information and try again."
+                getProjectErrorMessage(
+                    error,
+                    "Unable to create project. Please check the information and try again."
+                )
             );
         } finally {
             setSaving(false);
@@ -432,11 +424,11 @@ function CreateProject() {
 
     // Hiển thị danh sách biểu mẫu phase hoặc trạng thái rỗng.
     function renderPhaseContent() {
-        // Hiển thị hướng dẫn khi dự án chưa có phase.
+        // Thông báo rằng người dùng có thể tạo dự án trước và thêm phase sau.
         if (project.phases.length === 0) {
             return (
                 <div className="create-project-empty-state">
-                    No phases yet. Select "Add Phase" to create one.
+                    No phases yet. You can create the project now and add phases later.
                 </div>
             );
         }
@@ -462,14 +454,30 @@ function CreateProject() {
                             </Col>
                             <Col md={3}>
                                 <Form.Label className="project-management-field-label">Start Date</Form.Label>
-                                <Form.Control readOnly required type="date" name="startDate" value={phase.startDate} className="project-management-input create-project-phase-start-input" />
+                                <ProjectDateInput
+                                    readOnly
+                                    required
+                                    name="startDate"
+                                    value={phase.startDate}
+                                    className="project-management-input create-project-phase-start-input"
+                                    aria-label={`Phase ${index + 1} start date`}
+                                />
                                 <Form.Text className="create-project-phase-date-note">
                                     Preview only. The server calculates this date when saving.
                                 </Form.Text>
                             </Col>
                             <Col md={3}>
                                 <Form.Label className="project-management-field-label">End Date</Form.Label>
-                                <Form.Control required type="date" name="endDate" min={phase.startDate || project.projectStartDate} max={project.projectEndDate} value={phase.endDate} onChange={(event) => updatePhase(phase.clientId, event)} className="project-management-input" />
+                                <ProjectDateInput
+                                    required
+                                    name="endDate"
+                                    min={phase.startDate || project.projectStartDate}
+                                    max={project.projectEndDate}
+                                    value={phase.endDate}
+                                    onChange={(event) => updatePhase(phase.clientId, event)}
+                                    className="project-management-input"
+                                    aria-label={`Phase ${index + 1} end date`}
+                                />
                             </Col>
                             <Col xs={12}>
                                 <Form.Label className="project-management-field-label">Description</Form.Label>
@@ -586,7 +594,7 @@ function CreateProject() {
     return (
         <PagePanel
             title="Create Project"
-            description="Create the project, its phases, and the initial member permissions."
+            description="Create the project, optionally add phases, and select its initial members."
             action={pageAction}
         >
             <Form id="create-project-form" onSubmit={handleSubmit}>
@@ -608,12 +616,29 @@ function CreateProject() {
 
                         <Form.Group as={Col} md={6} controlId="projectStartDate">
                             <Form.Label className="project-management-field-label">Start Date</Form.Label>
-                            <Form.Control required type="date" name="projectStartDate" max={project.projectEndDate} value={project.projectStartDate} onChange={handleChange} className="project-management-input" />
+                            <ProjectDateInput
+                                required
+                                id="projectStartDate"
+                                name="projectStartDate"
+                                max={project.projectEndDate}
+                                value={project.projectStartDate}
+                                onChange={handleChange}
+                                className="project-management-input"
+                            />
                         </Form.Group>
 
                         <Form.Group as={Col} md={6} controlId="projectEndDate">
                             <Form.Label className="project-management-field-label">End Date</Form.Label>
-                            <Form.Control required disabled={!project.projectStartDate} type="date" min={minimumEndDate} name="projectEndDate" value={project.projectEndDate} onChange={handleChange} className="project-management-input" />
+                            <ProjectDateInput
+                                required
+                                disabled={!project.projectStartDate}
+                                id="projectEndDate"
+                                min={minimumEndDate}
+                                name="projectEndDate"
+                                value={project.projectEndDate}
+                                onChange={handleChange}
+                                className="project-management-input"
+                            />
                         </Form.Group>
 
                     </Row>
@@ -629,7 +654,7 @@ function CreateProject() {
                     <div className="create-project-section-header">
                         <div>
                             <Card.Title as="h2" className="project-management-card-title">Project Phases</Card.Title>
-                            <p className="create-project-section-note">Phases must cover the full project timeline without gaps or overlapping dates.</p>
+                            <p className="create-project-section-note">Phases are optional. If added, they must cover the full project timeline without gaps or overlapping dates.</p>
                         </div>
                         <Button type="button" variant="light" className="create-project-add-button" onClick={addPhase}>
                             <Icon name="plus" size={18} /> Add Phase
@@ -746,6 +771,58 @@ function getTodayDate() {
     const day = String(today.getDate()).padStart(2, "0");
 
     return year + "-" + month + "-" + day;
+}
+
+// Hiển thị ngày theo dd/mm/yyyy nhưng vẫn dùng input date để mở lịch và lưu YYYY-MM-DD.
+function ProjectDateInput({
+    value = "",
+    className = "",
+    disabled = false,
+    readOnly = false,
+    ...inputProperties
+}) {
+    function openDatePicker(event) {
+        if (!readOnly && typeof event.currentTarget.showPicker === "function") {
+            event.currentTarget.showPicker();
+        }
+    }
+
+    return (
+        <div className="project-date-input">
+            <input
+                type="text"
+                value={formatDateForInput(value)}
+                placeholder="dd/mm/yyyy"
+                className={`form-control project-date-input__display ${className}`}
+                readOnly
+                disabled={disabled}
+                tabIndex={-1}
+                aria-hidden="true"
+            />
+            <input
+                {...inputProperties}
+                type="date"
+                value={value}
+                disabled={disabled}
+                readOnly={readOnly}
+                className="project-date-input__native"
+                onClick={openDatePicker}
+            />
+            <span className="project-date-input__icon" aria-hidden="true">
+                <Icon name="calendar" size={18} color="#5f6f89" />
+            </span>
+        </div>
+    );
+}
+
+function formatDateForInput(value) {
+    const matchedDate = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+
+    if (!matchedDate) {
+        return "";
+    }
+
+    return matchedDate[3] + "/" + matchedDate[2] + "/" + matchedDate[1];
 }
 
 export default CreateProject;

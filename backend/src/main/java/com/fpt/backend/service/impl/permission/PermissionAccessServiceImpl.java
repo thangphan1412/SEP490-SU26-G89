@@ -71,7 +71,7 @@ public class PermissionAccessServiceImpl
             return false;
         }
 
-        return containsAction(access.getAllowedActions(), actionCode);
+        return containsAction(access.allowedActions(), actionCode);
     }
 
     // Kiểm tra action được cấp phạm vi toàn dự án hay chỉ dữ liệu sở hữu.
@@ -85,7 +85,7 @@ public class PermissionAccessServiceImpl
         }
 
         // Phạm vi FULL luôn cho phép thao tác trên toàn bộ dữ liệu dự án.
-        if (WorkScope.FULL.name().equalsIgnoreCase(access.getWorkScope())) {
+        if (WorkScope.FULL.name().equalsIgnoreCase(access.workScope())) {
             return true;
         }
 

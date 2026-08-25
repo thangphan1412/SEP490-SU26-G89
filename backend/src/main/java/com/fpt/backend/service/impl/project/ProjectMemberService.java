@@ -1,7 +1,6 @@
 package com.fpt.backend.service.impl.project;
 
 import com.fpt.backend.dto.request.project.ProjectMemberRequest;
-import com.fpt.backend.dto.response.project.ProjectEmployeeResponse;
 import com.fpt.backend.dto.response.project.ProjectUserResponse;
 import com.fpt.backend.entity.Permissions;
 import com.fpt.backend.entity.ProjectMember;
@@ -15,7 +14,6 @@ import com.fpt.backend.repository.permission.UserPermissionRepository;
 import com.fpt.backend.repository.project.ProjectMemberRepository;
 import com.fpt.backend.repository.user.UserRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -41,31 +39,6 @@ public class ProjectMemberService {
     private final UserPermissionRepository userPermissionRepository;
     private final PermissionRepository permissionRepository;
     private final UserRepository userRepository;
-
-    // Lấy danh sách nhân viên có thể chọn khi tạo hoặc cập nhật dự án.
-    public List<ProjectEmployeeResponse> getEmployeesForSelection() {
-        List<Users> users = userRepository.findAll(
-                Sort.by(
-                        Sort.Direction.ASC,
-                        "firstName",
-                        "lastName",
-                        "email"
-                )
-        );
-        List<ProjectEmployeeResponse> employees = new ArrayList<>();
-
-        for (Users user : users) {
-            employees.add(new ProjectEmployeeResponse(
-                    user.getId(),
-                    user.getEmail(),
-                    user.getFirstName(),
-                    user.getLastName(),
-                    user.getStatus()
-            ));
-        }
-
-        return employees;
-    }
 
     // Đồng bộ danh sách thành viên và quyền được gán theo request của dự án.
     public void syncMembers(
@@ -142,7 +115,7 @@ public class ProjectMemberService {
         }
 
         users.sort(Comparator.comparing(
-                ProjectUserResponse::getUserName,
+                ProjectUserResponse::userName,
                 Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER)
         ));
         return users;

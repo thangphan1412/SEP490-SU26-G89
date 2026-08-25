@@ -26,6 +26,7 @@ import com.fpt.backend.repository.project.ProjectCleanupRepository;
 import com.fpt.backend.repository.project.ProjectContractRepository;
 import com.fpt.backend.repository.project.ProjectMemberRepository;
 import com.fpt.backend.repository.project.ProjectRepository;
+import com.fpt.backend.repository.user.UserRepository;
 import com.fpt.backend.service.interfaces.permission.IPermissionAccessService;
 import com.fpt.backend.service.interfaces.project.IProjectService;
 import com.fpt.backend.util.CurrentUser;
@@ -60,6 +61,7 @@ public class ProjectServiceImpl implements IProjectService {
     private final ProjectRepository projectRepository;
     private final ProjectContractRepository projectContractRepository;
     private final ProjectMemberRepository projectMemberRepository;
+    private final UserRepository userRepository;
     private final ProjectCleanupRepository projectCleanupRepository;
     private final ProjectPhaseService projectPhaseService;
     private final ProjectMemberService projectMemberService;
@@ -136,7 +138,10 @@ public class ProjectServiceImpl implements IProjectService {
                 projectPermissionService.createProjectFullAccessPermission(
                         savedProject
                 );
-        projectPhaseService.syncPhases(savedProject, request.phases());
+        // Phase là tùy chọn khi tạo dự án.
+        if (request.phases() != null && !request.phases().isEmpty()) {
+            projectPhaseService.syncPhases(savedProject, request.phases());
+        }
         projectMemberService.syncMembers(
                 savedProject,
                 createInitialMembers(
@@ -293,7 +298,27 @@ public class ProjectServiceImpl implements IProjectService {
     // Lấy danh sách nhân viên có thể chọn làm thành viên dự án.
     @Override
     public List<ProjectEmployeeResponse> getEmployeesForProjectSelection() {
-        return projectMemberService.getEmployeesForSelection();
+        List<Users> users = userRepository.findAll(
+                Sort.by(
+                        Sort.Direction.ASC,
+                        "firstName",
+                        "lastName",
+                        "email"
+                )
+        );
+        List<ProjectEmployeeResponse> employees = new ArrayList<>();
+
+        for (Users user : users) {
+            employees.add(new ProjectEmployeeResponse(
+                    user.getId(),
+                    user.getEmail(),
+                    user.getFirstName(),
+                    user.getLastName(),
+                    user.getStatus()
+            ));
+        }
+
+        return employees;
     }
 
     // Lấy toàn bộ trạng thái người dùng dùng để lọc thành viên dự án.

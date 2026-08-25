@@ -11,7 +11,6 @@ import com.fpt.backend.service.interfaces.permission.IPermissionService;
 import com.fpt.backend.util.BaseResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.CacheControl;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -40,14 +39,14 @@ public class PermissionController {
     public ResponseEntity<BaseResponse<PermissionListResponse>> getPermissions(@Valid @ModelAttribute PermissionListRequest request) {
         PermissionListResponse permissions = permissionService.getPermissions(request);
 
-        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(new BaseResponse<>(permissions));
+        return ResponseEntity.ok(new BaseResponse<>(permissions));
     }
 
     // Lấy danh sách dự án mà người dùng có thể chọn khi tạo hoặc cập nhật quyền.
     @PreAuthorize("hasAnyAuthority('CEO', 'Administrator', 'Accountant', 'HeadOfDepartment', 'Employee')")
     @GetMapping(ApiConstant.Permission.PROJECTS)
     public ResponseEntity<BaseResponse<List<PermissionProjectResponse>>> getProjectsForPermissionSelection() {
-        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(new BaseResponse<>(permissionService.getProjectsForPermissionSelection()));
+        return ResponseEntity.ok(new BaseResponse<>(permissionService.getProjectsForPermissionSelection()));
     }
 
     // Lấy toàn bộ action khả dụng để cấu hình cho một quyền.
@@ -55,14 +54,14 @@ public class PermissionController {
     @GetMapping(ApiConstant.Permission.ACTIONS)
     public ResponseEntity<BaseResponse<List<PermissionActionResponse>>>
     getAvailableActions() {
-        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(new BaseResponse<>(permissionService.getAvailableActions()));
+        return ResponseEntity.ok(new BaseResponse<>(permissionService.getAvailableActions()));
     }
 
     // Lấy thông tin chi tiết của một quyền theo mã định danh.
     @PreAuthorize("hasAnyAuthority('CEO', 'Administrator', 'Accountant', 'HeadOfDepartment', 'Employee')")
     @GetMapping(ApiConstant.Permission.BY_ID)
     public ResponseEntity<BaseResponse<PermissionDetailResponse>> getPermissionById(@PathVariable UUID id) {
-        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(new BaseResponse<>(permissionService.getPermissionById(id)));
+        return ResponseEntity.ok(new BaseResponse<>(permissionService.getPermissionById(id)));
     }
 
     // Tạo quyền mới từ dữ liệu người dùng gửi lên.

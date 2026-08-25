@@ -139,6 +139,7 @@ function EditTask() {
         phaseEndDate={taskData.phaseEndDate}
         allowReassignment={taskData.fullWorkScope}
         canApproveTasks={taskData.canApproveTasks}
+        canChangeTaskStatus={taskData.canChangeTaskStatus}
         onSave={handleSave}
         onMarkDone={handleMarkDone}
         onViewContract={viewContract}

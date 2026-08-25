@@ -9,7 +9,6 @@ import com.fpt.backend.service.interfaces.task.ITaskService;
 import com.fpt.backend.util.BaseResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.CacheControl;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -35,7 +34,7 @@ public class TaskController {
     @GetMapping(ApiConstant.Task.BY_PHASE_ID)
     public ResponseEntity<BaseResponse<TaskManagementResponse>>
     getTasksByPhaseId(@PathVariable UUID phaseId) {
-        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(new BaseResponse<>(taskService.getTasksByPhaseId(phaseId)));
+        return ResponseEntity.ok(new BaseResponse<>(taskService.getTasksByPhaseId(phaseId)));
     }
 
     // Tạo task mới trong phase sau khi request vượt qua Bean Validation.

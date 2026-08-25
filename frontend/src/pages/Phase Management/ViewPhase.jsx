@@ -81,11 +81,13 @@ function ViewPhase() {
   const progress = normalizeProgress(phase?.progress);
   const access = phase?.currentUserAccess;
   const phaseIsInProgress = phase?.status === "IN_PROGRESS";
+  const phaseSupportsTaskManagement = phase?.status === "PLANNING"
+    || phaseIsInProgress;
   const canViewTasks = hasProjectAction(
     access,
     PROJECT_ACTIONS.VIEW_TASKS
   );
-  const canManageTasks = phaseIsInProgress
+  const canManageTasks = phaseSupportsTaskManagement
     && hasProjectAction(access, PROJECT_ACTIONS.EDIT_TASKS);
   const canAccessTasks = canViewTasks || canManageTasks;
   const canViewDeliverables = hasProjectAction(

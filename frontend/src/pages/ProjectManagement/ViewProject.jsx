@@ -10,6 +10,7 @@ import PrimaryButton from "../../components/projectComponents/PrimaryButton.jsx"
 import StatusBadge from "../../components/projectComponents/StatusBadge.jsx";
 import { isCompletedProjectStatus } from "../../components/projectComponents/projectFormUtils.js";
 import {
+    hasAnyProjectAction,
     hasProjectAction,
     PROJECT_ACTIONS,
 } from "../../components/permissionComponents/permissionAccess.js";
@@ -145,7 +146,7 @@ function ViewProject() {
         // Từ chối mở phase bị khóa theo trạng thái và phạm vi truy cập.
         if (!canViewPhase(phase, access)) {
             setActionError(
-                "Only an IN_PROGRESS phase can be accessed."
+                "Only a PLANNING or IN_PROGRESS phase can be accessed."
             );
             return;
         }
@@ -244,6 +245,14 @@ function ViewProject() {
     const canViewContracts = hasProjectAction(
         access,
         PROJECT_ACTIONS.VIEW_CONTRACTS
+    );
+    const canManageContracts = canViewContracts && hasAnyProjectAction(
+        access,
+        [
+            PROJECT_ACTIONS.CREATE_CONTRACTS,
+            PROJECT_ACTIONS.EDIT_CONTRACTS,
+            PROJECT_ACTIONS.DELETE_CONTRACTS,
+        ]
     );
 
     const pageAction = (
@@ -379,7 +388,7 @@ function ViewProject() {
                                                 aria-disabled={!canViewPhase(phase, access)}
                                                 title={canViewPhase(phase, access)
                                                     ? "Open phase"
-                                                    : "This phase is available only when its status is IN_PROGRESS"}
+                                                    : "This phase is available only when its status is PLANNING or IN_PROGRESS"}
                                                 onClick={() => openPhase(phase)}
                                                 onKeyDown={(event) => handlePhaseKeyDown(event, phase)}
                                             >
@@ -477,9 +486,23 @@ function ViewProject() {
                             <Card.Title as="h2" className="project-management-card-title">
                                 Project Contracts
                             </Card.Title>
-                            <span className="view-project-result-count">
-                                {filteredContracts.length} / {projectContracts.length} contracts
-                            </span>
+                            <div className="d-flex flex-wrap align-items-center gap-2">
+                                <span className="view-project-result-count">
+                                    {filteredContracts.length} / {projectContracts.length} contracts
+                                </span>
+                                {canManageContracts && (
+                                    <Button
+                                        type="button"
+                                        variant="outline-primary"
+                                        size="sm"
+                                        className="d-inline-flex align-items-center gap-2"
+                                        onClick={() => navigate("/contract-management/list")}
+                                    >
+                                        <Icon name="document" size={16} />
+                                        Manage Contract
+                                    </Button>
+                                )}
+                            </div>
                         </div>
 
                         <div className="view-project-filter-bar">
@@ -565,15 +588,17 @@ function clampProgress(progress) {
     return Math.min(100, Math.max(0, Math.round(numberValue)));
 }
 
-// Kiểm tra phase có đang ở trạng thái IN_PROGRESS hay không.
-function isPhaseInProgress(status) {
-    return String(status || "").trim().toUpperCase() === "IN_PROGRESS";
+// Kiểm tra phase có cho phép chuẩn bị hoặc thực hiện task hay không.
+function phaseSupportsTaskPreparation(status) {
+    const normalizedStatus = String(status || "").trim().toUpperCase();
+    return normalizedStatus === "PLANNING"
+        || normalizedStatus === "IN_PROGRESS";
 }
 
 // Kiểm tra phase có thể mở theo trạng thái hoặc quyền xem toàn dự án.
 function canViewPhase(phase, access) {
-    // Phase đang chạy luôn có thể mở từ trang chi tiết dự án.
-    if (isPhaseInProgress(phase.status)) {
+    // Phase PLANNING và IN_PROGRESS có thể mở để quản lý task.
+    if (phaseSupportsTaskPreparation(phase.status)) {
         return true;
     }
 

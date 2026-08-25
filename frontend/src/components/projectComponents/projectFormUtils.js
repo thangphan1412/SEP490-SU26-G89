@@ -60,6 +60,51 @@ export function getFilterOptions(employees, fieldName) {
   return options;
 }
 
+export function getProjectErrorMessage(error, fallbackMessage) {
+  const responseBody = error.response?.data;
+
+  if (!responseBody) {
+    return fallbackMessage;
+  }
+
+  if (typeof responseBody === "string" && responseBody.trim()) {
+    return responseBody.trim();
+  }
+
+  const errorData = responseBody.data;
+
+  // Ưu tiên các lỗi validation theo từng field do backend trả về.
+  if (errorData && typeof errorData === "object") {
+    const validationMessages = [];
+
+    for (const message of Object.values(errorData)) {
+      if (typeof message === "string" && message.trim()) {
+        validationMessages.push(message.trim());
+      }
+    }
+
+    if (validationMessages.length > 0) {
+      return validationMessages.join(" ");
+    }
+  }
+
+  // Một số lỗi nghiệp vụ đặt nội dung trực tiếp trong data.
+  if (typeof errorData === "string" && errorData.trim()) {
+    return errorData.trim();
+  }
+
+  // Hỗ trợ các cấu trúc response lỗi phổ biến còn lại.
+  const backendMessage = responseBody.message
+    || responseBody.detail
+    || responseBody.error;
+
+  if (typeof backendMessage === "string" && backendMessage.trim()) {
+    return backendMessage.trim();
+  }
+
+  return fallbackMessage;
+}
+
 export function calculatePhaseStartDatesForDisplay(
   phases,
   projectStartDate

@@ -64,7 +64,7 @@ public class TaskServiceImpl implements ITaskService {
 
         phaseStatusService.refreshProjectStatuses(project.getId());
         phase = findPhase(phaseId);
-        validatePhaseIsInProgress(phase);
+        validatePhaseSupportsTaskManagement(phase);
         project = phase.getProject();
 
         boolean fullWorkScope = permissionAccessService.hasFullWorkScope(
@@ -79,10 +79,13 @@ public class TaskServiceImpl implements ITaskService {
                 access,
                 "CREATE_TASKS"
         );
-        boolean canApproveTasks = permissionAccessService.hasAction(
-                access,
-                "APPROVE_TASKS"
-        );
+        boolean canChangeTaskStatus = phase.getStatus()
+                == PhaseStatus.IN_PROGRESS;
+        boolean canApproveTasks = canChangeTaskStatus
+                && permissionAccessService.hasAction(
+                        access,
+                        "APPROVE_TASKS"
+                );
 
         List<TimelineTask> tasks;
 
@@ -92,7 +95,7 @@ public class TaskServiceImpl implements ITaskService {
         } else {
             tasks = taskRepository.findByPhaseIdAndAssignedUserId(
                     phaseId,
-                    access.getCurrentUserId()
+                    access.currentUserId()
             );
         }
 
@@ -106,6 +109,7 @@ public class TaskServiceImpl implements ITaskService {
                 fullWorkScope,
                 canCreateTasks,
                 canApproveTasks,
+                canChangeTaskStatus,
                 EDITABLE_TASK_STATUSES,
                 getMemberOptions(project.getId(), access, fullWorkScope),
                 toTaskResponses(tasks, canViewContracts)
@@ -124,7 +128,7 @@ public class TaskServiceImpl implements ITaskService {
 
         phaseStatusService.refreshProjectStatuses(projectId);
         phase = findPhase(phaseId);
-        validatePhaseIsInProgress(phase);
+        validatePhaseSupportsTaskManagement(phase);
 
         boolean fullWorkScope = permissionAccessService.hasFullWorkScope(
                 access,
@@ -170,8 +174,8 @@ public class TaskServiceImpl implements ITaskService {
         task = findTask(taskId);
         phase = task.getTimeline();
         validateTaskIsEditable(task);
-        validatePhaseIsInProgress(phase);
-        validateEditableStatus(request.status());
+        validatePhaseSupportsTaskManagement(phase);
+        validateTaskStatusUpdate(task, phase, request.status());
 
         boolean fullWorkScope = permissionAccessService.hasFullWorkScope(
                 access,
@@ -320,12 +324,44 @@ public class TaskServiceImpl implements ITaskService {
         }
     }
 
-    // Kiểm tra phase đang IN_PROGRESS trước khi quản lý task.
+    // Khóa thay đổi trạng thái task khi phase vẫn đang PLANNING.
+    private void validateTaskStatusUpdate(
+            TimelineTask task,
+            Timeline phase,
+            TaskStatus requestedStatus) {
+        if (phase.getStatus() == PhaseStatus.PLANNING) {
+            boolean statusIsUnchanged = requestedStatus != null
+                    && requestedStatus.name().equalsIgnoreCase(task.getStatus());
+
+            if (!statusIsUnchanged) {
+                throw new BadHttpException(
+                        "Task status cannot be changed while the phase is PLANNING"
+                );
+            }
+
+            return;
+        }
+
+        validateEditableStatus(requestedStatus);
+    }
+
+    // Kiểm tra phase cho phép chuẩn bị hoặc thực hiện task.
+    private void validatePhaseSupportsTaskManagement(Timeline phase) {
+        boolean supportedStatus = phase.getStatus() == PhaseStatus.PLANNING
+                || phase.getStatus() == PhaseStatus.IN_PROGRESS;
+
+        if (!supportedStatus) {
+            throw new BadHttpException(
+                    "Tasks can only be managed while the phase is PLANNING or IN_PROGRESS"
+            );
+        }
+    }
+
+    // Kiểm tra phase đang IN_PROGRESS trước khi thay đổi trạng thái task.
     private void validatePhaseIsInProgress(Timeline phase) {
-        // Chỉ cho phép quản lý task khi phase đang được thực hiện.
         if (phase.getStatus() != PhaseStatus.IN_PROGRESS) {
             throw new BadHttpException(
-                    "Tasks can only be managed while the phase is IN_PROGRESS"
+                    "Task status can only be changed while the phase is IN_PROGRESS"
             );
         }
     }
@@ -344,7 +380,7 @@ public class TaskServiceImpl implements ITaskService {
 
         // Từ chối task chưa giao hoặc được giao cho người dùng khác.
         if (assignedUser == null
-                || !assignedUser.getId().equals(access.getCurrentUserId())) {
+                || !assignedUser.getId().equals(access.currentUserId())) {
             throw new ResponseStatusException(
                     HttpStatus.FORBIDDEN,
                     "You can only edit tasks assigned to you"
@@ -364,7 +400,7 @@ public class TaskServiceImpl implements ITaskService {
 
         // Từ chối assignee trống hoặc khác người dùng hiện tại.
         if (assignedUser == null
-                || !assignedUser.getId().equals(access.getCurrentUserId())) {
+                || !assignedUser.getId().equals(access.currentUserId())) {
             throw new ResponseStatusException(
                     HttpStatus.FORBIDDEN,
                     "You cannot assign this task to another member"
@@ -431,7 +467,7 @@ public class TaskServiceImpl implements ITaskService {
             Users user = member.getUser();
 
             if (fullWorkScope
-                    || user.getId().equals(access.getCurrentUserId())) {
+                    || user.getId().equals(access.currentUserId())) {
                 options.add(new TaskMemberOptionResponse(
                         user.getId(),
                         getUserName(user),

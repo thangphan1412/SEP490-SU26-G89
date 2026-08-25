@@ -15,7 +15,6 @@ import com.fpt.backend.service.interfaces.project.IProjectService;
 import com.fpt.backend.util.BaseResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.CacheControl;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -44,7 +43,7 @@ public class ProjectController {
     public ResponseEntity<BaseResponse<ProjectListResponse>> getProjects(@Valid @ModelAttribute ProjectListRequest request) {
         ProjectListResponse projects = projectService.getProjects(request);
 
-        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(new BaseResponse<>(projects));
+        return ResponseEntity.ok(new BaseResponse<>(projects));
     }
 
     // Lấy thông tin chi tiết của một dự án theo mã định danh.
@@ -53,7 +52,7 @@ public class ProjectController {
     public ResponseEntity<BaseResponse<ProjectDetailResponse>> getProjectById(@PathVariable UUID id) {
         ProjectDetailResponse project = projectService.getProjectById(id);
 
-        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(new BaseResponse<>(project));
+        return ResponseEntity.ok(new BaseResponse<>(project));
     }
 
     // Lấy danh sách nhân viên có thể được thêm vào dự án.
@@ -62,7 +61,7 @@ public class ProjectController {
     public ResponseEntity<BaseResponse<List<ProjectEmployeeResponse>>> getEmployeesForProjectSelection() {
         List<ProjectEmployeeResponse> employees = projectService.getEmployeesForProjectSelection();
 
-        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(new BaseResponse<>(employees));
+        return ResponseEntity.ok(new BaseResponse<>(employees));
     }
 
     // Lấy các trạng thái người dùng dùng cho bộ lọc thành viên dự án.
@@ -71,7 +70,7 @@ public class ProjectController {
     public ResponseEntity<BaseResponse<List<UserStatus>>> getUserStatusesForProjectMemberFilter() {
         List<UserStatus> statuses = projectService.getUserStatusesForProjectMemberFilter();
 
-        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(new BaseResponse<>(statuses));
+        return ResponseEntity.ok(new BaseResponse<>(statuses));
     }
 
     // Lấy cấu hình quyền hiện tại của một dự án.
@@ -79,7 +78,7 @@ public class ProjectController {
     @GetMapping(ApiConstant.Project.PERMISSION_CONFIGURATIONS)
     public ResponseEntity<BaseResponse<List<ProjectPermissionConfigurationResponse>>> getProjectPermissionConfigurations(
             @PathVariable UUID projectId) {
-        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(new BaseResponse<>(projectService.getProjectPermissionConfigurations(projectId)));
+        return ResponseEntity.ok(new BaseResponse<>(projectService.getProjectPermissionConfigurations(projectId)));
     }
 
     // Cập nhật các action và phạm vi làm việc cho một quyền trong dự án.

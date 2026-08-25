@@ -2,7 +2,6 @@ package com.fpt.backend.dto.request.project;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
@@ -32,7 +31,6 @@ public record ProjectCreateRequest(
         @Size(max = 255, message = "Project description must not exceed 255 characters")
         String projectDescription,
 
-        @NotEmpty(message = "At least one phase is required")
         @Valid
         List<@NotNull(message = "Phase information is required") ProjectPhaseRequest> phases,
 
