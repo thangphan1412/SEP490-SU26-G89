@@ -95,11 +95,11 @@ public class ContractTypeServiceImpl implements ContractTypeService {
         contractType.setUpdatedAt(now);
 
         ContractTypes savedType = contractTypeRepository.save(contractType);
-        List<ContractWorkflowStepRequest> requestedSteps = request.workflowSteps();
-        if (requestedSteps == null || requestedSteps.isEmpty()) {
-            requestedSteps = defaultWorkflowSteps();
-        }
-        createWorkflowVersion(savedType, request.workflowName(), requestedSteps);
+        createWorkflowVersion(
+                savedType,
+                request.workflowName(),
+                request.workflowSteps()
+        );
         return toResponse(savedType);
     }
 
@@ -286,6 +286,12 @@ public class ContractTypeServiceImpl implements ContractTypeService {
         ));
 
         List<NormalizedWorkflowStep> normalized = new ArrayList<>();
+        List<String> availableRoleCodes = roleRepository.findAllForSelection()
+                .stream()
+                .map(role -> role.getRoleCode())
+                .filter(roleCode -> !isBlank(roleCode))
+                .map(String::trim)
+                .toList();
         int createStepCount = 0;
         for (int index = 0; index < orderedSteps.size(); index++) {
             ContractWorkflowStepRequest step = orderedSteps.get(index);
@@ -312,7 +318,7 @@ public class ContractTypeServiceImpl implements ContractTypeService {
                     index + 1,
                     requireText(step.stepName(), "Workflow step name is required"),
                     actionType,
-                    normalizeRole(step.requiredRoleCode()),
+                    resolveRoleCode(step.requiredRoleCode(), availableRoleCodes),
                     step.required() == null || step.required(),
                     Boolean.TRUE.equals(step.canReject())
                             && actionType != ContractWorkflowActionType.CREATE
@@ -325,27 +331,6 @@ public class ContractTypeServiceImpl implements ContractTypeService {
             throw new BadHttpException(
                     "A workflow must start with exactly one CREATE step"
             );
-        }
-
-        int ceoSignIndex = -1;
-        for (int index = 0; index < normalized.size(); index++) {
-            NormalizedWorkflowStep step = normalized.get(index);
-            if (step.actionType() != ContractWorkflowActionType.SIGN) {
-                continue;
-            }
-            if ("CEO".equals(step.requiredRoleCode())) {
-                ceoSignIndex = index;
-            }
-        }
-        for (int index = 0; index < normalized.size(); index++) {
-            NormalizedWorkflowStep step = normalized.get(index);
-            if (step.actionType() == ContractWorkflowActionType.SIGN
-                    && !"CEO".equals(step.requiredRoleCode())
-                    && (ceoSignIndex < 0 || ceoSignIndex > index)) {
-                throw new BadHttpException(
-                        "The CEO SIGN step must come before every other signer"
-                );
-            }
         }
 
         return List.copyOf(normalized);
@@ -379,8 +364,8 @@ public class ContractTypeServiceImpl implements ContractTypeService {
             if (!expected.stepOrder().equals(actual.getStepOrder())
                     || !expected.stepName().equals(actual.getStepName())
                     || expected.actionType() != actual.getActionType()
-                    || !expected.requiredRoleCode().equals(
-                    normalizeRole(actual.getRequiredRoleCode())
+                    || !normalizeRoleKey(expected.requiredRoleCode()).equals(
+                    normalizeRoleKey(actual.getRequiredRoleCode())
             )
                     || expected.required() != Boolean.TRUE.equals(actual.getRequired())
                     || expected.canReject() != Boolean.TRUE.equals(actual.getCanReject())) {
@@ -423,29 +408,23 @@ public class ContractTypeServiceImpl implements ContractTypeService {
         );
     }
 
-    private List<ContractWorkflowStepRequest> defaultWorkflowSteps() {
-        return List.of(
-                new ContractWorkflowStepRequest(
-                        1, "Prepare and submit", "CREATE", "EMPLOYEE", true, false
-                ),
-                new ContractWorkflowStepRequest(
-                        2, "Head of Department approval", "APPROVE", "HEADOFDEPARTMENT", true, true
-                ),
-                new ContractWorkflowStepRequest(
-                        3, "CEO final approval", "APPROVE", "CEO", true, true
-                ),
-                new ContractWorkflowStepRequest(
-                        4, "CEO electronic signature", "SIGN", "CEO", true, true
-                ),
-                new ContractWorkflowStepRequest(
-                        5, "Assigned representative signature", "SIGN", "EMPLOYEE", true, true
-                )
+    private String resolveRoleCode(
+            String value,
+            List<String> availableRoleCodes
+    ) {
+        String requestedRole = normalizeRoleKey(
+                requireText(value, "Workflow role is required")
         );
+        return availableRoleCodes.stream()
+                .filter(roleCode -> normalizeRoleKey(roleCode).equals(requestedRole))
+                .findFirst()
+                .orElseThrow(() -> new BadHttpException(
+                        "Workflow role does not exist: " + value.trim()
+                ));
     }
 
-    private String normalizeRole(String value) {
-        String role = requireText(value, "Workflow role is required");
-        return role.toUpperCase(Locale.ROOT)
+    private String normalizeRoleKey(String value) {
+        return value.toUpperCase(Locale.ROOT)
                 .replace('-', '_')
                 .replace(' ', '_');
     }

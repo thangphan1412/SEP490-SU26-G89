@@ -50,34 +50,22 @@ function createDefaultWorkflowSteps() {
     return [
         createWorkflowStep({
             stepOrder: 1,
-            stepName: "Prepare and submit",
+            stepName: "Create contract",
             actionType: "CREATE",
-            requiredRoleCode: "EMPLOYEE",
+            requiredRoleCode: "",
             canReject: false,
         }),
         createWorkflowStep({
             stepOrder: 2,
-            stepName: "Head of Department approval",
+            stepName: "Review contract",
             actionType: "APPROVE",
-            requiredRoleCode: "HEADOFDEPARTMENT",
+            requiredRoleCode: "",
         }),
         createWorkflowStep({
             stepOrder: 3,
-            stepName: "CEO final approval",
-            actionType: "APPROVE",
-            requiredRoleCode: "CEO",
-        }),
-        createWorkflowStep({
-            stepOrder: 4,
-            stepName: "CEO electronic signature",
+            stepName: "Sign contract",
             actionType: "SIGN",
-            requiredRoleCode: "CEO",
-        }),
-        createWorkflowStep({
-            stepOrder: 5,
-            stepName: "Assigned representative signature",
-            actionType: "SIGN",
-            requiredRoleCode: "EMPLOYEE",
+            requiredRoleCode: "",
         }),
     ];
 }

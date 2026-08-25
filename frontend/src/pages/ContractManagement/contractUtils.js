@@ -37,18 +37,6 @@ export const CONTRACT_PROJECT_ACTION = Object.freeze({
     EXPORT: "EXPORT_CONTRACTS",
 });
 
-export const CONTRACT_WORKFLOW = Object.freeze({
-    workflowName: "Contract approval and signing workflow",
-    versionNumber: 1,
-    steps: [
-        { id: "contract-step-1", stepOrder: 1, stepName: "Prepare and submit", actionType: "CREATE", requiredRoleCode: "EMPLOYEE", requiredPermissionCodes: ["VIEW_CONTRACTS", "CREATE_CONTRACTS", "SUBMIT_CONTRACTS"] },
-        { id: "contract-step-2", stepOrder: 2, stepName: "Head of Department approval", actionType: "APPROVE", requiredRoleCode: "HEADOFDEPARTMENT", requiredPermissionCodes: ["VIEW_CONTRACTS", "APPROVE_CONTRACTS"] },
-        { id: "contract-step-3", stepOrder: 3, stepName: "CEO final approval", actionType: "APPROVE", requiredRoleCode: "CEO", requiredPermissionCodes: ["VIEW_CONTRACTS", "APPROVE_CONTRACTS"] },
-        { id: "contract-step-4", stepOrder: 4, stepName: "CEO electronic signature", actionType: "SIGN", requiredRoleCode: "CEO", requiredPermissionCodes: ["VIEW_CONTRACTS", "SIGN_CONTRACTS"] },
-        { id: "contract-step-5", stepOrder: 5, stepName: "Assigned representative signature", actionType: "SIGN", requiredRoleCode: "ANY", requiredPermissionCodes: ["VIEW_CONTRACTS", "SIGN_CONTRACTS"] },
-    ],
-});
-
 const ACTION_DETAILS = Object.freeze({
     [CONTRACT_ACTION.COMPLETE_STEP]: {
         label: "Complete current step",
@@ -129,7 +117,7 @@ export function createEmptyContract(projectId = "") {
         templateVersionNote: "",
         previousContractId: "",
         previousContractNumber: "",
-        workflowDefinition: CONTRACT_WORKFLOW,
+        workflowDefinition: null,
         workflowAssignees: [],
     };
 }

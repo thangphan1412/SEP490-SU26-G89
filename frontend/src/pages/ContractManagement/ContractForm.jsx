@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { IconPlus, IconTrash } from "@tabler/icons-react";
-import { CONTRACT_WORKFLOW, formatContractStatus } from "./contractUtils.js";
+import { formatContractStatus } from "./contractUtils.js";
 import {
     joinContractPages,
     splitContractPages,
@@ -41,7 +41,7 @@ function ContractForm({
     );
     const workflow = projectReadOnly
         ? contract.workflowDefinition
-        : CONTRACT_WORKFLOW;
+        : selectedContractType?.activeWorkflow || null;
     const selectedTemplate = filteredTemplates.find(
         (template) => template.id === contract.contractTemplateId
     );
@@ -402,27 +402,8 @@ function WorkflowAssignments({
                         const memberRoles = Array.isArray(member.roleCodes)
                             ? member.roleCodes
                             : [member.roleCode];
-                        const normalizedRoles = memberRoles.map(normalizeRole);
                         const anyRole = normalizeRole(step.requiredRoleCode) === "ANY";
                         const roleActions = new Set(member.allowedActions || []);
-                        if (normalizedRoles.includes("EMPLOYEE")) {
-                            ["VIEW_CONTRACTS", "CREATE_CONTRACTS", "EDIT_CONTRACTS", "SUBMIT_CONTRACTS", "SIGN_CONTRACTS"]
-                                .forEach((action) => roleActions.add(action));
-                        }
-                        if (normalizedRoles.includes("HEADOFDEPARTMENT")) {
-                            ["VIEW_CONTRACTS", "APPROVE_CONTRACTS"]
-                                .forEach((action) => roleActions.add(action));
-                        }
-                        if (normalizedRoles.includes("CEO")) {
-                            ["VIEW_CONTRACTS", "APPROVE_CONTRACTS", "SIGN_CONTRACTS", "EXPORT_CONTRACTS"]
-                                .forEach((action) => roleActions.add(action));
-                        }
-                        if (normalizedRoles.some((role) =>
-                            ["PARTNER", "EXTERNAL", "EXTERNALPARTNER"].includes(role)
-                        )) {
-                            ["VIEW_CONTRACTS", "SIGN_CONTRACTS", "EXPORT_CONTRACTS"]
-                                .forEach((action) => roleActions.add(action));
-                        }
                         return (anyRole || memberRoles.some((role) =>
                             normalizeRole(role)
                                 === normalizeRole(step.requiredRoleCode)
