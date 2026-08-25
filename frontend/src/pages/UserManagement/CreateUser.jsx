@@ -14,6 +14,7 @@ import {
 import { createUser } from "../../services/userService/userApi.js";
 import departmentApi from "../../services/departmentService/departmentApi";
 import roleApi from "../../services/roleService/roleApi";
+import { getCompanyProfile } from "../../services/companyService/companyApi";
 
 function CreateUser() {
     const navigate = useNavigate();
@@ -41,8 +42,29 @@ function CreateUser() {
         dob: "",
         role: availableRoles[0] || "", // Mặc định lấy role đầu tiên
         position: "", phoneNumber: "", employeeId: "", startDate: "",
-        status: "ACTIVE", sendWelcomeEmail: true
+        status: "ACTIVE", sendWelcomeEmail: true,
+        companyName: "", companyEmail: "", registeredAddress: "",
     });
+
+
+    // State kiểm tra xem đã có công ty nội bộ chưa
+    const [hasInternalCompany, setHasInternalCompany] = useState(false);
+
+    useEffect(() => {
+        const checkInternalCompany = async () => {
+            try {
+                await getCompanyProfile();
+                setHasInternalCompany(true); // Nếu gọi thành công -> Đã có
+            } catch (error) {
+                setHasInternalCompany(false); // Nếu lỗi 404 -> Chưa có
+            }
+        };
+        checkInternalCompany();
+    }, []);
+
+    // Biến logic quyết định khi nào hiện Form Company
+    const showCompanyFields = user.role === 'External Parners' || (user.role !== 'External Parners' && !hasInternalCompany);
+
 
     useEffect(() => {
         const fetchData = async () => {
@@ -105,7 +127,10 @@ function CreateUser() {
                 status: user.status,
                 departmentName: user.department,
                 // ĐÃ THÊM: Truyền cờ gửi mail xuống BE
-                sendWelcomeEmail: user.sendWelcomeEmail
+                sendWelcomeEmail: user.sendWelcomeEmail,
+                companyName: user.companyName,
+                companyEmail: user.companyEmail,
+                registeredAddress: user.registeredAddress
             };
 
             // Gọi API từ thư mục config/api/userApi.js
@@ -323,6 +348,38 @@ function CreateUser() {
                                     checked={user.sendWelcomeEmail} onChange={handleChange} className="mt-4"
                                     disabled={isSubmitting}/>
                     </Card>
+
+                    {/* CHỈ HIỆN KHI: Là đối tác HOẶC Là nội bộ nhưng chưa khởi tạo công ty */}
+                    {showCompanyFields && (
+                        <Card className="m-4 border rounded-3 p-4">
+                            <h2 className="h5 fw-bold mb-4 text-dark">
+                                {user.role === 'External Parners' ? 'Partner Company Information' : 'Internal Company Information (Initial Setup)'}
+                            </h2>
+                            <Row className="g-4">
+                                <Col md={6}>
+                                    <Form.Group>
+                                        <Form.Label className="small fw-bold">Company Name <span className="text-danger">*</span></Form.Label>
+                                        <Form.Control type="text" name="companyName" value={user.companyName} onChange={handleChange}
+                                                      required={showCompanyFields} disabled={isSubmitting} />
+                                    </Form.Group>
+                                </Col>
+                                <Col md={6}>
+                                    <Form.Group>
+                                        <Form.Label className="small fw-bold">Company Email <span className="text-danger">*</span></Form.Label>
+                                        <Form.Control type="email" name="companyEmail" value={user.companyEmail} onChange={handleChange}
+                                                      required={showCompanyFields} disabled={isSubmitting} />
+                                    </Form.Group>
+                                </Col>
+                                <Col md={12}>
+                                    <Form.Group>
+                                        <Form.Label className="small fw-bold">Registered Address <span className="text-danger">*</span></Form.Label>
+                                        <Form.Control as="textarea" rows={2} name="registeredAddress" value={user.registeredAddress} onChange={handleChange}
+                                                      required={showCompanyFields} disabled={isSubmitting} />
+                                    </Form.Group>
+                                </Col>
+                            </Row>
+                        </Card>
+                    )}
 
                     {/* Section 2: Onboarding cards */}
                     <Card className="mx-4 mb-4 border rounded-3 p-4">

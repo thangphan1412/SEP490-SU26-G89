@@ -92,9 +92,13 @@ export const navConfig = [
         matchPaths: ["/user-profile", "/company-profile"],
         children: [
             { label: "My Profile", path: "/user-profile/view" },
-            { label: "Update Profile", path: "/user-profile/update" },
-            { label: "Company Profile", path: "/company-profile/view" },
-            { label: "Update Company Profile", path: "/company-profile/update" },
+            { label: "Update Profile", path: "/user-profile/update" }, // Cập nhật cá nhân thì ai cũng được dùng
+            { label: "Company Profile", path: "/company-profile/view" }, // Xem thông tin công ty thì ai cũng được xem
+            {
+                label: "Update Company Profile",
+                path: "/company-profile/update",
+                allowedRoles: ["Accountant"] // <--- CHỈ ROLE ACCOUNTANT MỚI THẤY MENU NÀY
+            },
         ],
     },
 

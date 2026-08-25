@@ -97,6 +97,9 @@ function ViewUser() {
                     employeeId: data.employeeId || "N/A",
                     lastActive: data.lastActive || "Chưa đăng nhập",
                     dateJoined: data.startDate || "N/A",
+                    companyName: data.companyName || "N/A",
+                    companyEmail: data.companyEmail || "N/A",
+                    registeredAddress: data.registeredAddress || "N/A",
                 });
             } catch (error) {
                 console.error("Lỗi khi lấy dữ liệu người dùng:", error);
@@ -304,6 +307,18 @@ function ViewUser() {
                                             </div>
                                         </Stack>
                                     </Col>
+                                </Row>
+                            </Card>
+
+                            {/* --- MÀN HÌNH VIEW USER --- */}
+                            <Card className="mx-4 mb-4 border rounded-3 p-4">
+                                <h2 className="h5 fw-bold mb-4 text-dark">
+                                    {user.role === 'External Parners' ? 'Partner Company Information' : 'Internal Company Information'}
+                                </h2>
+                                <Row className="g-3 small">
+                                    <Col md={6} className="d-flex py-2 border-bottom"><span className="text-muted w-50">Company Name:</span><strong className="w-50">{user.companyName}</strong></Col>
+                                    <Col md={6} className="d-flex py-2 border-bottom"><span className="text-muted w-50">Email:</span><strong className="w-50 text-break">{user.companyEmail}</strong></Col>
+                                    <Col md={12} className="d-flex py-2 border-bottom"><span className="text-muted w-25">Registered Address:</span><strong className="w-75">{user.registeredAddress}</strong></Col>
                                 </Row>
                             </Card>
 
