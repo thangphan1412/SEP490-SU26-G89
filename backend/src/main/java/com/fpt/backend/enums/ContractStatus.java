@@ -12,6 +12,7 @@ public enum ContractStatus {
     SIGNED,
     ACTIVE,
     ENDED,
+    PENDING_EFFECTIVE,
     CANCELLED;
 
     public boolean isTerminal() {

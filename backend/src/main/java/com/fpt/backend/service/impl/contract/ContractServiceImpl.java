@@ -58,21 +58,12 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.Period;
 import java.time.format.DateTimeParseException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
-import java.util.Base64;
+import java.util.*;
 import java.security.MessageDigest;
 
 @Service
@@ -244,7 +235,7 @@ public class ContractServiceImpl implements ContractService {
 
         Map<UUID, Users> eligibleUsers = new LinkedHashMap<>();
         projectMemberRepository.findByProjectId(project.getId()).stream()
-                .map(ProjectMember::getUser).filter(java.util.Objects::nonNull)
+                .map(ProjectMember::getUser).filter(Objects::nonNull)
                 .forEach(user -> eligibleUsers.put(user.getId(), user));
         userRepository.findAll().stream()
                 .filter(user -> userHasRole(user, "HEADOFDEPARTMENT")
@@ -533,8 +524,8 @@ public class ContractServiceImpl implements ContractService {
         }
         String actualHash = calculateDocumentHash(pdf);
         if (!MessageDigest.isEqual(
-                actualHash.getBytes(java.nio.charset.StandardCharsets.UTF_8),
-                contract.getDocumentHash().getBytes(java.nio.charset.StandardCharsets.UTF_8)
+                actualHash.getBytes(StandardCharsets.UTF_8),
+                contract.getDocumentHash().getBytes(StandardCharsets.UTF_8)
         )) {
             throw new BadHttpException("The stored contract PDF has been changed");
         }
@@ -781,7 +772,7 @@ public class ContractServiceImpl implements ContractService {
         projectMemberRepository.findByProjectId(contract.getProject().getId())
                 .stream()
                 .map(ProjectMember::getUser)
-                .filter(java.util.Objects::nonNull)
+                .filter(Objects::nonNull)
                 .forEach(user -> projectMembers.put(user.getId(), user));
         userRepository.findAll().stream()
                 .filter(user -> userHasRole(user, "HEADOFDEPARTMENT")
@@ -1350,6 +1341,7 @@ public class ContractServiceImpl implements ContractService {
             case PENDING_APPROVAL, PENDING_SIGNATURE -> Set.of();
             case SIGNED, ACTIVE ->
                     Set.of("CEO", "DIRECTOR", "PARTNER", "EXTERNAL_PARTNER");
+            case PENDING_EFFECTIVE -> null;
             case ENDED, CANCELLED -> Set.of();
         };
     }
@@ -1451,16 +1443,16 @@ public class ContractServiceImpl implements ContractService {
 
         if (required.equals(normalizeRoleOrEmpty(user.getUserRoles().stream()
                 .map(UserRole::getRole)
-                .filter(java.util.Objects::nonNull)
+                .filter(Objects::nonNull)
                 .map(Role::getRoleCode)
-                .filter(java.util.Objects::nonNull)
+                .filter(Objects::nonNull)
                 .findFirst()
                 .orElse(null)))) {
             return true;
         }
         return user.getUserRoles().stream()
                 .map(UserRole::getRole)
-                .filter(java.util.Objects::nonNull)
+                .filter(Objects::nonNull)
                 .anyMatch(role -> required.equals(
                         normalizeRoleOrEmpty(role.getRoleCode())
                 ) || required.equals(
@@ -1475,9 +1467,9 @@ public class ContractServiceImpl implements ContractService {
         }
         String legacyRole = normalizeRoleOrEmpty(user.getUserRoles().stream()
                 .map(UserRole::getRole)
-                .filter(java.util.Objects::nonNull)
+                .filter(Objects::nonNull)
                 .map(Role::getRoleCode)
-                .filter(java.util.Objects::nonNull)
+                .filter(Objects::nonNull)
                 .findFirst()
                 .orElse(null));
         return legacyRole.isEmpty() ? "UNKNOWN" : legacyRole;
@@ -1488,7 +1480,7 @@ public class ContractServiceImpl implements ContractService {
         if (user != null && user.getUserRoles() != null) {
             user.getUserRoles().stream()
                     .map(UserRole::getRole)
-                    .filter(java.util.Objects::nonNull)
+                    .filter(Objects::nonNull)
                     .map(role -> normalizeRoleOrEmpty(role.getRoleCode()))
                     .filter(value -> !value.isEmpty())
                     .forEach(codes::add);
@@ -1496,9 +1488,9 @@ public class ContractServiceImpl implements ContractService {
         if (user != null) {
             String legacyRole = normalizeRoleOrEmpty(user.getUserRoles().stream()
                     .map(UserRole::getRole)
-                    .filter(java.util.Objects::nonNull)
+                    .filter(Objects::nonNull)
                     .map(Role::getRoleCode)
-                    .filter(java.util.Objects::nonNull)
+                    .filter(Objects::nonNull)
                     .findFirst()
                     .orElse(null));
             if (!legacyRole.isEmpty()) {
@@ -1709,7 +1701,7 @@ public class ContractServiceImpl implements ContractService {
                     attributeValue.setUpdatedAt(now);
                     return attributeValue;
                 })
-                .filter(java.util.Objects::nonNull)
+                .filter(Objects::nonNull)
                 .toList();
 
         if (!values.isEmpty()) {
