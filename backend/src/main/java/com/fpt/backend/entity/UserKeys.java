@@ -20,18 +20,24 @@ public class UserKeys extends BaseEntity{
     @Column(name = "create_at")
     private LocalDateTime createAt;
 <<<<<<< HEAD
+<<<<<<< HEAD
     @Column(name = "public_key", columnDefinition = "nvarchar(max)")
     private String publicKey;
     @Column(name = "key_fingerprint", length = 64)
     private String keyFingerprint;
 =======
+=======
+>>>>>>> origin
     @Lob
     @Column(name = "public_key", columnDefinition = "nvarchar(max)")
     private String publicKey;
     @Lob
     @Column(name = "private_key", columnDefinition = "nvarchar(max)")
     private String privateKey;
+<<<<<<< HEAD
 >>>>>>> 7d6eb51fe9c660b46d1a1bc0200bcbbc73cf5f51
+=======
+>>>>>>> origin
     @Column(name = "key_algorithm")
     @Enumerated(EnumType.STRING)
     private KeyAlgorithm keyAlgorithm;

@@ -16,13 +16,7 @@ import java.time.LocalDateTime;
 @Getter
 @Entity
 @Builder
-@Table(
-        name = "signatures",
-        uniqueConstraints = @UniqueConstraint(
-                name = "UK_contract_signature_workflow_step",
-                columnNames = {"contract_id", "workflow_step_instance_id"}
-        )
-)
+@Table(name = "signatures")
 public class Signature extends BaseEntity{
     @Column(name = "signature_name")
     private String signatureName;
@@ -31,6 +25,7 @@ public class Signature extends BaseEntity{
     private SignatureType signatureType;
     @Column(name = "document_hash")
     private String documentHash;
+<<<<<<< HEAD
 <<<<<<< HEAD
     @Column(name = "signing_public_key", columnDefinition = "nvarchar(max)")
     private String signingPublicKey;
@@ -43,6 +38,11 @@ public class Signature extends BaseEntity{
     @Column(name = "signature_value", columnDefinition = "nvarchar(max)")
     private String signatureValue;
 >>>>>>> 7d6eb51fe9c660b46d1a1bc0200bcbbc73cf5f51
+=======
+    @Lob
+    @Column(name = "signature_value", columnDefinition = "nvarchar(max)")
+    private String signatureValue;
+>>>>>>> origin
     @Column(name = "signature_algorithm")
     @Enumerated(EnumType.STRING)
     private SignatureAlgorithm signatureAlgorithm;
@@ -58,10 +58,6 @@ public class Signature extends BaseEntity{
     private LocalDate signatureUpdateAt;
     @Column(name = "signature_create_at")
     private LocalDateTime signatureCreateAt;
-    @Column(name = "signed_at")
-    private LocalDateTime signedAt;
-    @Column(name = "signer_role", length = 60)
-    private String signerRole;
     /// Relation
     //User_key
     @ManyToOne(fetch = FetchType.LAZY)
@@ -71,12 +67,6 @@ public class Signature extends BaseEntity{
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "contract_id")
     private Contracts contract;
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "signed_by_user_id")
-    private Users signedBy;
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "workflow_step_instance_id")
-    private ContractWorkflowStepInstance workflowStepInstance;
     // electric
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "electronic_signature_id")

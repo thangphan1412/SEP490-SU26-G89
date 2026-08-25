@@ -32,7 +32,7 @@ public class CloudinaryService {
             throw new BadHttpException("File is required");
         }
 
-        Map<?, ?> uploadResult = uploadToCloudinary(file);
+        Map uploadResult = uploadToCloudinary(file);
 
         String secureUrl = (String) uploadResult.get("secure_url");
         String publicId = (String) uploadResult.get("public_id");
@@ -53,6 +53,7 @@ public class CloudinaryService {
         return fileStorageRepository.save(fileStorage);
     }
 
+<<<<<<< HEAD
 <<<<<<< HEAD
     public FileStorage uploadPdfAndSave(
             byte[] pdfContent,
@@ -92,6 +93,8 @@ public class CloudinaryService {
                     .mimeType("application/pdf")
                     .fileSize((long) pdfContent.length)
 =======
+=======
+>>>>>>> origin
     public FileStorage uploadPdfAndSave(byte[] pdf, String originalName, Users user) {
         if (pdf == null || pdf.length == 0) {
             throw new BadHttpException("Contract PDF is empty");
@@ -115,12 +118,16 @@ public class CloudinaryService {
                     .storageKey(publicId)
                     .mimeType("application/pdf")
                     .fileSize((long) pdf.length)
+<<<<<<< HEAD
 >>>>>>> 7d6eb51fe9c660b46d1a1bc0200bcbbc73cf5f51
+=======
+>>>>>>> origin
                     .uploadAt(LocalDateTime.now())
                     .user(user)
                     .isDeleted(false)
                     .build());
         } catch (IOException exception) {
+<<<<<<< HEAD
 <<<<<<< HEAD
             throw new BadHttpException(
                     "Failed to upload the approved contract PDF"
@@ -130,6 +137,8 @@ public class CloudinaryService {
 
     private Map<?, ?> uploadToCloudinary(MultipartFile file) {
 =======
+=======
+>>>>>>> origin
             throw new BadHttpException("Failed to upload contract PDF: " + exception.getMessage());
         }
     }
@@ -156,7 +165,10 @@ public class CloudinaryService {
     }
 
     private Map uploadToCloudinary(MultipartFile file) {
+<<<<<<< HEAD
 >>>>>>> 7d6eb51fe9c660b46d1a1bc0200bcbbc73cf5f51
+=======
+>>>>>>> origin
         try {
             return cloudinary.uploader().upload(
                     file.getBytes(),
@@ -170,6 +182,9 @@ public class CloudinaryService {
         }
     }
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> origin
 
     private void requirePdf(byte[] content) {
         if (content == null
@@ -205,6 +220,9 @@ public class CloudinaryService {
         }
         return text;
     }
+<<<<<<< HEAD
 =======
 >>>>>>> 7d6eb51fe9c660b46d1a1bc0200bcbbc73cf5f51
+=======
+>>>>>>> origin
 }

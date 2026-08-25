@@ -7,14 +7,17 @@ public enum ContractStatus {
     PENDING_APPROVAL,
     PENDING_SIGNATURE,
     PENDING_INTERNAL_APPROVAL,
-    PENDING_DIRECTOR_APPROVAL,
     PENDING_DIRECTOR_SIGNATURE,
     PENDING_PARTNER_SIGNATURE,
+<<<<<<< HEAD
 <<<<<<< HEAD
     PENDING_EFFECTIVE,
 =======
     SIGNED,
 >>>>>>> 7d6eb51fe9c660b46d1a1bc0200bcbbc73cf5f51
+=======
+    SIGNED,
+>>>>>>> origin
     ACTIVE,
     ENDED,
     CANCELLED;

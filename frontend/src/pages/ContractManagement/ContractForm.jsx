@@ -486,6 +486,7 @@ function normalizeRole(value) {
         .trim()
         .toUpperCase()
 <<<<<<< HEAD
+<<<<<<< HEAD
         .replaceAll("-", "_")
         .replaceAll(" ", "_");
     const compact = normalized.replaceAll("_", "");
@@ -506,12 +507,17 @@ function normalizeRole(value) {
     ].includes(compact)) {
         return "EXTERNAL_PARTNER";
 =======
+=======
+>>>>>>> origin
         .replaceAll("-", "")
         .replaceAll("_", "")
         .replaceAll(" ", "");
     if (["HOD", "HEADDEPARTMENT", "DEPARTMENTHEAD"].includes(normalized)) {
         return "HEADOFDEPARTMENT";
+<<<<<<< HEAD
 >>>>>>> 7d6eb51fe9c660b46d1a1bc0200bcbbc73cf5f51
+=======
+>>>>>>> origin
     }
     return normalized;
 }

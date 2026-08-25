@@ -26,6 +26,7 @@ public class ListElectronicResponse {
     private boolean isDefault;
     private LocalDate uploadAt;
 <<<<<<< HEAD
+<<<<<<< HEAD
     private String imageUrl;
     private String publicKey;
     private String publicKeyFingerprint;
@@ -34,4 +35,7 @@ public class ListElectronicResponse {
 =======
     private String fileUrl;
 >>>>>>> 7d6eb51fe9c660b46d1a1bc0200bcbbc73cf5f51
+=======
+    private String fileUrl;
+>>>>>>> origin
 }

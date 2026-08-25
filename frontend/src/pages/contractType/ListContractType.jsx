@@ -60,6 +60,7 @@ function createDefaultWorkflowSteps() {
             stepName: "Head of Department approval",
             actionType: "APPROVE",
 <<<<<<< HEAD
+<<<<<<< HEAD
             requiredRoleCode: "HEAD_OF_DEPARTMENT",
         }),
         createWorkflowStep({
@@ -67,17 +68,23 @@ function createDefaultWorkflowSteps() {
             stepName: "CEO approval and PDF generation",
             actionType: "APPROVE_AND_GENERATE_PDF",
 =======
+=======
+>>>>>>> origin
             requiredRoleCode: "HEADOFDEPARTMENT",
         }),
         createWorkflowStep({
             stepOrder: 3,
             stepName: "CEO final approval",
             actionType: "APPROVE",
+<<<<<<< HEAD
 >>>>>>> 7d6eb51fe9c660b46d1a1bc0200bcbbc73cf5f51
+=======
+>>>>>>> origin
             requiredRoleCode: "CEO",
         }),
         createWorkflowStep({
             stepOrder: 4,
+<<<<<<< HEAD
 <<<<<<< HEAD
             stepName: "Company signature",
             actionType: "SIGN",
@@ -89,6 +96,8 @@ function createDefaultWorkflowSteps() {
             actionType: "SIGN",
             requiredRoleCode: "EXTERNAL_PARTNER",
 =======
+=======
+>>>>>>> origin
             stepName: "CEO electronic signature",
             actionType: "SIGN",
             requiredRoleCode: "CEO",
@@ -98,7 +107,10 @@ function createDefaultWorkflowSteps() {
             stepName: "Assigned representative signature",
             actionType: "SIGN",
             requiredRoleCode: "EMPLOYEE",
+<<<<<<< HEAD
 >>>>>>> 7d6eb51fe9c660b46d1a1bc0200bcbbc73cf5f51
+=======
+>>>>>>> origin
         }),
     ];
 }
@@ -125,6 +137,7 @@ function ListContractType() {
     const [deletingId, setDeletingId] = useState(null);
     const [workflowOptions, setWorkflowOptions] = useState({
 <<<<<<< HEAD
+<<<<<<< HEAD
         actionTypes: [
             "CREATE",
             "APPROVE",
@@ -134,6 +147,9 @@ function ListContractType() {
 =======
         actionTypes: ["CREATE", "APPROVE", "SIGN"],
 >>>>>>> 7d6eb51fe9c660b46d1a1bc0200bcbbc73cf5f51
+=======
+        actionTypes: ["CREATE", "APPROVE", "SIGN"],
+>>>>>>> origin
         roles: [],
     });
 
@@ -158,6 +174,7 @@ function ListContractType() {
                         actionTypes: Array.isArray(workflowPayload?.actionTypes)
                             ? workflowPayload.actionTypes
 <<<<<<< HEAD
+<<<<<<< HEAD
                             : [
                                 "CREATE",
                                 "APPROVE",
@@ -167,6 +184,9 @@ function ListContractType() {
 =======
                             : ["CREATE", "APPROVE", "SIGN"],
 >>>>>>> 7d6eb51fe9c660b46d1a1bc0200bcbbc73cf5f51
+=======
+                            : ["CREATE", "APPROVE", "SIGN"],
+>>>>>>> origin
                         roles: Array.isArray(workflowPayload?.roles)
                             ? workflowPayload.roles
                             : [],
