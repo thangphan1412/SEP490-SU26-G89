@@ -105,46 +105,42 @@ export function getProjectErrorMessage(error, fallbackMessage) {
   return fallbackMessage;
 }
 
-export function calculatePhaseStartDatesForDisplay(
+export function getPhaseDateError(
   phases,
-  projectStartDate
+  projectStartDate,
+  projectEndDate
 ) {
-  let expectedStartDate = projectStartDate;
-  const updatedPhases = [];
+  for (let index = 0; index < phases.length; index++) {
+    const phase = phases[index];
+    const phaseNumber = index + 1;
 
-  for (const phase of phases) {
-    const updatedPhase = {
-      ...phase,
-    };
+    if (!phase.startDate) {
+      return "Phase " + phaseNumber + " start date is required.";
+    }
 
-    updatedPhase.startDate = expectedStartDate;
-    updatedPhases.push(updatedPhase);
+    if (!phase.endDate) {
+      return "Phase " + phaseNumber + " end date is required.";
+    }
 
-    if (phase.endDate) {
-      expectedStartDate = addOneDay(phase.endDate);
-    } else {
-      expectedStartDate = "";
+    if (phase.startDate > phase.endDate) {
+      return "Phase " + phaseNumber
+        + " start date must not be after its end date.";
+    }
+
+    if (projectStartDate && phase.startDate < projectStartDate) {
+      return "Phase " + phaseNumber
+        + " start date must not be before the project start date.";
+    }
+
+    if (projectEndDate && phase.endDate > projectEndDate) {
+      return "Phase " + phaseNumber
+        + " end date must not be after the project end date.";
     }
   }
 
-  return updatedPhases;
+  return "";
 }
 
 export function isCompletedProjectStatus(status) {
   return String(status || "").trim().toLowerCase() === "completed";
-}
-
-export function addOneDay(dateValue) {
-  if (!dateValue) {
-    return "";
-  }
-
-  const date = new Date(dateValue + "T00:00:00Z");
-
-  if (Number.isNaN(date.getTime())) {
-    return "";
-  }
-
-  date.setUTCDate(date.getUTCDate() + 1);
-  return date.toISOString().slice(0, 10);
 }

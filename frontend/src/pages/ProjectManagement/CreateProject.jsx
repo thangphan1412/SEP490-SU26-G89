@@ -6,7 +6,7 @@ import CancelButton from "../../components/projectComponents/CancelButton.jsx";
 import Icon from "../../components/projectComponents/Icon.jsx";
 import PagePanel from "../../components/projectComponents/PagePanel.jsx";
 import PrimaryButton from "../../components/projectComponents/PrimaryButton.jsx";
-import {addOneDay,calculatePhaseStartDatesForDisplay,createClientId,getEmployeeDescription,getEmployeeName,getEmployeeSearchText,getProjectErrorMessage,} from "../../components/projectComponents/projectFormUtils.js";
+import {createClientId,getEmployeeDescription,getEmployeeName,getEmployeeSearchText,getPhaseDateError,getProjectErrorMessage,} from "../../components/projectComponents/projectFormUtils.js";
 import "../../assets/styles/css/projectStyles/CreateProject.css";
 
 const initialProject = {
@@ -133,61 +133,41 @@ function CreateProject() {
             return;
         }
 
-        if (name === "projectStartDate" || name === "projectEndDate") {
-            setSubmitError("");
+        let nextProjectStartDate = project.projectStartDate;
+        let nextProjectEndDate = project.projectEndDate;
+
+        if (name === "projectStartDate") {
+            nextProjectStartDate = value;
+
+            if (!value) {
+                nextProjectEndDate = "";
+            }
         }
 
-        setProject(function (currentProject) {
-            let phases = currentProject.phases;
-            let projectEndDate = currentProject.projectEndDate;
+        if (name === "projectEndDate") {
+            nextProjectEndDate = value;
+        }
 
-            if (name === "projectStartDate" && phases.length > 0) {
-                phases = calculatePhaseStartDatesForDisplay(phases, value);
-            }
+        if (name === "projectStartDate" || name === "projectEndDate") {
+            setSubmitError(getPhaseDateError(
+                project.phases,
+                nextProjectStartDate,
+                nextProjectEndDate
+            ));
+        }
 
-            if (name === "projectStartDate" && !value) {
-                projectEndDate = "";
-            }
-
-            if (name === "projectEndDate" && phases.length > 0) {
-                phases = phases.map(function (phase, index) {
-                    const isLastPhase = index === phases.length - 1;
-
-                    if (isLastPhase) {
-                        return { ...phase, endDate: value };
-                    }
-
-                    return phase;
-                });
-            }
-
-            return {
-                ...currentProject,
-                projectEndDate,
-                [name]: value,
-                phases,
-            };
-        });
+        setProject((currentProject) => ({
+            ...currentProject,
+            projectEndDate: nextProjectEndDate,
+            [name]: value,
+        }));
     }
 
-    // Thêm phase mới nối tiếp phase cuối và kết thúc tại ngày kết thúc dự án.
+    // Thêm phase mới với khoảng ngày mặc định nằm trong timeline dự án.
     function addPhase() {
         // Yêu cầu đầy đủ timeline dự án trước khi thêm phase.
         if (!project.projectStartDate || !project.projectEndDate) {
             setSubmitError("Select the project start date and end date before adding phases.");
-            return;
-        }
-
-        const lastPhase = project.phases[project.phases.length - 1];
-        let nextStartDate = project.projectStartDate;
-
-        if (lastPhase) {
-            nextStartDate = addOneDay(lastPhase.endDate);
-        }
-
-        // Ngăn thêm phase khi timeline hiện tại đã phủ hết dự án.
-        if (!nextStartDate || nextStartDate > project.projectEndDate) {
-            setSubmitError("Shorten the current final phase before adding another phase.");
             return;
         }
 
@@ -200,63 +180,42 @@ function CreateProject() {
                     clientId: createClientId(),
                     title: "",
                     description: "",
-                    startDate: nextStartDate,
+                    startDate: currentProject.projectStartDate,
                     endDate: currentProject.projectEndDate,
                 },
             ],
         }));
     }
 
-    // Cập nhật một phase và tính lại ngày bắt đầu của các phase kế tiếp.
+    // Cập nhật độc lập thông tin hoặc khoảng ngày của một phase.
     function updatePhase(clientId, event) {
         const { name, value } = event.target;
+        const phases = project.phases.map((phase) =>
+            phase.clientId === clientId
+                ? { ...phase, [name]: value }
+                : phase
+        );
 
-        setProject(function (currentProject) {
-            let phases = currentProject.phases.map(function (phase) {
-                if (phase.clientId === clientId) {
-                    return { ...phase, [name]: value };
-                }
-
-                return phase;
-            });
-
-            if (name === "endDate") {
-                phases = calculatePhaseStartDatesForDisplay(
-                    phases,
-                    currentProject.projectStartDate
-                );
-            }
-
-            return { ...currentProject, phases };
-        });
+        setSubmitError(getPhaseDateError(
+            phases,
+            project.projectStartDate,
+            project.projectEndDate
+        ));
+        setProject({ ...project, phases });
     }
 
-    // Xóa một phase rồi nối lại timeline của các phase còn lại.
+    // Xóa phase mà không thay đổi khoảng ngày của các phase còn lại.
     function removePhase(clientId) {
-        setProject(function (currentProject) {
-            let phases = currentProject.phases.filter((phase) => phase.clientId !== clientId);
+        const phases = project.phases.filter(
+            (phase) => phase.clientId !== clientId
+        );
 
-            if (phases.length > 0) {
-                phases = phases.map(function (phase, index) {
-                    const isLastPhase = index === phases.length - 1;
-
-                    if (isLastPhase) {
-                        return {
-                            ...phase,
-                            endDate: currentProject.projectEndDate,
-                        };
-                    }
-
-                    return phase;
-                });
-                phases = calculatePhaseStartDatesForDisplay(
-                    phases,
-                    currentProject.projectStartDate
-                );
-            }
-
-            return { ...currentProject, phases };
-        });
+        setSubmitError(getPhaseDateError(
+            phases,
+            project.projectStartDate,
+            project.projectEndDate
+        ));
+        setProject({ ...project, phases });
     }
 
     // Đặt lại bộ lọc và mở modal chọn thành viên.
@@ -326,6 +285,17 @@ function CreateProject() {
             return;
         }
 
+        const phaseDateError = getPhaseDateError(
+            project.phases,
+            project.projectStartDate,
+            project.projectEndDate
+        );
+
+        if (phaseDateError) {
+            setSubmitError(phaseDateError);
+            return;
+        }
+
         try {
             setSaving(true);
             setSubmitError("");
@@ -339,6 +309,7 @@ function CreateProject() {
                     id: null,
                     title: phase.title.trim(),
                     description: phase.description.trim(),
+                    startDate: phase.startDate,
                     endDate: phase.endDate,
                 })),
                 members: project.members,
@@ -455,16 +426,15 @@ function CreateProject() {
                             <Col md={3}>
                                 <Form.Label className="project-management-field-label">Start Date</Form.Label>
                                 <ProjectDateInput
-                                    readOnly
                                     required
                                     name="startDate"
+                                    min={project.projectStartDate}
+                                    max={phase.endDate || project.projectEndDate}
                                     value={phase.startDate}
+                                    onChange={(event) => updatePhase(phase.clientId, event)}
                                     className="project-management-input create-project-phase-start-input"
                                     aria-label={`Phase ${index + 1} start date`}
                                 />
-                                <Form.Text className="create-project-phase-date-note">
-                                    Preview only. The server calculates this date when saving.
-                                </Form.Text>
                             </Col>
                             <Col md={3}>
                                 <Form.Label className="project-management-field-label">End Date</Form.Label>
@@ -654,7 +624,7 @@ function CreateProject() {
                     <div className="create-project-section-header">
                         <div>
                             <Card.Title as="h2" className="project-management-card-title">Project Phases</Card.Title>
-                            <p className="create-project-section-note">Phases are optional. If added, they must cover the full project timeline without gaps or overlapping dates.</p>
+                            <p className="create-project-section-note">Phases are optional. Each phase date range only needs to stay within the project date range.</p>
                         </div>
                         <Button type="button" variant="light" className="create-project-add-button" onClick={addPhase}>
                             <Icon name="plus" size={18} /> Add Phase
