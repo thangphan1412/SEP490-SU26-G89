@@ -36,11 +36,13 @@ public class ProjectPhaseService {
     private final PhaseContractRepository phaseContractRepository;
     private final PhaseStatusService phaseStatusService;
 
-    // Đồng bộ phase của dự án theo lịch liên tục được gửi từ request.
+    // Đồng bộ các phase có khoảng thời gian độc lập trong timeline dự án.
     public void syncPhases(
             Projects project,
             List<ProjectPhaseRequest> phaseRequests) {
-        List<ProjectPhaseRequest> requests = phaseRequests;
+        List<ProjectPhaseRequest> requests = phaseRequests == null
+                ? List.of()
+                : phaseRequests;
         validatePhaseSchedule(project, requests);
 
         Map<UUID, Timeline> existingPhases = new LinkedHashMap<>();
@@ -48,8 +50,6 @@ public class ProjectPhaseService {
         for (Timeline phase : phaseRepository.findByProjectId(project.getId())) {
             existingPhases.put(phase.getId(), phase);
         }
-
-        LocalDate nextStartDate = project.getProjectStartDate();
 
         for (ProjectPhaseRequest request : requests) {
             Timeline phase;
@@ -71,11 +71,9 @@ public class ProjectPhaseService {
             applyPhaseInformation(
                     phase,
                     request,
-                    project,
-                    nextStartDate
+                    project
             );
             phaseRepository.save(phase);
-            nextStartDate = request.endDate().plusDays(1);
         }
 
         for (Timeline removedPhase : existingPhases.values()) {
@@ -115,28 +113,26 @@ public class ProjectPhaseService {
         phaseRepository.deleteByProjectId(projectId);
     }
 
-    // Kiểm tra các phase phủ kín timeline dự án mà không vượt hoặc đảo ngày.
+    // Kiểm tra từng phase nằm trong timeline dự án và không bị đảo ngày.
     private void validatePhaseSchedule(
             Projects project,
             List<ProjectPhaseRequest> requests) {
-        LocalDate expectedStartDate = project.getProjectStartDate();
-
         for (int index = 0; index < requests.size(); index++) {
             ProjectPhaseRequest request = requests.get(index);
             int phaseNumber = index + 1;
-
+            LocalDate startDate = request.startDate();
             LocalDate endDate = request.endDate();
 
-            // Từ chối phase bắt đầu sau ngày kết thúc dự án.
-            if (expectedStartDate.isAfter(project.getProjectEndDate())) {
+            // Phòng trường hợp service được gọi mà không đi qua Bean Validation.
+            if (startDate == null || endDate == null) {
                 throw new BadHttpException(
                         "Phase " + phaseNumber
-                                + " starts after the project end date"
+                                + " start date and end date are required"
                 );
             }
 
             // Từ chối phase có ngày bắt đầu sau ngày kết thúc của chính nó.
-            if (expectedStartDate.isAfter(endDate)) {
+            if (startDate.isAfter(endDate)) {
                 throw new BadHttpException(
                         "Phase " + phaseNumber
                                 + " start date must not be after "
@@ -144,7 +140,16 @@ public class ProjectPhaseService {
                 );
             }
 
-            // Từ chối phase kết thúc ngoài timeline dự án.
+            // Từ chối phase bắt đầu trước timeline dự án.
+            if (startDate.isBefore(project.getProjectStartDate())) {
+                throw new BadHttpException(
+                        "Phase " + phaseNumber
+                                + " start date must not be before the "
+                                + "project start date"
+                );
+            }
+
+            // Từ chối phase kết thúc sau timeline dự án.
             if (endDate.isAfter(project.getProjectEndDate())) {
                 throw new BadHttpException(
                         "Phase " + phaseNumber
@@ -152,18 +157,6 @@ public class ProjectPhaseService {
                                 + "project end date"
                 );
             }
-
-            expectedStartDate = endDate.plusDays(1);
-        }
-
-        ProjectPhaseRequest finalPhase = requests.get(requests.size() - 1);
-
-        // Bảo đảm phase cuối kết thúc đúng ngày kết thúc dự án.
-        if (!finalPhase.endDate().equals(project.getProjectEndDate())) {
-            throw new BadHttpException(
-                    "The final phase must end on the project end date "
-                            + project.getProjectEndDate()
-            );
         }
     }
 
@@ -171,10 +164,10 @@ public class ProjectPhaseService {
     private void applyPhaseInformation(
             Timeline phase,
             ProjectPhaseRequest request,
-            Projects project,
-            LocalDate startDate) {
+            Projects project) {
         String title = request.title().trim();
         String description = normalize(request.description());
+        LocalDate startDate = request.startDate();
         LocalDate endDate = request.endDate();
 
         phase.setTitle(title);

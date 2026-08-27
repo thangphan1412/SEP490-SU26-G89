@@ -21,6 +21,23 @@ function showValue(value) {
     return value === null || value === undefined || value === "" ? "-" : value;
 }
 
+// Chuyển ngày ISO từ API sang định dạng dd/mm/yyyy để hiển thị.
+function formatDate(value) {
+    const normalizedValue = String(value ?? "").trim();
+
+    if (!normalizedValue) {
+        return "-";
+    }
+
+    const dateMatch = /^(\d{4})-(\d{2})-(\d{2})(?:[T\s].*)?$/.exec(normalizedValue);
+
+    if (!dateMatch) {
+        return normalizedValue;
+    }
+
+    return `${dateMatch[3]}/${dateMatch[2]}/${dateMatch[1]}`;
+}
+
 // Chuẩn hóa văn bản để so khớp bộ lọc không phân biệt hoa thường.
 function normalizeText(value) {
     return String(value || "").trim().toLowerCase();
@@ -341,10 +358,10 @@ function ViewProject() {
                             <DetailRow label="Name" value={project.projectName} />
                             <DetailRow label="Project Code" value={project.projectCode} />
                             <DetailRow label="Status" value={project.projectStatus} isStatus />
-                            <DetailRow label="Start Date" value={project.projectStartDate} />
-                            <DetailRow label="End Date" value={project.projectEndDate} />
+                            <DetailRow label="Start Date" value={formatDate(project.projectStartDate)} />
+                            <DetailRow label="End Date" value={formatDate(project.projectEndDate)} />
                             <DetailRow label="Created By" value={project.projectCreatedBy} />
-                            <DetailRow label="Created At" value={project.projectCreatedAt} />
+                            <DetailRow label="Created At" value={formatDate(project.projectCreatedAt)} />
                             <div className="view-project-description-row">
                                 <span className="view-project-detail-label">Description</span>
                                 <p className="view-project-description-text">
@@ -394,8 +411,8 @@ function ViewProject() {
                                             >
                                                 <td className="view-project-td view-project-phase-title">{showValue(phase.title)}</td>
                                                 <td className="view-project-td">
-                                                    <span className="view-project-schedule">{showValue(phase.startDate)}</span>
-                                                    <small>to {showValue(phase.endDate)}</small>
+                                                    <span className="view-project-schedule">{formatDate(phase.startDate)}</span>
+                                                    <small>to {formatDate(phase.endDate)}</small>
                                                 </td>
                                                 <td className="view-project-td"><StatusBadge status={phase.status} /></td>
                                                 <td className="view-project-td">
@@ -470,7 +487,7 @@ function ViewProject() {
                                                         {user.permissionCode && <small>{user.permissionCode}</small>}
                                                     </div>
                                                 </td>
-                                                <td className="view-project-td">{showValue(user.joinDate)}</td>
+                                                <td className="view-project-td">{formatDate(user.joinDate)}</td>
                                             </tr>
                                         ))
                                     )}

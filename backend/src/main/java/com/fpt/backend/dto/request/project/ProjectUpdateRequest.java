@@ -27,7 +27,6 @@ public record ProjectUpdateRequest(
         @Size(max = 255, message = "Project description must not exceed 255 characters")
         String projectDescription,
 
-        @Size(min = 1, message = "At least one phase is required")
         @Valid
         List<@NotNull(message = "Phase information is required") ProjectPhaseRequest> phases,
 

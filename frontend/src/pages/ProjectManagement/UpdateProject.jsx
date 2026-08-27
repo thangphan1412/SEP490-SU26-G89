@@ -16,13 +16,12 @@ import {
     PROJECT_ACTIONS,
 } from "../../components/permissionComponents/permissionAccess.js";
 import {
-    addOneDay,
-    calculatePhaseStartDatesForDisplay,
     createClientId,
     getEmployeeDescription,
     getEmployeeName,
     getEmployeeSearchText,
     getFilterOptions,
+    getPhaseDateError,
     getProjectErrorMessage,
     isCompletedProjectStatus,
 } from "../../components/projectComponents/projectFormUtils.js";
@@ -167,42 +166,23 @@ function UpdateProject({ onUpdateProject }) {
         PROJECT_ACTIONS.MANAGE_MEMBERS
     );
 
-    // Cập nhật thông tin dự án và kiểm tra lại timeline phase.
+    // Cập nhật thông tin dự án mà không tự thay đổi ngày của các phase.
     function handleProjectChange(event) {
         const { name, value } = event.target;
-        let phases = project.phases;
-
-        if (name === "projectStartDate" && phases.length > 0) {
-            phases = calculatePhaseStartDatesForDisplay(phases, value);
-        }
-
-        if (name === "projectEndDate" && phases.length > 0) {
-            phases = phases.map(function (phase, index) {
-                if (index === phases.length - 1) {
-                    return { ...phase, endDate: value };
-                }
-
-                return phase;
-            });
-        }
-
-        const phaseDateError = getPhaseDateError(phases);
-
-        // Không nhận thay đổi làm ngày bắt đầu phase vượt ngày kết thúc.
-        if (phaseDateError) {
-            setSubmitError(phaseDateError);
-            return;
-        }
-
-        setSubmitError("");
-        setProject({
+        const nextProject = {
             ...project,
             [name]: value,
-            phases,
-        });
+        };
+
+        setSubmitError(getPhaseDateError(
+            nextProject.phases,
+            nextProject.projectStartDate,
+            nextProject.projectEndDate
+        ));
+        setProject(nextProject);
     }
 
-    // Thêm phase mới nối tiếp phase cuối trong timeline dự án.
+    // Thêm phase mới với khoảng ngày mặc định nằm trong timeline dự án.
     function addPhase() {
         // Yêu cầu đầy đủ ngày bắt đầu và kết thúc dự án.
         if (!project.projectStartDate || !project.projectEndDate) {
@@ -216,17 +196,6 @@ function UpdateProject({ onUpdateProject }) {
             return;
         }
 
-        const lastPhase = project.phases[project.phases.length - 1];
-        const nextStartDate = lastPhase
-            ? addOneDay(lastPhase.endDate)
-            : project.projectStartDate;
-
-        // Ngăn thêm phase khi timeline hiện tại đã phủ hết dự án.
-        if (!nextStartDate || nextStartDate > project.projectEndDate) {
-            setSubmitError("Shorten the current final phase before adding another phase.");
-            return;
-        }
-
         setSubmitError("");
         setProject((currentProject) => ({
             ...currentProject,
@@ -237,62 +206,42 @@ function UpdateProject({ onUpdateProject }) {
                     clientId: createClientId(),
                     title: "",
                     description: "",
-                    startDate: nextStartDate,
+                    startDate: currentProject.projectStartDate,
                     endDate: currentProject.projectEndDate,
                 },
             ],
         }));
     }
 
-    // Cập nhật một phase và tính lại ngày bắt đầu của các phase kế tiếp.
+    // Cập nhật độc lập thông tin hoặc khoảng ngày của một phase.
     function updatePhase(clientId, event) {
         const { name, value } = event.target;
-        let phases = project.phases.map(function (phase) {
-            if (phase.clientId === clientId) {
-                return { ...phase, [name]: value };
-            }
+        const phases = project.phases.map((phase) =>
+            phase.clientId === clientId
+                ? { ...phase, [name]: value }
+                : phase
+        );
 
-            return phase;
-        });
-
-        if (name === "endDate") {
-            phases = calculatePhaseStartDatesForDisplay(
-                phases,
-                project.projectStartDate
-            );
-        }
-
-        const phaseDateError = getPhaseDateError(phases);
-
-        // Không nhận thay đổi làm ngày bắt đầu phase vượt ngày kết thúc.
-        if (phaseDateError) {
-            setSubmitError(phaseDateError);
-            return;
-        }
-
-        setSubmitError("");
+        setSubmitError(getPhaseDateError(
+            phases,
+            project.projectStartDate,
+            project.projectEndDate
+        ));
         setProject({ ...project, phases });
     }
 
-    // Xóa một phase rồi nối lại timeline của các phase còn lại.
+    // Xóa phase mà không thay đổi khoảng ngày của các phase còn lại.
     function removePhase(clientId) {
-        setProject(function (currentProject) {
-            let phases = currentProject.phases.filter((phase) => phase.clientId !== clientId);
+        const phases = project.phases.filter(
+            (phase) => phase.clientId !== clientId
+        );
 
-            if (phases.length > 0) {
-                phases = phases.map((phase, index) =>
-                    index === phases.length - 1
-                        ? { ...phase, endDate: currentProject.projectEndDate }
-                        : phase
-                );
-                phases = calculatePhaseStartDatesForDisplay(
-                    phases,
-                    currentProject.projectStartDate
-                );
-            }
-
-            return { ...currentProject, phases };
-        });
+        setSubmitError(getPhaseDateError(
+            phases,
+            project.projectStartDate,
+            project.projectEndDate
+        ));
+        setProject({ ...project, phases });
     }
 
     // Đặt lại bộ lọc và mở modal chọn thành viên.
@@ -362,7 +311,11 @@ function UpdateProject({ onUpdateProject }) {
         event.preventDefault();
 
         if (canEditProject) {
-            const phaseDateError = getPhaseDateError(project.phases);
+            const phaseDateError = getPhaseDateError(
+                project.phases,
+                project.projectStartDate,
+                project.projectEndDate
+            );
 
             // Dừng gửi khi ít nhất một phase có khoảng ngày không hợp lệ.
             if (phaseDateError) {
@@ -395,6 +348,7 @@ function UpdateProject({ onUpdateProject }) {
                         id: phase.id,
                         title: phase.title.trim(),
                         description: phase.description.trim(),
+                        startDate: phase.startDate,
                         endDate: phase.endDate,
                     }))
                     : null,
@@ -538,6 +492,7 @@ function UpdateProject({ onUpdateProject }) {
                                     required
                                     id="projectStartDate"
                                     name="projectStartDate"
+                                    max={project.projectEndDate}
                                     value={project.projectStartDate}
                                     onChange={handleProjectChange}
                                     className="project-management-input"
@@ -590,7 +545,7 @@ function UpdateProject({ onUpdateProject }) {
                         <div className="update-project-section-header">
                             <div>
                                 <Card.Title as="h2" className="project-management-card-title">Project Phases</Card.Title>
-                                <p className="update-project-section-note">Phases must cover the full project timeline without gaps or overlapping dates.</p>
+                                <p className="update-project-section-note">Phases are optional. Each phase date range only needs to stay within the project date range.</p>
                             </div>
                             <Button type="button" variant="light" className="update-project-add-button" onClick={addPhase}>
                                 <Icon name="plus" size={18} /> Add Phase
@@ -598,7 +553,7 @@ function UpdateProject({ onUpdateProject }) {
                         </div>
 
                         {project.phases.length === 0 ? (
-                            <div className="update-project-empty-state">No phases have been added.</div>
+                            <div className="update-project-empty-state">No phases yet. You can save the project without phases.</div>
                         ) : (
                             <div className="update-project-phase-list">
                                 {project.phases.map((phase, index) => (
@@ -615,16 +570,15 @@ function UpdateProject({ onUpdateProject }) {
                                             <Col md={3}>
                                                 <Form.Label className="project-management-field-label">Start Date</Form.Label>
                                                 <ProjectDateInput
-                                                    readOnly
                                                     required
                                                     name="startDate"
+                                                    min={project.projectStartDate}
+                                                    max={phase.endDate || project.projectEndDate}
                                                     value={phase.startDate}
+                                                    onChange={(event) => updatePhase(phase.clientId, event)}
                                                     className="project-management-input update-project-phase-start-input"
                                                     aria-label={`Phase ${index + 1} start date`}
                                                 />
-                                                <Form.Text className="update-project-phase-date-note">
-                                                    Preview only. The server calculates this date when saving.
-                                                </Form.Text>
                                             </Col>
                                             <Col md={3}>
                                                 <Form.Label className="project-management-field-label">End Date</Form.Label>
@@ -822,25 +776,6 @@ function mapPhases(phases) {
     }
 
     return mappedPhases;
-}
-
-// Tìm lỗi đầu tiên có ngày bắt đầu phase nằm sau ngày kết thúc.
-function getPhaseDateError(phases) {
-    for (let index = 0; index < phases.length; index++) {
-        const phase = phases[index];
-
-        // Báo lỗi khi khoảng ngày của một phase bị đảo ngược.
-        if (
-            phase.startDate
-            && phase.endDate
-            && phase.startDate > phase.endDate
-        ) {
-            return "Phase " + (index + 1)
-                + " start date must not be after its end date.";
-        }
-    }
-
-    return "";
 }
 
 // Hợp nhất danh sách nhân viên khả dụng với thành viên đã có trong dự án.

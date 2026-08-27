@@ -17,6 +17,9 @@ public record ProjectPhaseRequest(
         @Size(max = 500, message = "Phase description must not exceed 500 characters")
         String description,
 
+        @NotNull(message = "Phase start date is required")
+        LocalDate startDate,
+
         @NotNull(message = "Phase end date is required")
         LocalDate endDate
 ) {
