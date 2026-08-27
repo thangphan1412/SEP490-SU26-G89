@@ -499,9 +499,6 @@ function CreateProject() {
                             <strong>{getEmployeeName(member.employee)}</strong>
                             <small>{getEmployeeDescription(member.employee)}</small>
                         </div>
-                        <span className="create-project-unassigned-permission">
-                            Permission: Not assigned
-                        </span>
                         <Button
                             type="button"
                             variant="link"
