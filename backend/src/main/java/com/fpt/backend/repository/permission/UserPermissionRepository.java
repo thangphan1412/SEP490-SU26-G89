@@ -12,6 +12,7 @@ import java.util.UUID;
 
 @Repository
 public interface UserPermissionRepository extends JpaRepository<UserPermission, UUID> {
+    // Lấy toàn bộ liên kết người dùng và quyền của một dự án.
     @Query("""
             SELECT userPermission
             FROM UserPermission userPermission
@@ -22,6 +23,7 @@ public interface UserPermissionRepository extends JpaRepository<UserPermission, 
             """)
     List<UserPermission> findByProjectId(@Param("projectId") UUID projectId);
 
+    // Lấy quyền đang hoạt động của người dùng trong một dự án cùng các action liên quan.
     @Query("""
             SELECT DISTINCT userPermission
             FROM UserPermission userPermission
@@ -36,6 +38,7 @@ public interface UserPermissionRepository extends JpaRepository<UserPermission, 
             @Param("projectId") UUID projectId
     );
 
+    // Lấy các dự án mà người dùng là thành viên và có action được yêu cầu.
     @Query("""
             SELECT DISTINCT permission.project.id
             FROM UserPermission userPermission
@@ -57,6 +60,7 @@ public interface UserPermissionRepository extends JpaRepository<UserPermission, 
             @Param("actionCode") String actionCode
     );
 
+    // Xóa mọi liên kết quyền người dùng thuộc một dự án.
     @Modifying
     @Query("""
             DELETE FROM UserPermission userPermission

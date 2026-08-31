@@ -10,22 +10,40 @@ import PrimaryButton from "../../components/projectComponents/PrimaryButton.jsx"
 import StatusBadge from "../../components/projectComponents/StatusBadge.jsx";
 import { isCompletedProjectStatus } from "../../components/projectComponents/projectFormUtils.js";
 import {
+    hasAnyProjectAction,
     hasProjectAction,
     PROJECT_ACTIONS,
 } from "../../components/permissionComponents/permissionAccess.js";
 import "../../assets/styles/css/projectStyles/ViewProject.css";
 
-const PROJECT_ACCESS_DENIED_MESSAGE =
-    "Bạn không được quyền xem project này!";
-
+// Hiển thị ký hiệu trống cho giá trị chưa được cung cấp.
 function showValue(value) {
     return value === null || value === undefined || value === "" ? "-" : value;
 }
 
+// Chuyển ngày ISO từ API sang định dạng dd/mm/yyyy để hiển thị.
+function formatDate(value) {
+    const normalizedValue = String(value ?? "").trim();
+
+    if (!normalizedValue) {
+        return "-";
+    }
+
+    const dateMatch = /^(\d{4})-(\d{2})-(\d{2})(?:[T\s].*)?$/.exec(normalizedValue);
+
+    if (!dateMatch) {
+        return normalizedValue;
+    }
+
+    return `${dateMatch[3]}/${dateMatch[2]}/${dateMatch[1]}`;
+}
+
+// Chuẩn hóa văn bản để so khớp bộ lọc không phân biệt hoa thường.
 function normalizeText(value) {
     return String(value || "").trim().toLowerCase();
 }
 
+// Hiển thị một hàng thông tin chi tiết, hỗ trợ định dạng trạng thái.
 function DetailRow({ label, value, isStatus = false }) {
     return (
         <div className="view-project-detail-row">
@@ -39,6 +57,7 @@ function DetailRow({ label, value, isStatus = false }) {
     );
 }
 
+// Hiển thị một hàng thông báo khi bảng không có dữ liệu.
 function EmptyRow({ colSpan, message }) {
     return (
         <tr>
@@ -49,6 +68,7 @@ function EmptyRow({ colSpan, message }) {
     );
 }
 
+// Hiển thị chi tiết dự án theo quyền truy cập của người dùng hiện tại.
 function ViewProject() {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
@@ -67,9 +87,11 @@ function ViewProject() {
         openPermissionConfigure
     );
 
+    // Tải lại chi tiết dự án mỗi khi project id thay đổi.
     useEffect(function () {
         const requestController = new AbortController();
 
+        // Gọi API và đồng bộ chi tiết dự án vào state trang.
         async function loadProject() {
             try {
                 setLoading(true);
@@ -89,8 +111,9 @@ function ViewProject() {
                 console.error("Unable to load project detail:", apiError);
                 setProject(null);
 
+                // Hiển thị thông báo riêng khi backend từ chối quyền truy cập.
                 if (apiError.response?.status === 403) {
-                    setError(PROJECT_ACCESS_DENIED_MESSAGE);
+                    setError("Bạn không được quyền xem project này!");
                 } else {
                     setError("Unable to load this project. Please try again later.");
                 }
@@ -108,11 +131,13 @@ function ViewProject() {
         };
     }, [projectId]);
 
+    // Xác nhận rồi gửi yêu cầu xóa hoặc hủy dự án đang xem.
     async function handleDelete() {
         const confirmed = window.confirm(
             "Delete this project? If it has contracts, it will be kept and its status will be changed to Cancelled. If it has no contracts, it will be permanently deleted."
         );
 
+        // Hủy thao tác khi người dùng không xác nhận xóa.
         if (!confirmed) {
             return;
         }
@@ -125,16 +150,20 @@ function ViewProject() {
             navigate("/project-management/list");
         } catch (apiError) {
             console.error("Unable to delete project:", apiError);
-            setActionError(getApiErrorMessage(apiError));
+            setActionError(
+                "Unable to delete this project. It may still contain linked data."
+            );
         } finally {
             setDeleting(false);
         }
     }
 
+    // Kiểm tra quyền xem rồi điều hướng tới chi tiết phase.
     function openPhase(phase) {
+        // Từ chối mở phase bị khóa theo trạng thái và phạm vi truy cập.
         if (!canViewPhase(phase, access)) {
             setActionError(
-                "Only an IN_PROGRESS phase can be accessed."
+                "Only a PLANNING or IN_PROGRESS phase can be accessed."
             );
             return;
         }
@@ -143,6 +172,7 @@ function ViewProject() {
         navigate(`/phase-management/view/${projectId}/${phase.id}`);
     }
 
+    // Hỗ trợ mở phase bằng bàn phím trên hàng bảng.
     function handlePhaseKeyDown(event, phase) {
         if (event.key === "Enter" || event.key === " ") {
             event.preventDefault();
@@ -150,18 +180,20 @@ function ViewProject() {
         }
     }
 
+    // Xóa từ khóa và trạng thái lọc hợp đồng.
     function clearContractFilters() {
         setContractSearch("");
         setContractStatus("");
     }
 
-    const projectPhases = Array.isArray(project?.phases) ? project.phases : [];
-    const projectUsers = Array.isArray(project?.users) ? project.users : [];
-    const projectContracts = Array.isArray(project?.contracts) ? project.contracts : [];
+    const projectPhases = project?.phases ?? [];
+    const projectUsers = project?.users ?? [];
+    const projectContracts = project?.contracts ?? [];
     const userSearchText = normalizeText(userSearch);
     const contractSearchText = normalizeText(contractSearch);
     const contractStatusText = normalizeText(contractStatus);
 
+    // Kiểm tra thành viên có khớp từ khóa tìm kiếm hay không.
     function userMatchesSearch(user) {
         const values = [
             user.userName,
@@ -188,6 +220,7 @@ function ViewProject() {
             .filter((status) => normalizeText(status))
     )].sort();
 
+    // Kiểm tra hợp đồng có khớp từ khóa và trạng thái đang lọc hay không.
     function contractMatchesFilters(contract) {
         const matchesName = [contract.contractTitle, contract.contractNumber]
             .some((value) => normalizeText(value).includes(contractSearchText));
@@ -216,19 +249,27 @@ function ViewProject() {
         access,
         PROJECT_ACTIONS.MANAGE_MEMBERS
     );
-    let canViewAllProjectData = false;
+    let isExecutiveViewer = false;
 
     if (access) {
-        canViewAllProjectData = access.canViewAllProjectData === true;
+        isExecutiveViewer = access.isExecutiveViewer === true;
     }
 
     const canViewMembers = canManageMembers
-        || canViewAllProjectData;
+        || isExecutiveViewer;
     const canOpenUpdate = canEditProject
         || canManageMembers;
     const canViewContracts = hasProjectAction(
         access,
         PROJECT_ACTIONS.VIEW_CONTRACTS
+    );
+    const canManageContracts = canViewContracts && hasAnyProjectAction(
+        access,
+        [
+            PROJECT_ACTIONS.CREATE_CONTRACTS,
+            PROJECT_ACTIONS.EDIT_CONTRACTS,
+            PROJECT_ACTIONS.DELETE_CONTRACTS,
+        ]
     );
 
     const pageAction = (
@@ -317,10 +358,10 @@ function ViewProject() {
                             <DetailRow label="Name" value={project.projectName} />
                             <DetailRow label="Project Code" value={project.projectCode} />
                             <DetailRow label="Status" value={project.projectStatus} isStatus />
-                            <DetailRow label="Start Date" value={project.projectStartDate} />
-                            <DetailRow label="End Date" value={project.projectEndDate} />
+                            <DetailRow label="Start Date" value={formatDate(project.projectStartDate)} />
+                            <DetailRow label="End Date" value={formatDate(project.projectEndDate)} />
                             <DetailRow label="Created By" value={project.projectCreatedBy} />
-                            <DetailRow label="Created At" value={project.projectCreatedAt} />
+                            <DetailRow label="Created At" value={formatDate(project.projectCreatedAt)} />
                             <div className="view-project-description-row">
                                 <span className="view-project-detail-label">Description</span>
                                 <p className="view-project-description-text">
@@ -364,14 +405,14 @@ function ViewProject() {
                                                 aria-disabled={!canViewPhase(phase, access)}
                                                 title={canViewPhase(phase, access)
                                                     ? "Open phase"
-                                                    : "This phase is available only when its status is IN_PROGRESS"}
+                                                    : "This phase is available only when its status is PLANNING or IN_PROGRESS"}
                                                 onClick={() => openPhase(phase)}
                                                 onKeyDown={(event) => handlePhaseKeyDown(event, phase)}
                                             >
                                                 <td className="view-project-td view-project-phase-title">{showValue(phase.title)}</td>
                                                 <td className="view-project-td">
-                                                    <span className="view-project-schedule">{showValue(phase.startDate)}</span>
-                                                    <small>to {showValue(phase.endDate)}</small>
+                                                    <span className="view-project-schedule">{formatDate(phase.startDate)}</span>
+                                                    <small>to {formatDate(phase.endDate)}</small>
                                                 </td>
                                                 <td className="view-project-td"><StatusBadge status={phase.status} /></td>
                                                 <td className="view-project-td">
@@ -446,7 +487,7 @@ function ViewProject() {
                                                         {user.permissionCode && <small>{user.permissionCode}</small>}
                                                     </div>
                                                 </td>
-                                                <td className="view-project-td">{showValue(user.joinDate)}</td>
+                                                <td className="view-project-td">{formatDate(user.joinDate)}</td>
                                             </tr>
                                         ))
                                     )}
@@ -462,9 +503,23 @@ function ViewProject() {
                             <Card.Title as="h2" className="project-management-card-title">
                                 Project Contracts
                             </Card.Title>
-                            <span className="view-project-result-count">
-                                {filteredContracts.length} / {projectContracts.length} contracts
-                            </span>
+                            <div className="d-flex flex-wrap align-items-center gap-2">
+                                <span className="view-project-result-count">
+                                    {filteredContracts.length} / {projectContracts.length} contracts
+                                </span>
+                                {canManageContracts && (
+                                    <Button
+                                        type="button"
+                                        variant="outline-primary"
+                                        size="sm"
+                                        className="d-inline-flex align-items-center gap-2"
+                                        onClick={() => navigate("/contract-management/list")}
+                                    >
+                                        <Icon name="document" size={16} />
+                                        Manage Contract
+                                    </Button>
+                                )}
+                            </div>
                         </div>
 
                         <div className="view-project-filter-bar">
@@ -544,31 +599,32 @@ function ViewProject() {
     );
 }
 
+// Chuẩn hóa tiến độ thành số nguyên trong khoảng từ 0 đến 100.
 function clampProgress(progress) {
     const numberValue = Number(progress || 0);
     return Math.min(100, Math.max(0, Math.round(numberValue)));
 }
 
-function isPhaseInProgress(status) {
-    return String(status || "").trim().toUpperCase() === "IN_PROGRESS";
+// Kiểm tra phase có cho phép chuẩn bị hoặc thực hiện task hay không.
+function phaseSupportsTaskPreparation(status) {
+    const normalizedStatus = String(status || "").trim().toUpperCase();
+    return normalizedStatus === "PLANNING"
+        || normalizedStatus === "IN_PROGRESS";
 }
 
+// Kiểm tra phase có thể mở theo trạng thái hoặc quyền xem toàn dự án.
 function canViewPhase(phase, access) {
-    if (isPhaseInProgress(phase.status)) {
+    // Phase PLANNING và IN_PROGRESS có thể mở để quản lý task.
+    if (phaseSupportsTaskPreparation(phase.status)) {
         return true;
     }
 
+    // Từ chối phase khác trạng thái khi chưa có thông tin truy cập.
     if (!access) {
         return false;
     }
 
-    return access.canViewAllProjectData === true;
-}
-
-function getApiErrorMessage(error) {
-    return error.response?.data?.message
-        || error.response?.data?.error
-        || "Unable to delete this project. It may still contain linked data.";
+    return access.isExecutiveViewer === true;
 }
 
 export default ViewProject;

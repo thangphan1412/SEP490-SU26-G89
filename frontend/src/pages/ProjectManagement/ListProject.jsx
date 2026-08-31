@@ -17,22 +17,9 @@ import Icon from "../../components/projectComponents/Icon.jsx";
 import PagePanel from "../../components/projectComponents/PagePanel.jsx";
 import PrimaryButton from "../../components/projectComponents/PrimaryButton.jsx";
 import StatusBadge from "../../components/projectComponents/StatusBadge.jsx";
-import {
-    getApiErrorMessage,
-    PROJECT_STATUS_OPTIONS,
-} from "../../components/projectComponents/projectFormUtils.js";
+import { PROJECT_STATUS_OPTIONS }
+    from "../../components/projectComponents/projectFormUtils.js";
 import "../../assets/styles/css/projectStyles/ListProject.css";
-
-const PROJECT_ACCESS_DENIED_MESSAGE =
-    "Bạn không được quyền xem project này!";
-
-function normalizeRole(value) {
-    return String(value || "")
-        .trim()
-        .toUpperCase()
-        .replace(/[^A-Z0-9]/g, "")
-        .replace(/^ROLE/, "");
-}
 
 const PROJECT_COLUMN_LABELS = [
     "Project",
@@ -45,7 +32,9 @@ const PROJECT_COLUMN_LABELS = [
     "Actions",
 ];
 
+// Tạo danh sách số trang rút gọn và chèn dấu ba chấm khi cần.
 function createPageNumbers(currentPage, totalPages) {
+    // Hiển thị toàn bộ số trang khi tổng số trang không quá năm.
     if (totalPages <= 5) {
         return Array.from({ length: totalPages }, (_, index) => index);
     }
@@ -77,9 +66,9 @@ function createPageNumbers(currentPage, totalPages) {
     return pages;
 }
 
+// Hiển thị danh sách dự án cùng bộ lọc, phân trang và thao tác phê duyệt.
 function ListProject() {
     const navigate = useNavigate();
-    const currentUserIsCeo = normalizeRole(localStorage.getItem("role")) === "CEO";
     const [projects, setProjects] = useState([]);
     const [searchInput, setSearchInput] = useState("");
     const [search, setSearch] = useState("");
@@ -94,6 +83,7 @@ function ListProject() {
     const [approvingProjectId, setApprovingProjectId] = useState(null);
     const [reloadVersion, setReloadVersion] = useState(0);
 
+    // Debounce từ khóa tìm kiếm trước khi gọi lại API.
     useEffect(function () {
         const debounceId = window.setTimeout(function () {
             setSearch(searchInput.trim());
@@ -105,9 +95,11 @@ function ListProject() {
         };
     }, [searchInput]);
 
+    // Tải danh sách dự án theo bộ lọc và trang hiện tại.
     useEffect(function () {
         const requestController = new AbortController();
 
+        // Gọi API và đồng bộ dự án cùng thông tin phân trang vào state.
         async function loadProjects() {
             const requestParams = {
                 search: search,
@@ -136,6 +128,7 @@ function ListProject() {
                 setTotalElements(totalProjectCount);
                 setTotalPages(totalPageCount);
 
+                // Đưa trang hiện tại về giới hạn hợp lệ sau khi dữ liệu thay đổi.
                 if (totalPageCount > 0 && page >= totalPageCount) {
                     setPage(totalPageCount - 1);
                 }
@@ -143,16 +136,11 @@ function ListProject() {
                 if (requestController.signal.aborted) {
                     return;
                 }
-
                 console.error("Unable to load projects:", error);
-
                 setProjects([]);
                 setTotalElements(0);
                 setTotalPages(0);
-                setError(getApiErrorMessage(
-                    error,
-                    "Unable to load projects. Please try again later."
-                ));
+                setError("Unable to load projects. Please try again later.");
             } finally {
                 if (!requestController.signal.aborted) {
                     setLoading(false);
@@ -175,16 +163,19 @@ function ListProject() {
 
     const pageNumbers = createPageNumbers(page, totalPages);
 
+    // Cập nhật bộ lọc trạng thái và quay về trang đầu.
     function handleStatusChange(event) {
         setStatus(event.target.value);
         setPage(0);
     }
 
+    // Bật hoặc tắt phạm vi chỉ hiển thị dự án của người dùng.
     function handleViewOnlyYourProjectsChange(event) {
         setViewOnlyYourProjects(event.target.checked);
         setPage(0);
     }
 
+    // Xóa toàn bộ bộ lọc và đưa danh sách về trang đầu.
     function clearFilters() {
         setSearchInput("");
         setSearch("");
@@ -193,20 +184,23 @@ function ListProject() {
         setPage(0);
     }
 
-    // Kiểm tra quyền truy cập dự án và điều hướng đến trang chi tiết dự án nếu được phép
+    // Kiểm tra quyền truy cập rồi điều hướng tới chi tiết dự án.
     function openProjectDetail(project) {
+        // Bỏ qua bản ghi không có mã dự án.
         if (!project?.id) {
             return;
         }
 
+        // Thông báo khi backend đánh dấu người dùng không được xem dự án.
         if (project.canView === false) {
-            window.alert(PROJECT_ACCESS_DENIED_MESSAGE);
+            window.alert("Bạn không được quyền xem project này!");
             return;
         }
 
         navigate(`/project-management/view?id=${project.id}`);
     }
 
+    // Xác nhận rồi gửi yêu cầu phê duyệt dự án được chọn.
     async function handleApproveProject(event, project) {
         event.stopPropagation();
 
@@ -214,6 +208,7 @@ function ListProject() {
             "Approve project " + project.projectName + "?"
         );
 
+        // Hủy thao tác khi người dùng không xác nhận phê duyệt.
         if (!confirmed) {
             return;
         }
@@ -227,17 +222,14 @@ function ListProject() {
             setReloadVersion(function (currentVersion) {
                 return currentVersion + 1;
             });
-        } catch (approveError) {
-            setError(getApiErrorMessage(
-                approveError,
-                "Unable to approve this project. Please try again later."
-            ));
+        } catch {
+            setError("Unable to approve this project. Please try again later.");
         } finally {
             setApprovingProjectId(null);
         }
     }
 
-    //Chuyển hướng đến trang tạo dự án khi nhấn nút "Create Project"
+    // Tạo nút điều hướng tới màn hình tạo dự án.
     const pageAction = (
         <PrimaryButton onClick={() => navigate("/project-management/create")}>
             <Icon name="plus" size={19} color="#fff" />
@@ -428,12 +420,7 @@ function ListProject() {
                                     </td>
 
                                     <td className="list-project-td list-project-action-cell">
-                                        {(project.canApprove || (
-                                            currentUserIsCeo
-                                            && String(project.projectStatus || "")
-                                                .trim()
-                                                .toLowerCase() === "on hold"
-                                        )) ? (
+                                        {project.canApprove ? (
                                             <Button
                                                 type="button"
                                                 variant="success"

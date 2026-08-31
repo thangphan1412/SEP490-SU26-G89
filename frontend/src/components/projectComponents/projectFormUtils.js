@@ -60,53 +60,87 @@ export function getFilterOptions(employees, fieldName) {
   return options;
 }
 
-export function calculatePhaseStartDatesForDisplay(
-  phases,
-  projectStartDate
-) {
-  let expectedStartDate = projectStartDate;
-  const updatedPhases = [];
+export function getProjectErrorMessage(error, fallbackMessage) {
+  const responseBody = error.response?.data;
 
-  for (const phase of phases) {
-    const updatedPhase = {
-      ...phase,
-    };
+  if (!responseBody) {
+    return fallbackMessage;
+  }
 
-    updatedPhase.startDate = expectedStartDate;
-    updatedPhases.push(updatedPhase);
+  if (typeof responseBody === "string" && responseBody.trim()) {
+    return responseBody.trim();
+  }
 
-    if (phase.endDate) {
-      expectedStartDate = addOneDay(phase.endDate);
-    } else {
-      expectedStartDate = "";
+  const errorData = responseBody.data;
+
+  // Ưu tiên các lỗi validation theo từng field do backend trả về.
+  if (errorData && typeof errorData === "object") {
+    const validationMessages = [];
+
+    for (const message of Object.values(errorData)) {
+      if (typeof message === "string" && message.trim()) {
+        validationMessages.push(message.trim());
+      }
+    }
+
+    if (validationMessages.length > 0) {
+      return validationMessages.join(" ");
     }
   }
 
-  return updatedPhases;
+  // Một số lỗi nghiệp vụ đặt nội dung trực tiếp trong data.
+  if (typeof errorData === "string" && errorData.trim()) {
+    return errorData.trim();
+  }
+
+  // Hỗ trợ các cấu trúc response lỗi phổ biến còn lại.
+  const backendMessage = responseBody.message
+    || responseBody.detail
+    || responseBody.error;
+
+  if (typeof backendMessage === "string" && backendMessage.trim()) {
+    return backendMessage.trim();
+  }
+
+  return fallbackMessage;
+}
+
+export function getPhaseDateError(
+  phases,
+  projectStartDate,
+  projectEndDate
+) {
+  for (let index = 0; index < phases.length; index++) {
+    const phase = phases[index];
+    const phaseNumber = index + 1;
+
+    if (!phase.startDate) {
+      return "Phase " + phaseNumber + " start date is required.";
+    }
+
+    if (!phase.endDate) {
+      return "Phase " + phaseNumber + " end date is required.";
+    }
+
+    if (phase.startDate > phase.endDate) {
+      return "Phase " + phaseNumber
+        + " start date must not be after its end date.";
+    }
+
+    if (projectStartDate && phase.startDate < projectStartDate) {
+      return "Phase " + phaseNumber
+        + " start date must not be before the project start date.";
+    }
+
+    if (projectEndDate && phase.endDate > projectEndDate) {
+      return "Phase " + phaseNumber
+        + " end date must not be after the project end date.";
+    }
+  }
+
+  return "";
 }
 
 export function isCompletedProjectStatus(status) {
   return String(status || "").trim().toLowerCase() === "completed";
-}
-
-export function getApiErrorMessage(error, fallbackMessage) {
-  return error.response?.data?.message
-    || error.response?.data?.detail
-    || error.response?.data?.error
-    || fallbackMessage;
-}
-
-export function addOneDay(dateValue) {
-  if (!dateValue) {
-    return "";
-  }
-
-  const date = new Date(dateValue + "T00:00:00Z");
-
-  if (Number.isNaN(date.getTime())) {
-    return "";
-  }
-
-  date.setUTCDate(date.getUTCDate() + 1);
-  return date.toISOString().slice(0, 10);
 }

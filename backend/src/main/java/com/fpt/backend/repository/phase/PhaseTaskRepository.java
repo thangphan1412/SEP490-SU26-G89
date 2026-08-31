@@ -12,6 +12,7 @@ import java.util.UUID;
 
 @Repository
 public interface PhaseTaskRepository extends JpaRepository<TimelineTask, UUID> {
+    // Lấy toàn bộ task của một phase kèm người được giao.
     @Query("""
             SELECT task
             FROM TimelineTask task
@@ -21,6 +22,7 @@ public interface PhaseTaskRepository extends JpaRepository<TimelineTask, UUID> {
             """)
     List<TimelineTask> findByPhaseId(@Param("phaseId") UUID phaseId);
 
+    // Lấy các task của một phase được giao cho người dùng chỉ định.
     @Query("""
             SELECT task
             FROM TimelineTask task
@@ -34,9 +36,11 @@ public interface PhaseTaskRepository extends JpaRepository<TimelineTask, UUID> {
             @Param("userId") UUID userId
     );
 
+    // Đếm tổng số task thuộc một phase.
     @Query("SELECT COUNT(task) FROM TimelineTask task WHERE task.timeline.id = :phaseId")
     long countByPhaseId(@Param("phaseId") UUID phaseId);
 
+    // Đếm số task đã hoàn thành thuộc một phase.
     @Query("""
             SELECT COUNT(task)
             FROM TimelineTask task
@@ -45,6 +49,7 @@ public interface PhaseTaskRepository extends JpaRepository<TimelineTask, UUID> {
             """)
     long countDoneByPhaseId(@Param("phaseId") UUID phaseId);
 
+    // Xóa toàn bộ task thuộc các phase của một dự án.
     @Modifying
     @Query("""
             DELETE FROM TimelineTask task

@@ -16,18 +16,18 @@ import {
     PROJECT_ACTIONS,
 } from "../../components/permissionComponents/permissionAccess.js";
 import {
-    addOneDay,
-    calculatePhaseStartDatesForDisplay,
     createClientId,
-    getApiErrorMessage,
     getEmployeeDescription,
     getEmployeeName,
     getEmployeeSearchText,
     getFilterOptions,
+    getPhaseDateError,
+    getProjectErrorMessage,
     isCompletedProjectStatus,
 } from "../../components/projectComponents/projectFormUtils.js";
 import "../../assets/styles/css/projectStyles/UpdateProject.css";
 
+// Hiển thị biểu mẫu cập nhật dự án theo các action người dùng được cấp.
 function UpdateProject({ onUpdateProject }) {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
@@ -45,10 +45,13 @@ function UpdateProject({ onUpdateProject }) {
     const [submitError, setSubmitError] = useState("");
     const [saving, setSaving] = useState(false);
 
+    // Tải dữ liệu dự án và tùy chọn thành viên mỗi khi project id thay đổi.
     useEffect(function () {
         const requestController = new AbortController();
 
+        // Gọi API, kiểm tra quyền và chuẩn hóa dữ liệu vào state biểu mẫu.
         async function loadPageData() {
+            // Dừng tải và báo lỗi khi URL không có project id.
             if (!projectId) {
                 setLoadError("Project id is missing. Please choose a project from the list.");
                 setLoading(false);
@@ -78,6 +81,7 @@ function UpdateProject({ onUpdateProject }) {
                     ]
                 );
 
+                // Từ chối màn hình khi người dùng không có action cập nhật nào.
                 if (!canUpdateProject) {
                     setProject(null);
                     setLoadError(
@@ -88,6 +92,7 @@ function UpdateProject({ onUpdateProject }) {
 
                 let employeeData = [];
 
+                // Chỉ tải danh sách nhân viên khi được quản lý thành viên.
                 if (canManageMembers) {
                     employeeData = await listProjectEmployees(
                         requestController.signal
@@ -98,6 +103,7 @@ function UpdateProject({ onUpdateProject }) {
                     return;
                 }
 
+                // Không cho phép mở biểu mẫu cập nhật dự án đã hoàn thành.
                 if (isCompletedProjectStatus(projectData?.projectStatus)) {
                     setProject(null);
                     setLoadError("Completed projects cannot be updated.");
@@ -160,57 +166,33 @@ function UpdateProject({ onUpdateProject }) {
         PROJECT_ACTIONS.MANAGE_MEMBERS
     );
 
+    // Cập nhật thông tin dự án mà không tự thay đổi ngày của các phase.
     function handleProjectChange(event) {
         const { name, value } = event.target;
-        let phases = project.phases;
-
-        if (name === "projectStartDate" && phases.length > 0) {
-            phases = calculatePhaseStartDatesForDisplay(phases, value);
-        }
-
-        if (name === "projectEndDate" && phases.length > 0) {
-            phases = phases.map(function (phase, index) {
-                if (index === phases.length - 1) {
-                    return { ...phase, endDate: value };
-                }
-
-                return phase;
-            });
-        }
-
-        const phaseDateError = getPhaseDateError(phases);
-
-        if (phaseDateError) {
-            setSubmitError(phaseDateError);
-            return;
-        }
-
-        setSubmitError("");
-        setProject({
+        const nextProject = {
             ...project,
             [name]: value,
-            phases,
-        });
+        };
+
+        setSubmitError(getPhaseDateError(
+            nextProject.phases,
+            nextProject.projectStartDate,
+            nextProject.projectEndDate
+        ));
+        setProject(nextProject);
     }
 
+    // Thêm phase mới với khoảng ngày mặc định nằm trong timeline dự án.
     function addPhase() {
+        // Yêu cầu đầy đủ ngày bắt đầu và kết thúc dự án.
         if (!project.projectStartDate || !project.projectEndDate) {
             setSubmitError("Select the project start date and end date before adding phases.");
             return;
         }
 
+        // Ngăn thêm phase khi timeline dự án đang bị đảo ngày.
         if (project.projectEndDate < project.projectStartDate) {
             setSubmitError("Project end date must not be before its start date.");
-            return;
-        }
-
-        const lastPhase = project.phases[project.phases.length - 1];
-        const nextStartDate = lastPhase
-            ? addOneDay(lastPhase.endDate)
-            : project.projectStartDate;
-
-        if (!nextStartDate || nextStartDate > project.projectEndDate) {
-            setSubmitError("Shorten the current final phase before adding another phase.");
             return;
         }
 
@@ -224,61 +206,45 @@ function UpdateProject({ onUpdateProject }) {
                     clientId: createClientId(),
                     title: "",
                     description: "",
-                    startDate: nextStartDate,
+                    startDate: currentProject.projectStartDate,
                     endDate: currentProject.projectEndDate,
                 },
             ],
         }));
     }
 
+    // Cập nhật độc lập thông tin hoặc khoảng ngày của một phase.
     function updatePhase(clientId, event) {
         const { name, value } = event.target;
-        let phases = project.phases.map(function (phase) {
-            if (phase.clientId === clientId) {
-                return { ...phase, [name]: value };
-            }
+        const phases = project.phases.map((phase) =>
+            phase.clientId === clientId
+                ? { ...phase, [name]: value }
+                : phase
+        );
 
-            return phase;
-        });
-
-        if (name === "endDate") {
-            phases = calculatePhaseStartDatesForDisplay(
-                phases,
-                project.projectStartDate
-            );
-        }
-
-        const phaseDateError = getPhaseDateError(phases);
-
-        if (phaseDateError) {
-            setSubmitError(phaseDateError);
-            return;
-        }
-
-        setSubmitError("");
+        setSubmitError(getPhaseDateError(
+            phases,
+            project.projectStartDate,
+            project.projectEndDate
+        ));
         setProject({ ...project, phases });
     }
 
+    // Xóa phase mà không thay đổi khoảng ngày của các phase còn lại.
     function removePhase(clientId) {
-        setProject(function (currentProject) {
-            let phases = currentProject.phases.filter((phase) => phase.clientId !== clientId);
+        const phases = project.phases.filter(
+            (phase) => phase.clientId !== clientId
+        );
 
-            if (phases.length > 0) {
-                phases = phases.map((phase, index) =>
-                    index === phases.length - 1
-                        ? { ...phase, endDate: currentProject.projectEndDate }
-                        : phase
-                );
-                phases = calculatePhaseStartDatesForDisplay(
-                    phases,
-                    currentProject.projectStartDate
-                );
-            }
-
-            return { ...currentProject, phases };
-        });
+        setSubmitError(getPhaseDateError(
+            phases,
+            project.projectStartDate,
+            project.projectEndDate
+        ));
+        setProject({ ...project, phases });
     }
 
+    // Đặt lại bộ lọc và mở modal chọn thành viên.
     function openMemberModal() {
         setMemberSearch("");
         setMemberStatusFilter("");
@@ -286,11 +252,13 @@ function UpdateProject({ onUpdateProject }) {
         setShowMemberModal(true);
     }
 
+    // Đóng modal và xóa danh sách thành viên đang chọn tạm.
     function closeMemberModal() {
         setShowMemberModal(false);
         setPendingMemberIds([]);
     }
 
+    // Thêm hoặc loại một người dùng khỏi danh sách chọn tạm.
     function togglePendingMember(userId) {
         setPendingMemberIds((currentIds) =>
             currentIds.includes(userId)
@@ -299,6 +267,7 @@ function UpdateProject({ onUpdateProject }) {
         );
     }
 
+    // Thêm các người dùng đã chọn vào danh sách thành viên dự án.
     function addSelectedMembers() {
         setProject(function (currentProject) {
             const currentMemberIds = new Set(
@@ -317,6 +286,7 @@ function UpdateProject({ onUpdateProject }) {
         closeMemberModal();
     }
 
+    // Loại một người dùng khỏi danh sách thành viên dự án.
     function removeMember(userId) {
         setProject((currentProject) => ({
             ...currentProject,
@@ -324,6 +294,7 @@ function UpdateProject({ onUpdateProject }) {
         }));
     }
 
+    // Cập nhật quyền được chọn cho một thành viên dự án.
     function changeMemberPermission(userId, selectedValue) {
         const permissionId = selectedValue || null;
 
@@ -335,12 +306,18 @@ function UpdateProject({ onUpdateProject }) {
         }));
     }
 
+    // Kiểm tra timeline rồi gửi các phần dự án mà người dùng được phép cập nhật.
     async function handleSubmit(event) {
         event.preventDefault();
 
         if (canEditProject) {
-            const phaseDateError = getPhaseDateError(project.phases);
+            const phaseDateError = getPhaseDateError(
+                project.phases,
+                project.projectStartDate,
+                project.projectEndDate
+            );
 
+            // Dừng gửi khi ít nhất một phase có khoảng ngày không hợp lệ.
             if (phaseDateError) {
                 setSubmitError(phaseDateError);
                 return;
@@ -371,6 +348,7 @@ function UpdateProject({ onUpdateProject }) {
                         id: phase.id,
                         title: phase.title.trim(),
                         description: phase.description.trim(),
+                        startDate: phase.startDate,
                         endDate: phase.endDate,
                     }))
                     : null,
@@ -381,10 +359,12 @@ function UpdateProject({ onUpdateProject }) {
             navigate("/project-management/view?id=" + projectId);
         } catch (error) {
             console.error("Unable to update project:", error);
-            setSubmitError(getApiErrorMessage(
-                error,
-                "Unable to update the project. Please check the information and try again."
-            ));
+            setSubmitError(
+                getProjectErrorMessage(
+                    error,
+                    "Unable to update the project. Please check the information and try again."
+                )
+            );
         } finally {
             setSaving(false);
         }
@@ -403,6 +383,7 @@ function UpdateProject({ onUpdateProject }) {
     const normalizedMemberSearch = memberSearch.trim().toLowerCase();
     const memberStatusOptions = getFilterOptions(availableEmployees, "status");
 
+    // Kiểm tra nhân viên có khớp từ khóa và trạng thái đang lọc hay không.
     function employeeMatchesFilters(employee) {
         const matchesSearch = getEmployeeSearchText(employee).includes(normalizedMemberSearch);
         const matchesStatus = !memberStatusFilter || employee.status === memberStatusFilter;
@@ -412,6 +393,7 @@ function UpdateProject({ onUpdateProject }) {
 
     const visibleAvailableEmployees = availableEmployees.filter(employeeMatchesFilters);
 
+    // Hiển thị một lựa chọn nhân viên trong modal thêm thành viên.
     function renderAvailableEmployee(employee) {
         const isSelected = pendingMemberIds.includes(employee.id);
 
@@ -501,17 +483,33 @@ function UpdateProject({ onUpdateProject }) {
 
                             <Form.Group as={Col} md={6} controlId="projectCode">
                                 <Form.Label className="project-management-field-label">Project Code</Form.Label>
-                                <Form.Control required maxLength={50} name="projectCode" value={project.projectCode} onChange={handleProjectChange} className="project-management-input" />
+                                <Form.Control required maxLength={50} name="projectCode" value={project.projectCode} onChange={handleProjectChange} placeholder="Example: PRJ-2026-Thời trang mùa đông" className="project-management-input" />
                             </Form.Group>
 
                             <Form.Group as={Col} md={6} controlId="projectStartDate">
                                 <Form.Label className="project-management-field-label">Start Date</Form.Label>
-                                <Form.Control required type="date" name="projectStartDate" value={project.projectStartDate} onChange={handleProjectChange} className="project-management-input" />
+                                <ProjectDateInput
+                                    required
+                                    id="projectStartDate"
+                                    name="projectStartDate"
+                                    max={project.projectEndDate}
+                                    value={project.projectStartDate}
+                                    onChange={handleProjectChange}
+                                    className="project-management-input"
+                                />
                             </Form.Group>
 
                             <Form.Group as={Col} md={6} controlId="projectEndDate">
                                 <Form.Label className="project-management-field-label">End Date</Form.Label>
-                                <Form.Control required type="date" min={project.projectStartDate} name="projectEndDate" value={project.projectEndDate} onChange={handleProjectChange} className="project-management-input" />
+                                <ProjectDateInput
+                                    required
+                                    id="projectEndDate"
+                                    min={project.projectStartDate}
+                                    name="projectEndDate"
+                                    value={project.projectEndDate}
+                                    onChange={handleProjectChange}
+                                    className="project-management-input"
+                                />
                             </Form.Group>
 
                             <Form.Group as={Col} md={6} controlId="projectStatus">
@@ -547,7 +545,7 @@ function UpdateProject({ onUpdateProject }) {
                         <div className="update-project-section-header">
                             <div>
                                 <Card.Title as="h2" className="project-management-card-title">Project Phases</Card.Title>
-                                <p className="update-project-section-note">Phases must cover the full project timeline without gaps or overlapping dates.</p>
+                                <p className="update-project-section-note">Phases are optional. Each phase date range only needs to stay within the project date range.</p>
                             </div>
                             <Button type="button" variant="light" className="update-project-add-button" onClick={addPhase}>
                                 <Icon name="plus" size={18} /> Add Phase
@@ -555,7 +553,7 @@ function UpdateProject({ onUpdateProject }) {
                         </div>
 
                         {project.phases.length === 0 ? (
-                            <div className="update-project-empty-state">No phases have been added.</div>
+                            <div className="update-project-empty-state">No phases yet. You can save the project without phases.</div>
                         ) : (
                             <div className="update-project-phase-list">
                                 {project.phases.map((phase, index) => (
@@ -571,14 +569,29 @@ function UpdateProject({ onUpdateProject }) {
                                             </Col>
                                             <Col md={3}>
                                                 <Form.Label className="project-management-field-label">Start Date</Form.Label>
-                                                <Form.Control readOnly required type="date" name="startDate" value={phase.startDate} className="project-management-input update-project-phase-start-input" />
-                                                <Form.Text className="update-project-phase-date-note">
-                                                    Preview only. The server calculates this date when saving.
-                                                </Form.Text>
+                                                <ProjectDateInput
+                                                    required
+                                                    name="startDate"
+                                                    min={project.projectStartDate}
+                                                    max={phase.endDate || project.projectEndDate}
+                                                    value={phase.startDate}
+                                                    onChange={(event) => updatePhase(phase.clientId, event)}
+                                                    className="project-management-input update-project-phase-start-input"
+                                                    aria-label={`Phase ${index + 1} start date`}
+                                                />
                                             </Col>
                                             <Col md={3}>
                                                 <Form.Label className="project-management-field-label">End Date</Form.Label>
-                                                <Form.Control required type="date" name="endDate" min={phase.startDate || project.projectStartDate} max={project.projectEndDate} value={phase.endDate} onChange={(event) => updatePhase(phase.clientId, event)} className="project-management-input" />
+                                                <ProjectDateInput
+                                                    required
+                                                    name="endDate"
+                                                    min={phase.startDate || project.projectStartDate}
+                                                    max={project.projectEndDate}
+                                                    value={phase.endDate}
+                                                    onChange={(event) => updatePhase(phase.clientId, event)}
+                                                    className="project-management-input"
+                                                    aria-label={`Phase ${index + 1} end date`}
+                                                />
                                             </Col>
                                             <Col xs={12}>
                                                 <Form.Label className="project-management-field-label">Description</Form.Label>
@@ -742,7 +755,9 @@ function UpdateProject({ onUpdateProject }) {
     );
 }
 
+// Chuyển phase từ API thành cấu trúc state có client id ổn định.
 function mapPhases(phases) {
+    // Trả danh sách rỗng khi dữ liệu phase không đúng định dạng.
     if (!Array.isArray(phases)) {
         return [];
     }
@@ -763,23 +778,7 @@ function mapPhases(phases) {
     return mappedPhases;
 }
 
-function getPhaseDateError(phases) {
-    for (let index = 0; index < phases.length; index++) {
-        const phase = phases[index];
-
-        if (
-            phase.startDate
-            && phase.endDate
-            && phase.startDate > phase.endDate
-        ) {
-            return "Phase " + (index + 1)
-                + " start date must not be after its end date.";
-        }
-    }
-
-    return "";
-}
-
+// Hợp nhất danh sách nhân viên khả dụng với thành viên đã có trong dự án.
 function mergeEmployees(employeeData, projectUsers) {
     const employees = Array.isArray(employeeData) ? [...employeeData] : [];
     const employeeIds = new Set(employees.map((employee) => employee.id));
@@ -798,11 +797,64 @@ function mergeEmployees(employeeData, projectUsers) {
     return employees;
 }
 
+// Định dạng tên, mã và trạng thái quyền thành nhãn lựa chọn.
 function getPermissionLabel(permission) {
     const name = permission.permissionName || "Permission #" + permission.id;
     const code = permission.permissionCode ? " (" + permission.permissionCode + ")" : "";
     const inactive = permission.status === false ? " - Inactive" : "";
     return name + code + inactive;
+}
+
+// Hiển thị ngày theo dd/mm/yyyy nhưng vẫn dùng input date để mở lịch và lưu YYYY-MM-DD.
+function ProjectDateInput({
+    value = "",
+    className = "",
+    disabled = false,
+    readOnly = false,
+    ...inputProperties
+}) {
+    function openDatePicker(event) {
+        if (!readOnly && typeof event.currentTarget.showPicker === "function") {
+            event.currentTarget.showPicker();
+        }
+    }
+
+    return (
+        <div className="project-date-input">
+            <input
+                type="text"
+                value={formatDateForInput(value)}
+                placeholder="dd/mm/yyyy"
+                className={`form-control project-date-input__display ${className}`}
+                readOnly
+                disabled={disabled}
+                tabIndex={-1}
+                aria-hidden="true"
+            />
+            <input
+                {...inputProperties}
+                type="date"
+                value={value}
+                disabled={disabled}
+                readOnly={readOnly}
+                className="project-date-input__native"
+                onClick={openDatePicker}
+            />
+            <span className="project-date-input__icon" aria-hidden="true">
+                <Icon name="calendar" size={18} color="#5f6f89" />
+            </span>
+        </div>
+    );
+}
+
+function formatDateForInput(value) {
+    const matchedDate = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+
+    if (!matchedDate) {
+        return "";
+    }
+
+    return matchedDate[3] + "/" + matchedDate[2] + "/" + matchedDate[1];
 }
 
 export default UpdateProject;

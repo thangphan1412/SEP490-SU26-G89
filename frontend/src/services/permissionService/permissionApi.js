@@ -1,12 +1,21 @@
 import axiosClient from "../../config/api/axiosClient.js";
 
-const API_BASE_URL = String(
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:8080/api"
-).replace(/\/+$/, "");
-const PERMISSION_API_BASE_URL = `${API_BASE_URL}/permissions`;
+const PERMISSION_API_BASE_URL = "http://localhost:8080/api/permissions";
 
 function getResponseData(response) {
-  return response.data?.data ?? response.data;
+  const responseBody = response.data;
+
+  // Backend thường đặt dữ liệu cần dùng trong thuộc tính data của BaseResponse.
+  if (responseBody !== null && responseBody !== undefined) {
+    const actualData = responseBody.data;
+
+    if (actualData !== null && actualData !== undefined) {
+      return actualData;
+    }
+  }
+
+  // Trả về toàn bộ response body nếu dữ liệu không được bọc trong BaseResponse.
+  return responseBody;
 }
 
 export async function listPermissions(params, signal) {

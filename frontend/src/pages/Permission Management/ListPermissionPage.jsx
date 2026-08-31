@@ -39,7 +39,7 @@ import {
   getPermissionErrorMessage,
 } from "./permissionUtils.js";
 
-// Các cột có thể sắp xếp trong bảng
+// Khai báo các cột có thể sắp xếp trong bảng quyền.
 const sortableColumns = [
   ["Permission", "permissionName"],
   ["Permission Code", "permissionCode"],
@@ -47,7 +47,9 @@ const sortableColumns = [
   ["Status", "status"],
 ];
 
+// Tạo danh sách số trang rút gọn và chèn dấu ba chấm khi cần.
 function createPageNumbers(currentPage, totalPages) {
+  // Hiển thị toàn bộ số trang khi tổng số trang không quá năm.
   if (totalPages <= 5) {
     return Array.from({ length: totalPages }, (_, index) => index);
   }
@@ -71,16 +73,18 @@ function createPageNumbers(currentPage, totalPages) {
 }
 
 
-// chuyển hướng sang trang xem hoặc chỉnh sửa nếu có tham số truy vấn
+// Chọn màn hình danh sách, chi tiết hoặc cập nhật theo query string.
 function ListPermissionPage() {
   const [searchParams] = useSearchParams();
   const viewingPermissionId = searchParams.get("view");
   const editingPermissionId = searchParams.get("edit");
 
+  // Mở màn hình chi tiết khi URL chứa tham số view.
   if (viewingPermissionId) {
     return <ViewPermissionPage />;
   }
 
+  // Mở màn hình cập nhật khi URL chứa tham số edit.
   if (editingPermissionId) {
     return <UpdatePermissionPage />;
   }
@@ -88,6 +92,7 @@ function ListPermissionPage() {
   return <PermissionListContent />;
 }
 
+// Hiển thị nội dung danh sách quyền cùng bộ lọc, sắp xếp và phân trang.
 function PermissionListContent() {
   const navigate = useNavigate();
   const [permissions, setPermissions] = useState([]);
@@ -105,6 +110,7 @@ function PermissionListContent() {
   const [deletingId, setDeletingId] = useState(null);
   const [deleteVersion, setDeleteVersion] = useState(0);
 
+  // Debounce từ khóa tìm kiếm trước khi gọi lại API.
   useEffect(function () {
     const debounceId = window.setTimeout(function () {
       setSearch(searchInput.trim());
@@ -116,10 +122,11 @@ function PermissionListContent() {
     };
   }, [searchInput]);
 
-  //Load danh sách các dự án để hiển thị trong bộ lọc
+  // Tải danh sách dự án để hiển thị trong bộ lọc.
   useEffect(function () {
     const requestController = new AbortController();
 
+    // Gọi API và chuẩn hóa danh sách dự án dùng cho bộ lọc.
     async function loadFilterOptions() {
       try {
         const projectPayload = await listPermissionProjects(
@@ -147,10 +154,11 @@ function PermissionListContent() {
     };
   }, []);
 
-  //Load danh sách quyền dựa trên các bộ lọc và phân trang
+  // Tải danh sách quyền theo bộ lọc, sắp xếp và phân trang hiện tại.
   useEffect(function () {
     const requestController = new AbortController();
 
+    // Gọi API và đồng bộ dữ liệu quyền cùng thông tin phân trang.
     async function loadPermissions() {
       try {
         setLoading(true);
@@ -176,6 +184,7 @@ function PermissionListContent() {
         setPermissions(items);
         setTotalPages(responseTotalPages);
 
+        // Đưa trang hiện tại về giới hạn hợp lệ sau khi dữ liệu thay đổi.
         if (responseTotalPages > 0 && page >= responseTotalPages) {
           setPage(responseTotalPages - 1);
         }
@@ -205,6 +214,7 @@ function PermissionListContent() {
     };
   }, [deleteVersion, page, projectId, search, sortBy, sortDirection, status]);
 
+  // Đổi trường sắp xếp hoặc đảo chiều khi chọn lại cùng một cột.
   function handleSort(field) {
     setPage(0);
 
@@ -223,6 +233,7 @@ function PermissionListContent() {
     setSortDirection("asc");
   }
 
+  // Xóa toàn bộ bộ lọc và đưa danh sách về trang đầu.
   function clearFilters() {
     setSearchInput("");
     setSearch("");
@@ -231,20 +242,25 @@ function PermissionListContent() {
     setPage(0);
   }
 
+  // Điều hướng tới màn hình chi tiết của quyền được chọn.
   function openPermissionDetail(permissionId) {
     navigate(`/permission/list?view=${permissionId}`);
   }
 
+  // Hỗ trợ mở chi tiết quyền bằng bàn phím trên hàng bảng.
   function handleRowKeyDown(event, permissionId) {
+    // Chỉ xử lý phím Enter hoặc Space như thao tác nhấp chuột.
     if (event.key === "Enter" || event.key === " ") {
       event.preventDefault();
       openPermissionDetail(permissionId);
     }
   }
 
+  // Xác nhận rồi gửi yêu cầu xóa quyền được chọn.
   async function handleDelete(event, permission) {
     event.stopPropagation();
 
+    // Hủy thao tác khi người dùng không xác nhận xóa.
     if (!window.confirm(`Delete permission "${permission.permissionName}"?`)) {
       return;
     }
@@ -265,16 +281,19 @@ function PermissionListContent() {
     }
   }
 
+  // Cập nhật bộ lọc dự án và quay về trang đầu.
   function handleProjectFilterChange(event) {
     setProjectId(event.target.value);
     setPage(0);
   }
 
+  // Cập nhật bộ lọc trạng thái và quay về trang đầu.
   function handleStatusFilterChange(event) {
     setStatus(event.target.value);
     setPage(0);
   }
 
+  // Điều hướng tới màn hình chỉnh sửa mà không kích hoạt sự kiện của hàng.
   function openPermissionEdit(event, permissionId) {
     event.stopPropagation();
     navigate(`/permission/list?edit=${permissionId}`);
@@ -454,6 +473,7 @@ function PermissionListContent() {
   );
 }
 
+// Hiển thị biểu tượng phù hợp với trạng thái sắp xếp của cột.
 function SortIcon({ field, sortBy, sortDirection }) {
   if (field !== sortBy) {
     return <IconArrowsSort size={14} />;

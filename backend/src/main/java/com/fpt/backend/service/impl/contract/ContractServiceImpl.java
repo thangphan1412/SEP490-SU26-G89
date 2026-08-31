@@ -43,7 +43,6 @@ import com.fpt.backend.repository.phase.PhaseRepository;
 import com.fpt.backend.repository.phase.PhaseTaskRepository;
 import com.fpt.backend.repository.project.ProjectMemberRepository;
 import com.fpt.backend.repository.project.ProjectRepository;
-import com.fpt.backend.repository.user.UserRepository;
 import com.fpt.backend.service.interfaces.contract.ContractService;
 import com.fpt.backend.service.interfaces.permission.IPermissionAccessService;
 import com.fpt.backend.util.CurrentUser;
@@ -100,7 +99,6 @@ public class ContractServiceImpl implements ContractService {
     private final PhaseRepository phaseRepository;
     private final PhaseTaskRepository phaseTaskRepository;
     private final UserPermissionRepository userPermissionRepository;
-    private final UserRepository userRepository;
     private final ContractTemplateLayoutMapper layoutMapper;
     private final ContractDocumentRenderer documentRenderer;
     private final ContractPdfGenerator pdfGenerator;
@@ -160,10 +158,6 @@ public class ContractServiceImpl implements ContractService {
     @Override
     @Transactional(readOnly = true)
     public List<ContractProjectOptionResponse> getProjectOptions() {
-        Users actor = currentUser.getCurrentUser();
-        if (!userHasRole(actor, "EMPLOYEE")) {
-            return List.of();
-        }
         List<UUID> projectIds = permissionAccessService
                 .getCurrentUserProjectIdsWithAction(
                         ContractProjectActions.CREATE
@@ -237,10 +231,6 @@ public class ContractServiceImpl implements ContractService {
         projectMemberRepository.findByProjectId(project.getId()).stream()
                 .map(ProjectMember::getUser).filter(Objects::nonNull)
                 .forEach(user -> eligibleUsers.put(user.getId(), user));
-        userRepository.findAll().stream()
-                .filter(user -> userHasRole(user, "HEADOFDEPARTMENT")
-                        || userHasRole(user, "CEO"))
-                .forEach(user -> eligibleUsers.put(user.getId(), user));
 
         List<ContractProjectMemberOptionResponse> members = eligibleUsers.values()
                 .stream()
@@ -281,9 +271,6 @@ public class ContractServiceImpl implements ContractService {
         }
 
         Users actor = currentUser.getCurrentUser();
-        if (!userHasRole(actor, "EMPLOYEE")) {
-            throw forbidden("Only an Employee can create a contract");
-        }
         permissionAccessService.requireAction(
                 request.projectId(),
                 ContractProjectActions.CREATE
@@ -740,13 +727,22 @@ public class ContractServiceImpl implements ContractService {
             Users creator,
             List<ContractWorkflowAssigneeRequest> requestedAssignees
     ) {
-        List<RuntimeStepDefinition> definitions = List.of(
-                new RuntimeStepDefinition(1, "Prepare and submit", ContractWorkflowActionType.CREATE, null, false),
-                new RuntimeStepDefinition(2, "Head of Department approval", ContractWorkflowActionType.APPROVE, "HEADOFDEPARTMENT", true),
-                new RuntimeStepDefinition(3, "CEO final approval", ContractWorkflowActionType.APPROVE, "CEO", true),
-                new RuntimeStepDefinition(4, "CEO electronic signature", ContractWorkflowActionType.SIGN, "CEO", true),
-                new RuntimeStepDefinition(5, "Assigned representative signature", ContractWorkflowActionType.SIGN, null, true)
-        );
+        ContractTypeWorkflow workflow = contract.getWorkflowVersion();
+        if (workflow == null) {
+            throw new BadHttpException(
+                    "The selected contract type does not have an active workflow"
+            );
+        }
+        List<ContractTypeWorkflowStep> definitions = workflow.getSteps() == null
+                ? List.of()
+                : workflow.getSteps().stream()
+                .sorted(Comparator.comparing(ContractTypeWorkflowStep::getStepOrder))
+                .toList();
+        if (definitions.size() < 2) {
+            throw new BadHttpException(
+                    "The selected contract type workflow requires at least two steps"
+            );
+        }
 
         Map<Integer, UUID> assigneeByStep = new LinkedHashMap<>();
         if (requestedAssignees != null) {
@@ -774,10 +770,6 @@ public class ContractServiceImpl implements ContractService {
                 .map(ProjectMember::getUser)
                 .filter(Objects::nonNull)
                 .forEach(user -> projectMembers.put(user.getId(), user));
-        userRepository.findAll().stream()
-                .filter(user -> userHasRole(user, "HEADOFDEPARTMENT")
-                        || userHasRole(user, "CEO"))
-                .forEach(user -> projectMembers.put(user.getId(), user));
 
         if (!projectMembers.containsKey(creator.getId())) {
             throw new BadHttpException(
@@ -788,11 +780,11 @@ public class ContractServiceImpl implements ContractService {
         LocalDateTime now = LocalDateTime.now();
         List<ContractWorkflowStepInstance> instances = new ArrayList<>();
         for (int index = 0; index < definitions.size(); index++) {
-            RuntimeStepDefinition definition = definitions.get(index);
+            ContractTypeWorkflowStep definition = definitions.get(index);
             Users assignedUser;
             if (index == 0) {
                 assignedUser = creator;
-                UUID requestedCreatorId = assigneeByStep.remove(definition.stepOrder());
+                UUID requestedCreatorId = assigneeByStep.remove(definition.getStepOrder());
                 if (requestedCreatorId != null
                         && !creator.getId().equals(requestedCreatorId)) {
                     throw new BadHttpException(
@@ -800,11 +792,11 @@ public class ContractServiceImpl implements ContractService {
                     );
                 }
             } else {
-                UUID userId = assigneeByStep.remove(definition.stepOrder());
+                UUID userId = assigneeByStep.remove(definition.getStepOrder());
                 if (userId == null) {
                     throw new BadHttpException(
                             "Select a project member for workflow step: "
-                                    + definition.stepName()
+                                    + definition.getStepName()
                     );
                 }
                 assignedUser = projectMembers.get(userId);
@@ -815,24 +807,21 @@ public class ContractServiceImpl implements ContractService {
                 }
             }
 
-            String requiredRole = definition.requiredRoleCode();
-            if (requiredRole == null) {
-                requiredRole = primaryRoleCode(assignedUser);
-            }
-            validateRuntimeWorkflowAssignee(
-                    assignedUser, requiredRole, definition.actionType(),
-                    definition.stepName(), contract.getProject().getId()
+            validateWorkflowAssignee(
+                    assignedUser,
+                    definition,
+                    contract.getProject().getId()
             );
             instances.add(ContractWorkflowStepInstance.builder()
                     .contract(contract)
-                    .stepDefinition(null)
+                    .stepDefinition(definition)
                     .assignedUser(assignedUser)
-                    .stepOrder(definition.stepOrder())
-                    .stepName(definition.stepName())
-                    .actionType(definition.actionType())
-                    .requiredRoleCode(requiredRole)
-                    .required(true)
-                    .canReject(definition.canReject())
+                    .stepOrder(definition.getStepOrder())
+                    .stepName(definition.getStepName())
+                    .actionType(definition.getActionType())
+                    .requiredRoleCode(definition.getRequiredRoleCode())
+                    .required(Boolean.TRUE.equals(definition.getRequired()))
+                    .canReject(Boolean.TRUE.equals(definition.getCanReject()))
                     .status(index == 0
                             ? ContractWorkflowStepState.PENDING
                             : ContractWorkflowStepState.WAITING)
@@ -849,12 +838,6 @@ public class ContractServiceImpl implements ContractService {
         workflowStepRepository.saveAll(instances);
         contract.setWorkflowStepInstances(instances);
     }
-
-    private record RuntimeStepDefinition(
-            int stepOrder, String stepName,
-            ContractWorkflowActionType actionType,
-            String requiredRoleCode, boolean canReject
-    ) {}
 
     private void validateWorkflowAssignee(
             Users user,
@@ -955,12 +938,6 @@ public class ContractServiceImpl implements ContractService {
         Boolean signerAgeVerified = null;
         Signature completedSignature = null;
         if (currentStep.getActionType().requiresSignature()) {
-            if (!userHasRole(actor, "CEO")
-                    && !hasCompletedCeoSignature(contract.getId())) {
-                throw new BadHttpException(
-                        "The CEO must sign the contract before the next assigned signer"
-                );
-            }
             signerAgeVerified = validateSignerAge(actor.getDob());
             if (!signerAgeVerified) {
                 String reason = "Signer must be at least "
@@ -1197,7 +1174,14 @@ public class ContractServiceImpl implements ContractService {
         contract.setTimelineTask(task);
         contract.setContractType(contractType);
         if (creating) {
-            contract.setWorkflowVersion(null);
+            ContractTypeWorkflow workflow = contractTypeWorkflowRepository
+                    .findFirstByContractTypeIdAndActiveTrueOrderByVersionNumberDesc(
+                            contractType.getId()
+                    )
+                    .orElseThrow(() -> new BadHttpException(
+                            "The selected contract type does not have an active workflow"
+                    ));
+            contract.setWorkflowVersion(workflow);
         }
         contract.setContractTemplate(template);
         contract.setContractTemplateVersion(version);
@@ -1857,13 +1841,13 @@ public class ContractServiceImpl implements ContractService {
         ProjectAccessResponse projectAccess = permissionAccessService
                 .getCurrentUserAccess(project.getId());
         ContractAccessResponse contractAccess = new ContractAccessResponse(
-                projectAccess.projectId(),
-                projectAccess.currentUserId(),
-                projectAccess.projectCreator(),
-                projectAccess.projectMember(),
-                projectAccess.allowedActions(),
-                projectAccess.fullScopeActions(),
-                projectAccess.workScope(),
+                projectAccess.getProjectId(),
+                projectAccess.getCurrentUserId(),
+                projectAccess.isProjectCreator(),
+                projectAccess.isProjectMember(),
+                projectAccess.getAllowedActions(),
+                projectAccess.getFullScopeActions(),
+                projectAccess.getWorkScope(),
                 isContractOwner(contract, user),
                 isWorkflowParticipant(contract, user)
         );
@@ -1939,9 +1923,6 @@ public class ContractServiceImpl implements ContractService {
                 && currentStep.getAssignedUser() != null
                 && currentStep.getAssignedUser().getId().equals(currentUser.getId())
                 && userHasRole(currentUser, currentStep.getRequiredRoleCode())
-                && (currentStep.getActionType() != ContractWorkflowActionType.SIGN
-                    || userHasRole(currentUser, "CEO")
-                    || hasCompletedCeoSignature(contract.getId()))
                 && contractActionsForCandidate(currentUser, contract.getProject().getId())
                     .containsAll(ContractWorkflowRules.requiredPermissions(
                             currentStep.getActionType()
@@ -2014,69 +1995,8 @@ public class ContractServiceImpl implements ContractService {
         );
     }
 
-    private void validateRuntimeWorkflowAssignee(
-            Users user,
-            String requiredRoleCode,
-            ContractWorkflowActionType actionType,
-            String stepName,
-            UUID projectId
-    ) {
-        if (!userHasRole(user, requiredRoleCode)) {
-            throw new BadHttpException(
-                    getUserDisplayName(user) + " does not have required role "
-                            + requiredRoleCode + " for step " + stepName
-            );
-        }
-        Set<String> allowedActions = contractActionsForCandidate(user, projectId);
-        List<String> missingActions = ContractWorkflowRules
-                .requiredPermissions(actionType).stream()
-                .filter(action -> !allowedActions.contains(action))
-                .toList();
-        if (!missingActions.isEmpty()) {
-            throw new BadHttpException(
-                    getUserDisplayName(user) + " is missing project permission(s) "
-                            + String.join(", ", missingActions) + " for step " + stepName
-            );
-        }
-    }
-
     private Set<String> contractActionsForCandidate(Users user, UUID projectId) {
-        Set<String> actions = new LinkedHashSet<>(
-                activeActionsForUser(user.getId(), projectId)
-        );
-        if (userHasRole(user, "EMPLOYEE")) {
-            actions.add(ContractProjectActions.VIEW);
-            actions.add(ContractProjectActions.CREATE);
-            actions.add(ContractProjectActions.EDIT);
-            actions.add(ContractProjectActions.SUBMIT);
-            actions.add(ContractProjectActions.SIGN);
-        }
-        if (userHasRole(user, "HEADOFDEPARTMENT")) {
-            actions.add(ContractProjectActions.VIEW);
-            actions.add(ContractProjectActions.APPROVE);
-        }
-        if (userHasRole(user, "CEO")) {
-            actions.add(ContractProjectActions.VIEW);
-            actions.add(ContractProjectActions.APPROVE);
-            actions.add(ContractProjectActions.SIGN);
-            actions.add(ContractProjectActions.EXPORT);
-        }
-        if (userHasRole(user, "PARTNER")
-                || userHasRole(user, "EXTERNAL")
-                || userHasRole(user, "EXTERNALPARTNER")) {
-            actions.add(ContractProjectActions.VIEW);
-            actions.add(ContractProjectActions.SIGN);
-            actions.add(ContractProjectActions.EXPORT);
-        }
-        return actions;
-    }
-
-    private boolean hasCompletedCeoSignature(UUID contractId) {
-        return workflowStepRepository.findByContractIdOrderByStepOrderAsc(contractId)
-                .stream()
-                .anyMatch(step -> step.getActionType() == ContractWorkflowActionType.SIGN
-                        && step.getStatus() == ContractWorkflowStepState.COMPLETED
-                        && "CEO".equals(normalizeRoleOrEmpty(step.getRequiredRoleCode())));
+        return activeActionsForUser(user.getId(), projectId);
     }
 
     private boolean hasAllActions(

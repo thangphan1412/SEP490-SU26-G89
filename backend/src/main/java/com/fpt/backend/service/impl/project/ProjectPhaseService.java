@@ -36,6 +36,7 @@ public class ProjectPhaseService {
     private final PhaseContractRepository phaseContractRepository;
     private final PhaseStatusService phaseStatusService;
 
+    // Đồng bộ các phase có khoảng thời gian độc lập trong timeline dự án.
     public void syncPhases(
             Projects project,
             List<ProjectPhaseRequest> phaseRequests) {
@@ -50,20 +51,16 @@ public class ProjectPhaseService {
             existingPhases.put(phase.getId(), phase);
         }
 
-        LocalDate nextStartDate = project.getProjectStartDate();
-
         for (ProjectPhaseRequest request : requests) {
-            if (request == null) {
-                throw new BadHttpException("Phase information is required");
-            }
-
             Timeline phase;
 
+            // Tạo phase mới hoặc lấy phase hiện có để cập nhật.
             if (request.id() == null) {
                 phase = new Timeline();
             } else {
                 phase = existingPhases.remove(request.id());
 
+                // Ngăn cập nhật phase không thuộc dự án hiện tại.
                 if (phase == null) {
                     throw new BadHttpException(
                             "Phase does not belong to this project"
@@ -74,11 +71,9 @@ public class ProjectPhaseService {
             applyPhaseInformation(
                     phase,
                     request,
-                    project,
-                    nextStartDate
+                    project
             );
             phaseRepository.save(phase);
-            nextStartDate = request.endDate().plusDays(1);
         }
 
         for (Timeline removedPhase : existingPhases.values()) {
@@ -89,6 +84,7 @@ public class ProjectPhaseService {
         phaseStatusService.refreshProjectStatuses(project.getId());
     }
 
+    // Lấy danh sách phase của dự án sau khi làm mới trạng thái và tiến độ.
     public List<ProjectPhaseResponse> getProjectPhases(UUID projectId) {
         phaseStatusService.refreshProjectStatuses(projectId);
         List<Timeline> phases = phaseRepository.findByProjectId(projectId);
@@ -109,6 +105,7 @@ public class ProjectPhaseService {
         return responses;
     }
 
+    // Xóa dữ liệu phụ thuộc rồi xóa toàn bộ phase của dự án.
     public void deleteProjectData(UUID projectId) {
         phaseContractRepository.deleteByProjectId(projectId);
         phaseTaskRepository.deleteByProjectId(projectId);
@@ -116,44 +113,26 @@ public class ProjectPhaseService {
         phaseRepository.deleteByProjectId(projectId);
     }
 
+    // Kiểm tra từng phase nằm trong timeline dự án và không bị đảo ngày.
     private void validatePhaseSchedule(
             Projects project,
             List<ProjectPhaseRequest> requests) {
-        if (requests.isEmpty()) {
-            throw new BadHttpException(
-                    "At least one phase is required to cover the full project timeline"
-            );
-        }
-
-        LocalDate expectedStartDate = project.getProjectStartDate();
-
         for (int index = 0; index < requests.size(); index++) {
             ProjectPhaseRequest request = requests.get(index);
             int phaseNumber = index + 1;
-
-            if (request == null) {
-                throw new BadHttpException(
-                        "Phase " + phaseNumber + " information is required"
-                );
-            }
-
+            LocalDate startDate = request.startDate();
             LocalDate endDate = request.endDate();
 
-            if (endDate == null) {
+            // Phòng trường hợp service được gọi mà không đi qua Bean Validation.
+            if (startDate == null || endDate == null) {
                 throw new BadHttpException(
                         "Phase " + phaseNumber
-                                + " end date is required"
+                                + " start date and end date are required"
                 );
             }
 
-            if (expectedStartDate.isAfter(project.getProjectEndDate())) {
-                throw new BadHttpException(
-                        "Phase " + phaseNumber
-                                + " starts after the project end date"
-                );
-            }
-
-            if (expectedStartDate.isAfter(endDate)) {
+            // Từ chối phase có ngày bắt đầu sau ngày kết thúc của chính nó.
+            if (startDate.isAfter(endDate)) {
                 throw new BadHttpException(
                         "Phase " + phaseNumber
                                 + " start date must not be after "
@@ -161,6 +140,16 @@ public class ProjectPhaseService {
                 );
             }
 
+            // Từ chối phase bắt đầu trước timeline dự án.
+            if (startDate.isBefore(project.getProjectStartDate())) {
+                throw new BadHttpException(
+                        "Phase " + phaseNumber
+                                + " start date must not be before the "
+                                + "project start date"
+                );
+            }
+
+            // Từ chối phase kết thúc sau timeline dự án.
             if (endDate.isAfter(project.getProjectEndDate())) {
                 throw new BadHttpException(
                         "Phase " + phaseNumber
@@ -168,40 +157,25 @@ public class ProjectPhaseService {
                                 + "project end date"
                 );
             }
-
-            expectedStartDate = endDate.plusDays(1);
-        }
-
-        ProjectPhaseRequest finalPhase = requests.get(requests.size() - 1);
-
-        if (!finalPhase.endDate().equals(project.getProjectEndDate())) {
-            throw new BadHttpException(
-                    "The final phase must end on the project end date "
-                            + project.getProjectEndDate()
-            );
         }
     }
 
+    // Chuẩn hóa request rồi áp dụng thông tin và trạng thái mặc định vào phase.
     private void applyPhaseInformation(
             Timeline phase,
             ProjectPhaseRequest request,
-            Projects project,
-            LocalDate startDate) {
-        String title = requireText(
-                request.title(),
-                "Phase title is required",
-                150
-        );
+            Projects project) {
+        String title = request.title().trim();
         String description = normalize(request.description());
+        LocalDate startDate = request.startDate();
         LocalDate endDate = request.endDate();
-
-        validateMaxLength(description, "Phase description", 500);
 
         phase.setTitle(title);
         phase.setDescription(description);
         phase.setStartDate(java.sql.Date.valueOf(startDate));
         phase.setEndDate(java.sql.Date.valueOf(endDate));
 
+        // Khởi tạo trạng thái và tiến độ cho phase mới.
         if (phase.getId() == null) {
             phase.setStatus(DEFAULT_PHASE_STATUS);
             phase.setProgress(0D);
@@ -210,11 +184,13 @@ public class ProjectPhaseService {
         phase.setProject(project);
     }
 
+    // Xóa phase khi phase chưa phát sinh task hoặc deliverable phụ thuộc.
     private void removePhase(Timeline phase) {
         long taskCount = phaseTaskRepository.countByPhaseId(phase.getId());
         long deliverableCount =
                 phaseDeliverableRepository.countByPhaseId(phase.getId());
 
+        // Ngăn xóa phase đang chứa task hoặc deliverable.
         if (taskCount > 0 || deliverableCount > 0) {
             throw new BadHttpException(
                     "Phase cannot be removed because it has tasks or deliverables"
@@ -224,7 +200,9 @@ public class ProjectPhaseService {
         phaseRepository.delete(phase);
     }
 
+    // Chuyển Date sang LocalDate theo múi giờ dự án.
     private LocalDate toLocalDate(Date value) {
+        // Giữ nguyên giá trị thiếu thay vì phát sinh lỗi chuyển đổi.
         if (value == null) {
             return null;
         }
@@ -238,33 +216,7 @@ public class ProjectPhaseService {
                 .toLocalDate();
     }
 
-    private String requireText(String value, String message, int maxLength) {
-        String normalizedValue = normalize(value);
-
-        if (normalizedValue.isBlank()) {
-            throw new BadHttpException(message);
-        }
-
-        validateMaxLength(
-                normalizedValue,
-                message.replace(" is required", ""),
-                maxLength
-        );
-        return normalizedValue;
-    }
-
-    private void validateMaxLength(
-            String value,
-            String fieldName,
-            int maxLength) {
-        if (value.length() > maxLength) {
-            throw new BadHttpException(
-                    fieldName + " must not be longer than "
-                            + maxLength + " characters"
-            );
-        }
-    }
-
+    // Chuẩn hóa chuỗi null thành rỗng và loại bỏ khoảng trắng hai đầu.
     private String normalize(String value) {
         return value == null ? "" : value.trim();
     }

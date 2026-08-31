@@ -27,6 +27,7 @@ import {
   getPermissionErrorMessage,
 } from "./permissionUtils.js";
 
+// Hiển thị chi tiết quyền và các thao tác quản lý được phép.
 function ViewPermissionPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -37,10 +38,13 @@ function ViewPermissionPage() {
   const [error, setError] = useState("");
   const [deleting, setDeleting] = useState(false);
 
+  // Tải lại chi tiết quyền mỗi khi permission id thay đổi.
   useEffect(function () {
     const requestController = new AbortController();
 
+    // Gọi API và đồng bộ chi tiết quyền vào state trang.
     async function loadPermission() {
+      // Dừng tải và báo lỗi khi URL không có permission id.
       if (!permissionId) {
         setError("Permission id is missing. Please choose a permission from the list.");
         setLoading(false);
@@ -52,6 +56,7 @@ function ViewPermissionPage() {
         setError("");
         const payload = await viewPermission(permissionId, requestController.signal);
 
+        // Bỏ qua response khi component đã hủy request.
         if (requestController.signal.aborted) {
           return;
         }
@@ -82,6 +87,7 @@ function ViewPermissionPage() {
     };
   }, [permissionId]);
 
+  // Xác định đường dẫn quay lại danh sách quyền hoặc dự án nguồn.
   function getBackPath() {
     if (returnProjectId) {
       return `/project-management/view?id=${encodeURIComponent(returnProjectId)}`
@@ -91,11 +97,14 @@ function ViewPermissionPage() {
     return "/permission/list";
   }
 
+  // Điều hướng người dùng trở lại màn hình nguồn.
   function goBack() {
     navigate(getBackPath());
   }
 
+  // Xác nhận rồi gửi yêu cầu xóa quyền đang xem.
   async function handleDelete() {
+    // Dừng thao tác khi thiếu id hoặc người dùng không xác nhận xóa.
     if (!permission?.id || !window.confirm(`Delete permission "${permission.permissionName}"?`)) {
       return;
     }

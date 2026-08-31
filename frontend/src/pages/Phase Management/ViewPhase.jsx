@@ -22,6 +22,7 @@ import {
 import { viewPhase } from "../../services/phaseService/phaseApi.js";
 import "../../assets/styles/css/phaseStyles/ViewPhase.css";
 
+// Hiển thị chi tiết phase và các module công việc theo quyền truy cập.
 function ViewPhase() {
   const navigate = useNavigate();
   const { projectId, phaseId } = useParams();
@@ -29,10 +30,13 @@ function ViewPhase() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  // Tải lại chi tiết phase mỗi khi phase id thay đổi.
   useEffect(function () {
     const requestController = new AbortController();
 
+    // Gọi API và đồng bộ chi tiết phase vào state trang.
     async function loadPhase() {
+      // Dừng tải và báo lỗi khi route không có phase id.
       if (!phaseId) {
         setError("Phase id is missing.");
         setLoading(false);
@@ -77,11 +81,13 @@ function ViewPhase() {
   const progress = normalizeProgress(phase?.progress);
   const access = phase?.currentUserAccess;
   const phaseIsInProgress = phase?.status === "IN_PROGRESS";
+  const phaseSupportsTaskManagement = phase?.status === "PLANNING"
+    || phaseIsInProgress;
   const canViewTasks = hasProjectAction(
     access,
     PROJECT_ACTIONS.VIEW_TASKS
   );
-  const canManageTasks = phaseIsInProgress
+  const canManageTasks = phaseSupportsTaskManagement
     && hasProjectAction(access, PROJECT_ACTIONS.EDIT_TASKS);
   const canAccessTasks = canViewTasks || canManageTasks;
   const canViewDeliverables = hasProjectAction(
@@ -110,6 +116,7 @@ function ViewPhase() {
     || canViewDeliverables
     || canViewContracts;
 
+  // Hiển thị một hàng task trong bảng của phase.
   function renderTask(task) {
     return (
       <tr key={task.id}>
@@ -297,26 +304,33 @@ function ViewPhase() {
   );
 }
 
+// Chuẩn hóa tiến độ thành số nguyên trong khoảng từ 0 đến 100.
 function normalizeProgress(value) {
   const numberValue = Number(value);
+  // Trả về 0 khi giá trị tiến độ không phải số hữu hạn.
   if (!Number.isFinite(numberValue)) {
     return 0;
   }
   return Math.min(100, Math.max(0, Math.round(numberValue)));
 }
 
+// Ghép mã và tên dự án thành nhãn hiển thị của phase.
 function formatProjectName(phase) {
   return [phase?.projectCode, phase?.projectName].filter(Boolean).join(" - ") || "Unassigned project";
 }
 
+// Lấy tên hoặc email assignee và hiển thị Unassigned khi chưa giao.
 function formatAssignee(task) {
+  // Trả nhãn chưa giao khi thiếu cả tên và email assignee.
   if (!task.assignedToName && !task.assignedToEmail) {
     return "Unassigned";
   }
   return task.assignedToName || task.assignedToEmail;
 }
 
+// Định dạng chuỗi ngày ISO thành ngày/tháng/năm.
 function formatDate(value) {
+  // Hiển thị ký hiệu trống khi chưa có giá trị ngày.
   if (!value) {
     return "-";
   }
@@ -324,11 +338,14 @@ function formatDate(value) {
   return parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : value;
 }
 
+// Ghép ngày bắt đầu và kết thúc thành một khoảng thời gian.
 function formatDateRange(startDate, endDate) {
   return `${formatDate(startDate)} - ${formatDate(endDate)}`;
 }
 
+// Định dạng thời điểm liên kết hợp đồng theo locale en-GB.
 function formatDateTime(value) {
+  // Hiển thị ký hiệu trống khi chưa có giá trị thời gian.
   if (!value) {
     return "-";
   }
@@ -336,6 +353,7 @@ function formatDateTime(value) {
   return Number.isNaN(parsedDate.getTime()) ? value : parsedDate.toLocaleString("en-GB");
 }
 
+// Lấy thông báo lỗi tải phase từ response hoặc dùng nội dung dự phòng.
 function getErrorMessage(error) {
   return error.response?.data?.message
     || error.response?.data?.detail

@@ -1,42 +1,37 @@
 package com.fpt.backend.dto.response.project;
 
-import java.util.ArrayList;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.util.List;
 import java.util.UUID;
 
 public record ProjectAccessResponse(
         UUID projectId,
         UUID currentUserId,
-        boolean projectMember,
-        boolean canViewAllProjectData,
+        @JsonProperty("isProjectCreator") boolean isProjectCreator,
+        @JsonProperty("isProjectMember") boolean isProjectMember,
+        @JsonProperty("isExecutiveViewer") boolean isExecutiveViewer,
         List<String> allowedActions,
+        List<String> fullScopeActions,
         String workScope
 ) {
-    public boolean projectCreator() {
-        return false;
+    public UUID getProjectId() {
+        return projectId;
     }
 
-    public List<String> fullScopeActions() {
-        if (allowedActions == null) {
-            return List.of();
-        }
+    public UUID getCurrentUserId() {
+        return currentUserId;
+    }
 
-        if ("FULL".equalsIgnoreCase(workScope)) {
-            return allowedActions;
-        }
+    public List<String> getAllowedActions() {
+        return allowedActions;
+    }
 
-        if (!canViewAllProjectData) {
-            return List.of();
-        }
+    public List<String> getFullScopeActions() {
+        return fullScopeActions;
+    }
 
-        List<String> viewActions = new ArrayList<>();
-
-        for (String actionCode : allowedActions) {
-            if (actionCode != null && actionCode.startsWith("VIEW_")) {
-                viewActions.add(actionCode);
-            }
-        }
-
-        return viewActions;
+    public String getWorkScope() {
+        return workScope;
     }
 }

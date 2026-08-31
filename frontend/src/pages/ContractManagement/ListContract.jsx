@@ -61,11 +61,6 @@ function createPageNumbers(currentPage, totalPages) {
 
 function ListContract() {
     const navigate = useNavigate();
-    const currentRole = String(localStorage.getItem("role") || "")
-        .toUpperCase()
-        .replace(/[^A-Z0-9]/g, "")
-        .replace(/^ROLE/, "");
-    const canCreateContract = currentRole === "EMPLOYEE";
     const [searchParameters, setSearchParameters] = useSearchParams();
     const requestedContractId = searchParameters.get("viewContractId");
     const [contracts, setContracts] = useState([]);
@@ -355,7 +350,7 @@ function ListContract() {
         );
         setContractForm({
             ...replacement,
-            workflowDefinition: contractForm.workflowDefinition,
+            workflowDefinition: selectedType?.activeWorkflow || null,
         });
         setProjectContext(null);
         setLoadingProjectContext(false);
@@ -380,26 +375,6 @@ function ListContract() {
         const currentStepAction = String(
             currentContract?.workflowRuntime?.currentStepActionType || ""
         ).trim().toUpperCase();
-        const steps = currentContract?.workflowRuntime?.steps || [];
-        const currentStep = steps.find((step) =>
-            step.id === currentContract?.workflowRuntime?.currentStepId
-        );
-        const ceoAlreadySigned = steps.some((step) =>
-            String(step.actionType || "").toUpperCase() === "SIGN"
-            && String(step.requiredRoleCode || "").toUpperCase() === "CEO"
-            && String(step.status || "").toUpperCase() === "COMPLETED"
-        );
-        const currentSignerRole = String(
-            currentStep?.requiredRoleCode || ""
-        ).trim().toUpperCase();
-        if (currentStepAction === "SIGN"
-                && currentSignerRole !== "CEO"
-                && !ceoAlreadySigned) {
-            setModalError(
-                "Workflow is invalid: the HOD approval cannot be a SIGN step. Update the Contract Type to HOD APPROVE → CEO APPROVE → CEO SIGN."
-            );
-            return;
-        }
         const requiresSigningWorkspace = action === "SIGN_DIRECTOR"
             || action === "SIGN_PARTNER"
             || (action === "COMPLETE_STEP"
@@ -493,7 +468,7 @@ function ListContract() {
                     saveAsTemplateVersion: false,
                     templateVersionName: "",
                     templateVersionNote: "",
-                    workflowDefinition: current.workflowDefinition,
+                    workflowDefinition: selectedType?.activeWorkflow || null,
                     workflowAssignees: [],
                 };
             }
@@ -773,11 +748,9 @@ function ListContract() {
                 <Button
                     className="contract-primary-button"
                     onClick={openCreateModal}
-                    disabled={!canCreateContract || loadingOptions || projects.length === 0}
+                    disabled={loadingOptions || projects.length === 0}
                     title={
-                        !canCreateContract
-                            ? "Only an Employee can create a contract."
-                            : !loadingOptions && projects.length === 0
+                        !loadingOptions && projects.length === 0
                             ? "You need CREATE_CONTRACTS permission in a project."
                             : "Create a contract"
                     }
@@ -1229,19 +1202,6 @@ function ContractDetails({
     const completedPages = splitContractPages(
         contract.renderedContractContent || contract.contractContent
     );
-    const workflowSteps = contract?.workflowRuntime?.steps || [];
-    const hasCompletedCeoSignature = workflowSteps.some((step) =>
-        step.actionType === "SIGN"
-        && step.status === "COMPLETED"
-        && String(step.requiredRoleCode || "").toUpperCase() === "CEO"
-    );
-    const invalidSignerOrder =
-        contract?.workflowRuntime?.currentStepActionType === "SIGN"
-        && String(contract?.workflowRuntime?.steps?.find(
-            (step) => step.id === contract.workflowRuntime.currentStepId
-        )?.requiredRoleCode || "").toUpperCase() !== "CEO"
-        && !hasCompletedCeoSignature;
-
     return (
         <>
             <ContractWorkflow
@@ -1257,13 +1217,6 @@ function ContractDetails({
                 </div>
                 <TaskBadge task={currentTask} />
             </div>
-
-            {invalidSignerOrder && (
-                <Alert variant="warning">
-                    This contract uses an outdated signer order. The CEO must
-                    complete the first SIGN step before the assigned second signer.
-                </Alert>
-            )}
 
             {availableActions.length > 0 && (
                 <section className="contract-workflow-actions">

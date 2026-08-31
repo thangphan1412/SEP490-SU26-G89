@@ -6,8 +6,8 @@ import com.fpt.backend.dto.response.phase.PhaseListItemResponse;
 import com.fpt.backend.service.interfaces.phase.IPhaseService;
 import com.fpt.backend.util.BaseResponse;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.CacheControl;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -22,18 +22,18 @@ import java.util.UUID;
 public class PhaseController {
     private final IPhaseService phaseService;
 
+    // Lấy danh sách phase thuộc một dự án để hiển thị theo tiến độ.
+    @PreAuthorize("hasAnyAuthority('CEO', 'Administrator', 'Accountant', 'HeadOfDepartment', 'Employee')")
     @GetMapping(ApiConstant.Phase.BY_PROJECT_ID)
     public ResponseEntity<BaseResponse<List<PhaseListItemResponse>>> getPhasesByProject(
             @PathVariable UUID projectId) {
-        return ResponseEntity.ok()
-                .cacheControl(CacheControl.noStore())
-                .body(new BaseResponse<>(phaseService.getPhasesByProjectId(projectId)));
+        return ResponseEntity.ok(new BaseResponse<>(phaseService.getPhasesByProjectId(projectId)));
     }
 
+    // Lấy chi tiết một phase cùng dữ liệu mà người dùng được phép xem.
+    @PreAuthorize("hasAnyAuthority('CEO', 'Administrator', 'Accountant', 'HeadOfDepartment', 'Employee')")
     @GetMapping(ApiConstant.Phase.BY_ID)
     public ResponseEntity<BaseResponse<PhaseDetailResponse>> getPhaseById(@PathVariable UUID phaseId) {
-        return ResponseEntity.ok()
-                .cacheControl(CacheControl.noStore())
-                .body(new BaseResponse<>(phaseService.getPhaseById(phaseId)));
+        return ResponseEntity.ok(new BaseResponse<>(phaseService.getPhaseById(phaseId)));
     }
 }

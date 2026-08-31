@@ -24,85 +24,77 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 public class ProjectApprovalService {
-    private static final String CEO_LEVEL = "CEO";
-    private static final String HEAD_OF_DEPARTMENT_LEVEL =
-            "HEAD_OF_DEPARTMENT";
+
     private static final String ON_HOLD_STATUS = "On Hold";
     private static final String PLANNING_STATUS = "Planning";
     private static final String PENDING_STATUS = "PENDING";
     private static final String APPROVED_STATUS = "APPROVED";
-    private static final ZoneId APP_TIME_ZONE =
-            ZoneId.of("Asia/Ho_Chi_Minh");
+    private static final ZoneId APP_TIME_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
 
     private final ProjectProposalRepository proposalRepository;
     private final ProjectApprovalRepository approvalRepository;
     private final ProjectRepository projectRepository;
     private final ProjectStatusService projectStatusService;
 
+    // Tạo yêu cầu phê duyệt cho dự án nếu yêu cầu chưa tồn tại.
     public void createApprovalRequest(
             Projects project,
             Users requestedBy) {
         getOrCreateProposal(project, requestedBy);
     }
 
+    // Kiểm tra người dùng có thuộc cấp CEO hoặc trưởng bộ phận hay không.
     public boolean canReviewProjects(Users user) {
         return findApprovalLevel(user) != null;
     }
 
-    public boolean canApproveProject(
-            Projects project,
-            Users user) {
+    // Kiểm tra người dùng còn có thể phê duyệt dự án ở cấp của họ hay không.
+    public boolean canApproveProject(Projects project, Users user) {
         String approvalLevel = findApprovalLevel(user);
 
-        if (approvalLevel == null
-                || !ON_HOLD_STATUS.equalsIgnoreCase(
-                        project.getProjectStatus())) {
+        // Chỉ người có cấp duyệt hợp lệ mới được duyệt dự án đang On Hold.
+        if (approvalLevel == null || !ON_HOLD_STATUS.equalsIgnoreCase(project.getProjectStatus())) {
             return false;
         }
 
-        Optional<Proposals> proposal = findProposal(project.getId());
+        Optional<Proposals> proposal = proposalRepository.findProjectApprovalProposal(
+                project.getId(),
+                createProposalCode(project));
 
+        // Cho phép duyệt lần đầu khi dự án chưa có proposal.
         if (proposal.isEmpty()) {
             return true;
         }
 
-        boolean alreadyApproved = isLevelApproved(
-                proposal.get().getId(), approvalLevel
-        );
-        // Older records may contain CEO approval but remain On Hold because
-        // the previous rule also waited for Head of Department approval.
-        return !alreadyApproved || CEO_LEVEL.equals(approvalLevel);
+        return !isLevelApproved(proposal.get().getId() , approvalLevel);
     }
 
+    // Ghi nhận lượt phê duyệt và chuyển trạng thái khi đủ các cấp bắt buộc.
     public void approveProject(
             Projects project,
             Users approvedBy) {
+        // Chỉ dự án On Hold mới được đưa qua quy trình phê duyệt.
         if (!ON_HOLD_STATUS.equalsIgnoreCase(
                 project.getProjectStatus())) {
             throw new BadHttpException(
-                    "Only On Hold projects can be approved"
-            );
+                    "Only On Hold projects can be approved");
         }
 
         String approvalLevel = findApprovalLevel(approvedBy);
 
+        // Từ chối người dùng không thuộc cấp CEO hoặc trưởng bộ phận.
         if (approvalLevel == null) {
             throw new ResponseStatusException(
                     HttpStatus.FORBIDDEN,
-                    "Only CEO or HeadOfDepartment can approve projects"
-            );
+                    "Only CEO or HeadOfDepartment can approve projects");
         }
 
         Proposals proposal = getOrCreateProposal(project, approvedBy);
 
+        // Ngăn cùng một cấp duyệt phê duyệt dự án nhiều lần.
         if (isLevelApproved(proposal.getId(), approvalLevel)) {
-            if (CEO_LEVEL.equals(approvalLevel)) {
-                finalizeApprovedProject(project, proposal);
-                return;
-            }
             throw new BadHttpException(
-                    "This approval level has already approved the project"
-            );
+                    "This approval level has already approved the project");
         }
 
         Approvals approval = new Approvals();
@@ -113,47 +105,44 @@ public class ProjectApprovalService {
         approval.setApprovalAt(LocalDate.now(APP_TIME_ZONE));
         approvalRepository.saveAndFlush(approval);
 
+        // Chuyển dự án sang Planning sau khi đủ hai cấp phê duyệt.
         if (hasRequiredApprovals(proposal.getId())) {
-            finalizeApprovedProject(project, proposal);
+            proposal.setStatus(APPROVED_STATUS);
+            project.setProjectStatus(PLANNING_STATUS);
+            projectStatusService.activateIfStarted(project);
+            projectRepository.save(project);
         }
 
         proposal.setUpdateAt(LocalDate.now(APP_TIME_ZONE).toString());
         proposalRepository.save(proposal);
     }
 
-    private void finalizeApprovedProject(
-            Projects project,
-            Proposals proposal
-    ) {
-        proposal.setStatus(APPROVED_STATUS);
-        proposal.setUpdateAt(LocalDate.now(APP_TIME_ZONE).toString());
-        project.setProjectStatus(PLANNING_STATUS);
-        projectStatusService.activateIfStarted(project);
-        projectRepository.save(project);
-        proposalRepository.save(proposal);
-    }
-
+    // Kiểm tra proposal đã được cả CEO và trưởng bộ phận phê duyệt hay chưa.
     private boolean hasRequiredApprovals(UUID proposalId) {
-        // The Head of Department may review first, but CEO approval is the
-        // final decision that releases the project from On Hold.
-        return isLevelApproved(proposalId, CEO_LEVEL);
+        return isLevelApproved(proposalId, "CEO")
+                && isLevelApproved(
+                        proposalId,
+                        "HEAD_OF_DEPARTMENT");
     }
 
+    // Kiểm tra một cấp duyệt đã phê duyệt proposal hay chưa.
     private boolean isLevelApproved(
             UUID proposalId,
             String approvalLevel) {
         return approvalRepository.countApprovedLevel(
                 proposalId,
-                approvalLevel
-        ) > 0;
+                approvalLevel) > 0;
     }
 
+    // Lấy proposal hiện có hoặc tạo proposal phê duyệt mới cho dự án.
     private Proposals getOrCreateProposal(
             Projects project,
             Users requestedBy) {
-        Optional<Proposals> existingProposal =
-                findProposal(project.getId());
+        Optional<Proposals> existingProposal = proposalRepository.findProjectApprovalProposal(
+                project.getId(),
+                createProposalCode(project));
 
+        // Tái sử dụng proposal hiện có để tránh tạo trùng yêu cầu phê duyệt.
         if (existingProposal.isPresent()) {
             return existingProposal.get();
         }
@@ -162,12 +151,10 @@ public class ProjectApprovalService {
         Proposals proposal = new Proposals();
         proposal.setProposalCode(createProposalCode(project));
         proposal.setTitle(
-                "Approve project " + project.getProjectCode()
-        );
+                "Approve project " + project.getProjectCode());
         proposal.setDescription(
                 "Approval request for project "
-                        + project.getProjectName()
-        );
+                        + project.getProjectName());
         proposal.setStatus(PENDING_STATUS);
         proposal.setCreateAt(today);
         proposal.setUpdateAt(today);
@@ -177,46 +164,34 @@ public class ProjectApprovalService {
         return proposalRepository.save(proposal);
     }
 
-    private Optional<Proposals> findProposal(UUID projectId) {
-        return proposalRepository.findProjectApprovalProposal(
-                projectId,
-                createProposalCode(projectId)
-        );
-    }
-
+    // Tạo mã proposal phê duyệt duy nhất từ dự án.
     private String createProposalCode(Projects project) {
-        return createProposalCode(project.getId());
+        return "PROJECT_APPROVAL_" + project.getId();
     }
 
-    private String createProposalCode(UUID projectId) {
-        return "PROJECT_APPROVAL_" + projectId;
-    }
-
+    // Xác định cấp phê duyệt cao nhất phù hợp với vai trò người dùng.
     private String findApprovalLevel(Users user) {
         if (hasRole(user, "CEO")) {
-            return CEO_LEVEL;
+            return "CEO";
         }
 
-        if (hasRole(
-                user,
-                "HeadOfDepartment",
-                "HEAD_OF_DEPARTMENT",
-                "HEADOFDEPARTMENT",
-                "HOD"
-        )) {
-            return HEAD_OF_DEPARTMENT_LEVEL;
+        if (hasRole(user, "HeadOfDepartment")) {
+            return "HEAD_OF_DEPARTMENT";
         }
 
         return null;
     }
 
-    private boolean hasRole(Users user, String... acceptedValues) {
+    // Kiểm tra người dùng có vai trò được yêu cầu hay không.
+    private boolean hasRole(Users user, String acceptedValue) {
+        // Người dùng null không thể có vai trò phê duyệt.
         if (user == null) {
             return false;
         }
 
         List<UserRole> userRoles = user.getUserRoles();
 
+        // Người dùng chưa có danh sách vai trò không thể phê duyệt.
         if (userRoles == null) {
             return false;
         }
@@ -228,29 +203,12 @@ public class ProjectApprovalService {
 
             Role role = userRole.getRole();
 
-            for (String acceptedValue : acceptedValues) {
-                if (matchesRoleValue(role.getRoleCode(), acceptedValue)
-                        || matchesRoleValue(role.getRoleName(), acceptedValue)) {
-                    return true;
-                }
+            if (acceptedValue.equalsIgnoreCase(role.getRoleCode())
+                    || acceptedValue.equalsIgnoreCase(role.getRoleName())) {
+                return true;
             }
         }
 
         return false;
-    }
-
-    private boolean matchesRoleValue(String actualValue, String acceptedValue) {
-        if (actualValue == null || acceptedValue == null) {
-            return false;
-        }
-        String actual = normalizeRoleValue(actualValue);
-        String accepted = normalizeRoleValue(acceptedValue);
-        return actual.equals(accepted)
-                || actual.equals("ROLE" + accepted);
-    }
-
-    private String normalizeRoleValue(String value) {
-        return value.toUpperCase(java.util.Locale.ROOT)
-                .replaceAll("[^A-Z0-9]", "");
     }
 }

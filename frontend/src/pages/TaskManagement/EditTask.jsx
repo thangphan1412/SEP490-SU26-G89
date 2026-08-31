@@ -12,6 +12,7 @@ import {
 } from "../../services/taskService/taskApi.js";
 import "../../assets/styles/css/taskStyles/EditTask.css";
 
+// Hiển thị trang tạo, chỉnh sửa và hoàn thành task của một phase.
 function EditTask() {
   const navigate = useNavigate();
   const routeParameters = useParams();
@@ -24,9 +25,11 @@ function EditTask() {
   const [showCreateRow, setShowCreateRow] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
 
+  // Tải lại dữ liệu task khi mã phase trên route thay đổi.
   useEffect(function () {
     const requestController = new AbortController();
 
+    // Gọi API và đồng bộ dữ liệu quản lý task vào state trang.
     async function loadTasks() {
       try {
         setLoading(true);
@@ -37,12 +40,14 @@ function EditTask() {
           requestController.signal
         );
 
+        // Bỏ qua response khi component đã hủy request.
         if (requestController.signal.aborted) {
           return;
         }
 
         setTaskData(response);
 
+        // Chỉ nhận danh sách task khi response có đúng cấu trúc.
         if (response && Array.isArray(response.tasks)) {
           setTasks(response.tasks);
         } else {
@@ -71,12 +76,14 @@ function EditTask() {
     };
   }, [phaseId]);
 
+  // Cập nhật task rồi thay thế bản ghi tương ứng trong state.
   async function handleSave(taskId, request) {
     const updatedTask = await updateTask(taskId, request);
     replaceTask(updatedTask);
     return updatedTask;
   }
 
+  // Tạo task mới rồi thêm task vào đầu danh sách hiện tại.
   async function handleCreate(request) {
     const createdTask = await createTask(phaseId, request);
 
@@ -88,12 +95,14 @@ function EditTask() {
     return createdTask;
   }
 
+  // Đánh dấu task hoàn thành rồi cập nhật bản ghi trong state.
   async function handleMarkDone(taskId) {
     const updatedTask = await markTaskAsDone(taskId);
     replaceTask(updatedTask);
     return updatedTask;
   }
 
+  // Thay thế task có cùng id bằng dữ liệu mới từ backend.
   function replaceTask(updatedTask) {
     setTasks(function (currentTasks) {
       const updatedTasks = [];
@@ -110,6 +119,7 @@ function EditTask() {
     });
   }
 
+  // Điều hướng trở lại trang chi tiết phase hiện tại.
   function goBackToPhase() {
     const responseProjectId = taskData ? taskData.projectId : null;
     const backProjectId = responseProjectId || projectId;
@@ -117,6 +127,7 @@ function EditTask() {
     navigate(`/phase-management/view/${backProjectId}/${phaseId}`);
   }
 
+  // Hiển thị một hàng chỉnh sửa cho task được truyền vào.
   function renderTask(task) {
     return (
       <TaskEditRow
@@ -128,6 +139,7 @@ function EditTask() {
         phaseEndDate={taskData.phaseEndDate}
         allowReassignment={taskData.fullWorkScope}
         canApproveTasks={taskData.canApproveTasks}
+        canChangeTaskStatus={taskData.canChangeTaskStatus}
         onSave={handleSave}
         onMarkDone={handleMarkDone}
         onViewContract={viewContract}
@@ -135,6 +147,7 @@ function EditTask() {
     );
   }
 
+  // Điều hướng tới danh sách hợp đồng và mở hợp đồng được chọn.
   function viewContract(contractId) {
     navigate(
       `/contract-management/list?viewContractId=${contractId}`
@@ -267,13 +280,16 @@ function EditTask() {
   );
 }
 
+// Định dạng chuỗi ngày ISO thành ngày/tháng/năm.
 function formatDate(value) {
+  // Hiển thị ký hiệu trống khi chưa có giá trị ngày.
   if (!value) {
     return "-";
   }
 
   const parts = String(value).split("-");
 
+  // Giữ nguyên giá trị khi chuỗi không đúng định dạng ISO date.
   if (parts.length !== 3) {
     return value;
   }
@@ -281,6 +297,7 @@ function formatDate(value) {
   return `${parts[2]}/${parts[1]}/${parts[0]}`;
 }
 
+// Chuyển lỗi tải trang thành thông báo phù hợp cho người dùng.
 function getPageErrorMessage(error) {
   if (error && error.response) {
     if (error.response.status === 403) {

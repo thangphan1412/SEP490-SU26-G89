@@ -24,6 +24,7 @@ public class ProjectStatusService {
 
     private final ProjectRepository projectRepository;
 
+    // Kiểm tra toàn bộ dự án Planning và kích hoạt dự án đã đến ngày bắt đầu.
     public void refreshPlanningProjects() {
         List<Projects> projects = projectRepository
                 .findAllByProjectStatusIgnoreCase(PLANNING_STATUS);
@@ -36,7 +37,9 @@ public class ProjectStatusService {
         projectRepository.flush();
     }
 
+    // Chuyển một dự án từ Planning sang Active khi đã đến ngày bắt đầu.
     public void activateIfStarted(Projects project) {
+        // Bỏ qua dự án không còn ở trạng thái Planning.
         if (!PLANNING_STATUS.equalsIgnoreCase(
                 project.getProjectStatus())) {
             return;
@@ -45,17 +48,21 @@ public class ProjectStatusService {
         LocalDate startDate = project.getProjectStartDate();
         LocalDate today = LocalDate.now(APP_TIME_ZONE);
 
+        // Chỉ kích hoạt khi dự án có ngày bắt đầu và ngày đó đã tới.
         if (startDate != null && !today.isBefore(startDate)) {
             project.setProjectStatus(ACTIVE_STATUS);
         }
     }
 
+    // Đánh dấu dự án hoàn thành khi tất cả phase của dự án đã hoàn thành.
     public void completeIfAllPhasesCompleted(List<Timeline> phases) {
+        // Không cập nhật dự án khi danh sách phase rỗng.
         if (phases.isEmpty()) {
             return;
         }
 
         for (Timeline phase : phases) {
+            // Dừng kiểm tra ngay khi còn ít nhất một phase chưa hoàn thành.
             if (phase.getStatus() != PhaseStatus.COMPLETED) {
                 return;
             }

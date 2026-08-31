@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Button, Form } from "react-bootstrap";
-import { IconPlus, IconX } from "@tabler/icons-react";
+import { IconCalendar, IconPlus, IconX } from "@tabler/icons-react";
 
 function TaskCreateRow({
   memberOptions,
@@ -85,8 +85,7 @@ function TaskCreateRow({
         </Form.Select>
       </td>
       <td>
-        <Form.Control
-          type="date"
+        <TaskDateInput
           name="startDate"
           value={form.startDate}
           min={phaseStartDate}
@@ -97,8 +96,7 @@ function TaskCreateRow({
         />
       </td>
       <td>
-        <Form.Control
-          type="date"
+        <TaskDateInput
           name="endDate"
           value={form.endDate}
           min={form.startDate || phaseStartDate}
@@ -206,6 +204,59 @@ function getErrorMessage(error) {
   }
 
   return "Unable to create this task. Please try again.";
+}
+
+// Hiển thị ngày theo dd/mm/yyyy nhưng vẫn dùng input date để mở lịch và lưu YYYY-MM-DD.
+function TaskDateInput({
+  value = "",
+  disabled = false,
+  readOnly = false,
+  ...inputProperties
+}) {
+  function openDatePicker(event) {
+    if (!readOnly && typeof event.currentTarget.showPicker === "function") {
+      event.currentTarget.showPicker();
+    }
+  }
+
+  return (
+    <div className="task-date-input">
+      <input
+        type="text"
+        value={formatDateForInput(value)}
+        placeholder="dd/mm/yyyy"
+        className="form-control task-date-input__display"
+        readOnly
+        disabled={disabled}
+        tabIndex={-1}
+        aria-hidden="true"
+      />
+      <input
+        {...inputProperties}
+        type="date"
+        value={value}
+        disabled={disabled}
+        readOnly={readOnly}
+        className="task-date-input__native"
+        onClick={openDatePicker}
+      />
+      <IconCalendar
+        size={18}
+        className="task-date-input__icon"
+        aria-hidden="true"
+      />
+    </div>
+  );
+}
+
+function formatDateForInput(value) {
+  const matchedDate = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+
+  if (!matchedDate) {
+    return "";
+  }
+
+  return matchedDate[3] + "/" + matchedDate[2] + "/" + matchedDate[1];
 }
 
 export default TaskCreateRow;
