@@ -14,6 +14,7 @@ import com.fpt.backend.dto.response.contract.ContractProjectMemberOptionResponse
 import com.fpt.backend.dto.response.contract.ContractProjectOptionResponse;
 import com.fpt.backend.dto.response.contract.ContractResponse;
 import com.fpt.backend.dto.response.contract.ContractStatusHistoryResponse;
+import com.fpt.backend.dto.response.contract.ContractStandaloneContextResponse;
 import com.fpt.backend.dto.response.contract.ContractTaskOptionResponse;
 import com.fpt.backend.dto.response.contract.ContractWorkflowRuntimeResponse;
 import com.fpt.backend.dto.response.contract.ContractWorkflowStepRuntimeResponse;
@@ -24,6 +25,7 @@ import com.fpt.backend.enums.ContractStatus;
 import com.fpt.backend.enums.ContractWorkflowActionType;
 import com.fpt.backend.enums.ContractWorkflowStepState;
 import com.fpt.backend.enums.ElectronicStatus;
+import com.fpt.backend.enums.UserStatus;
 import com.fpt.backend.exception.BadHttpException;
 import com.fpt.backend.exception.NotFoundException;
 import com.fpt.backend.repository.contract.ContractAttributeValueRepository;
@@ -43,6 +45,7 @@ import com.fpt.backend.repository.phase.PhaseRepository;
 import com.fpt.backend.repository.phase.PhaseTaskRepository;
 import com.fpt.backend.repository.project.ProjectMemberRepository;
 import com.fpt.backend.repository.project.ProjectRepository;
+import com.fpt.backend.repository.user.UserRepository;
 import com.fpt.backend.service.interfaces.contract.ContractService;
 import com.fpt.backend.service.interfaces.permission.IPermissionAccessService;
 import com.fpt.backend.util.CurrentUser;
@@ -99,6 +102,7 @@ public class ContractServiceImpl implements ContractService {
     private final PhaseRepository phaseRepository;
     private final PhaseTaskRepository phaseTaskRepository;
     private final UserPermissionRepository userPermissionRepository;
+    private final UserRepository userRepository;
     private final ContractTemplateLayoutMapper layoutMapper;
     private final ContractDocumentRenderer documentRenderer;
     private final ContractPdfGenerator pdfGenerator;
@@ -129,6 +133,7 @@ public class ContractServiceImpl implements ContractService {
         List<UUID> viewableProjectIds = new ArrayList<>(permissionProjectIds);
         workflowStepRepository.findDistinctProjectIdsByAssignedUserId(user.getId())
                 .stream()
+                .filter(Objects::nonNull)
                 .filter(projectId -> !viewableProjectIds.contains(projectId))
                 .forEach(viewableProjectIds::add);
         Page<Contracts> contracts = findContracts(
@@ -234,14 +239,12 @@ public class ContractServiceImpl implements ContractService {
 
         List<ContractProjectMemberOptionResponse> members = eligibleUsers.values()
                 .stream()
-                .map(user -> new ContractProjectMemberOptionResponse(
-                        user.getId(),
-                        getUserDisplayName(user),
-                        user.getEmail(),
-                        primaryRoleCode(user),
-                        roleCodes(user),
-                        List.copyOf(contractActionsForCandidate(user, project.getId()))
+                .filter(this::isActiveUser)
+                .sorted(Comparator.comparing(
+                        this::getUserDisplayName,
+                        String.CASE_INSENSITIVE_ORDER
                 ))
+                .map(user -> toAssigneeOption(user, project.getId()))
                 .toList();
 
         return new ContractProjectContextResponse(
@@ -249,6 +252,23 @@ public class ContractServiceImpl implements ContractService {
                 phases,
                 members
         );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ContractStandaloneContextResponse getStandaloneContext() {
+        List<ContractProjectMemberOptionResponse> members = userRepository
+                .findAll()
+                .stream()
+                .filter(this::isActiveUser)
+                .sorted(Comparator.comparing(
+                        this::getUserDisplayName,
+                        String.CASE_INSENSITIVE_ORDER
+                ))
+                .map(user -> toAssigneeOption(user, null))
+                .toList();
+
+        return new ContractStandaloneContextResponse(members);
     }
 
     @Override
@@ -271,10 +291,12 @@ public class ContractServiceImpl implements ContractService {
         }
 
         Users actor = currentUser.getCurrentUser();
-        permissionAccessService.requireAction(
-                request.projectId(),
-                ContractProjectActions.CREATE
-        );
+        if (request.projectId() != null) {
+            permissionAccessService.requireAction(
+                    request.projectId(),
+                    ContractProjectActions.CREATE
+            );
+        }
         Contracts contract = new Contracts();
         applyEditableFields(contract, request, true);
         contract.setContractCreatedByUser(actor);
@@ -592,10 +614,6 @@ public class ContractServiceImpl implements ContractService {
             Users user,
             List<UUID> projectIds
     ) {
-        if (projectIds.isEmpty()) {
-            return Page.empty(pageable);
-        }
-
         List<UUID> fullScopeProjectIds = new ArrayList<>();
         for (UUID projectId : projectIds) {
             ProjectAccessResponse access = permissionAccessService
@@ -611,9 +629,12 @@ public class ContractServiceImpl implements ContractService {
         if (fullScopeProjectIds.isEmpty()) {
             fullScopeProjectIds = List.of(NO_MATCH_PROJECT_ID);
         }
+        List<UUID> searchableProjectIds = projectIds.isEmpty()
+                ? List.of(NO_MATCH_PROJECT_ID)
+                : projectIds;
 
         return contractRepository.searchAccessibleContracts(
-                projectIds,
+                searchableProjectIds,
                 fullScopeProjectIds,
                 user.getId(),
                 getUserDisplayName(user).toLowerCase(Locale.ROOT),
@@ -630,8 +651,22 @@ public class ContractServiceImpl implements ContractService {
     ) {
         if (contract.getProject() == null
                 || contract.getProject().getId() == null) {
-            throw new BadHttpException(
-                    "The contract must belong to a project"
+            boolean owner = isContractOwner(contract, user);
+            boolean participant = isWorkflowParticipant(contract, user);
+            boolean allowed = switch (actionCode) {
+                case ContractProjectActions.VIEW,
+                     ContractProjectActions.EXPORT -> owner || participant;
+                case ContractProjectActions.EDIT,
+                     ContractProjectActions.DELETE,
+                     ContractProjectActions.CANCEL -> owner;
+                default -> false;
+            };
+            if (allowed) {
+                return;
+            }
+            throw forbidden(
+                    "You do not have permission to perform " + actionCode
+                            + " on this standalone contract"
             );
         }
 
@@ -690,8 +725,7 @@ public class ContractServiceImpl implements ContractService {
                 ? null
                 : contract.getProject().getId();
 
-        if (currentProjectId == null
-                || !currentProjectId.equals(request.projectId())) {
+        if (!Objects.equals(currentProjectId, request.projectId())) {
             throw new BadHttpException(
                     "A contract cannot be moved to another project"
             );
@@ -715,7 +749,7 @@ public class ContractServiceImpl implements ContractService {
                     "Contract type cannot be changed after the contract is created"
             );
         }
-        if (currentTaskId == null || !currentTaskId.equals(request.taskId())) {
+        if (!Objects.equals(currentTaskId, request.taskId())) {
             throw new BadHttpException(
                     "Contract task cannot be changed after the contract is created"
             );
@@ -764,16 +798,28 @@ public class ContractServiceImpl implements ContractService {
             }
         }
 
-        Map<UUID, Users> projectMembers = new LinkedHashMap<>();
-        projectMemberRepository.findByProjectId(contract.getProject().getId())
-                .stream()
-                .map(ProjectMember::getUser)
-                .filter(Objects::nonNull)
-                .forEach(user -> projectMembers.put(user.getId(), user));
+        UUID projectId = contract.getProject() == null
+                ? null
+                : contract.getProject().getId();
+        Map<UUID, Users> eligibleUsers = new LinkedHashMap<>();
+        if (projectId == null) {
+            userRepository.findAll().stream()
+                    .filter(this::isActiveUser)
+                    .forEach(user -> eligibleUsers.put(user.getId(), user));
+        } else {
+            projectMemberRepository.findByProjectId(projectId)
+                    .stream()
+                    .map(ProjectMember::getUser)
+                    .filter(Objects::nonNull)
+                    .filter(this::isActiveUser)
+                    .forEach(user -> eligibleUsers.put(user.getId(), user));
+        }
 
-        if (!projectMembers.containsKey(creator.getId())) {
+        if (!eligibleUsers.containsKey(creator.getId())) {
             throw new BadHttpException(
-                    "The contract creator must be a member of the selected project"
+                    projectId == null
+                            ? "The contract creator must be an active user"
+                            : "The contract creator must be a member of the selected project"
             );
         }
 
@@ -795,14 +841,16 @@ public class ContractServiceImpl implements ContractService {
                 UUID userId = assigneeByStep.remove(definition.getStepOrder());
                 if (userId == null) {
                     throw new BadHttpException(
-                            "Select a project member for workflow step: "
+                            "Select a user for workflow step: "
                                     + definition.getStepName()
                     );
                 }
-                assignedUser = projectMembers.get(userId);
+                assignedUser = eligibleUsers.get(userId);
                 if (assignedUser == null) {
                     throw new BadHttpException(
-                            "Every workflow assignee must be a member of the selected project"
+                            projectId == null
+                                    ? "Every workflow assignee must be an active system user"
+                                    : "Every workflow assignee must be a member of the selected project"
                     );
                 }
             }
@@ -810,7 +858,7 @@ public class ContractServiceImpl implements ContractService {
             validateWorkflowAssignee(
                     assignedUser,
                     definition,
-                    contract.getProject().getId()
+                    projectId
             );
             instances.add(ContractWorkflowStepInstance.builder()
                     .contract(contract)
@@ -850,6 +898,22 @@ public class ContractServiceImpl implements ContractService {
                             + definition.getRequiredRoleCode() + " for step "
                             + definition.getStepName()
             );
+        }
+
+        if (!userMatchesDepartment(
+                user,
+                definition.getRequiredDepartment()
+        )) {
+            throw new BadHttpException(
+                    getUserDisplayName(user)
+                            + " does not belong to required department "
+                            + definition.getRequiredDepartment().getDepartmentName()
+                            + " for step " + definition.getStepName()
+            );
+        }
+
+        if (projectId == null) {
+            return;
         }
 
         Set<String> allowedActions = activeActionsForUser(user.getId(), projectId);
@@ -1074,6 +1138,15 @@ public class ContractServiceImpl implements ContractService {
                     "Your current role no longer matches the workflow step"
             );
         }
+        ContractTypeWorkflowStep definition = currentStep.getStepDefinition();
+        if (definition != null && !userMatchesDepartment(
+                actor,
+                definition.getRequiredDepartment()
+        )) {
+            throw forbidden(
+                    "Your current department no longer matches the workflow step"
+            );
+        }
     }
 
     private void requireCurrentWorkflowPermissions(
@@ -1081,6 +1154,9 @@ public class ContractServiceImpl implements ContractService {
             ContractWorkflowStepInstance currentStep,
             Users actor
     ) {
+        if (contract.getProject() == null) {
+            return;
+        }
         Set<String> allowedActions = contractActionsForCandidate(
                 actor, contract.getProject().getId()
         );
@@ -1369,7 +1445,7 @@ public class ContractServiceImpl implements ContractService {
 
     private Projects resolveProject(UUID projectId) {
         if (projectId == null) {
-            throw new BadHttpException("Project is required");
+            return null;
         }
 
         return projectRepository.findById(projectId)
@@ -1379,9 +1455,14 @@ public class ContractServiceImpl implements ContractService {
     }
 
     private TimelineTask resolveTask(UUID taskId, Projects project) {
-//        if (taskId == null) {
-//            throw new BadHttpException("A project task is required");
-//        }
+        if (taskId == null) {
+            return null;
+        }
+        if (project == null) {
+            throw new BadHttpException(
+                    "A task can only be selected when the contract has a project"
+            );
+        }
 
         TimelineTask task = phaseTaskRepository.findById(taskId)
                 .orElseThrow(() -> new NotFoundException(
@@ -1446,17 +1527,7 @@ public class ContractServiceImpl implements ContractService {
 
     private String primaryRoleCode(Users user) {
         String assignedRole = roleCodes(user).stream().findFirst().orElse("");
-        if (!assignedRole.isEmpty()) {
-            return assignedRole;
-        }
-        String legacyRole = normalizeRoleOrEmpty(user.getUserRoles().stream()
-                .map(UserRole::getRole)
-                .filter(Objects::nonNull)
-                .map(Role::getRoleCode)
-                .filter(Objects::nonNull)
-                .findFirst()
-                .orElse(null));
-        return legacyRole.isEmpty() ? "UNKNOWN" : legacyRole;
+        return assignedRole.isEmpty() ? "UNKNOWN" : assignedRole;
     }
 
     private List<String> roleCodes(Users user) {
@@ -1465,21 +1536,10 @@ public class ContractServiceImpl implements ContractService {
             user.getUserRoles().stream()
                     .map(UserRole::getRole)
                     .filter(Objects::nonNull)
-                    .map(role -> normalizeRoleOrEmpty(role.getRoleCode()))
-                    .filter(value -> !value.isEmpty())
-                    .forEach(codes::add);
-        }
-        if (user != null) {
-            String legacyRole = normalizeRoleOrEmpty(user.getUserRoles().stream()
-                    .map(UserRole::getRole)
-                    .filter(Objects::nonNull)
                     .map(Role::getRoleCode)
-                    .filter(Objects::nonNull)
-                    .findFirst()
-                    .orElse(null));
-            if (!legacyRole.isEmpty()) {
-                codes.add(legacyRole);
-            }
+                    .filter(value -> !isBlank(value))
+                    .map(String::trim)
+                    .forEach(codes::add);
         }
         return List.copyOf(codes);
     }
@@ -1532,10 +1592,13 @@ public class ContractServiceImpl implements ContractService {
                 "Only a CANCELLED contract can be replaced"
         );
 
-        if (previousContract.getProject() == null
-                || !previousContract.getProject().getId().equals(project.getId())) {
+        UUID previousProjectId = previousContract.getProject() == null
+                ? null
+                : previousContract.getProject().getId();
+        UUID projectId = project == null ? null : project.getId();
+        if (!Objects.equals(previousProjectId, projectId)) {
             throw new BadHttpException(
-                    "A replacement contract must belong to the same project"
+                    "A replacement contract must use the same project context"
             );
         }
 
@@ -1838,19 +1901,22 @@ public class ContractServiceImpl implements ContractService {
                 documentRenderer.render(contract, historyEntities, attributeValues);
         boolean pdfAvailable = contract.getDocumentFile() != null;
         Users user = currentUser.getCurrentUser();
-        ProjectAccessResponse projectAccess = permissionAccessService
-                .getCurrentUserAccess(project.getId());
-        ContractAccessResponse contractAccess = new ContractAccessResponse(
-                projectAccess.getProjectId(),
-                projectAccess.getCurrentUserId(),
-                projectAccess.isProjectCreator(),
-                projectAccess.isProjectMember(),
-                projectAccess.getAllowedActions(),
-                projectAccess.getFullScopeActions(),
-                projectAccess.getWorkScope(),
-                isContractOwner(contract, user),
-                isWorkflowParticipant(contract, user)
-        );
+        ProjectAccessResponse projectAccess = project == null
+                ? null
+                : permissionAccessService.getCurrentUserAccess(project.getId());
+        ContractAccessResponse contractAccess = projectAccess == null
+                ? standaloneContractAccess(contract, user)
+                : new ContractAccessResponse(
+                        projectAccess.getProjectId(),
+                        projectAccess.getCurrentUserId(),
+                        projectAccess.isProjectCreator(),
+                        projectAccess.isProjectMember(),
+                        projectAccess.getAllowedActions(),
+                        projectAccess.getFullScopeActions(),
+                        projectAccess.getWorkScope(),
+                        isContractOwner(contract, user),
+                        isWorkflowParticipant(contract, user)
+                );
         ContractWorkflowRuntimeResponse workflowRuntime =
                 toWorkflowRuntimeResponse(
                         contract,
@@ -1860,8 +1926,8 @@ public class ContractServiceImpl implements ContractService {
 
         return new ContractResponse(
                 contract.getId(),
-                project.getId(),
-                project.getProjectName(),
+                project == null ? null : project.getId(),
+                project == null ? null : project.getProjectName(),
                 phase != null ? phase.getId() : null,
                 phase != null ? phase.getTitle() : null,
                 task != null ? task.getId() : null,
@@ -1919,28 +1985,42 @@ public class ContractServiceImpl implements ContractService {
                 .findFirst()
                 .orElse(null);
         List<String> allowedActions = new ArrayList<>();
+        boolean standalone = contract.getProject() == null;
+        boolean currentStepPermissionSatisfied = currentStep == null
+                || standalone
+                || contractActionsForCandidate(
+                currentUser,
+                contract.getProject().getId()
+        ).containsAll(ContractWorkflowRules.requiredPermissions(
+                currentStep.getActionType()
+        ));
         if (currentStep != null
                 && currentStep.getAssignedUser() != null
                 && currentStep.getAssignedUser().getId().equals(currentUser.getId())
                 && userHasRole(currentUser, currentStep.getRequiredRoleCode())
-                && contractActionsForCandidate(currentUser, contract.getProject().getId())
-                    .containsAll(ContractWorkflowRules.requiredPermissions(
-                            currentStep.getActionType()
-                    ))) {
+                && userMatchesDepartment(
+                        currentUser,
+                        currentStep.getStepDefinition() == null
+                                ? null
+                                : currentStep.getStepDefinition()
+                                .getRequiredDepartment()
+                )
+                && currentStepPermissionSatisfied) {
             allowedActions.add(ContractAction.COMPLETE_STEP.name());
             if (Boolean.TRUE.equals(currentStep.getCanReject())) {
                 allowedActions.add(ContractAction.REJECT.name());
             }
         }
-        if (!readStatus(contract).isTerminal()
-                && permissionAccessService.hasAction(
-                projectAccess,
-                ContractProjectActions.CANCEL
-        )
-                && (permissionAccessService.hasFullWorkScope(
-                projectAccess,
-                ContractProjectActions.CANCEL
-        ) || isContractOwner(contract, currentUser))) {
+        boolean canCancel = standalone
+                ? isContractOwner(contract, currentUser)
+                : permissionAccessService.hasAction(
+                        projectAccess,
+                        ContractProjectActions.CANCEL
+                ) && (permissionAccessService.hasFullWorkScope(
+                        projectAccess,
+                        ContractProjectActions.CANCEL
+                ) || isContractOwner(contract, currentUser));
+        if (!readStatus(contract).isTerminal() && canCancel) {
             allowedActions.add(ContractAction.CANCEL.name());
         }
 
@@ -1954,6 +2034,20 @@ public class ContractServiceImpl implements ContractService {
                         step.getStepName(),
                         step.getActionType().name(),
                         step.getRequiredRoleCode(),
+                        step.getStepDefinition() == null
+                                || step.getStepDefinition().getRequiredDepartment() == null
+                                ? null
+                                : step.getStepDefinition().getRequiredDepartment().getId(),
+                        step.getStepDefinition() == null
+                                || step.getStepDefinition().getRequiredDepartment() == null
+                                ? null
+                                : step.getStepDefinition().getRequiredDepartment()
+                                .getDepartmentCode(),
+                        step.getStepDefinition() == null
+                                || step.getStepDefinition().getRequiredDepartment() == null
+                                ? null
+                                : step.getStepDefinition().getRequiredDepartment()
+                                .getDepartmentName(),
                         ContractWorkflowRules.requiredPermissions(
                                 step.getActionType()
                         ),
@@ -1996,7 +2090,81 @@ public class ContractServiceImpl implements ContractService {
     }
 
     private Set<String> contractActionsForCandidate(Users user, UUID projectId) {
+        if (projectId == null) {
+            return Set.of();
+        }
         return activeActionsForUser(user.getId(), projectId);
+    }
+
+    private ContractProjectMemberOptionResponse toAssigneeOption(
+            Users user,
+            UUID projectId
+    ) {
+        Departments department = user.getDepartment();
+        return new ContractProjectMemberOptionResponse(
+                user.getId(),
+                getUserDisplayName(user),
+                user.getEmail(),
+                primaryRoleCode(user),
+                roleCodes(user),
+                department == null ? null : department.getId(),
+                department == null ? null : department.getDepartmentCode(),
+                department == null ? null : department.getDepartmentName(),
+                projectId == null
+                        ? List.of()
+                        : List.copyOf(contractActionsForCandidate(user, projectId))
+        );
+    }
+
+    private boolean isActiveUser(Users user) {
+        return user != null
+                && user.getId() != null
+                && user.getStatus() == UserStatus.ACTIVE;
+    }
+
+    private boolean userMatchesDepartment(
+            Users user,
+            Departments requiredDepartment
+    ) {
+        if (requiredDepartment == null) {
+            return true;
+        }
+        return user != null
+                && user.getDepartment() != null
+                && Objects.equals(
+                        requiredDepartment.getId(),
+                        user.getDepartment().getId()
+                );
+    }
+
+    private ContractAccessResponse standaloneContractAccess(
+            Contracts contract,
+            Users user
+    ) {
+        boolean owner = isContractOwner(contract, user);
+        boolean participant = isWorkflowParticipant(contract, user);
+        Set<String> allowedActions = new LinkedHashSet<>();
+        if (owner || participant) {
+            allowedActions.add(ContractProjectActions.VIEW);
+            allowedActions.add(ContractProjectActions.EXPORT);
+        }
+        if (owner) {
+            allowedActions.add(ContractProjectActions.CREATE);
+            allowedActions.add(ContractProjectActions.EDIT);
+            allowedActions.add(ContractProjectActions.DELETE);
+            allowedActions.add(ContractProjectActions.CANCEL);
+        }
+        return new ContractAccessResponse(
+                null,
+                user.getId(),
+                false,
+                false,
+                List.copyOf(allowedActions),
+                owner ? List.copyOf(allowedActions) : List.of(),
+                "CONTRACT",
+                owner,
+                participant
+        );
     }
 
     private boolean hasAllActions(

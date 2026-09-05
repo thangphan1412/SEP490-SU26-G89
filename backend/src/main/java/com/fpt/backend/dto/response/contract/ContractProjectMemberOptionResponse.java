@@ -9,6 +9,9 @@ public record ContractProjectMemberOptionResponse(
         String email,
         String roleCode,
         List<String> roleCodes,
+        UUID departmentId,
+        String departmentCode,
+        String departmentName,
         List<String> allowedActions
 ) {
 }

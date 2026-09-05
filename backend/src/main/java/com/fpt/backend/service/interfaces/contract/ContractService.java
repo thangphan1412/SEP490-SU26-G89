@@ -8,6 +8,7 @@ import com.fpt.backend.dto.response.contract.ContractPdfResponse;
 import com.fpt.backend.dto.response.contract.ContractProjectContextResponse;
 import com.fpt.backend.dto.response.contract.ContractProjectOptionResponse;
 import com.fpt.backend.dto.response.contract.ContractResponse;
+import com.fpt.backend.dto.response.contract.ContractStandaloneContextResponse;
 
 import java.util.List;
 import java.util.UUID;
@@ -18,6 +19,8 @@ public interface ContractService {
     List<ContractProjectOptionResponse> getProjectOptions();
 
     ContractProjectContextResponse getProjectContext(UUID projectId);
+
+    ContractStandaloneContextResponse getStandaloneContext();
 
     ContractResponse getContractById(UUID id);
 

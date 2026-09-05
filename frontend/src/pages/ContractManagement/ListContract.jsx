@@ -187,7 +187,7 @@ function ListContract() {
     useEffect(() => {
         let active = true;
         const projectId = contractForm.projectId;
-        if (!modalMode || modalMode === "view" || !projectId) {
+        if (!modalMode || modalMode === "view") {
             return () => {
                 active = false;
             };
@@ -196,7 +196,9 @@ function ListContract() {
         const loadContext = async () => {
             setLoadingProjectContext(true);
             try {
-                const response = await contractApi.getProjectContext(projectId);
+                const response = projectId
+                    ? await contractApi.getProjectContext(projectId)
+                    : await contractApi.getStandaloneContext();
                 const payload = unwrapApiResponse(response);
                 if (active) {
                     setProjectContext(payload || null);
@@ -206,7 +208,9 @@ function ListContract() {
                     setProjectContext(null);
                     setModalError(getApiErrorMessage(
                         error,
-                        "Unable to load project phases, tasks and members."
+                        projectId
+                            ? "Unable to load project phases, tasks and members."
+                            : "Unable to load standalone contract users."
                     ));
                 }
             } finally {
@@ -742,18 +746,14 @@ function ListContract() {
                     <h1>Contracts</h1>
                     <p>
                         Manage contracts from NEW through approval, signing and
-                        the active lifecycle with project-based permissions.
+                        the active lifecycle, with or without a project.
                     </p>
                 </div>
                 <Button
                     className="contract-primary-button"
                     onClick={openCreateModal}
-                    disabled={loadingOptions || projects.length === 0}
-                    title={
-                        !loadingOptions && projects.length === 0
-                            ? "You need CREATE_CONTRACTS permission in a project."
-                            : "Create a contract"
-                    }
+                    disabled={loadingOptions}
+                    title="Create a project or standalone contract"
                 >
                     <IconPlus size={20} />
                     New Contract
@@ -839,7 +839,7 @@ function ListContract() {
                                             {contract.contractNumber || "-"}
                                         </td>
                                         <td>{contract.contractTitle || "-"}</td>
-                                        <td>{contract.projectName || "-"}</td>
+                                        <td>{contract.projectName || "Standalone"}</td>
                                         <td>
                                             {contract.contractTypeCode
                                                 ? `${contract.contractTypeCode} - `
@@ -1261,7 +1261,10 @@ function ContractDetails({
                         contract.attributeValues?.contract_value
                     )}
                 />
-                <DetailItem label="Project" value={contract.projectName} />
+                <DetailItem
+                    label="Project"
+                    value={contract.projectName || "Standalone contract"}
+                />
                 <DetailItem label="Phase" value={contract.phaseName || "-"} />
                 <DetailItem label="Task" value={contract.taskTitle || "-"} />
                 <DetailItem
@@ -1410,7 +1413,7 @@ function ContractWorkflow({ status, history = [], workflowRuntime = null }) {
                         <h3>{workflowRuntime.workflowName}</h3>
                         <p>
                             Contract Type workflow version {workflowRuntime.workflowVersionNumber}.
-                            Each step is assigned to one project member.
+                            Each step is assigned to one eligible user.
                         </p>
                     </div>
                     {normalizedStatus === CONTRACT_STATUS.CANCELLED && (

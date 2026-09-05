@@ -4,6 +4,7 @@ import java.util.List;
 
 public record ContractWorkflowOptionsResponse(
         List<String> actionTypes,
-        List<ContractRoleOptionResponse> roles
+        List<ContractRoleOptionResponse> roles,
+        List<ContractDepartmentOptionResponse> departments
 ) {
 }

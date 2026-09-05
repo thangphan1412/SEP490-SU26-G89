@@ -53,6 +53,13 @@ public class ContractTypeWorkflowStep extends BaseEntity {
     @Column(name = "required_role_code", nullable = false, length = 60)
     private String requiredRoleCode;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(
+            name = "required_department_id",
+            foreignKey = @ForeignKey(name = "FK_contract_workflow_step_department")
+    )
+    private Departments requiredDepartment;
+
     @Column(name = "is_required", nullable = false)
     private Boolean required;
 

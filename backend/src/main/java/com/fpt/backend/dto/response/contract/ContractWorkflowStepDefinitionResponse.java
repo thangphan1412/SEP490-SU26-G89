@@ -9,6 +9,9 @@ public record ContractWorkflowStepDefinitionResponse(
         String stepName,
         String actionType,
         String requiredRoleCode,
+        UUID requiredDepartmentId,
+        String requiredDepartmentCode,
+        String requiredDepartmentName,
         List<String> requiredPermissionCodes,
         boolean required,
         boolean canReject

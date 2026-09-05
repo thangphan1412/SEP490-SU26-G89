@@ -30,6 +30,13 @@ const contractApi = {
         );
     },
 
+    getStandaloneContext() {
+        return axiosClient.get(
+            CONTRACT_ENDPOINT + "/standalone-context",
+            noCacheConfig
+        );
+    },
+
     getContractById(id) {
         return axiosClient.get(CONTRACT_ENDPOINT + "/" + id, noCacheConfig);
     },
