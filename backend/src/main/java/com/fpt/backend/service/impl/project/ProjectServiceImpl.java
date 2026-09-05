@@ -67,6 +67,7 @@ public class ProjectServiceImpl implements IProjectService {
     private final ProjectMemberService projectMemberService;
     private final ProjectPermissionService projectPermissionService;
     private final ProjectApprovalService projectApprovalService;
+    private final ProjectStatusService projectStatusService;
     private final IPermissionAccessService permissionAccessService;
     private final CurrentUser currentUserUtil;
 
@@ -229,6 +230,8 @@ public class ProjectServiceImpl implements IProjectService {
                     request.projectDescription(),
                     id
             );
+            // Đồng bộ trạng thái ngay khi ngày bắt đầu mới đã tới hoặc đã qua.
+            projectStatusService.activateIfStarted(project);
             projectRepository.save(project);
         }
 
