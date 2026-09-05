@@ -1,6 +1,7 @@
 package com.fpt.backend.dto.response.user;
 
 import com.fpt.backend.entity.Company;
+import com.fpt.backend.entity.UserKeys;
 import com.fpt.backend.entity.Users;
 import com.fpt.backend.enums.UserStatus;
 import lombok.AllArgsConstructor;
@@ -35,6 +36,7 @@ public class UserResponseDTO {
     private String companyName;
     private String companyEmail;
     private String registeredAddress;
+//    private UserKeys userKeys;
 
     public static UserResponseDTO fromEntity(Users user) {
         String generateEmpId = "N/A";
