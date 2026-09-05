@@ -17,10 +17,6 @@ export const defaultContractStatuses = Object.values(CONTRACT_STATUS);
 
 export const CONTRACT_ACTION = Object.freeze({
     COMPLETE_STEP: "COMPLETE_STEP",
-    SUBMIT: "SUBMIT",
-    APPROVE_INTERNAL: "APPROVE_INTERNAL",
-    SIGN_DIRECTOR: "SIGN_DIRECTOR",
-    SIGN_PARTNER: "SIGN_PARTNER",
     CANCEL: "CANCEL",
     REJECT: "REJECT",
 });
@@ -42,28 +38,6 @@ const ACTION_DETAILS = Object.freeze({
         label: "Complete current step",
         description: "Complete the workflow step assigned to you.",
         tone: "primary",
-    },
-    [CONTRACT_ACTION.SUBMIT]: {
-        label: "Submit for approval",
-        description: "Send this contract to the internal approval stage.",
-        tone: "primary",
-    },
-    [CONTRACT_ACTION.APPROVE_INTERNAL]: {
-        label: "Approve internal review",
-        description: "Complete internal approval and send the contract to the director.",
-        tone: "primary",
-    },
-    [CONTRACT_ACTION.SIGN_DIRECTOR]: {
-        label: "Director sign",
-        description: "Verify the director's account age and confirm the director signature.",
-        tone: "primary",
-        verifiesAccountDateOfBirth: true,
-    },
-    [CONTRACT_ACTION.SIGN_PARTNER]: {
-        label: "Partner sign",
-        description: "Verify the partner's account age and activate the signed contract.",
-        tone: "primary",
-        verifiesAccountDateOfBirth: true,
     },
     [CONTRACT_ACTION.CANCEL]: {
         label: "Cancel contract",
@@ -459,6 +433,11 @@ export function getContractActionDetails(action, contract = null) {
                 description: `Sign at “${stepName}” and continue the workflow.`,
                 verifiesAccountDateOfBirth: true,
             },
+            APPROVE_AND_SIGN: {
+                label: "Approve and sign contract",
+                description: `Approve and sign at “${stepName}” and continue the workflow.`,
+                verifiesAccountDateOfBirth: true,
+            },
         }[actionType] || {};
         return {
             ...ACTION_DETAILS[action],
@@ -472,137 +451,15 @@ export function getContractActionDetails(action, contract = null) {
     };
 }
 
-export function getAvailableContractActions(contract, role) {
-    if (contract?.workflowRuntime) {
-        return Array.isArray(contract.workflowRuntime.availableActions)
-            ? contract.workflowRuntime.availableActions
-            : [];
-    }
-    const status = normalizeContractStatus(contract?.contractStatus);
-    const normalizedRole = normalizeContractRole(role);
-    const isAdmin = normalizedRole === "ADMIN";
-
-    if (status === CONTRACT_STATUS.SIGNED
-        || status === CONTRACT_STATUS.ENDED
-        || status === CONTRACT_STATUS.CANCELLED) {
-        return [];
-    }
-
-    if (status === CONTRACT_STATUS.NEW) {
-        if (
-            isAdmin
-            || ["EMPLOYEE", "MANAGER", "CEO", "DIRECTOR"].includes(normalizedRole)
-        ) {
-            return [
-                canUseContractProjectAction(
-                    contract,
-                    CONTRACT_PROJECT_ACTION.SUBMIT
-                ) && CONTRACT_ACTION.SUBMIT,
-                canUseContractProjectAction(
-                    contract,
-                    CONTRACT_PROJECT_ACTION.CANCEL
-                ) && CONTRACT_ACTION.CANCEL,
-            ].filter(Boolean);
-        }
-    }
-
-    if (
-        status === CONTRACT_STATUS.PENDING_INTERNAL_APPROVAL
-        && (isAdmin || normalizedRole === "MANAGER")
-    ) {
-        return canUseContractProjectAction(
-            contract,
-            CONTRACT_PROJECT_ACTION.APPROVE
-        )
-            ? [CONTRACT_ACTION.APPROVE_INTERNAL, CONTRACT_ACTION.REJECT]
-            : [];
-    }
-
-    if (
-        status === CONTRACT_STATUS.PENDING_DIRECTOR_SIGNATURE
-        && (isAdmin || ["CEO", "DIRECTOR"].includes(normalizedRole))
-    ) {
-        return canUseContractProjectAction(
-            contract,
-            CONTRACT_PROJECT_ACTION.SIGN
-        )
-            ? [CONTRACT_ACTION.SIGN_DIRECTOR, CONTRACT_ACTION.REJECT]
-            : [];
-    }
-
-    if (
-        status === CONTRACT_STATUS.PENDING_PARTNER_SIGNATURE
-        && (
-            isAdmin
-            || ["PARTNER", "EXTERNAL", "EXTERNAL_PARTNER"].includes(normalizedRole)
-        )
-    ) {
-        return canUseContractProjectAction(
-            contract,
-            CONTRACT_PROJECT_ACTION.SIGN
-        )
-            ? [CONTRACT_ACTION.SIGN_PARTNER, CONTRACT_ACTION.REJECT]
-            : [];
-    }
-
-    if (
-        status === CONTRACT_STATUS.ACTIVE
-        && (
-            isAdmin
-            || ["CEO", "DIRECTOR", "PARTNER", "EXTERNAL_PARTNER"].includes(
-                normalizedRole
-            )
-        )
-    ) {
-        return canUseContractProjectAction(
-            contract,
-            CONTRACT_PROJECT_ACTION.CANCEL
-        )
-            ? [CONTRACT_ACTION.CANCEL]
-            : [];
-    }
-
-    return [];
+export function getAvailableContractActions(contract) {
+    return Array.isArray(contract?.workflowRuntime?.availableActions)
+        ? contract.workflowRuntime.availableActions
+        : [];
 }
 
-export function getRoleContractTask(contract, role) {
+export function getRoleContractTask(contract) {
     const status = normalizeContractStatus(contract?.contractStatus);
-    const normalizedRole = normalizeContractRole(role);
-    const actions = getAvailableContractActions(contract, role);
-
-    if (contract?.workflowRuntime) {
-        if (status === CONTRACT_STATUS.CANCELLED) {
-            return { label: "Contract cancelled", status: "CANCELLED" };
-        }
-        if (status === CONTRACT_STATUS.ENDED) {
-            return { label: "Contract completed", status: "COMPLETED" };
-        }
-        if (status === CONTRACT_STATUS.SIGNED) {
-            return { label: "Contract signed", status: "COMPLETED" };
-        }
-        const runtime = contract.workflowRuntime;
-        if (!runtime.currentStepId) {
-            return status === CONTRACT_STATUS.ACTIVE
-                ? { label: "Monitor active contract", status: "IN_PROGRESS" }
-                : { label: "Workflow completed", status: "COMPLETED" };
-        }
-        const assignedToCurrentUser = runtime.steps?.some(
-            (step) => step.id === runtime.currentStepId
-                && step.currentUserAssigned
-        );
-        if (assignedToCurrentUser) {
-            return {
-                label: runtime.currentStepName || "Workflow action required",
-                status: actions.length > 0 ? "ACTION_REQUIRED" : "READ_ONLY",
-            };
-        }
-        return {
-            label: runtime.currentAssignedUserName
-                ? `Waiting for ${runtime.currentAssignedUserName}`
-                : `Waiting for ${runtime.currentStepName || "next step"}`,
-            status: "WAITING",
-        };
-    }
+    const actions = getAvailableContractActions(contract);
 
     if (status === CONTRACT_STATUS.CANCELLED) {
         return { label: "Contract cancelled", status: "CANCELLED" };
@@ -616,83 +473,32 @@ export function getRoleContractTask(contract, role) {
         return { label: "Contract signed", status: "COMPLETED" };
     }
 
-    if (actions.length > 0) {
-        const actionTaskByStatus = {
-            [CONTRACT_STATUS.NEW]: "Prepare and submit",
-            [CONTRACT_STATUS.PENDING_INTERNAL_APPROVAL]:
-                "Internal review required",
-            [CONTRACT_STATUS.PENDING_DIRECTOR_SIGNATURE]:
-                "Director signature required",
-            [CONTRACT_STATUS.PENDING_PARTNER_SIGNATURE]:
-                "Partner signature required",
-            [CONTRACT_STATUS.ACTIVE]: "Monitor active contract",
-        };
+    const runtime = contract?.workflowRuntime;
+    if (!runtime) {
+        return { label: "Workflow unavailable", status: "READ_ONLY" };
+    }
 
+    if (!runtime.currentStepId) {
+        return status === CONTRACT_STATUS.ACTIVE
+            ? { label: "Monitor active contract", status: "IN_PROGRESS" }
+            : { label: "Workflow completed", status: "COMPLETED" };
+    }
+    const assignedToCurrentUser = runtime.steps?.some(
+        (step) => step.id === runtime.currentStepId
+            && step.currentUserAssigned
+    );
+    if (assignedToCurrentUser) {
         return {
-            label: actionTaskByStatus[status] || "Workflow action required",
-            status: "ACTION_REQUIRED",
+            label: runtime.currentStepName || "Workflow action required",
+            status: actions.length > 0 ? "ACTION_REQUIRED" : "READ_ONLY",
         };
     }
-
-    if (normalizedRole === "ADMIN") {
-        return { label: "Monitor contract", status: "IN_PROGRESS" };
-    }
-
-    if (normalizedRole === "EMPLOYEE") {
-        return status === CONTRACT_STATUS.NEW
-            ? {
-                label: actions.length > 0 ? "Prepare and submit" : "Read only",
-                status: actions.length > 0 ? "ACTION_REQUIRED" : "READ_ONLY",
-            }
-            : { label: "Creation task completed", status: "COMPLETED" };
-    }
-
-    if (normalizedRole === "MANAGER") {
-        if (status === CONTRACT_STATUS.NEW) {
-            return { label: "Waiting for submission", status: "WAITING" };
-        }
-        if (status === CONTRACT_STATUS.PENDING_INTERNAL_APPROVAL) {
-            return actions.length > 0
-                ? { label: "Internal review required", status: "ACTION_REQUIRED" }
-                : { label: "No approval permission", status: "READ_ONLY" };
-        }
-        return { label: "Internal review completed", status: "COMPLETED" };
-    }
-
-    if (["CEO", "DIRECTOR"].includes(normalizedRole)) {
-        if (
-            [CONTRACT_STATUS.NEW, CONTRACT_STATUS.PENDING_INTERNAL_APPROVAL]
-                .includes(status)
-        ) {
-            return { label: "Waiting for internal approval", status: "WAITING" };
-        }
-        if (status === CONTRACT_STATUS.PENDING_DIRECTOR_SIGNATURE) {
-            return actions.length > 0
-                ? { label: "Director signature required", status: "ACTION_REQUIRED" }
-                : { label: "No signature permission", status: "READ_ONLY" };
-        }
-        return { label: "Monitor contract lifecycle", status: "IN_PROGRESS" };
-    }
-
-    if (["PARTNER", "EXTERNAL", "EXTERNAL_PARTNER"].includes(normalizedRole)) {
-        if (
-            [
-                CONTRACT_STATUS.NEW,
-                CONTRACT_STATUS.PENDING_INTERNAL_APPROVAL,
-                CONTRACT_STATUS.PENDING_DIRECTOR_SIGNATURE,
-            ].includes(status)
-        ) {
-            return { label: "Waiting for company signature", status: "WAITING" };
-        }
-        if (status === CONTRACT_STATUS.PENDING_PARTNER_SIGNATURE) {
-            return actions.length > 0
-                ? { label: "Partner signature required", status: "ACTION_REQUIRED" }
-                : { label: "No signature permission", status: "READ_ONLY" };
-        }
-        return { label: "Monitor active contract", status: "IN_PROGRESS" };
-    }
-
-    return { label: "Read only", status: "READ_ONLY" };
+    return {
+        label: runtime.currentAssignedUserName
+            ? `Waiting for ${runtime.currentAssignedUserName}`
+            : `Waiting for ${runtime.currentStepName || "next step"}`,
+        status: "WAITING",
+    };
 }
 
 export function toTransitionRequest(action, form) {

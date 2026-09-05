@@ -385,12 +385,10 @@ function ListContract() {
         const currentStepAction = String(
             currentContract?.workflowRuntime?.currentStepActionType || ""
         ).trim().toUpperCase();
-        const requiresSigningWorkspace = action === "SIGN_DIRECTOR"
-            || action === "SIGN_PARTNER"
-            || (action === "COMPLETE_STEP"
-                && currentStepAction === "SIGN");
+        const requiresSigningWorkspace = action === "COMPLETE_STEP"
+            && ["SIGN", "APPROVE_AND_SIGN"].includes(currentStepAction);
         if (requiresSigningWorkspace) {
-            navigate(`/contract-management/${currentContract.id}/sign?action=${encodeURIComponent(action)}`);
+            navigate(`/contract-management/${currentContract.id}/sign`);
             return;
         }
         setTransitionContract(currentContract);
@@ -620,11 +618,11 @@ function ListContract() {
             transitionContract?.workflowRuntime?.currentStepActionType || ""
         ).trim().toUpperCase();
         if (transitionAction === "COMPLETE_STEP"
-                && stepActionType === "SIGN") {
+                && ["SIGN", "APPROVE_AND_SIGN"].includes(stepActionType)) {
             const contractId = transitionContract.id;
             setTransitionAction(null);
             setTransitionContract(null);
-            navigate(`/contract-management/${contractId}/sign?action=COMPLETE_STEP`);
+            navigate(`/contract-management/${contractId}/sign`);
             return;
         }
 
@@ -877,10 +875,7 @@ function ListContract() {
                                         </td>
                                         <td>
                                             <TaskBadge
-                                                task={getRoleContractTask(
-                                                    contract,
-                                                    currentActor.actorRole
-                                                )}
+                                                task={getRoleContractTask(contract)}
                                             />
                                         </td>
                                         <td>
@@ -1022,7 +1017,6 @@ function ListContract() {
                     exportingPdfId != null
                     && exportingPdfId === selectedContract?.id
                 }
-                currentActor={currentActor}
             />
 
             <ContractTransitionModal
@@ -1065,7 +1059,6 @@ function ContractModal({
     onTransition,
     onExportPdf,
     exportingPdf,
-    currentActor,
 }) {
     if (!mode) {
         return null;
@@ -1078,10 +1071,7 @@ function ContractModal({
           ? "Edit Contract"
           : "Create Contract";
     const availableActions = isView
-        ? getAvailableContractActions(
-            contract,
-            currentActor.actorRole
-        )
+        ? getAvailableContractActions(contract)
         : [];
 
     return (
@@ -1102,7 +1092,6 @@ function ContractModal({
                         {error && <Alert variant="danger">{error}</Alert>}
                         <ContractDetails
                             contract={contract}
-                            currentActor={currentActor}
                             availableActions={availableActions}
                             onTransition={onTransition}
                         />
@@ -1190,7 +1179,6 @@ function ContractModal({
 
 function ContractDetails({
     contract,
-    currentActor,
     availableActions,
     onTransition,
 }) {
@@ -1198,10 +1186,7 @@ function ContractDetails({
         return <p>Contract information is unavailable.</p>;
     }
 
-    const currentTask = getRoleContractTask(
-        contract,
-        currentActor.actorRole
-    );
+    const currentTask = getRoleContractTask(contract);
     const completedPages = splitContractPages(
         contract.renderedContractContent || contract.contractContent
     );

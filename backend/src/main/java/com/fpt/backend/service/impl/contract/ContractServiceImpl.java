@@ -75,7 +75,6 @@ public class ContractServiceImpl implements ContractService {
     private static final int MINIMUM_SIGNER_AGE = 18;
     private static final String DATA_SOURCE = "DATABASE";
     private static final String DEFAULT_SORT_FIELD = "id";
-    private static final String ADMIN_ROLE = "ADMIN";
     private static final UUID NO_MATCH_PROJECT_ID = new UUID(0L, 0L);
 
     private static final Set<String> SORT_FIELDS = Set.of(
@@ -379,8 +378,6 @@ public class ContractServiceImpl implements ContractService {
         Users actor = currentUser.getCurrentUser();
         ContractStatus currentStatus = readStatus(contract);
         ContractAction action = readAction(request.action());
-        String actorName = getUserDisplayName(actor);
-        String actorRole = primaryRoleCode(actor);
 
         if (currentStatus.isTerminal()) {
             throw new BadHttpException(
@@ -388,88 +385,27 @@ public class ContractServiceImpl implements ContractService {
             );
         }
 
-        if (contract.getWorkflowVersion() != null
-                || workflowStepRepository.existsByContractId(contract.getId())) {
-            return transitionWorkflowContract(
-                    contract,
-                    currentStatus,
-                    action,
-                    request,
-                    actor
+        if (contract.getWorkflowVersion() == null
+                && !workflowStepRepository.existsByContractId(contract.getId())) {
+            throw new BadHttpException(
+                    "Contract does not have a configured workflow"
             );
         }
 
-        validateActionStatus(action, currentStatus);
-        requireContractAction(
-                contract,
-                permissionForWorkflowAction(action, currentStatus),
-                actor
-        );
-        validateRole(action, currentStatus, actorRole);
-
-        if (action == ContractAction.CANCEL || action == ContractAction.REJECT) {
-            requireText(request.comment(), "A cancellation or rejection reason is required");
-        }
-
-        Boolean signerAgeVerified = null;
-        if (action == ContractAction.SIGN_DIRECTOR
-                || action == ContractAction.SIGN_PARTNER) {
-            signerAgeVerified = validateSignerAge(actor.getDob());
-
-            if (!signerAgeVerified) {
-                String ageFailureReason =
-                        "Signer must be at least " + MINIMUM_SIGNER_AGE + " years old";
-                applyStatus(
-                        contract,
-                        currentStatus,
-                        ContractStatus.CANCELLED,
-                        "AGE_VALIDATION_FAILED",
-                        actorName,
-                        actorRole,
-                        combineComments(ageFailureReason, request.comment()),
-                        false
-                );
-                return toResponse(contractRepository.save(contract));
-            }
-            registerElectronicSignatureWhenRequired(contract, action, request, actor);
-        }
-
-        ContractStatus targetStatus = resolveTargetStatus(action);
-        applyStatus(
+        return transitionWorkflowContract(
                 contract,
                 currentStatus,
-                targetStatus,
-                action.name(),
-                actorName,
-                actorRole,
-                normalizeToNull(request.comment()),
-                signerAgeVerified
+                action,
+                request,
+                actor
         );
-
-        return toResponse(contractRepository.save(contract));
     }
 
-    private Signature registerElectronicSignatureWhenRequired(
+    private Signature registerElectronicSignature(
             Contracts contract,
-            ContractAction action,
             ContractTransitionRequest request,
             Users actor
     ) {
-        boolean legacySign = action == ContractAction.SIGN_DIRECTOR
-                || action == ContractAction.SIGN_PARTNER;
-        boolean workflowSign = false;
-        if (action == ContractAction.COMPLETE_STEP
-                && workflowStepRepository.existsByContractId(contract.getId())) {
-            workflowSign = workflowStepRepository
-                    .findFirstByContractIdAndStatusOrderByStepOrderAsc(
-                            contract.getId(), ContractWorkflowStepState.PENDING
-                    )
-                    .map(step -> step.getActionType().requiresSignature())
-                    .orElse(false);
-        }
-        if (!legacySign && !workflowSign) {
-            return null;
-        }
         if (request.electronicSignatureId() == null) {
             throw new BadHttpException("Please select an electronic signature before signing");
         }
@@ -699,25 +635,6 @@ public class ContractServiceImpl implements ContractService {
                 "Permission " + actionCode
                         + " is limited to contracts you created"
         );
-    }
-
-    private String permissionForWorkflowAction(
-            ContractAction action,
-            ContractStatus currentStatus
-    ) {
-        return switch (action) {
-            case COMPLETE_STEP -> throw new BadHttpException(
-                    "COMPLETE_STEP is only available for configurable workflows"
-            );
-            case SUBMIT -> ContractProjectActions.SUBMIT;
-            case APPROVE_INTERNAL -> ContractProjectActions.APPROVE;
-            case SIGN_DIRECTOR, SIGN_PARTNER -> ContractProjectActions.SIGN;
-            case CANCEL -> ContractProjectActions.CANCEL;
-            case REJECT -> currentStatus
-                    == ContractStatus.PENDING_INTERNAL_APPROVAL
-                    ? ContractProjectActions.APPROVE
-                    : ContractProjectActions.SIGN;
-        };
     }
 
     private void requireTargetProjectAccessForEdit(
@@ -1020,8 +937,8 @@ public class ContractServiceImpl implements ContractService {
                 );
                 return toResponse(contract);
             }
-            completedSignature = registerElectronicSignatureWhenRequired(
-                    contract, action, request, actor
+            completedSignature = registerElectronicSignature(
+                    contract, request, actor
             );
         }
 
@@ -1319,86 +1236,6 @@ public class ContractServiceImpl implements ContractService {
         contractStatusHistoryRepository.save(history);
     }
 
-    private void validateActionStatus(
-            ContractAction action,
-            ContractStatus currentStatus
-    ) {
-        boolean valid = switch (action) {
-            case COMPLETE_STEP -> false;
-            case SUBMIT -> currentStatus == ContractStatus.NEW;
-            case APPROVE_INTERNAL ->
-                    currentStatus == ContractStatus.PENDING_INTERNAL_APPROVAL;
-            case SIGN_DIRECTOR ->
-                    currentStatus == ContractStatus.PENDING_DIRECTOR_SIGNATURE;
-            case SIGN_PARTNER ->
-                    currentStatus == ContractStatus.PENDING_PARTNER_SIGNATURE;
-            case CANCEL -> !currentStatus.isTerminal();
-            case REJECT -> currentStatus == ContractStatus.PENDING_INTERNAL_APPROVAL
-                    || currentStatus == ContractStatus.PENDING_DIRECTOR_SIGNATURE
-                    || currentStatus == ContractStatus.PENDING_PARTNER_SIGNATURE;
-        };
-
-        if (!valid) {
-            throw new BadHttpException(
-                    "Action " + action.name()
-                            + " is not allowed while contract status is "
-                            + currentStatus.name()
-            );
-        }
-    }
-
-    private void validateRole(
-            ContractAction action,
-            ContractStatus currentStatus,
-            String actorRole
-    ) {
-        if (ADMIN_ROLE.equals(actorRole)) {
-            return;
-        }
-
-        Set<String> allowedRoles = switch (action) {
-            case COMPLETE_STEP -> Set.of();
-            case SUBMIT -> Set.of("EMPLOYEE", "MANAGER", "CEO", "DIRECTOR");
-            case APPROVE_INTERNAL -> Set.of("MANAGER");
-            case SIGN_DIRECTOR -> Set.of("CEO", "DIRECTOR");
-            case SIGN_PARTNER -> Set.of("PARTNER", "EXTERNAL", "EXTERNAL_PARTNER");
-            case REJECT -> rolesForCurrentStage(currentStatus);
-            case CANCEL -> rolesForCancellation(currentStatus);
-        };
-
-        if (!allowedRoles.contains(actorRole)) {
-            throw new BadHttpException(
-                    "Role " + actorRole + " cannot perform " + action.name()
-                            + " while contract status is " + currentStatus.name()
-            );
-        }
-    }
-
-    private Set<String> rolesForCurrentStage(ContractStatus status) {
-        return switch (status) {
-            case PENDING_INTERNAL_APPROVAL -> Set.of("MANAGER");
-            case PENDING_DIRECTOR_SIGNATURE -> Set.of("CEO", "DIRECTOR");
-            case PENDING_PARTNER_SIGNATURE ->
-                    Set.of("PARTNER", "EXTERNAL", "EXTERNAL_PARTNER");
-            default -> Set.of();
-        };
-    }
-
-    private Set<String> rolesForCancellation(ContractStatus status) {
-        return switch (status) {
-            case NEW -> Set.of("EMPLOYEE", "MANAGER", "CEO", "DIRECTOR");
-            case PENDING_INTERNAL_APPROVAL -> Set.of("MANAGER", "CEO", "DIRECTOR");
-            case PENDING_DIRECTOR_SIGNATURE -> Set.of("CEO", "DIRECTOR");
-            case PENDING_PARTNER_SIGNATURE ->
-                    Set.of("CEO", "DIRECTOR", "PARTNER", "EXTERNAL", "EXTERNAL_PARTNER");
-            case PENDING_APPROVAL, PENDING_SIGNATURE -> Set.of();
-            case SIGNED, ACTIVE ->
-                    Set.of("CEO", "DIRECTOR", "PARTNER", "EXTERNAL_PARTNER");
-            case PENDING_EFFECTIVE -> null;
-            case ENDED, CANCELLED -> Set.of();
-        };
-    }
-
     private Boolean validateSignerAge(String storedDateOfBirth) {
         if (storedDateOfBirth == null || storedDateOfBirth.isBlank()) {
             throw new BadHttpException(
@@ -1421,19 +1258,6 @@ public class ContractServiceImpl implements ContractService {
         }
 
         return Period.between(dateOfBirth, today).getYears() >= MINIMUM_SIGNER_AGE;
-    }
-
-    private ContractStatus resolveTargetStatus(ContractAction action) {
-        return switch (action) {
-            case COMPLETE_STEP -> throw new BadHttpException(
-                    "COMPLETE_STEP is only available for configurable workflows"
-            );
-            case SUBMIT -> ContractStatus.PENDING_INTERNAL_APPROVAL;
-            case APPROVE_INTERNAL -> ContractStatus.PENDING_DIRECTOR_SIGNATURE;
-            case SIGN_DIRECTOR -> ContractStatus.PENDING_PARTNER_SIGNATURE;
-            case SIGN_PARTNER -> ContractStatus.SIGNED;
-            case CANCEL, REJECT -> ContractStatus.CANCELLED;
-        };
     }
 
     private Projects resolveProject(UUID projectId) {

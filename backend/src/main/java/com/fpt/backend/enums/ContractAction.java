@@ -4,10 +4,6 @@ import java.util.Locale;
 
 public enum ContractAction {
     COMPLETE_STEP,
-    SUBMIT,
-    APPROVE_INTERNAL,
-    SIGN_DIRECTOR,
-    SIGN_PARTNER,
     CANCEL,
     REJECT;
 

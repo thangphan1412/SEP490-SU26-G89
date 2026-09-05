@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Alert, Button, Spinner } from "react-bootstrap";
 import { IconArrowLeft, IconCheck, IconFileTypePdf } from "@tabler/icons-react";
-import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import contractApi from "../../services/contractService/contractApi.js";
 import electronicSignatureService from "../../services/signatureService/electronicSignatureService.js";
 import digitalSignatureService from "../../services/signatureService/digitalSignatureService.js";
@@ -11,8 +11,6 @@ import "../../assets/styles/css/layoutStyles/ContractSigning.css";
 export default function ContractSigningPage() {
     const { id } = useParams();
     const navigate = useNavigate();
-    const [searchParams] = useSearchParams();
-    const action = searchParams.get("action") || "COMPLETE_STEP";
     const [contract, setContract] = useState(null);
     const [signatures, setSignatures] = useState([]);
     const [selectedId, setSelectedId] = useState("");
@@ -104,7 +102,7 @@ export default function ContractSigningPage() {
         setSigning(true);
         setError("");
         try {
-            await contractApi.signContract(id, action, selectedId);
+            await contractApi.signContract(id, selectedId);
             navigate(`/contract-management/list?viewContractId=${id}`, { replace: true });
         } catch (requestError) {
             setError(getApiErrorMessage(requestError, "The contract could not be signed."));
