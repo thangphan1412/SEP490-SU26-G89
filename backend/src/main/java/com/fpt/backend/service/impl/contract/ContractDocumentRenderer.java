@@ -81,7 +81,7 @@ public class ContractDocumentRenderer {
         values.put(
                 "project_name",
                 contract.getProject() == null
-                        ? "Chưa cập nhật"
+                        ? "Không thuộc dự án"
                         : displayValue(contract.getProject().getProjectName())
         );
         values.put("director_name", signerName(director));

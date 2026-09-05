@@ -799,7 +799,7 @@
 
 .contract-type-workflow-step {
   grid-template-columns: 58px minmax(180px, 1.3fr) minmax(150px, 0.8fr)
-    minmax(180px, 1fr) 105px 40px;
+    minmax(180px, 1fr) minmax(180px, 1fr) 105px 40px;
 }
 
 .contract-type-workflow-order {

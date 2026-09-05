@@ -4,11 +4,13 @@ import com.fpt.backend.dto.request.contract.ContractTypeRequest;
 import com.fpt.backend.dto.request.contract.ContractWorkflowStepRequest;
 import com.fpt.backend.entity.ContractTypeWorkflow;
 import com.fpt.backend.entity.ContractTypes;
+import com.fpt.backend.entity.Departments;
 import com.fpt.backend.entity.Role;
 import com.fpt.backend.repository.contract.ContractRepository;
 import com.fpt.backend.repository.contract.ContractTemplateRepository;
 import com.fpt.backend.repository.contract.ContractTypeRepository;
 import com.fpt.backend.repository.contract.ContractTypeWorkflowRepository;
+import com.fpt.backend.repository.department.DepartmentRepository;
 import com.fpt.backend.repository.role.RoleRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -42,17 +44,42 @@ class ContractTypeServiceImplTest {
     @Mock
     private RoleRepository roleRepository;
 
+    @Mock
+    private DepartmentRepository departmentRepository;
+
     @InjectMocks
     private ContractTypeServiceImpl contractTypeService;
 
     @Test
+    void workflowOptionsComeFromRoleAndDepartmentRepositories() {
+        Role role = role("LEGAL_REVIEWER", "Legal reviewer");
+        Departments department = department("LEGAL", "Legal Department");
+        when(roleRepository.findAllForSelection()).thenReturn(List.of(role));
+        when(departmentRepository.findAll()).thenReturn(List.of(department));
+
+        var options = contractTypeService.getWorkflowOptions();
+
+        assertThat(options.roles())
+                .extracting(item -> item.roleCode())
+                .containsExactly("LEGAL_REVIEWER");
+        assertThat(options.departments())
+                .extracting(item -> item.id())
+                .containsExactly(department.getId());
+    }
+
+    @Test
     void createsWorkflowUsingRoleCodesLoadedFromRoleRepository() {
         UUID contractTypeId = UUID.randomUUID();
+        Departments department = department(
+                "LEGAL",
+                "Legal Department"
+        );
         when(roleRepository.findAllForSelection()).thenReturn(List.of(
                 role("LEGAL_AUTHOR", "Legal author"),
                 role("RISK_REVIEWER", "Risk reviewer"),
                 role("AUTHORIZED_SIGNER", "Authorized signer")
         ));
+        when(departmentRepository.findAll()).thenReturn(List.of(department));
         when(contractTypeRepository.save(any(ContractTypes.class)))
                 .thenAnswer(invocation -> {
                     ContractTypes contractType = invocation.getArgument(0);
@@ -75,9 +102,9 @@ class ContractTypeServiceImplTest {
                 "tester@example.com",
                 "Legal approval workflow",
                 List.of(
-                        step(1, "Draft", "CREATE", "legal-author"),
-                        step(2, "Risk review", "APPROVE", "risk reviewer"),
-                        step(3, "Final signature", "SIGN", "authorized_signer")
+                        step(1, "Draft", "CREATE", "legal-author", department.getId()),
+                        step(2, "Risk review", "APPROVE", "risk reviewer", department.getId()),
+                        step(3, "Final signature", "SIGN", "authorized_signer", department.getId())
                 )
         ));
 
@@ -92,21 +119,26 @@ class ContractTypeServiceImplTest {
                         "RISK_REVIEWER",
                         "AUTHORIZED_SIGNER"
                 );
+        assertThat(workflowCaptor.getValue().getSteps())
+                .extracting(step -> step.getRequiredDepartment().getId())
+                .containsOnly(department.getId());
     }
 
     private ContractWorkflowStepRequest step(
             int order,
             String name,
             String action,
-            String roleCode
+            String roleCode,
+            UUID departmentId
     ) {
         return new ContractWorkflowStepRequest(
                 order,
                 name,
                 action,
                 roleCode,
+                departmentId,
                 true,
-                action.equals("CREATE") ? false : true
+                !"CREATE".equals(action)
         );
     }
 
@@ -116,5 +148,13 @@ class ContractTypeServiceImplTest {
         role.setRoleCode(code);
         role.setRoleName(name);
         return role;
+    }
+
+    private Departments department(String code, String name) {
+        Departments department = new Departments();
+        department.setId(UUID.randomUUID());
+        department.setDepartmentCode(code);
+        department.setDepartmentName(name);
+        return department;
     }
 }

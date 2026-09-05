@@ -2,6 +2,7 @@ package com.fpt.backend.service.impl.contract;
 
 import com.fpt.backend.dto.request.contract.ContractTypeRequest;
 import com.fpt.backend.dto.request.contract.ContractWorkflowStepRequest;
+import com.fpt.backend.dto.response.contract.ContractDepartmentOptionResponse;
 import com.fpt.backend.dto.response.contract.ContractRoleOptionResponse;
 import com.fpt.backend.dto.response.contract.ContractTypeResponse;
 import com.fpt.backend.dto.response.contract.ContractWorkflowDefinitionResponse;
@@ -10,6 +11,7 @@ import com.fpt.backend.dto.response.contract.ContractWorkflowStepDefinitionRespo
 import com.fpt.backend.entity.ContractTypeWorkflow;
 import com.fpt.backend.entity.ContractTypeWorkflowStep;
 import com.fpt.backend.entity.ContractTypes;
+import com.fpt.backend.entity.Departments;
 import com.fpt.backend.enums.ContractWorkflowActionType;
 import com.fpt.backend.exception.BadHttpException;
 import com.fpt.backend.exception.NotFoundException;
@@ -17,6 +19,7 @@ import com.fpt.backend.repository.contract.ContractRepository;
 import com.fpt.backend.repository.contract.ContractTemplateRepository;
 import com.fpt.backend.repository.contract.ContractTypeRepository;
 import com.fpt.backend.repository.contract.ContractTypeWorkflowRepository;
+import com.fpt.backend.repository.department.DepartmentRepository;
 import com.fpt.backend.repository.role.RoleRepository;
 import com.fpt.backend.service.interfaces.contract.ContractTypeService;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +31,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.UUID;
 
 @Service
@@ -40,6 +44,7 @@ public class ContractTypeServiceImpl implements ContractTypeService {
     private final ContractRepository contractRepository;
     private final ContractTypeWorkflowRepository workflowRepository;
     private final RoleRepository roleRepository;
+    private final DepartmentRepository departmentRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -61,10 +66,26 @@ public class ContractTypeServiceImpl implements ContractTypeService {
     public ContractWorkflowOptionsResponse getWorkflowOptions() {
         List<ContractRoleOptionResponse> roles = roleRepository.findAllForSelection()
                 .stream()
+                .filter(role -> !isBlank(role.getRoleCode()))
                 .map(role -> new ContractRoleOptionResponse(
                         role.getId(),
                         role.getRoleCode(),
                         role.getRoleName()
+                ))
+                .toList();
+
+        List<ContractDepartmentOptionResponse> departments = departmentRepository
+                .findAll()
+                .stream()
+                .filter(department -> !isBlank(department.getDepartmentName()))
+                .sorted(Comparator.comparing(
+                        department -> department.getDepartmentName().trim(),
+                        String.CASE_INSENSITIVE_ORDER
+                ))
+                .map(department -> new ContractDepartmentOptionResponse(
+                        department.getId(),
+                        department.getDepartmentCode(),
+                        department.getDepartmentName()
                 ))
                 .toList();
 
@@ -74,7 +95,8 @@ public class ContractTypeServiceImpl implements ContractTypeService {
                         ContractWorkflowActionType.APPROVE.name(),
                         ContractWorkflowActionType.SIGN.name()
                 ),
-                roles
+                roles,
+                departments
         );
     }
 
@@ -260,6 +282,7 @@ public class ContractTypeServiceImpl implements ContractTypeService {
                         .stepName(step.stepName())
                         .actionType(step.actionType())
                         .requiredRoleCode(step.requiredRoleCode())
+                        .requiredDepartment(step.requiredDepartment())
                         .required(step.required())
                         .canReject(step.canReject())
                         .build()
@@ -292,6 +315,7 @@ public class ContractTypeServiceImpl implements ContractTypeService {
                 .filter(roleCode -> !isBlank(roleCode))
                 .map(String::trim)
                 .toList();
+        List<Departments> availableDepartments = departmentRepository.findAll();
         int createStepCount = 0;
         for (int index = 0; index < orderedSteps.size(); index++) {
             ContractWorkflowStepRequest step = orderedSteps.get(index);
@@ -319,6 +343,10 @@ public class ContractTypeServiceImpl implements ContractTypeService {
                     requireText(step.stepName(), "Workflow step name is required"),
                     actionType,
                     resolveRoleCode(step.requiredRoleCode(), availableRoleCodes),
+                    resolveDepartment(
+                            step.requiredDepartmentId(),
+                            availableDepartments
+                    ),
                     step.required() == null || step.required(),
                     Boolean.TRUE.equals(step.canReject())
                             && actionType != ContractWorkflowActionType.CREATE
@@ -367,6 +395,10 @@ public class ContractTypeServiceImpl implements ContractTypeService {
                     || !normalizeRoleKey(expected.requiredRoleCode()).equals(
                     normalizeRoleKey(actual.getRequiredRoleCode())
             )
+                    || !Objects.equals(
+                    departmentId(expected.requiredDepartment()),
+                    departmentId(actual.getRequiredDepartment())
+            )
                     || expected.required() != Boolean.TRUE.equals(actual.getRequired())
                     || expected.canReject() != Boolean.TRUE.equals(actual.getCanReject())) {
                 return false;
@@ -391,6 +423,13 @@ public class ContractTypeServiceImpl implements ContractTypeService {
                         step.getStepName(),
                         step.getActionType().name(),
                         step.getRequiredRoleCode(),
+                        departmentId(step.getRequiredDepartment()),
+                        step.getRequiredDepartment() == null
+                                ? null
+                                : step.getRequiredDepartment().getDepartmentCode(),
+                        step.getRequiredDepartment() == null
+                                ? null
+                                : step.getRequiredDepartment().getDepartmentName(),
                         ContractWorkflowRules.requiredPermissions(step.getActionType()),
                         Boolean.TRUE.equals(step.getRequired()),
                         Boolean.TRUE.equals(step.getCanReject())
@@ -429,11 +468,31 @@ public class ContractTypeServiceImpl implements ContractTypeService {
                 .replace(' ', '_');
     }
 
+    private Departments resolveDepartment(
+            UUID departmentId,
+            List<Departments> availableDepartments
+    ) {
+        if (departmentId == null) {
+            return null;
+        }
+        return availableDepartments.stream()
+                .filter(department -> departmentId.equals(department.getId()))
+                .findFirst()
+                .orElseThrow(() -> new BadHttpException(
+                        "Workflow department does not exist: " + departmentId
+                ));
+    }
+
+    private UUID departmentId(Departments department) {
+        return department == null ? null : department.getId();
+    }
+
     private record NormalizedWorkflowStep(
             Integer stepOrder,
             String stepName,
             ContractWorkflowActionType actionType,
             String requiredRoleCode,
+            Departments requiredDepartment,
             boolean required,
             boolean canReject
     ) {

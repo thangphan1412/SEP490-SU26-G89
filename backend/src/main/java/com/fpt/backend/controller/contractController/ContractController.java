@@ -8,6 +8,7 @@ import com.fpt.backend.dto.response.contract.ContractPdfResponse;
 import com.fpt.backend.dto.response.contract.ContractProjectContextResponse;
 import com.fpt.backend.dto.response.contract.ContractProjectOptionResponse;
 import com.fpt.backend.dto.response.contract.ContractResponse;
+import com.fpt.backend.dto.response.contract.ContractStandaloneContextResponse;
 import com.fpt.backend.service.interfaces.contract.ContractService;
 import com.fpt.backend.util.BaseResponse;
 import lombok.RequiredArgsConstructor;
@@ -73,6 +74,16 @@ public class ContractController {
                 .cacheControl(CacheControl.noStore())
                 .body(new BaseResponse<>(
                         contractService.getProjectContext(projectId)
+                ));
+    }
+
+    @GetMapping("/standalone-context")
+    public ResponseEntity<BaseResponse<ContractStandaloneContextResponse>>
+            getStandaloneContext() {
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .body(new BaseResponse<>(
+                        contractService.getStandaloneContext()
                 ));
     }
 

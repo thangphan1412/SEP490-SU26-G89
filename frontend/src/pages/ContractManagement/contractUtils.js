@@ -231,12 +231,12 @@ export function validateContract(contract, isCreating = true) {
         return "Your signed-in name and role are required to manage contracts.";
     }
 
-    if (!contract.projectId) {
-        return "Please select a project.";
+    if (!contract.projectId && (contract.phaseId || contract.taskId)) {
+        return "Phase and task can only be selected for a project contract.";
     }
 
-    if (!contract.taskId) {
-        return "Please select a task from a project phase.";
+    if (!contract.phaseId && contract.taskId) {
+        return "Please select the phase that contains the selected task.";
     }
 
     if (!contract.contractTypeId) {
@@ -259,7 +259,7 @@ export function validateContract(contract, isCreating = true) {
         if (requiredAssigneeSteps.some(
             (step) => !assignedStepIds.has(step.id)
         )) {
-            return "Please assign a project member to every workflow step.";
+            return "Please assign an eligible user to every workflow step.";
         }
     }
 

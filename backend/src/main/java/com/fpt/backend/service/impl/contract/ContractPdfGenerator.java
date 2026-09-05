@@ -1,6 +1,7 @@
 package com.fpt.backend.service.impl.contract;
 
 import com.fpt.backend.entity.Contracts;
+import com.fpt.backend.entity.ContractWorkflowStepInstance;
 import com.fpt.backend.entity.ProjectMember;
 import com.fpt.backend.entity.Users;
 import org.apache.pdfbox.pdmodel.PDDocument;
@@ -106,21 +107,36 @@ public class ContractPdfGenerator {
             String signerName,
             Set<String> acceptedRoles
     ) {
-        List<ProjectMember> members = contract.getProject() == null
-                || contract.getProject().getProjectMembers() == null
-                ? List.of()
-                : contract.getProject().getProjectMembers();
+        List<Users> candidates;
+        if (contract.getProject() != null
+                && contract.getProject().getProjectMembers() != null) {
+            candidates = contract.getProject().getProjectMembers().stream()
+                    .map(ProjectMember::getUser)
+                    .filter(Objects::nonNull)
+                    .toList();
+        } else if (contract.getWorkflowStepInstances() != null) {
+            candidates = contract.getWorkflowStepInstances().stream()
+                    .map(ContractWorkflowStepInstance::getAssignedUser)
+                    .filter(Objects::nonNull)
+                    .distinct()
+                    .toList();
+        } else {
+            candidates = List.of();
+        }
 
-        Users user = members.stream()
-                .map(ProjectMember::getUser)
+        Users user = candidates.stream()
                 .filter(Objects::nonNull)
                 .filter(candidate -> sameName(userDisplayName(candidate), signerName))
                 .findFirst()
-                .orElseGet(() -> members.stream()
-                        .map(ProjectMember::getUser)
+                .orElseGet(() -> candidates.stream()
                         .filter(Objects::nonNull)
+                        .filter(candidate -> candidate.getUserRoles() != null)
                         .filter(candidate -> candidate.getUserRoles().stream()
-                                .map(role -> role.getRole().getRoleName())
+                                .filter(Objects::nonNull)
+                                .map(userRole -> userRole.getRole())
+                                .filter(Objects::nonNull)
+                                .map(role -> role.getRoleName())
+                                .filter(Objects::nonNull)
                                 .anyMatch(acceptedRoles::contains))
                         .findFirst()
                         .orElse(null));
