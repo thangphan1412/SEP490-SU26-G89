@@ -331,8 +331,14 @@ function ListContract() {
             return;
         }
 
+        const selectedType = contractTypes.find(
+            (item) => item.id === contract.contractTypeId
+        );
         setSelectedContract(contract);
-        setContractForm(mapContractToForm(contract));
+        setContractForm(mapContractToForm(
+            contract,
+            selectedType?.activeWorkflow || null
+        ));
         setProjectContext(null);
         setLoadingProjectContext(false);
         setModalError("");
@@ -443,6 +449,7 @@ function ListContract() {
                 return {
                     ...current,
                     projectId: value,
+                    projectName: "",
                     phaseId: "",
                     taskId: "",
                     workflowAssignees: [],
@@ -552,10 +559,7 @@ function ListContract() {
             return;
         }
 
-        const validationMessage = validateContract(
-            contractForm,
-            modalMode !== "edit"
-        );
+        const validationMessage = validateContract(contractForm);
         if (validationMessage) {
             setModalError(validationMessage);
             return;
@@ -1161,7 +1165,6 @@ function ContractModal({
                             creatorReadOnly={Boolean(
                                 localStorage.getItem("fullName")
                             )}
-                            projectReadOnly={mode === "edit"}
                         />
                     </Modal.Body>
                     <Modal.Footer>

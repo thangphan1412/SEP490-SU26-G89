@@ -97,6 +97,7 @@ export function getCurrentContractActor() {
 export function createEmptyContract(projectId = "") {
     return {
         projectId,
+        projectName: "",
         phaseId: "",
         taskId: "",
         contractTypeId: "",
@@ -122,9 +123,40 @@ export function createEmptyContract(projectId = "") {
     };
 }
 
-export function mapContractToForm(contract) {
+export function mapContractToForm(contract, workflowDefinitionOverride = null) {
+    const runtimeWorkflow = contract?.workflowRuntime
+        ? {
+            ...contract.workflowRuntime,
+            id: contract.workflowRuntime.workflowVersionId,
+            steps: (contract.workflowRuntime.steps || []).map((step) => ({
+                ...step,
+                id: step.workflowStepId,
+            })),
+        }
+        : null;
+    const workflowDefinition = workflowDefinitionOverride || runtimeWorkflow;
+    const workflowVersionMatches = !workflowDefinitionOverride
+        || workflowDefinitionOverride.id
+            === contract?.workflowRuntime?.workflowVersionId;
+    const workflowAssignees = workflowVersionMatches
+        && Array.isArray(contract?.workflowRuntime?.steps)
+        ? contract.workflowRuntime.steps.map((runtimeStep) => {
+            const definitionStep = workflowDefinition?.steps?.find(
+                (step) => step.id === runtimeStep.workflowStepId
+                    || step.stepOrder === runtimeStep.stepOrder
+            );
+            return {
+                workflowStepId:
+                    definitionStep?.id || runtimeStep.workflowStepId,
+                stepOrder: runtimeStep.stepOrder,
+                userId: runtimeStep.assignedUserId,
+            };
+        }).filter((item) => item.workflowStepId && item.userId)
+        : [];
+
     return {
         projectId: contract?.projectId || "",
+        projectName: contract?.projectName || "",
         phaseId: contract?.phaseId || "",
         taskId: contract?.taskId || "",
         contractTypeId: contract?.contractTypeId || "",
@@ -145,21 +177,8 @@ export function mapContractToForm(contract) {
         templateVersionNote: "",
         previousContractId: contract?.previousContractId || "",
         previousContractNumber: contract?.previousContractNumber || "",
-        workflowDefinition: contract?.workflowRuntime
-            ? {
-                ...contract.workflowRuntime,
-                steps: (contract.workflowRuntime.steps || []).map((step) => ({
-                    ...step,
-                    id: step.workflowStepId,
-                })),
-            }
-            : null,
-        workflowAssignees: Array.isArray(contract?.workflowRuntime?.steps)
-            ? contract.workflowRuntime.steps.map((step) => ({
-                workflowStepId: step.workflowStepId,
-                userId: step.assignedUserId,
-            })).filter((item) => item.workflowStepId && item.userId)
-            : [],
+        workflowDefinition,
+        workflowAssignees,
     };
 }
 
@@ -185,6 +204,7 @@ export function toContractRequest(contract, isCreating = false) {
 
     return {
         projectId: contract.projectId || null,
+        phaseId: contract.phaseId || null,
         taskId: contract.taskId || null,
         contractTypeId: contract.contractTypeId || null,
         contractTemplateId: contract.contractTemplateId || null,

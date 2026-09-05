@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import contractApi from "../../services/contractService/contractApi.js";
+import contractTypeApi from "../../services/contractTypeService/contractTypeApi.js";
+import contractTemplateApi from "../../services/contractTemplateService/contractTemplateApi.js";
 import {
     CancelButton,
     Icon,
@@ -27,6 +29,10 @@ function UpdateContract() {
     const formRef = useRef(null);
     const [contract, setContract] = useState(null);
     const [projects, setProjects] = useState([]);
+    const [contractTypes, setContractTypes] = useState([]);
+    const [contractTemplates, setContractTemplates] = useState([]);
+    const [projectContext, setProjectContext] = useState(null);
+    const [loadingProjectContext, setLoadingProjectContext] = useState(false);
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
     const [errorMessage, setErrorMessage] = useState("");
@@ -39,13 +45,25 @@ function UpdateContract() {
             setErrorMessage("");
 
             try {
-                const [contractResponse, projectItems] = await Promise.all([
+                const [
+                    contractResponse,
+                    projectItems,
+                    typeResponse,
+                    templateResponse,
+                ] = await Promise.all([
                     contractApi.getContractById(id),
                     loadProjectOptions(),
+                    contractTypeApi.getAllContractTypes(),
+                    contractTemplateApi.getAllContractTemplates(),
                 ]);
 
                 if (active) {
                     const contractPayload = unwrapApiResponse(contractResponse);
+                    const typeItems = unwrapApiResponse(typeResponse);
+                    const templateItems = unwrapApiResponse(templateResponse);
+                    const availableTypes = Array.isArray(typeItems)
+                        ? typeItems
+                        : [];
                     if (!canManageNewContract(
                         contractPayload,
                         CONTRACT_PROJECT_ACTION.EDIT
@@ -55,9 +73,19 @@ function UpdateContract() {
                             "You do not have permission to edit this NEW contract."
                         );
                     } else {
-                        setContract(mapContractToForm(contractPayload));
+                        const selectedType = availableTypes.find(
+                            (item) => item.id === contractPayload.contractTypeId
+                        );
+                        setContract(mapContractToForm(
+                            contractPayload,
+                            selectedType?.activeWorkflow || null
+                        ));
                     }
                     setProjects(projectItems);
+                    setContractTypes(availableTypes);
+                    setContractTemplates(
+                        Array.isArray(templateItems) ? templateItems : []
+                    );
                 }
             } catch (error) {
                 if (active) {
@@ -79,10 +107,147 @@ function UpdateContract() {
         };
     }, [id]);
 
+    const selectedProjectId = contract?.projectId;
+    const contractReady = contract !== null;
+
+    useEffect(() => {
+        if (!contractReady) {
+            return undefined;
+        }
+
+        let active = true;
+        const loadContext = async () => {
+            setLoadingProjectContext(true);
+            try {
+                const response = selectedProjectId
+                    ? await contractApi.getProjectContext(selectedProjectId)
+                    : await contractApi.getStandaloneContext();
+                if (active) {
+                    setProjectContext(unwrapApiResponse(response) || null);
+                }
+            } catch (error) {
+                if (active) {
+                    setProjectContext(null);
+                    setErrorMessage(getApiErrorMessage(
+                        error,
+                        selectedProjectId
+                            ? "Unable to load project phases, tasks and members."
+                            : "Unable to load standalone contract users."
+                    ));
+                }
+            } finally {
+                if (active) {
+                    setLoadingProjectContext(false);
+                }
+            }
+        };
+
+        loadContext();
+        return () => {
+            active = false;
+        };
+    }, [contractReady, selectedProjectId]);
+
     const handleChange = (event) => {
         const { name, value, type, checked } = event.target;
         const nextValue = type === "checkbox" ? checked : value;
+
+        if (name === "projectId") {
+            setProjectContext(null);
+            setLoadingProjectContext(false);
+        }
+
         setContract((current) => {
+            if (name === "projectId") {
+                return {
+                    ...current,
+                    projectId: value,
+                    projectName: "",
+                    phaseId: "",
+                    taskId: "",
+                    workflowAssignees: [],
+                };
+            }
+
+            if (name === "phaseId") {
+                return {
+                    ...current,
+                    phaseId: value,
+                    taskId: "",
+                };
+            }
+
+            if (name === "contractTypeId") {
+                const selectedType = contractTypes.find(
+                    (item) => item.id === value
+                );
+                return {
+                    ...current,
+                    contractTypeId: value,
+                    contractTemplateId: "",
+                    contractTemplateVersionId: "",
+                    contractContent: "",
+                    contractLayoutJson: "",
+                    attributeValues: {},
+                    saveAsTemplateVersion: false,
+                    templateVersionName: "",
+                    templateVersionNote: "",
+                    workflowDefinition: selectedType?.activeWorkflow || null,
+                    workflowAssignees: [],
+                };
+            }
+
+            if (name.startsWith("workflowAssignee.")) {
+                const workflowStepId = name.slice("workflowAssignee.".length);
+                const remainingAssignments = (current.workflowAssignees || [])
+                    .filter((item) => item.workflowStepId !== workflowStepId);
+                return {
+                    ...current,
+                    workflowAssignees: value
+                        ? [
+                            ...remainingAssignments,
+                            { workflowStepId, userId: value },
+                        ]
+                        : remainingAssignments,
+                };
+            }
+
+            if (name === "contractTemplateId") {
+                const template = contractTemplates.find(
+                    (item) => item.id === value
+                );
+                const latestVersion = Array.isArray(template?.versions)
+                    ? template.versions[0]
+                    : null;
+                return {
+                    ...current,
+                    contractTemplateId: value,
+                    contractTemplateVersionId: latestVersion?.id || "",
+                    contractContent: latestVersion?.templateContent || "",
+                    contractLayoutJson: latestVersion?.layoutJson || "",
+                    attributeValues: {},
+                    saveAsTemplateVersion: false,
+                    templateVersionName: "",
+                    templateVersionNote: "",
+                };
+            }
+
+            if (name === "contractTemplateVersionId") {
+                const template = contractTemplates.find(
+                    (item) => item.id === current.contractTemplateId
+                );
+                const version = template?.versions?.find(
+                    (item) => item.id === value
+                );
+                return {
+                    ...current,
+                    contractTemplateVersionId: value,
+                    contractContent: version?.templateContent || "",
+                    contractLayoutJson: version?.layoutJson || "",
+                    attributeValues: {},
+                };
+            }
+
             if (name.startsWith("attributeValues.")) {
                 const attributeKey = name.slice("attributeValues.".length);
                 return {
@@ -162,8 +327,12 @@ function UpdateContract() {
                         contract={contract}
                         onChange={handleChange}
                         projects={projects}
+                        contractTypes={contractTypes}
+                        contractTemplates={contractTemplates}
+                        projectContext={projectContext}
+                        loadingProjectContext={loadingProjectContext}
+                        loadingContractOptions={loading}
                         creatorReadOnly
-                        projectReadOnly
                     />
 
                     {errorMessage ? (
