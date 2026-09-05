@@ -27,20 +27,41 @@ public interface ContractRepository extends JpaRepository<Contracts, UUID> {
             LEFT JOIN contract.contractType contractType
             LEFT JOIN contract.contractTemplate contractTemplate
             LEFT JOIN contract.contractCreatedByUser creator
-            WHERE project.id IN (:projectIds)
-            AND (
-                project.id IN (:fullScopeProjectIds)
-                OR creator.id = :currentUserId
-                OR EXISTS (
-                    SELECT workflowStep.id
-                    FROM ContractWorkflowStepInstance workflowStep
-                    WHERE workflowStep.contract.id = contract.id
-                        AND workflowStep.assignedUser.id = :currentUserId
+            WHERE (
+                (
+                    project.id IN (:projectIds)
+                    AND (
+                        project.id IN (:fullScopeProjectIds)
+                        OR creator.id = :currentUserId
+                        OR EXISTS (
+                            SELECT workflowStep.id
+                            FROM ContractWorkflowStepInstance workflowStep
+                            WHERE workflowStep.contract.id = contract.id
+                                AND workflowStep.assignedUser.id = :currentUserId
+                        )
+                        OR (
+                            contract.contractCreatedByUser IS NULL
+                            AND LOWER(TRIM(COALESCE(contract.contractCreateBy, '')))
+                                = :currentUserName
+                        )
+                    )
                 )
                 OR (
-                    contract.contractCreatedByUser IS NULL
-                    AND LOWER(TRIM(COALESCE(contract.contractCreateBy, '')))
-                        = :currentUserName
+                    contract.project IS NULL
+                    AND (
+                        creator.id = :currentUserId
+                        OR EXISTS (
+                            SELECT standaloneStep.id
+                            FROM ContractWorkflowStepInstance standaloneStep
+                            WHERE standaloneStep.contract.id = contract.id
+                                AND standaloneStep.assignedUser.id = :currentUserId
+                        )
+                        OR (
+                            contract.contractCreatedByUser IS NULL
+                            AND LOWER(TRIM(COALESCE(contract.contractCreateBy, '')))
+                                = :currentUserName
+                        )
+                    )
                 )
             )
             AND (

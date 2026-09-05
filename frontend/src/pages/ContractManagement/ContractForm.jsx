@@ -118,15 +118,16 @@ function ContractForm({
                 </SelectField>
 
                 <SelectField
-                    label="Project"
+                    label="Project (optional)"
                     name="projectId"
                     value={contract.projectId}
                     onChange={onChange}
                     disabled={loadingProjects || projectReadOnly}
-                    required
                 >
                     <option value="">
-                        {loadingProjects ? "Loading projects..." : "Select project"}
+                        {loadingProjects
+                            ? "Loading projects..."
+                            : "Standalone contract (no project)"}
                     </option>
 
                     {contract.projectId && !containsCurrentProject && (
@@ -144,19 +145,18 @@ function ContractForm({
                 </SelectField>
 
                 <SelectField
-                    label="Phase"
+                    label="Phase (optional)"
                     name="phaseId"
                     value={contract.phaseId}
                     onChange={onChange}
                     disabled={!contract.projectId
                         || loadingProjectContext
                         || projectReadOnly}
-                    required
                 >
                     <option value="">
                         {loadingProjectContext
                             ? "Loading phases..."
-                            : "Select phase"}
+                            : "No phase selected"}
                     </option>
                     {phases.map((phase) => (
                         <option key={phase.id} value={phase.id}>
@@ -167,16 +167,15 @@ function ContractForm({
                 </SelectField>
 
                 <SelectField
-                    label="Task"
+                    label="Task (optional)"
                     name="taskId"
                     value={contract.taskId}
                     onChange={onChange}
                     disabled={!contract.phaseId
                         || loadingProjectContext
                         || projectReadOnly}
-                    required
                 >
-                    <option value="">Select task</option>
+                    <option value="">No task selected</option>
                     {tasks.map((task) => (
                         <option key={task.id} value={task.id}>
                             {task.title}
@@ -369,6 +368,7 @@ function WorkflowAssignments({
     const members = Array.isArray(projectContext?.members)
         ? projectContext.members
         : [];
+    const projectContract = Boolean(projectContext?.projectId);
 
     if (steps.length === 0) {
         return (
@@ -386,8 +386,9 @@ function WorkflowAssignments({
                     {workflow.workflowName} · V{workflow.versionNumber}
                 </strong>
                 <span>
-                    Assign the exact project member responsible for each step.
-                    The backend also verifies their role and project permissions.
+                    {projectContract
+                        ? "Assign a project member matching the configured role, department and project permissions."
+                        : "Assign an active system user matching the configured role and department."}
                 </span>
             </div>
             <div className="contract-workflow-assignment-list">
@@ -404,12 +405,15 @@ function WorkflowAssignments({
                             : [member.roleCode];
                         const anyRole = normalizeRole(step.requiredRoleCode) === "ANY";
                         const roleActions = new Set(member.allowedActions || []);
+                        const departmentMatches = !step.requiredDepartmentId
+                            || member.departmentId === step.requiredDepartmentId;
                         return (anyRole || memberRoles.some((role) =>
                             normalizeRole(role)
                                 === normalizeRole(step.requiredRoleCode)
-                        )) && requiredPermissions.every((permission) =>
-                            roleActions.has(permission)
-                        );
+                        )) && departmentMatches && (!projectContract
+                            || requiredPermissions.every((permission) =>
+                                roleActions.has(permission)
+                            ));
                     });
 
                     return (
@@ -419,7 +423,10 @@ function WorkflowAssignments({
                                 <strong>{step.stepName}</strong>
                                 <small>
                                     {formatContractStatus(step.actionType)} · {step.requiredRoleCode === "ANY" ? "Any assigned member" : step.requiredRoleCode}
-                                    {requiredPermissions.length > 0
+                                    {step.requiredDepartmentName
+                                        ? ` · ${step.requiredDepartmentName}`
+                                        : " · Any department"}
+                                    {projectContract && requiredPermissions.length > 0
                                         ? ` · ${requiredPermissions.join(", ")}`
                                         : ""}
                                 </small>
@@ -444,12 +451,17 @@ function WorkflowAssignments({
                                 >
                                     <option value="">
                                         {candidates.length === 0
-                                            ? "No eligible project member"
-                                            : "Select responsible member"}
+                                            ? projectContract
+                                                ? "No eligible project member"
+                                                : "No eligible system user"
+                                            : "Select responsible user"}
                                     </option>
                                     {candidates.map((member) => (
                                         <option value={member.userId} key={member.userId}>
                                             {member.fullName} ({member.email || member.roleCode})
+                                            {member.departmentName
+                                                ? ` · ${member.departmentName}`
+                                                : ""}
                                         </option>
                                     ))}
                                 </select>

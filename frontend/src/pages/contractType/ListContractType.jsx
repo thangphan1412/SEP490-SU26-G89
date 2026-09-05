@@ -40,6 +40,7 @@ function createWorkflowStep(overrides = {}) {
         stepName: "",
         actionType: "APPROVE",
         requiredRoleCode: "",
+        requiredDepartmentId: "",
         required: true,
         canReject: true,
         ...overrides,
@@ -93,6 +94,7 @@ function ListContractType() {
     const [workflowOptions, setWorkflowOptions] = useState({
         actionTypes: ["CREATE", "APPROVE", "SIGN"],
         roles: [],
+        departments: [],
     });
 
     useEffect(() => {
@@ -118,6 +120,9 @@ function ListContractType() {
                             : ["CREATE", "APPROVE", "SIGN"],
                         roles: Array.isArray(workflowPayload?.roles)
                             ? workflowPayload.roles
+                            : [],
+                        departments: Array.isArray(workflowPayload?.departments)
+                            ? workflowPayload.departments
                             : [],
                     });
                 }
@@ -202,6 +207,8 @@ function ListContractType() {
                         stepName: step.stepName || "",
                         actionType: step.actionType || "APPROVE",
                         requiredRoleCode: step.requiredRoleCode || "",
+                        requiredDepartmentId:
+                            step.requiredDepartmentId || "",
                         required: step.required !== false,
                         canReject: Boolean(step.canReject),
                     }))
@@ -250,6 +257,7 @@ function ListContractType() {
                     stepOrder: current.workflowSteps.length + 1,
                     stepName: "New workflow step",
                     requiredRoleCode: workflowOptions.roles[0]?.roleCode || "",
+                    requiredDepartmentId: "",
                 }),
             ],
         }));
@@ -344,6 +352,7 @@ function ListContractType() {
                 stepName: step.stepName.trim(),
                 actionType: step.actionType,
                 requiredRoleCode: step.requiredRoleCode,
+                requiredDepartmentId: step.requiredDepartmentId || null,
                 required: true,
                 canReject: step.actionType !== "CREATE"
                     && Boolean(step.canReject),
@@ -822,6 +831,7 @@ function WorkflowEditor({
 }) {
     const actionTypes = workflowOptions?.actionTypes || [];
     const roles = workflowOptions?.roles || [];
+    const departments = workflowOptions?.departments || [];
 
     return (
         <section className="contract-type-workflow-editor">
@@ -851,6 +861,10 @@ function WorkflowEditor({
                 {form.workflowSteps.map((step, index) => {
                     const roleExists = roles.some(
                         (role) => role.roleCode === step.requiredRoleCode
+                    );
+                    const departmentExists = departments.some(
+                        (department) => department.id
+                            === step.requiredDepartmentId
                     );
                     return (
                         <article
@@ -941,6 +955,40 @@ function WorkflowEditor({
                                     ))}
                                 </select>
                             </div>
+                            <div>
+                                <label className="contract-form-label">
+                                    Required department
+                                </label>
+                                <select
+                                    className="form-select"
+                                    value={step.requiredDepartmentId || ""}
+                                    onChange={(event) => onStepChange(
+                                        step.clientKey,
+                                        "requiredDepartmentId",
+                                        event.target.value
+                                    )}
+                                >
+                                    <option value="">Any department</option>
+                                    {!departmentExists
+                                        && step.requiredDepartmentId && (
+                                        <option value={step.requiredDepartmentId}>
+                                            {step.requiredDepartmentName
+                                                || step.requiredDepartmentId}
+                                        </option>
+                                    )}
+                                    {departments.map((department) => (
+                                        <option
+                                            value={department.id}
+                                            key={department.id}
+                                        >
+                                            {department.departmentName}
+                                            {department.departmentCode
+                                                ? ` (${department.departmentCode})`
+                                                : ""}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
                             <label className="form-check contract-type-workflow-reject">
                                 <input
                                     type="checkbox"
@@ -987,6 +1035,9 @@ function WorkflowPreview({ workflow }) {
                         <strong>{step.stepName}</strong>
                         <small>
                             {formatContractStatus(step.actionType)} · {step.requiredRoleCode}
+                            {step.requiredDepartmentName
+                                ? ` · ${step.requiredDepartmentName}`
+                                : " · Any department"}
                             {step.canReject ? " · can reject" : ""}
                         </small>
                     </div>
