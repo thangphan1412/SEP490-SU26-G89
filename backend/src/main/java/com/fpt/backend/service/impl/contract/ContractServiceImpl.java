@@ -345,10 +345,17 @@ public class ContractServiceImpl implements ContractService {
                 actor
         );
         requireStatus(contract, ContractStatus.NEW, "Only NEW contracts can be edited");
-        validateProjectUnchanged(contract, request);
-        validateWorkflowSelectionUnchanged(contract, request);
+        requireTargetProjectAccessForEdit(contract, request);
         applyEditableFields(contract, request, false);
         Contracts savedContract = contractRepository.save(contract);
+        Users workflowCreator = savedContract.getContractCreatedByUser() == null
+                ? actor
+                : savedContract.getContractCreatedByUser();
+        replaceWorkflowInstances(
+                savedContract,
+                workflowCreator,
+                request.workflowAssignees()
+        );
         if (request.attributeValues() != null) {
             syncAttributeValues(savedContract, request.attributeValues());
         }
@@ -713,7 +720,7 @@ public class ContractServiceImpl implements ContractService {
         };
     }
 
-    private void validateProjectUnchanged(
+    private void requireTargetProjectAccessForEdit(
             Contracts contract,
             ContractRequest request
     ) {
@@ -725,35 +732,23 @@ public class ContractServiceImpl implements ContractService {
                 ? null
                 : contract.getProject().getId();
 
-        if (!Objects.equals(currentProjectId, request.projectId())) {
-            throw new BadHttpException(
-                    "A contract cannot be moved to another project"
+        UUID targetProjectId = request.projectId();
+        if (targetProjectId != null
+                && !Objects.equals(currentProjectId, targetProjectId)) {
+            permissionAccessService.requireAction(
+                    targetProjectId,
+                    ContractProjectActions.CREATE
             );
         }
     }
 
-    private void validateWorkflowSelectionUnchanged(
+    private void replaceWorkflowInstances(
             Contracts contract,
-            ContractRequest request
+            Users creator,
+            List<ContractWorkflowAssigneeRequest> requestedAssignees
     ) {
-        UUID currentTypeId = contract.getContractType() == null
-                ? null
-                : contract.getContractType().getId();
-        UUID currentTaskId = contract.getTimelineTask() == null
-                ? null
-                : contract.getTimelineTask().getId();
-
-        if (currentTypeId == null
-                || !currentTypeId.equals(request.contractTypeId())) {
-            throw new BadHttpException(
-                    "Contract type cannot be changed after the contract is created"
-            );
-        }
-        if (!Objects.equals(currentTaskId, request.taskId())) {
-            throw new BadHttpException(
-                    "Contract task cannot be changed after the contract is created"
-            );
-        }
+        workflowStepRepository.deleteAllByContractId(contract.getId());
+        createWorkflowInstances(contract, creator, requestedAssignees);
     }
 
     private void createWorkflowInstances(
@@ -884,7 +879,12 @@ public class ContractServiceImpl implements ContractService {
         }
 
         workflowStepRepository.saveAll(instances);
-        contract.setWorkflowStepInstances(instances);
+        if (contract.getWorkflowStepInstances() == null) {
+            contract.setWorkflowStepInstances(new ArrayList<>(instances));
+        } else {
+            contract.getWorkflowStepInstances().clear();
+            contract.getWorkflowStepInstances().addAll(instances);
+        }
     }
 
     private void validateWorkflowAssignee(
@@ -1211,8 +1211,9 @@ public class ContractServiceImpl implements ContractService {
         validateRequest(request);
 
         Projects project = resolveProject(request.projectId());
+        Timeline phase = resolvePhase(request.phaseId(), project);
         ContractTypes contractType = resolveContractType(request.contractTypeId());
-        TimelineTask task = resolveTask(request.taskId(), project);
+        TimelineTask task = resolveTask(request.taskId(), project, phase);
         ContractTemplates template = resolveTemplate(request.contractTemplateId());
         validateTemplateBelongsToType(template, contractType);
 
@@ -1247,18 +1248,10 @@ public class ContractServiceImpl implements ContractService {
         contract.setEffectiveDate(request.effectiveDate());
         contract.setExpirationDate(request.expirationDate());
         contract.setProject(project);
+        syncPhaseSelection(contract, phase);
         contract.setTimelineTask(task);
         contract.setContractType(contractType);
-        if (creating) {
-            ContractTypeWorkflow workflow = contractTypeWorkflowRepository
-                    .findFirstByContractTypeIdAndActiveTrueOrderByVersionNumberDesc(
-                            contractType.getId()
-                    )
-                    .orElseThrow(() -> new BadHttpException(
-                            "The selected contract type does not have an active workflow"
-                    ));
-            contract.setWorkflowVersion(workflow);
-        }
+        contract.setWorkflowVersion(resolveActiveWorkflow(contractType));
         contract.setContractTemplate(template);
         contract.setContractTemplateVersion(version);
         contract.setContractContent(content);
@@ -1454,7 +1447,34 @@ public class ContractServiceImpl implements ContractService {
                 ));
     }
 
-    private TimelineTask resolveTask(UUID taskId, Projects project) {
+    private Timeline resolvePhase(UUID phaseId, Projects project) {
+        if (phaseId == null) {
+            return null;
+        }
+        if (project == null) {
+            throw new BadHttpException(
+                    "A phase can only be selected when the contract has a project"
+            );
+        }
+
+        Timeline phase = phaseRepository.findById(phaseId)
+                .orElseThrow(() -> new NotFoundException(
+                        "Project phase not found with id: " + phaseId
+                ));
+        if (phase.getProject() == null
+                || !phase.getProject().getId().equals(project.getId())) {
+            throw new BadHttpException(
+                    "The selected phase does not belong to the selected project"
+            );
+        }
+        return phase;
+    }
+
+    private TimelineTask resolveTask(
+            UUID taskId,
+            Projects project,
+            Timeline selectedPhase
+    ) {
         if (taskId == null) {
             return null;
         }
@@ -1475,7 +1495,34 @@ public class ContractServiceImpl implements ContractService {
                     "The selected task does not belong to the selected project"
             );
         }
+        if (selectedPhase == null
+                || !phase.getId().equals(selectedPhase.getId())) {
+            throw new BadHttpException(
+                    "The selected task does not belong to the selected phase"
+            );
+        }
         return task;
+    }
+
+    private void syncPhaseSelection(Contracts contract, Timeline phase) {
+        TimelineContract link = contract.getTimelineContract();
+        if (phase == null) {
+            contract.setTimelineContract(null);
+            return;
+        }
+
+        if (link == null) {
+            link = TimelineContract.builder()
+                    .contract(contract)
+                    .timeline(phase)
+                    .linkedAt(LocalDateTime.now())
+                    .build();
+        } else if (link.getTimeline() == null
+                || !phase.getId().equals(link.getTimeline().getId())) {
+            link.setTimeline(phase);
+            link.setLinkedAt(LocalDateTime.now());
+        }
+        contract.setTimelineContract(link);
     }
 
     private Set<String> activeActionsForUser(UUID userId, UUID projectId) {
@@ -1552,6 +1599,18 @@ public class ContractServiceImpl implements ContractService {
         return contractTypeRepository.findById(contractTypeId)
                 .orElseThrow(() -> new NotFoundException(
                         "Contract type not found with id: " + contractTypeId
+                ));
+    }
+
+    private ContractTypeWorkflow resolveActiveWorkflow(
+            ContractTypes contractType
+    ) {
+        return contractTypeWorkflowRepository
+                .findFirstByContractTypeIdAndActiveTrueOrderByVersionNumberDesc(
+                        contractType.getId()
+                )
+                .orElseThrow(() -> new BadHttpException(
+                        "The selected contract type does not have an active workflow"
                 ));
     }
 
@@ -1887,6 +1946,9 @@ public class ContractServiceImpl implements ContractService {
         Projects project = contract.getProject();
         TimelineTask task = contract.getTimelineTask();
         Timeline phase = task == null ? null : task.getTimeline();
+        if (phase == null && contract.getTimelineContract() != null) {
+            phase = contract.getTimelineContract().getTimeline();
+        }
         ContractTypes contractType = contract.getContractType();
         ContractTemplates template = contract.getContractTemplate();
         ContractTemplateVersions version = contract.getContractTemplateVersion();
