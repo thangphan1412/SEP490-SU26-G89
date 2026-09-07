@@ -1,12 +1,16 @@
 package com.fpt.backend.controller.signatureController;
 
 import com.fpt.backend.entity.Contracts;
+import com.fpt.backend.entity.FileStorage;
+import com.fpt.backend.repository.FileStorageRepository;
 import com.fpt.backend.repository.contract.ContractRepository;
+import com.fpt.backend.service.impl.CloudinaryService;
 import com.fpt.backend.service.impl.signature.ContractSigningService;
 import com.fpt.backend.service.impl.signature.DigitalSignatureService;
 import com.fpt.backend.service.interfaces.contract.ContractService;
 import com.fpt.backend.util.CurrentUser;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -23,6 +27,8 @@ public class ContractSigningController {
     private final ContractService contractService;
     private final ContractRepository contractRepository;
     private final DigitalSignatureService digitalSignatureService;
+    private final CloudinaryService cloudinaryService;
+    private final FileStorageRepository fileStorageRepository;
     @PostMapping("/{contractId}/sign")
     public ResponseEntity<?> signContract(
             @PathVariable UUID contractId,
@@ -40,4 +46,15 @@ public class ContractSigningController {
         );
     }
 
+    @GetMapping("/test-download/{fileStorageId}")
+    public ResponseEntity<byte[]> testDownload(@PathVariable UUID fileStorageId) {
+        FileStorage fs = fileStorageRepository.findById(fileStorageId)
+                .orElseThrow(() -> new RuntimeException("Not found"));
+
+        byte[] data = cloudinaryService.download(fs);
+
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                .body(data);
+    }
 }

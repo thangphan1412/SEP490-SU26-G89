@@ -11,8 +11,24 @@ import PropTypes from "prop-types";
 import Card from "../../components/signature/createSignature/Card.jsx";
 // import Card from "../../components/signature/createSignature/Card.jsx";
 
-function SignatureCanvas(props) {
-    return null;
+function SignatureCanvas({ mode, signatureUrl }) {
+    if (!signatureUrl) return null;
+
+    return (
+        <div className="mt-3 text-center">
+            <img
+                src={signatureUrl}
+                alt="Signature"
+                style={{
+                    maxWidth: "300px",
+                    border: "1px solid #e5e7eb",
+                    borderRadius: "6px",
+                    padding: "10px",
+                    backgroundColor: "#fff",
+                }}
+            />
+        </div>
+    );
 }
 
 SignatureCanvas.propTypes = {
@@ -108,7 +124,10 @@ function SignatureDetail() {
                     </div>
                 </div>
 
-                <SignatureCanvas mode="view" />
+                <SignatureCanvas
+                    mode="view"
+                    signatureUrl={electronicSignature.signatureUrl}
+                />
             </Card>
         </div>
     );

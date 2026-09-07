@@ -1,5 +1,6 @@
 package com.fpt.backend.dto.response.electronicSignature;
 
+import com.fpt.backend.dto.response.fileStorage.FileStorageResponse;
 import com.fpt.backend.enums.ElectronicSignatureType;
 import com.fpt.backend.enums.ElectronicStatus;
 import com.fpt.backend.enums.SignatureStatus;
@@ -23,4 +24,5 @@ public class ElectronicSignatureDetailResponse {
     private ElectronicStatus electronicSignatureStatus;
     private boolean isDefault;
     private LocalDate createAt;
+    private String signatureUrl;
 }

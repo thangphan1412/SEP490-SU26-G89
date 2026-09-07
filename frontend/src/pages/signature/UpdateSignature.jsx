@@ -9,12 +9,38 @@ import InfoBanner from "../../components/signature/createSignature/InforBanner.j
 
 import electronicSignatureService
     from "../../services/signatureService/electronicSignatureService.js";
+import PropTypes from "prop-types";
 
+function SignatureCanvas({ mode, signatureUrl }) {
+    if (!signatureUrl) return null;
+
+    return (
+        <div className="mt-3 text-center">
+            <img
+                src={signatureUrl}
+                alt="Signature"
+                style={{
+                    maxWidth: "300px",
+                    border: "1px solid #e5e7eb",
+                    borderRadius: "6px",
+                    padding: "10px",
+                    backgroundColor: "#fff",
+                }}
+            />
+        </div>
+    );
+}
+
+SignatureCanvas.propTypes = {
+    mode: PropTypes.string,
+
+    signatureUrl: PropTypes.any
+};
 function UpdateSignature() {
 
     const { id } = useParams();
     const navigate = useNavigate();
-
+    const [electronicSignature, setElectronicSignature] = useState(null);
     const [form, setForm] = useState({
         electronicSignatureName: "",
         electronicSignatureType: "DRAW",
@@ -44,7 +70,7 @@ function UpdateSignature() {
                 const response =
                     await electronicSignatureService
                         .getElectronicSignatureById(id);
-
+                setElectronicSignature(response.data.data);
                 console.log(
                     "DETAIL:",
                     response.data
@@ -221,6 +247,10 @@ function UpdateSignature() {
                 />
 
 
+                <SignatureCanvas
+                    mode="view"
+                    signatureUrl={electronicSignature?.signatureUrl}
+                />
                 <SignatureCanvasCard
                     activeTab={activeTab}
                     setActiveTab={setActiveTab}

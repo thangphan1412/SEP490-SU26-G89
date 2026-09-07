@@ -95,31 +95,31 @@ public class CloudinaryService {
         }
 
         try {
-            System.out.println("######## ENTER CLOUDINARY DOWNLOAD ########");
-            String publicId = fileStorage.getStorageKey();
+//            System.out.println("######## ENTER CLOUDINARY DOWNLOAD ########");
+//            String publicId = fileStorage.getStorageKey();
+//
+//            System.out.println("=== CLOUDINARY DOWNLOAD ===");
+//            System.out.println("Public ID: " + publicId);
+//            System.out.println("Resource type: raw");
+//
+//            String url = cloudinary.url()
+//                    .resourceType("raw")
+//                    .secure(true)
+//                    .generate(publicId);
 
-            System.out.println("=== CLOUDINARY DOWNLOAD ===");
-            System.out.println("Public ID: " + publicId);
-            System.out.println("Resource type: raw");
-
-            String url = cloudinary.url()
-                    .resourceType("raw")
-                    .secure(true)
-                    .generate(publicId);
-
-            System.out.println("Generated URL: " + url);
-
+            // System.out.println("Generated URL: " + url);
+            String url = fileStorage.getFilePath();
             HttpRequest request = HttpRequest.newBuilder(
                     URI.create(url)
             ).GET().build();
-
+            // System.out.println("Sending HTTP GET request to: " + fileStorage.getFilePath());
             HttpResponse<byte[]> response = HttpClient.newHttpClient().send(
                     request,
                     HttpResponse.BodyHandlers.ofByteArray()
             );
 
-            System.out.println("HTTP status: " + response.statusCode());
-            System.out.println("Bytes: " + response.body().length);
+            // System.out.println("HTTP status: " + response.statusCode());
+            // System.out.println("Bytes: " + response.body().length);
 
             if (response.statusCode() < 200 || response.statusCode() >= 300) {
                 throw new BadHttpException(
