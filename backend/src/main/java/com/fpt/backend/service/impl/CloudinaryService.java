@@ -67,6 +67,11 @@ public class CloudinaryService {
             );
             String secureUrl = (String) uploadResult.get("secure_url");
             String publicId = (String) uploadResult.get("public_id");
+            System.out.println("=== CLOUDINARY UPLOAD ===");
+            System.out.println("public_id = " + uploadResult.get("public_id"));
+            System.out.println("secure_url = " + uploadResult.get("secure_url"));
+            System.out.println("resource_type = " + uploadResult.get("resource_type"));
+            System.out.println("type = " + uploadResult.get("type"));
             return fileStorageRepository.save(FileStorage.builder()
                     .originalName(originalName)
                     .fileName(publicId)
@@ -85,23 +90,54 @@ public class CloudinaryService {
     }
 
     public byte[] download(FileStorage fileStorage) {
-        if (fileStorage == null || fileStorage.getFilePath() == null) {
+        if (fileStorage == null || fileStorage.getStorageKey() == null) {
             throw new BadHttpException("Contract PDF is unavailable");
         }
+
         try {
-            HttpRequest request = HttpRequest.newBuilder(URI.create(fileStorage.getFilePath())).GET().build();
+            System.out.println("######## ENTER CLOUDINARY DOWNLOAD ########");
+            String publicId = fileStorage.getStorageKey();
+
+            System.out.println("=== CLOUDINARY DOWNLOAD ===");
+            System.out.println("Public ID: " + publicId);
+            System.out.println("Resource type: raw");
+
+            String url = cloudinary.url()
+                    .resourceType("raw")
+                    .secure(true)
+                    .generate(publicId);
+
+            System.out.println("Generated URL: " + url);
+
+            HttpRequest request = HttpRequest.newBuilder(
+                    URI.create(url)
+            ).GET().build();
+
             HttpResponse<byte[]> response = HttpClient.newHttpClient().send(
-                    request, HttpResponse.BodyHandlers.ofByteArray()
+                    request,
+                    HttpResponse.BodyHandlers.ofByteArray()
             );
+
+            System.out.println("HTTP status: " + response.statusCode());
+            System.out.println("Bytes: " + response.body().length);
+
             if (response.statusCode() < 200 || response.statusCode() >= 300) {
-                throw new BadHttpException("Unable to download contract PDF from Cloudinary");
+                throw new BadHttpException(
+                        "Unable to download contract PDF from Cloudinary. HTTP "
+                                + response.statusCode()
+                );
             }
+
             return response.body();
-        } catch (InterruptedException exception) {
+
+        } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new BadHttpException("Contract PDF download was interrupted");
-        } catch (IOException exception) {
-            throw new BadHttpException("Unable to download contract PDF: " + exception.getMessage());
+
+        } catch (IOException e) {
+            throw new BadHttpException(
+                    "Unable to download contract PDF: " + e.getMessage()
+            );
         }
     }
 
