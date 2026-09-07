@@ -122,9 +122,14 @@ public class CloudinaryService {
             // System.out.println("Bytes: " + response.body().length);
 
             if (response.statusCode() < 200 || response.statusCode() >= 300) {
+                byte[] rawBody = response.body();
+                System.out.println("Cloudinary status: " + response.statusCode());
+                System.out.println("Cloudinary body length: " + (rawBody == null ? 0 : rawBody.length));
+                System.out.println("Cloudinary body (raw): " + new String(rawBody, java.nio.charset.StandardCharsets.UTF_8));
+                System.out.println("Cloudinary headers: " + response.headers().map());
+                System.out.println("Requested URL: " + url);
                 throw new BadHttpException(
-                        "Unable to download contract PDF from Cloudinary. HTTP "
-                                + response.statusCode()
+                        "Unable to download contract PDF from Cloudinary. HTTP " + response.statusCode()
                 );
             }
 
