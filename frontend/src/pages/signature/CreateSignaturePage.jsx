@@ -90,7 +90,7 @@ function CreateSignaturePage() {
 
 
             formData.append(
-                "isDefault",
+                "default",
                 String(form.isDefault)
             );
 
@@ -105,7 +105,7 @@ function CreateSignaturePage() {
                 "multipartFile",
                 signatureFile
             );
-
+            console.log("form.isDefault before submit:", form.isDefault);
             console.log("===== CREATE SIGNATURE =====");
 
             for (const [key, value] of formData.entries()) {

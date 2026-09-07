@@ -6,20 +6,15 @@ function SignatureRow({ signature }) {
     const navigate = useNavigate();
 
     const handleDetail = () => {
-        navigate(
-            `/signatures/${signature.id}`
-        );
+        navigate(`/signature-management/detail/${signature.id}`);
     };
 
     const handleEdit = () => {
-        navigate(
-            `/signatures/${signature.id}/edit`
-        );
+        navigate(`/signature-management/${signature.id}/edit`);
     };
 
     return (
         <tr>
-
             <td>
                 <strong>
                     {signature.signatureName}
@@ -51,7 +46,6 @@ function SignatureRow({ signature }) {
             </td>
 
             <td className="text-end">
-
                 <button
                     type="button"
                     className="btn btn-sm btn-light me-1"
@@ -67,9 +61,7 @@ function SignatureRow({ signature }) {
                 >
                     <Pencil size={14} />
                 </button>
-
             </td>
-
         </tr>
     );
 }

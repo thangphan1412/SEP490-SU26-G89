@@ -1,6 +1,6 @@
 import SignatureRow from "./SignatureRow"
 
-function SignatureTable({ signatures }) {
+function SignatureTable({ electronicSignatures = [] }) {
     return (
         <table className="signature-table">
             <thead>
@@ -13,13 +13,17 @@ function SignatureTable({ signatures }) {
                 <th className="text-end">Actions</th>
             </tr>
             </thead>
+
             <tbody>
-            {signatures.map((sig) => (
-                <SignatureRow key={sig.id} signature={sig} />
+            {electronicSignatures.map((sig) => (
+                <SignatureRow
+                    key={sig.id}
+                    signature={sig}
+                />
             ))}
             </tbody>
         </table>
-    )
+    );
 }
 
 export default SignatureTable

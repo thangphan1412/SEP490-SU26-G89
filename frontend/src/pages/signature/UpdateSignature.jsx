@@ -124,7 +124,7 @@ function UpdateSignature() {
             );
 
             formData.append(
-                "isDefault",
+                "default",
                 String(form.isDefault)
             );
 

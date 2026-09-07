@@ -5,6 +5,7 @@ import SignatureToolbar from "../../components/signature/SignatureToolbar.jsx";
 import SignatureTable from "../../components/signature/SignatureTable.jsx";
 import SignaturePagination from "../../components/signature/SignaturePagination.jsx";
 import electronicSignatureService from "../../services/signatureService/electronicSignatureService.js"
+import {useNavigate} from "react-router-dom";
 
 
 function SignatureList() {
@@ -13,7 +14,7 @@ function SignatureList() {
     const [statusFilter, setStatusFilter] = useState("All")
     const [currentPage, setCurrentPage] = useState(1)
     const [pageSize, setPageSize] = useState(10)
-
+    const navigate = useNavigate()
     const [electronicSignature, setElectronicSignature] = useState([]);
     const loadElectronicSignature = async () => {
         try {
@@ -36,9 +37,9 @@ function SignatureList() {
     const filteredSignatures = useMemo(() => {
         return electronicSignature.filter((sig) => {
 
-            const name = sig.signatureName || "";
-            const type = sig.type || "";
-            const status = sig.status || "";
+            const name = sig.electronicSignatureName || "";
+            const type = sig.electronicSignatureType || "";
+            const status = sig.electronicStatus || "";
 
             const matchesSearch =
                 name
@@ -70,7 +71,7 @@ function SignatureList() {
     const totalPages = Math.max(1, Math.ceil(filteredSignatures.length / pageSize))
 
     const handleCreateNew = () => {
-        // TODO: điều hướng tới trang tạo signature hoặc mở modal
+       navigate("/signature-management/create-signature")
     }
 
     const handleRefresh = () => {
@@ -98,7 +99,7 @@ function SignatureList() {
             />
 
             <div className="signature-table-wrapper">
-                <SignatureTable signatures={filteredSignatures} />
+                <SignatureTable electronicSignatures={filteredSignatures} />
             </div>
 
             <SignaturePagination
