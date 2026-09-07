@@ -8,6 +8,7 @@ import java.util.UUID;
 
 public record ContractRequest(
         UUID projectId,
+        UUID phaseId,
         UUID taskId,
         UUID contractTypeId,
         UUID contractTemplateId,

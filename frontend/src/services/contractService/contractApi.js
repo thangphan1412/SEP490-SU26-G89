@@ -56,9 +56,9 @@ const contractApi = {
         );
     },
 
-    signContract(id, action, electronicSignatureId, comment = null) {
+    signContract(id, electronicSignatureId, comment = null) {
         return this.transitionContract(id, {
-            action,
+            action: "COMPLETE_STEP",
             actorName: localStorage.getItem("fullName") || localStorage.getItem("email"),
             actorRole: localStorage.getItem("role") || localStorage.getItem("roleName"),
             comment,

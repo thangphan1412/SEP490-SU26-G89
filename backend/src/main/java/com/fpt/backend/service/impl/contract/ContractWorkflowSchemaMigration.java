@@ -7,9 +7,9 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
 /**
- * Keeps the runtime contract workflow independent from Contract Type steps.
- * SQL Server does not always relax NOT NULL columns through ddl-auto=update,
- * so this small idempotent migration is required for existing databases.
+ * Applies idempotent SQL Server schema fixes required by the Contract flow.
+ * Hibernate ddl-auto=update does not reliably alter existing column definitions,
+ * so these migrations also keep older developer databases compatible.
  */
 @Component
 @RequiredArgsConstructor
@@ -29,6 +29,36 @@ public class ContractWorkflowSchemaMigration {
             )
             ALTER TABLE dbo.contract_workflow_step_instances
                 ALTER COLUMN step_definition_id uniqueidentifier NULL
+            """);
+    }
+
+    @EventListener(ApplicationReadyEvent.class)
+    public void useUnicodeForTimelineTaskTitle() {
+        jdbcTemplate.execute("""
+            IF EXISTS (
+                SELECT 1
+                FROM sys.columns
+                WHERE object_id = OBJECT_ID('dbo.timeline_task')
+                  AND name = 'title'
+                  AND system_type_id = TYPE_ID('varchar')
+            )
+            ALTER TABLE dbo.timeline_task
+                ALTER COLUMN title nvarchar(255) NULL
+            """);
+    }
+
+    @EventListener(ApplicationReadyEvent.class)
+    public void useUnicodeForContractTitle() {
+        jdbcTemplate.execute("""
+            IF EXISTS (
+                SELECT 1
+                FROM sys.columns
+                WHERE object_id = OBJECT_ID('dbo.contracts')
+                  AND name = 'contract_title'
+                  AND system_type_id = TYPE_ID('varchar')
+            )
+            ALTER TABLE dbo.contracts
+                ALTER COLUMN contract_title nvarchar(255) NULL
             """);
     }
 }

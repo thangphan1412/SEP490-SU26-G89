@@ -18,7 +18,7 @@ import java.util.List;
 public class Contracts extends BaseEntity {
     @Column(name = "contract_number")
     private String contractNumber;
-    @Column(name = "contract_title")
+    @Column(name = "contract_title", columnDefinition = "nvarchar(255)")
     private String contractTitle;
     @Column(name = "contract_status")
     private String contractStatus;
@@ -59,7 +59,15 @@ public class Contracts extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "project_id")
     private Projects project;
-    // Task selected from the project's phase when the contract is created.
+    // Optional phase selection. A task, when selected, must belong to this phase.
+    @OneToOne(
+            mappedBy = "contract",
+            fetch = FetchType.LAZY,
+            cascade = CascadeType.ALL,
+            orphanRemoval = true
+    )
+    private TimelineContract timelineContract;
+    // Optional task selected from the contract's project phase.
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(
             name = "timeline_task_id",

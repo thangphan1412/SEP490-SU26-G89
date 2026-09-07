@@ -75,7 +75,6 @@ public class ContractServiceImpl implements ContractService {
     private static final int MINIMUM_SIGNER_AGE = 18;
     private static final String DATA_SOURCE = "DATABASE";
     private static final String DEFAULT_SORT_FIELD = "id";
-    private static final String ADMIN_ROLE = "ADMIN";
     private static final UUID NO_MATCH_PROJECT_ID = new UUID(0L, 0L);
 
     private static final Set<String> SORT_FIELDS = Set.of(
@@ -345,10 +344,17 @@ public class ContractServiceImpl implements ContractService {
                 actor
         );
         requireStatus(contract, ContractStatus.NEW, "Only NEW contracts can be edited");
-        validateProjectUnchanged(contract, request);
-        validateWorkflowSelectionUnchanged(contract, request);
+        requireTargetProjectAccessForEdit(contract, request);
         applyEditableFields(contract, request, false);
         Contracts savedContract = contractRepository.save(contract);
+        Users workflowCreator = savedContract.getContractCreatedByUser() == null
+                ? actor
+                : savedContract.getContractCreatedByUser();
+        replaceWorkflowInstances(
+                savedContract,
+                workflowCreator,
+                request.workflowAssignees()
+        );
         if (request.attributeValues() != null) {
             syncAttributeValues(savedContract, request.attributeValues());
         }
@@ -372,8 +378,6 @@ public class ContractServiceImpl implements ContractService {
         Users actor = currentUser.getCurrentUser();
         ContractStatus currentStatus = readStatus(contract);
         ContractAction action = readAction(request.action());
-        String actorName = getUserDisplayName(actor);
-        String actorRole = primaryRoleCode(actor);
 
         if (currentStatus.isTerminal()) {
             throw new BadHttpException(
@@ -381,88 +385,27 @@ public class ContractServiceImpl implements ContractService {
             );
         }
 
-        if (contract.getWorkflowVersion() != null
-                || workflowStepRepository.existsByContractId(contract.getId())) {
-            return transitionWorkflowContract(
-                    contract,
-                    currentStatus,
-                    action,
-                    request,
-                    actor
+        if (contract.getWorkflowVersion() == null
+                && !workflowStepRepository.existsByContractId(contract.getId())) {
+            throw new BadHttpException(
+                    "Contract does not have a configured workflow"
             );
         }
 
-        validateActionStatus(action, currentStatus);
-        requireContractAction(
-                contract,
-                permissionForWorkflowAction(action, currentStatus),
-                actor
-        );
-        validateRole(action, currentStatus, actorRole);
-
-        if (action == ContractAction.CANCEL || action == ContractAction.REJECT) {
-            requireText(request.comment(), "A cancellation or rejection reason is required");
-        }
-
-        Boolean signerAgeVerified = null;
-        if (action == ContractAction.SIGN_DIRECTOR
-                || action == ContractAction.SIGN_PARTNER) {
-            signerAgeVerified = validateSignerAge(actor.getDob());
-
-            if (!signerAgeVerified) {
-                String ageFailureReason =
-                        "Signer must be at least " + MINIMUM_SIGNER_AGE + " years old";
-                applyStatus(
-                        contract,
-                        currentStatus,
-                        ContractStatus.CANCELLED,
-                        "AGE_VALIDATION_FAILED",
-                        actorName,
-                        actorRole,
-                        combineComments(ageFailureReason, request.comment()),
-                        false
-                );
-                return toResponse(contractRepository.save(contract));
-            }
-            registerElectronicSignatureWhenRequired(contract, action, request, actor);
-        }
-
-        ContractStatus targetStatus = resolveTargetStatus(action);
-        applyStatus(
+        return transitionWorkflowContract(
                 contract,
                 currentStatus,
-                targetStatus,
-                action.name(),
-                actorName,
-                actorRole,
-                normalizeToNull(request.comment()),
-                signerAgeVerified
+                action,
+                request,
+                actor
         );
-
-        return toResponse(contractRepository.save(contract));
     }
 
-    private Signature registerElectronicSignatureWhenRequired(
+    private Signature registerElectronicSignature(
             Contracts contract,
-            ContractAction action,
             ContractTransitionRequest request,
             Users actor
     ) {
-        boolean legacySign = action == ContractAction.SIGN_DIRECTOR
-                || action == ContractAction.SIGN_PARTNER;
-        boolean workflowSign = false;
-        if (action == ContractAction.COMPLETE_STEP
-                && workflowStepRepository.existsByContractId(contract.getId())) {
-            workflowSign = workflowStepRepository
-                    .findFirstByContractIdAndStatusOrderByStepOrderAsc(
-                            contract.getId(), ContractWorkflowStepState.PENDING
-                    )
-                    .map(step -> step.getActionType().requiresSignature())
-                    .orElse(false);
-        }
-        if (!legacySign && !workflowSign) {
-            return null;
-        }
         if (request.electronicSignatureId() == null) {
             throw new BadHttpException("Please select an electronic signature before signing");
         }
@@ -694,26 +637,7 @@ public class ContractServiceImpl implements ContractService {
         );
     }
 
-    private String permissionForWorkflowAction(
-            ContractAction action,
-            ContractStatus currentStatus
-    ) {
-        return switch (action) {
-            case COMPLETE_STEP -> throw new BadHttpException(
-                    "COMPLETE_STEP is only available for configurable workflows"
-            );
-            case SUBMIT -> ContractProjectActions.SUBMIT;
-            case APPROVE_INTERNAL -> ContractProjectActions.APPROVE;
-            case SIGN_DIRECTOR, SIGN_PARTNER -> ContractProjectActions.SIGN;
-            case CANCEL -> ContractProjectActions.CANCEL;
-            case REJECT -> currentStatus
-                    == ContractStatus.PENDING_INTERNAL_APPROVAL
-                    ? ContractProjectActions.APPROVE
-                    : ContractProjectActions.SIGN;
-        };
-    }
-
-    private void validateProjectUnchanged(
+    private void requireTargetProjectAccessForEdit(
             Contracts contract,
             ContractRequest request
     ) {
@@ -725,35 +649,23 @@ public class ContractServiceImpl implements ContractService {
                 ? null
                 : contract.getProject().getId();
 
-        if (!Objects.equals(currentProjectId, request.projectId())) {
-            throw new BadHttpException(
-                    "A contract cannot be moved to another project"
+        UUID targetProjectId = request.projectId();
+        if (targetProjectId != null
+                && !Objects.equals(currentProjectId, targetProjectId)) {
+            permissionAccessService.requireAction(
+                    targetProjectId,
+                    ContractProjectActions.CREATE
             );
         }
     }
 
-    private void validateWorkflowSelectionUnchanged(
+    private void replaceWorkflowInstances(
             Contracts contract,
-            ContractRequest request
+            Users creator,
+            List<ContractWorkflowAssigneeRequest> requestedAssignees
     ) {
-        UUID currentTypeId = contract.getContractType() == null
-                ? null
-                : contract.getContractType().getId();
-        UUID currentTaskId = contract.getTimelineTask() == null
-                ? null
-                : contract.getTimelineTask().getId();
-
-        if (currentTypeId == null
-                || !currentTypeId.equals(request.contractTypeId())) {
-            throw new BadHttpException(
-                    "Contract type cannot be changed after the contract is created"
-            );
-        }
-        if (!Objects.equals(currentTaskId, request.taskId())) {
-            throw new BadHttpException(
-                    "Contract task cannot be changed after the contract is created"
-            );
-        }
+        workflowStepRepository.deleteAllByContractId(contract.getId());
+        createWorkflowInstances(contract, creator, requestedAssignees);
     }
 
     private void createWorkflowInstances(
@@ -884,7 +796,12 @@ public class ContractServiceImpl implements ContractService {
         }
 
         workflowStepRepository.saveAll(instances);
-        contract.setWorkflowStepInstances(instances);
+        if (contract.getWorkflowStepInstances() == null) {
+            contract.setWorkflowStepInstances(new ArrayList<>(instances));
+        } else {
+            contract.getWorkflowStepInstances().clear();
+            contract.getWorkflowStepInstances().addAll(instances);
+        }
     }
 
     private void validateWorkflowAssignee(
@@ -1020,8 +937,8 @@ public class ContractServiceImpl implements ContractService {
                 );
                 return toResponse(contract);
             }
-            completedSignature = registerElectronicSignatureWhenRequired(
-                    contract, action, request, actor
+            completedSignature = registerElectronicSignature(
+                    contract, request, actor
             );
         }
 
@@ -1211,8 +1128,9 @@ public class ContractServiceImpl implements ContractService {
         validateRequest(request);
 
         Projects project = resolveProject(request.projectId());
+        Timeline phase = resolvePhase(request.phaseId(), project);
         ContractTypes contractType = resolveContractType(request.contractTypeId());
-        TimelineTask task = resolveTask(request.taskId(), project);
+        TimelineTask task = resolveTask(request.taskId(), project, phase);
         ContractTemplates template = resolveTemplate(request.contractTemplateId());
         validateTemplateBelongsToType(template, contractType);
 
@@ -1247,18 +1165,10 @@ public class ContractServiceImpl implements ContractService {
         contract.setEffectiveDate(request.effectiveDate());
         contract.setExpirationDate(request.expirationDate());
         contract.setProject(project);
+        syncPhaseSelection(contract, phase);
         contract.setTimelineTask(task);
         contract.setContractType(contractType);
-        if (creating) {
-            ContractTypeWorkflow workflow = contractTypeWorkflowRepository
-                    .findFirstByContractTypeIdAndActiveTrueOrderByVersionNumberDesc(
-                            contractType.getId()
-                    )
-                    .orElseThrow(() -> new BadHttpException(
-                            "The selected contract type does not have an active workflow"
-                    ));
-            contract.setWorkflowVersion(workflow);
-        }
+        contract.setWorkflowVersion(resolveActiveWorkflow(contractType));
         contract.setContractTemplate(template);
         contract.setContractTemplateVersion(version);
         contract.setContractContent(content);
@@ -1326,86 +1236,6 @@ public class ContractServiceImpl implements ContractService {
         contractStatusHistoryRepository.save(history);
     }
 
-    private void validateActionStatus(
-            ContractAction action,
-            ContractStatus currentStatus
-    ) {
-        boolean valid = switch (action) {
-            case COMPLETE_STEP -> false;
-            case SUBMIT -> currentStatus == ContractStatus.NEW;
-            case APPROVE_INTERNAL ->
-                    currentStatus == ContractStatus.PENDING_INTERNAL_APPROVAL;
-            case SIGN_DIRECTOR ->
-                    currentStatus == ContractStatus.PENDING_DIRECTOR_SIGNATURE;
-            case SIGN_PARTNER ->
-                    currentStatus == ContractStatus.PENDING_PARTNER_SIGNATURE;
-            case CANCEL -> !currentStatus.isTerminal();
-            case REJECT -> currentStatus == ContractStatus.PENDING_INTERNAL_APPROVAL
-                    || currentStatus == ContractStatus.PENDING_DIRECTOR_SIGNATURE
-                    || currentStatus == ContractStatus.PENDING_PARTNER_SIGNATURE;
-        };
-
-        if (!valid) {
-            throw new BadHttpException(
-                    "Action " + action.name()
-                            + " is not allowed while contract status is "
-                            + currentStatus.name()
-            );
-        }
-    }
-
-    private void validateRole(
-            ContractAction action,
-            ContractStatus currentStatus,
-            String actorRole
-    ) {
-        if (ADMIN_ROLE.equals(actorRole)) {
-            return;
-        }
-
-        Set<String> allowedRoles = switch (action) {
-            case COMPLETE_STEP -> Set.of();
-            case SUBMIT -> Set.of("EMPLOYEE", "MANAGER", "CEO", "DIRECTOR");
-            case APPROVE_INTERNAL -> Set.of("MANAGER");
-            case SIGN_DIRECTOR -> Set.of("CEO", "DIRECTOR");
-            case SIGN_PARTNER -> Set.of("PARTNER", "EXTERNAL", "EXTERNAL_PARTNER");
-            case REJECT -> rolesForCurrentStage(currentStatus);
-            case CANCEL -> rolesForCancellation(currentStatus);
-        };
-
-        if (!allowedRoles.contains(actorRole)) {
-            throw new BadHttpException(
-                    "Role " + actorRole + " cannot perform " + action.name()
-                            + " while contract status is " + currentStatus.name()
-            );
-        }
-    }
-
-    private Set<String> rolesForCurrentStage(ContractStatus status) {
-        return switch (status) {
-            case PENDING_INTERNAL_APPROVAL -> Set.of("MANAGER");
-            case PENDING_DIRECTOR_SIGNATURE -> Set.of("CEO", "DIRECTOR");
-            case PENDING_PARTNER_SIGNATURE ->
-                    Set.of("PARTNER", "EXTERNAL", "EXTERNAL_PARTNER");
-            default -> Set.of();
-        };
-    }
-
-    private Set<String> rolesForCancellation(ContractStatus status) {
-        return switch (status) {
-            case NEW -> Set.of("EMPLOYEE", "MANAGER", "CEO", "DIRECTOR");
-            case PENDING_INTERNAL_APPROVAL -> Set.of("MANAGER", "CEO", "DIRECTOR");
-            case PENDING_DIRECTOR_SIGNATURE -> Set.of("CEO", "DIRECTOR");
-            case PENDING_PARTNER_SIGNATURE ->
-                    Set.of("CEO", "DIRECTOR", "PARTNER", "EXTERNAL", "EXTERNAL_PARTNER");
-            case PENDING_APPROVAL, PENDING_SIGNATURE -> Set.of();
-            case SIGNED, ACTIVE ->
-                    Set.of("CEO", "DIRECTOR", "PARTNER", "EXTERNAL_PARTNER");
-            case PENDING_EFFECTIVE -> null;
-            case ENDED, CANCELLED -> Set.of();
-        };
-    }
-
     private Boolean validateSignerAge(String storedDateOfBirth) {
         if (storedDateOfBirth == null || storedDateOfBirth.isBlank()) {
             throw new BadHttpException(
@@ -1430,19 +1260,6 @@ public class ContractServiceImpl implements ContractService {
         return Period.between(dateOfBirth, today).getYears() >= MINIMUM_SIGNER_AGE;
     }
 
-    private ContractStatus resolveTargetStatus(ContractAction action) {
-        return switch (action) {
-            case COMPLETE_STEP -> throw new BadHttpException(
-                    "COMPLETE_STEP is only available for configurable workflows"
-            );
-            case SUBMIT -> ContractStatus.PENDING_INTERNAL_APPROVAL;
-            case APPROVE_INTERNAL -> ContractStatus.PENDING_DIRECTOR_SIGNATURE;
-            case SIGN_DIRECTOR -> ContractStatus.PENDING_PARTNER_SIGNATURE;
-            case SIGN_PARTNER -> ContractStatus.SIGNED;
-            case CANCEL, REJECT -> ContractStatus.CANCELLED;
-        };
-    }
-
     private Projects resolveProject(UUID projectId) {
         if (projectId == null) {
             return null;
@@ -1454,7 +1271,34 @@ public class ContractServiceImpl implements ContractService {
                 ));
     }
 
-    private TimelineTask resolveTask(UUID taskId, Projects project) {
+    private Timeline resolvePhase(UUID phaseId, Projects project) {
+        if (phaseId == null) {
+            return null;
+        }
+        if (project == null) {
+            throw new BadHttpException(
+                    "A phase can only be selected when the contract has a project"
+            );
+        }
+
+        Timeline phase = phaseRepository.findById(phaseId)
+                .orElseThrow(() -> new NotFoundException(
+                        "Project phase not found with id: " + phaseId
+                ));
+        if (phase.getProject() == null
+                || !phase.getProject().getId().equals(project.getId())) {
+            throw new BadHttpException(
+                    "The selected phase does not belong to the selected project"
+            );
+        }
+        return phase;
+    }
+
+    private TimelineTask resolveTask(
+            UUID taskId,
+            Projects project,
+            Timeline selectedPhase
+    ) {
         if (taskId == null) {
             return null;
         }
@@ -1475,7 +1319,34 @@ public class ContractServiceImpl implements ContractService {
                     "The selected task does not belong to the selected project"
             );
         }
+        if (selectedPhase == null
+                || !phase.getId().equals(selectedPhase.getId())) {
+            throw new BadHttpException(
+                    "The selected task does not belong to the selected phase"
+            );
+        }
         return task;
+    }
+
+    private void syncPhaseSelection(Contracts contract, Timeline phase) {
+        TimelineContract link = contract.getTimelineContract();
+        if (phase == null) {
+            contract.setTimelineContract(null);
+            return;
+        }
+
+        if (link == null) {
+            link = TimelineContract.builder()
+                    .contract(contract)
+                    .timeline(phase)
+                    .linkedAt(LocalDateTime.now())
+                    .build();
+        } else if (link.getTimeline() == null
+                || !phase.getId().equals(link.getTimeline().getId())) {
+            link.setTimeline(phase);
+            link.setLinkedAt(LocalDateTime.now());
+        }
+        contract.setTimelineContract(link);
     }
 
     private Set<String> activeActionsForUser(UUID userId, UUID projectId) {
@@ -1552,6 +1423,18 @@ public class ContractServiceImpl implements ContractService {
         return contractTypeRepository.findById(contractTypeId)
                 .orElseThrow(() -> new NotFoundException(
                         "Contract type not found with id: " + contractTypeId
+                ));
+    }
+
+    private ContractTypeWorkflow resolveActiveWorkflow(
+            ContractTypes contractType
+    ) {
+        return contractTypeWorkflowRepository
+                .findFirstByContractTypeIdAndActiveTrueOrderByVersionNumberDesc(
+                        contractType.getId()
+                )
+                .orElseThrow(() -> new BadHttpException(
+                        "The selected contract type does not have an active workflow"
                 ));
     }
 
@@ -1887,6 +1770,9 @@ public class ContractServiceImpl implements ContractService {
         Projects project = contract.getProject();
         TimelineTask task = contract.getTimelineTask();
         Timeline phase = task == null ? null : task.getTimeline();
+        if (phase == null && contract.getTimelineContract() != null) {
+            phase = contract.getTimelineContract().getTimeline();
+        }
         ContractTypes contractType = contract.getContractType();
         ContractTemplates template = contract.getContractTemplate();
         ContractTemplateVersions version = contract.getContractTemplateVersion();

@@ -950,7 +950,7 @@ function WorkflowEditor({
                                     )}
                                     {roles.map((role) => (
                                         <option value={role.roleCode} key={role.id || role.roleCode}>
-                                            {role.roleName} ({role.roleCode})
+                                            {role.roleName}
                                         </option>
                                     ))}
                                 </select>
