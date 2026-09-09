@@ -9,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.CacheControl;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -54,6 +55,7 @@ public class ContractTypeController {
     }
 
     @PostMapping
+    @PreAuthorize("hasAnyAuthority('CEO', 'Administrator', 'ADMIN')")
     public ResponseEntity<BaseResponse<ContractTypeResponse>> createContractType(
             @RequestBody ContractTypeRequest request
     ) {
@@ -65,6 +67,7 @@ public class ContractTypeController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('CEO', 'Administrator', 'ADMIN')")
     public ResponseEntity<BaseResponse<ContractTypeResponse>> updateContractType(
             @PathVariable UUID id,
             @RequestBody ContractTypeRequest request
@@ -75,6 +78,7 @@ public class ContractTypeController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('CEO', 'Administrator', 'ADMIN')")
     public ResponseEntity<BaseResponse<Void>> deleteContractType(@PathVariable UUID id) {
         contractTypeService.deleteContractType(id);
         return ResponseEntity.ok(new BaseResponse<>(

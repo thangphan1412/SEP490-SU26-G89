@@ -358,6 +358,22 @@ function ListContract() {
         setModalMode("create");
     };
 
+<<<<<<< HEAD
+<<<<<<< HEAD
+    const openTransitionModal = (contract, action) => {
+        const isSigning = Boolean(
+            getContractActionDetails(action, contract)
+                .requiresElectronicSignature
+        );
+        setElectronicSignatures([]);
+        setLoadingSignatures(isSigning);
+        setSigningPdfUrl("");
+        setSigningPdfError("");
+        setLoadingSigningPdf(isSigning);
+        setTransitionContract(contract);
+=======
+=======
+>>>>>>> origin
     const openTransitionModal = async (contract, action) => {
         let currentContract = contract;
         if (action === "COMPLETE_STEP") {
@@ -384,6 +400,10 @@ function ListContract() {
             return;
         }
         setTransitionContract(currentContract);
+<<<<<<< HEAD
+>>>>>>> 7d6eb51fe9c660b46d1a1bc0200bcbbc73cf5f51
+=======
+>>>>>>> origin
         setTransitionAction(action);
         setTransitionForm({ comment: "" });
         setTransitionError("");
@@ -1391,7 +1411,15 @@ const CONTRACT_WORKFLOW_STEPS = [
     CONTRACT_STATUS.PENDING_INTERNAL_APPROVAL,
     CONTRACT_STATUS.PENDING_DIRECTOR_SIGNATURE,
     CONTRACT_STATUS.PENDING_PARTNER_SIGNATURE,
+<<<<<<< HEAD
+<<<<<<< HEAD
+    CONTRACT_STATUS.PENDING_EFFECTIVE,
+=======
     CONTRACT_STATUS.SIGNED,
+>>>>>>> 7d6eb51fe9c660b46d1a1bc0200bcbbc73cf5f51
+=======
+    CONTRACT_STATUS.SIGNED,
+>>>>>>> origin
     CONTRACT_STATUS.ACTIVE,
     CONTRACT_STATUS.ENDED,
 ];

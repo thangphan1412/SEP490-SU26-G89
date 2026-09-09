@@ -23,11 +23,17 @@ public class MyUserDetail implements UserDetails {
     private final Users users;
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
+        if (users == null || users.getUserRoles() == null) {
+            return List.of();
+        }
         return users.getUserRoles()
                 .stream()
-                .map(userRole -> new SimpleGrantedAuthority(
-                        userRole.getRole().getRoleName()
-                ))
+                .filter(java.util.Objects::nonNull)
+                .map(userRole -> userRole.getRole())
+                .filter(java.util.Objects::nonNull)
+                .map(role -> role.getRoleName())
+                .filter(roleName -> roleName != null && !roleName.isBlank())
+                .map(SimpleGrantedAuthority::new)
                 .collect(Collectors.toList());
     }
 

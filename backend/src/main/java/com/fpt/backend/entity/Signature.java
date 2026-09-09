@@ -25,9 +25,24 @@ public class Signature extends BaseEntity{
     private SignatureType signatureType;
     @Column(name = "document_hash")
     private String documentHash;
+<<<<<<< HEAD
+<<<<<<< HEAD
+    @Column(name = "signing_public_key", columnDefinition = "nvarchar(max)")
+    private String signingPublicKey;
+    @Column(name = "digital_signature", columnDefinition = "nvarchar(max)")
+    private String digitalSignature;
+    @Column(name = "public_key_fingerprint", length = 64)
+    private String publicKeyFingerprint;
+=======
     @Lob
     @Column(name = "signature_value", columnDefinition = "nvarchar(max)")
     private String signatureValue;
+>>>>>>> 7d6eb51fe9c660b46d1a1bc0200bcbbc73cf5f51
+=======
+    @Lob
+    @Column(name = "signature_value", columnDefinition = "nvarchar(max)")
+    private String signatureValue;
+>>>>>>> origin
     @Column(name = "signature_algorithm")
     @Enumerated(EnumType.STRING)
     private SignatureAlgorithm signatureAlgorithm;

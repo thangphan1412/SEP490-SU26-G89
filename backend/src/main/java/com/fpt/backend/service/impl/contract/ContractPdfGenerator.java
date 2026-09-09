@@ -1,7 +1,10 @@
 package com.fpt.backend.service.impl.contract;
 
+import com.fpt.backend.dto.request.contract.ContractTemplateBlockRequest;
+import com.fpt.backend.dto.request.contract.ContractTemplateLayout;
 import com.fpt.backend.entity.Contracts;
 import com.fpt.backend.entity.ProjectMember;
+import com.fpt.backend.entity.UserRole;
 import com.fpt.backend.entity.Users;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDDocumentInformation;
@@ -10,21 +13,30 @@ import org.apache.pdfbox.pdmodel.PDPageContentStream;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.font.PDFont;
 import org.apache.pdfbox.pdmodel.font.PDType0Font;
+import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject;
 import org.springframework.stereotype.Component;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.net.URI;
+import java.net.URLConnection;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.regex.Pattern;
+import java.util.regex.Matcher;
 
 @Component
 public class ContractPdfGenerator {
@@ -43,6 +55,10 @@ public class ContractPdfGenerator {
     );
     private static final DateTimeFormatter DATE_TIME_FORMATTER =
             DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+    private static final int SIGNATURE_IMAGE_MAX_BYTES = 5 * 1024 * 1024;
+    private static final Pattern PLACEHOLDER_PATTERN = Pattern.compile(
+            "\\{\\{\\s*([a-zA-Z][a-zA-Z0-9_]*)\\s*}}"
+    );
     private static final Set<String> PARTY_A_ROLES = Set.of(
             "CEO",
             "DIRECTOR"
@@ -52,6 +68,7 @@ public class ContractPdfGenerator {
             "EXTERNAL",
             "EXTERNAL_PARTNER"
     );
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     public byte[] generate(
             Contracts contract,
@@ -80,17 +97,53 @@ public class ContractPdfGenerator {
                     boldFont,
                     contract
             )) {
-                writer.writeNationalHeader();
-                writer.writeContractHeading();
-                writer.writeLegalIntroduction();
-                writer.writeParty("BÊN A", partyA);
-                writer.writeParty("BÊN B", partyB);
-                writer.writeSectionTitle();
-                writer.writeContractContent(
-                        contract.getContractContent(),
-                        renderedDocument.content()
-                );
-                writer.writeSignatureSection(renderedDocument);
+                for (ContractTemplateBlockRequest block : resolveBlocks(contract)) {
+                    if (Boolean.FALSE.equals(block.enabled())) {
+                        continue;
+                    }
+                    String heading = renderBlockText(
+                            block.heading(),
+                            renderedDocument.placeholderValues()
+                    );
+                    String content = renderBlockText(
+                            block.content(),
+                            renderedDocument.placeholderValues()
+                    );
+                    switch (block.type()) {
+                        case "NATIONAL_HEADER" -> writer.writeNationalHeader(
+                                heading,
+                                content
+                        );
+                        case "CONTRACT_HEADING" -> writer.writeContractHeading(
+                                heading,
+                                content
+                        );
+                        case "LEGAL_INTRODUCTION" ->
+                                writer.writeLegalIntroduction(content);
+                        case "PARTY_A" -> writer.writeParty(heading, partyA);
+                        case "PARTY_B" -> writer.writeParty(heading, partyB);
+                        case "CLAUSE_HEADING" -> writer.writeSectionTitle(heading);
+                        case "CONTENT" -> writer.writeContractContent(
+                                contract.getContractContent(),
+                                renderedDocument.content()
+                        );
+                        case "SIGNATURE_SECTION" -> writer.writeSignatureSection(
+                                renderedDocument,
+                                heading,
+                                renderBlockText(
+                                        block.leftLabel(),
+                                        renderedDocument.placeholderValues()
+                                ),
+                                renderBlockText(
+                                        block.rightLabel(),
+                                        renderedDocument.placeholderValues()
+                                )
+                        );
+                        default -> {
+                            // Layout validation prevents unsupported block types.
+                        }
+                    }
+                }
             }
 
             document.save(output);
@@ -99,6 +152,48 @@ public class ContractPdfGenerator {
         } catch (IOException exception) {
             throw new IllegalStateException("Unable to generate contract PDF", exception);
         }
+    }
+
+    private List<ContractTemplateBlockRequest> resolveBlocks(Contracts contract) {
+        String layoutJson = contract.getContractLayoutJson();
+        if (layoutJson == null || layoutJson.isBlank()) {
+            return ContractTemplateLayoutMapper.defaultBlocks();
+        }
+        try {
+            ContractTemplateLayout layout = objectMapper.readValue(
+                    layoutJson,
+                    ContractTemplateLayout.class
+            );
+            return layout == null || layout.blocks() == null
+                    || layout.blocks().isEmpty()
+                    ? ContractTemplateLayoutMapper.defaultBlocks()
+                    : layout.blocks();
+        } catch (JacksonException exception) {
+            return ContractTemplateLayoutMapper.defaultBlocks();
+        }
+    }
+
+    private String renderBlockText(
+            String template,
+            Map<String, String> values
+    ) {
+        if (template == null) {
+            return null;
+        }
+        Matcher matcher = PLACEHOLDER_PATTERN.matcher(template);
+        StringBuilder rendered = new StringBuilder();
+        while (matcher.find()) {
+            String replacement = values.getOrDefault(
+                    matcher.group(1).toLowerCase(Locale.ROOT),
+                    "Chưa cập nhật"
+            );
+            matcher.appendReplacement(
+                    rendered,
+                    Matcher.quoteReplacement(replacement)
+            );
+        }
+        matcher.appendTail(rendered);
+        return rendered.toString();
     }
 
     private PartyInformation resolveParty(
@@ -119,8 +214,7 @@ public class ContractPdfGenerator {
                 .orElseGet(() -> members.stream()
                         .map(ProjectMember::getUser)
                         .filter(Objects::nonNull)
-                        .filter(candidate -> candidate.getUserRoles().stream()
-                                .map(role -> role.getRole().getRoleName())
+                        .filter(candidate -> rolesFor(candidate).stream()
                                 .anyMatch(acceptedRoles::contains))
                         .findFirst()
                         .orElse(null));
@@ -150,11 +244,7 @@ public class ContractPdfGenerator {
 
         return new PartyInformation(
                 resolvedName,
-                user.getUserRoles().stream()
-                        .map(role -> role.getRole().getRoleName())
-                        .filter(Objects::nonNull)
-                        .findFirst()
-                        .orElse(null),
+                rolesFor(user).stream().findFirst().orElse(null),
                 user.getEmail(),
                 user.getNumberPhone(),
                 user.getDob(),
@@ -231,12 +321,46 @@ public class ContractPdfGenerator {
     }
 
     private static String normalizeRole(String role) {
-        return role == null
-                ? ""
-                : role.trim()
-                        .toUpperCase(Locale.ROOT)
-                        .replace('-', '_')
-                        .replace(' ', '_');
+        if (role == null || role.isBlank()) {
+            return "";
+        }
+        String normalized = role.trim()
+                .toUpperCase(Locale.ROOT)
+                .replace('-', '_')
+                .replace(' ', '_');
+        String compact = normalized.replace("_", "");
+        return switch (compact) {
+            case "ADMIN", "ADMINISTRATOR" -> "ADMIN";
+            case "MANAGER", "HEADOFDEPARTMENT", "DEPARTMENTHEAD" ->
+                    "HEAD_OF_DEPARTMENT";
+            case "PARTNER", "EXTERNAL", "EXTERNALPARTNER",
+                    "EXTERNALPARTNERS", "EXTERNALPARNER", "EXTERNALPARNERS" ->
+                    "EXTERNAL_PARTNER";
+            default -> normalized;
+        };
+    }
+
+    private static Set<String> rolesFor(Users user) {
+        LinkedHashSet<String> roles = new LinkedHashSet<>();
+        if (user == null || user.getUserRoles() == null) {
+            return roles;
+        }
+        user.getUserRoles().stream()
+                .filter(Objects::nonNull)
+                .map(UserRole::getRole)
+                .filter(Objects::nonNull)
+                .forEach(role -> {
+                    addRole(roles, role.getRoleCode());
+                    addRole(roles, role.getRoleName());
+                });
+        return roles;
+    }
+
+    private static void addRole(Set<String> roles, String value) {
+        String normalized = normalizeRole(value);
+        if (!normalized.isEmpty()) {
+            roles.add(normalized);
+        }
     }
 
     private static boolean hasText(String value) {
@@ -295,6 +419,29 @@ public class ContractPdfGenerator {
             cursorY -= 22f;
         }
 
+        private void writeNationalHeader(String heading, String motto)
+                throws IOException {
+            writeCenteredText(
+                    hasText(heading) ? heading : NATIONAL_HEADER,
+                    boldFont,
+                    12.5f,
+                    18f,
+                    0f
+            );
+            writeCenteredText(
+                    hasText(motto) ? motto : NATIONAL_MOTTO,
+                    boldFont,
+                    11.5f,
+                    17f,
+                    5f
+            );
+            ensureSpace(12f);
+            float lineWidth = 160f;
+            float lineX = (PAGE_SIZE.getWidth() - lineWidth) / 2f;
+            drawLine(lineX, cursorY, lineX + lineWidth, cursorY, 0.7f);
+            cursorY -= 22f;
+        }
+
         private void writeContractHeading() throws IOException {
             String title = safe(contract.getContractTitle())
                     .toUpperCase(Locale.forLanguageTag("vi-VN"));
@@ -306,6 +453,18 @@ public class ContractPdfGenerator {
                     16f,
                     16f
             );
+        }
+
+        private void writeContractHeading(String heading, String subtitle)
+                throws IOException {
+            String title = (hasText(heading)
+                    ? heading
+                    : safe(contract.getContractTitle()))
+                    .toUpperCase(Locale.forLanguageTag("vi-VN"));
+            writeCenteredText(title, boldFont, 16f, 22f, 4f);
+            if (hasText(subtitle)) {
+                writeCenteredText(subtitle, regularFont, 11f, 16f, 16f);
+            }
         }
 
         private void writeLegalIntroduction() throws IOException {
@@ -330,6 +489,20 @@ public class ContractPdfGenerator {
                     16f,
                     8f
             );
+        }
+
+        private void writeLegalIntroduction(String content) throws IOException {
+            if (!hasText(content)) {
+                return;
+            }
+            for (String line : content.replace("\r", "").split("\n", -1)) {
+                if (line.isBlank()) {
+                    cursorY -= 8f;
+                } else {
+                    writeWrappedText(line.strip(), regularFont, 11f, 16f, 3f);
+                }
+            }
+            cursorY -= 5f;
         }
 
         private String formatContractDate() {
@@ -376,6 +549,15 @@ public class ContractPdfGenerator {
                     18f,
                     9f
             );
+        }
+
+        private void writeSectionTitle(String heading) throws IOException {
+            if (!hasText(heading)) {
+                return;
+            }
+            ensureSpace(38f);
+            cursorY -= 8f;
+            writeCenteredText(heading, boldFont, 12f, 18f, 9f);
         }
 
         private void writeContractContent(
@@ -492,11 +674,20 @@ public class ContractPdfGenerator {
         }
 
         private void writeSignatureSection(
-                ContractDocumentRenderer.RenderedDocument renderedDocument
+                ContractDocumentRenderer.RenderedDocument renderedDocument,
+                String sectionHeading,
+                String leftLabel,
+                String rightLabel
         ) throws IOException {
             ensureSpace(175f);
             cursorY -= 16f;
-            writeCenteredText("ĐẠI DIỆN CÁC BÊN", boldFont, 12f, 18f, 16f);
+            writeCenteredText(
+                    hasText(sectionHeading) ? sectionHeading : "ĐẠI DIỆN CÁC BÊN",
+                    boldFont,
+                    12f,
+                    18f,
+                    16f
+            );
 
             float columnGap = 30f;
             float columnWidth = (BODY_WIDTH - columnGap) / 2f;
@@ -504,17 +695,21 @@ public class ContractPdfGenerator {
             float topY = cursorY;
 
             writeSignatureColumn(
-                    "BÊN A",
+                    hasText(leftLabel) ? leftLabel : "BÊN A",
                     renderedDocument.directorSignerName(),
                     renderedDocument.directorSignedAt(),
+                    renderedDocument.directorSignatureImagePath(),
+                    renderedDocument.directorDocumentHash(),
                     MARGIN,
                     columnWidth,
                     topY
             );
             writeSignatureColumn(
-                    "BÊN B",
+                    hasText(rightLabel) ? rightLabel : "BÊN B",
                     renderedDocument.partnerSignerName(),
                     renderedDocument.partnerSignedAt(),
+                    renderedDocument.partnerSignatureImagePath(),
+                    renderedDocument.partnerDocumentHash(),
                     rightX,
                     columnWidth,
                     topY
@@ -526,6 +721,8 @@ public class ContractPdfGenerator {
                 String heading,
                 String signerName,
                 LocalDateTime signedAt,
+                String signatureImagePath,
+                String documentHash,
                 float x,
                 float width,
                 float topY
@@ -562,6 +759,12 @@ public class ContractPdfGenerator {
                         topY - 50f,
                         13f
                 );
+                drawSignatureImage(
+                        signatureImagePath,
+                        x,
+                        width,
+                        topY - 102f
+                );
             }
 
             drawCenteredWithin(
@@ -573,6 +776,67 @@ public class ContractPdfGenerator {
                     topY - 112f,
                     14f
             );
+            if (hasText(documentHash)) {
+                drawCenteredWithin(
+                        "SHA-256: " + documentHash.substring(
+                                0,
+                                Math.min(12, documentHash.length())
+                        ) + "...",
+                        regularFont,
+                        7.5f,
+                        x,
+                        width,
+                        topY - 130f,
+                        10f
+                );
+            }
+        }
+
+        private void drawSignatureImage(
+                String imagePath,
+                float x,
+                float columnWidth,
+                float bottomY
+        ) {
+            if (!hasText(imagePath)) {
+                return;
+            }
+            try {
+                URLConnection connection = URI.create(imagePath)
+                        .toURL()
+                        .openConnection();
+                connection.setConnectTimeout(3000);
+                connection.setReadTimeout(5000);
+                byte[] bytes;
+                try (InputStream input = connection.getInputStream()) {
+                    bytes = input.readNBytes(SIGNATURE_IMAGE_MAX_BYTES + 1);
+                }
+                if (bytes.length > SIGNATURE_IMAGE_MAX_BYTES) {
+                    return;
+                }
+                PDImageXObject image = PDImageXObject.createFromByteArray(
+                        document,
+                        bytes,
+                        "contract-signature"
+                );
+                float maxWidth = Math.min(110f, columnWidth - 20f);
+                float maxHeight = 42f;
+                float scale = Math.min(
+                        maxWidth / image.getWidth(),
+                        maxHeight / image.getHeight()
+                );
+                float imageWidth = image.getWidth() * scale;
+                float imageHeight = image.getHeight() * scale;
+                stream.drawImage(
+                        image,
+                        x + ((columnWidth - imageWidth) / 2f),
+                        bottomY,
+                        imageWidth,
+                        imageHeight
+                );
+            } catch (Exception ignored) {
+                // Signer name, timestamp and hash remain as the fallback proof.
+            }
         }
 
         private void writeCenteredText(

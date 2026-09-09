@@ -18,4 +18,6 @@ public class UpdateElectronicSignatureRequest {
     private boolean isDefault;
 
     private ElectronicStatus electronicStatus;
+
+    private String publicKey;
 }

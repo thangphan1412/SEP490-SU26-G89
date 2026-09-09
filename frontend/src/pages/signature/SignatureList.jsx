@@ -5,9 +5,11 @@ import SignatureToolbar from "../../components/signature/SignatureToolbar.jsx";
 import SignatureTable from "../../components/signature/SignatureTable.jsx";
 import SignaturePagination from "../../components/signature/SignaturePagination.jsx";
 import electronicSignatureService from "../../services/signatureService/electronicSignatureService.js"
+import { useNavigate } from "react-router-dom";
 
 
 function SignatureList() {
+    const navigate = useNavigate();
     const [searchTerm, setSearchTerm] = useState("")
     const [typeFilter, setTypeFilter] = useState("All")
     const [statusFilter, setStatusFilter] = useState("All")
@@ -31,7 +33,22 @@ function SignatureList() {
         }
     };
     useEffect(() => {
-        loadElectronicSignature();
+        let active = true;
+        electronicSignatureService.getAllElectronicSignature()
+            .then((response) => {
+                if (active) {
+                    setElectronicSignature(response.data.data || []);
+                }
+            })
+            .catch((error) => {
+                console.error(error);
+                if (active) {
+                    setElectronicSignature([]);
+                }
+            });
+        return () => {
+            active = false;
+        };
     }, []);
     const filteredSignatures = useMemo(() => {
         return electronicSignature.filter((sig) => {
@@ -70,7 +87,7 @@ function SignatureList() {
     const totalPages = Math.max(1, Math.ceil(filteredSignatures.length / pageSize))
 
     const handleCreateNew = () => {
-        // TODO: điều hướng tới trang tạo signature hoặc mở modal
+        navigate("/signature-management/create-signature");
     }
 
     const handleRefresh = () => {

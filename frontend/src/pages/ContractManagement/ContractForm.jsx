@@ -466,11 +466,39 @@ function normalizeRole(value) {
     const normalized = String(value || "")
         .trim()
         .toUpperCase()
+<<<<<<< HEAD
+<<<<<<< HEAD
+        .replaceAll("-", "_")
+        .replaceAll(" ", "_");
+    const compact = normalized.replaceAll("_", "");
+
+    if (["ADMIN", "ADMINISTRATOR"].includes(compact)) {
+        return "ADMIN";
+    }
+    if (["MANAGER", "HEADOFDEPARTMENT", "DEPARTMENTHEAD"].includes(compact)) {
+        return "HEAD_OF_DEPARTMENT";
+    }
+    if ([
+        "PARTNER",
+        "EXTERNAL",
+        "EXTERNALPARTNER",
+        "EXTERNALPARTNERS",
+        "EXTERNALPARNER",
+        "EXTERNALPARNERS",
+    ].includes(compact)) {
+        return "EXTERNAL_PARTNER";
+=======
+=======
+>>>>>>> origin
         .replaceAll("-", "")
         .replaceAll("_", "")
         .replaceAll(" ", "");
     if (["HOD", "HEADDEPARTMENT", "DEPARTMENTHEAD"].includes(normalized)) {
         return "HEADOFDEPARTMENT";
+<<<<<<< HEAD
+>>>>>>> 7d6eb51fe9c660b46d1a1bc0200bcbbc73cf5f51
+=======
+>>>>>>> origin
     }
     return normalized;
 }

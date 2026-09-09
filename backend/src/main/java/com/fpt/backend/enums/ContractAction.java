@@ -6,6 +6,7 @@ public enum ContractAction {
     COMPLETE_STEP,
     SUBMIT,
     APPROVE_INTERNAL,
+    APPROVE_DIRECTOR,
     SIGN_DIRECTOR,
     SIGN_PARTNER,
     CANCEL,

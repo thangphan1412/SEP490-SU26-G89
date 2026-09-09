@@ -17,16 +17,6 @@ axiosClient.interceptors.request.use((config) => {
         (path) => config.url?.startsWith(path)
     );
 
-    console.log(
-        "URL:",
-        config.url,
-        "| isPublicApi:",
-        isPublicApi,
-        "| token attached:",
-        !!(token && !isPublicApi)
-    );
-
-
     if (token && !isPublicApi) {
         config.headers.Authorization = `Bearer ${token}`;
     }
@@ -37,5 +27,26 @@ axiosClient.interceptors.request.use((config) => {
 
     return config;
 });
+
+axiosClient.interceptors.response.use(
+    (response) => response,
+    (error) => {
+        const requestUrl = error.config?.url || "";
+        const isLoginRequest = requestUrl.startsWith("/auth/login");
+
+        if (error.response?.status === 401 && !isLoginRequest) {
+            localStorage.removeItem("token");
+            localStorage.removeItem("role");
+            localStorage.removeItem("fullName");
+            localStorage.removeItem("departmentName");
+
+            if (window.location.pathname !== "/login") {
+                window.location.replace("/login");
+            }
+        }
+
+        return Promise.reject(error);
+    }
+);
 
 export default axiosClient;

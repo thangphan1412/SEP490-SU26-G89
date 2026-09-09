@@ -91,7 +91,20 @@ function ListContractType() {
     const [submitting, setSubmitting] = useState(false);
     const [deletingId, setDeletingId] = useState(null);
     const [workflowOptions, setWorkflowOptions] = useState({
+<<<<<<< HEAD
+<<<<<<< HEAD
+        actionTypes: [
+            "CREATE",
+            "APPROVE",
+            "APPROVE_AND_GENERATE_PDF",
+            "SIGN",
+        ],
+=======
         actionTypes: ["CREATE", "APPROVE", "SIGN"],
+>>>>>>> 7d6eb51fe9c660b46d1a1bc0200bcbbc73cf5f51
+=======
+        actionTypes: ["CREATE", "APPROVE", "SIGN"],
+>>>>>>> origin
         roles: [],
     });
 
@@ -115,7 +128,20 @@ function ListContractType() {
                     setWorkflowOptions({
                         actionTypes: Array.isArray(workflowPayload?.actionTypes)
                             ? workflowPayload.actionTypes
+<<<<<<< HEAD
+<<<<<<< HEAD
+                            : [
+                                "CREATE",
+                                "APPROVE",
+                                "APPROVE_AND_GENERATE_PDF",
+                                "SIGN",
+                            ],
+=======
                             : ["CREATE", "APPROVE", "SIGN"],
+>>>>>>> 7d6eb51fe9c660b46d1a1bc0200bcbbc73cf5f51
+=======
+                            : ["CREATE", "APPROVE", "SIGN"],
+>>>>>>> origin
                         roles: Array.isArray(workflowPayload?.roles)
                             ? workflowPayload.roles
                             : [],
@@ -325,6 +351,22 @@ function ListContractType() {
             (step) => !step.stepName.trim() || !step.requiredRoleCode
         )) {
             setModalError("Every workflow step needs a name and a role.");
+            return;
+        }
+
+        const pdfApprovalIndex = form.workflowSteps.findIndex((step) =>
+            ["APPROVE_AND_GENERATE_PDF", "APPROVE_AND_SIGN"]
+                .includes(step.actionType)
+        );
+        const firstSignatureIndex = form.workflowSteps.findIndex(
+            (step) => step.actionType === "SIGN"
+        );
+        if (firstSignatureIndex >= 0
+            && (pdfApprovalIndex < 0
+                || pdfApprovalIndex >= firstSignatureIndex)) {
+            setModalError(
+                "Add a CEO PDF approval step before the first signature step."
+            );
             return;
         }
 

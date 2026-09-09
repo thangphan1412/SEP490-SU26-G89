@@ -8,6 +8,7 @@ import com.fpt.backend.dto.response.contract.ContractTemplateVersionResponse;
 import com.fpt.backend.entity.ContractTemplateVersions;
 import com.fpt.backend.entity.ContractTemplates;
 import com.fpt.backend.entity.ContractTypes;
+import com.fpt.backend.entity.Users;
 import com.fpt.backend.exception.BadHttpException;
 import com.fpt.backend.exception.NotFoundException;
 import com.fpt.backend.repository.contract.ContractRepository;
@@ -15,6 +16,7 @@ import com.fpt.backend.repository.contract.ContractTemplateRepository;
 import com.fpt.backend.repository.contract.ContractTemplateVersionRepository;
 import com.fpt.backend.repository.contract.ContractTypeRepository;
 import com.fpt.backend.service.interfaces.contract.ContractTemplateService;
+import com.fpt.backend.util.CurrentUser;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,6 +35,7 @@ public class ContractTemplateServiceImpl implements ContractTemplateService {
     private final ContractTypeRepository contractTypeRepository;
     private final ContractRepository contractRepository;
     private final ContractTemplateLayoutMapper layoutMapper;
+    private final CurrentUser currentUser;
 
     @Override
     @Transactional(readOnly = true)
@@ -79,6 +82,7 @@ public class ContractTemplateServiceImpl implements ContractTemplateService {
         LocalDateTime now = LocalDateTime.now();
         ContractTemplates template = new ContractTemplates();
         applyTemplateRequest(template, request, contractType);
+        template.setContractTemplateCreatedBy(currentUserName());
         template.setContractTemplateCreateAt(now);
         template.setContractTemplateUpdateAt(now);
 
@@ -112,9 +116,7 @@ public class ContractTemplateServiceImpl implements ContractTemplateService {
 
         String originalCreator = template.getContractTemplateCreatedBy();
         applyTemplateRequest(template, request, contractType);
-        if (isBlank(request.createdBy())) {
-            template.setContractTemplateCreatedBy(originalCreator);
-        }
+        template.setContractTemplateCreatedBy(originalCreator);
         template.setContractTemplateUpdateAt(LocalDateTime.now());
 
         return toResponse(contractTemplateRepository.save(template));
@@ -167,7 +169,7 @@ public class ContractTemplateServiceImpl implements ContractTemplateService {
         );
         version.setTemplateContent(content);
         version.setChangeNote(normalizeToNull(request.changeNote()));
-        version.setCreatedBy(normalizeToNull(request.createdBy()));
+        version.setCreatedBy(currentUserName());
         version.setCreatedAt(LocalDateTime.now());
         layoutMapper.applyToVersion(version, layout);
 
@@ -210,6 +212,14 @@ public class ContractTemplateServiceImpl implements ContractTemplateService {
                 isBlank(request.status()) ? DEFAULT_STATUS : request.status().trim()
         );
         template.setContractTemplateCreatedBy(normalizeToNull(request.createdBy()));
+    }
+
+    private String currentUserName() {
+        Users user = currentUser.getCurrentUser();
+        String fullName = ((user.getFirstName() == null ? "" : user.getFirstName())
+                + " "
+                + (user.getLastName() == null ? "" : user.getLastName())).trim();
+        return fullName.isBlank() ? user.getEmail() : fullName;
     }
 
     private ContractTypes findContractType(UUID id) {

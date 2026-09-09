@@ -12,6 +12,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import java.net.URI;
@@ -52,6 +53,48 @@ public class CloudinaryService {
         return fileStorageRepository.save(fileStorage);
     }
 
+<<<<<<< HEAD
+<<<<<<< HEAD
+    public FileStorage uploadPdfAndSave(
+            byte[] pdfContent,
+            String originalName,
+            Users user
+    ) {
+        requirePdf(pdfContent);
+        String normalizedName = normalizePdfName(originalName);
+        String publicId = normalizedName.substring(
+                0,
+                normalizedName.length() - 4
+        ) + "-" + UUID.randomUUID() + ".pdf";
+
+        try {
+            Map<?, ?> uploadResult = cloudinary.uploader().upload(
+                    pdfContent,
+                    ObjectUtils.asMap(
+                            "folder", "contracts/approved",
+                            "public_id", publicId,
+                            "resource_type", "raw",
+                            "overwrite", false
+                    )
+            );
+            String secureUrl = requireUploadValue(
+                    uploadResult,
+                    "secure_url"
+            );
+            String cloudinaryPublicId = requireUploadValue(
+                    uploadResult,
+                    "public_id"
+            );
+
+            return fileStorageRepository.save(FileStorage.builder()
+                    .originalName(normalizedName)
+                    .fileName(cloudinaryPublicId)
+                    .filePath(secureUrl)
+                    .mimeType("application/pdf")
+                    .fileSize((long) pdfContent.length)
+=======
+=======
+>>>>>>> origin
     public FileStorage uploadPdfAndSave(byte[] pdf, String originalName, Users user) {
         if (pdf == null || pdf.length == 0) {
             throw new BadHttpException("Contract PDF is empty");
@@ -75,11 +118,27 @@ public class CloudinaryService {
                     .storageKey(publicId)
                     .mimeType("application/pdf")
                     .fileSize((long) pdf.length)
+<<<<<<< HEAD
+>>>>>>> 7d6eb51fe9c660b46d1a1bc0200bcbbc73cf5f51
+=======
+>>>>>>> origin
                     .uploadAt(LocalDateTime.now())
                     .user(user)
                     .isDeleted(false)
                     .build());
         } catch (IOException exception) {
+<<<<<<< HEAD
+<<<<<<< HEAD
+            throw new BadHttpException(
+                    "Failed to upload the approved contract PDF"
+            );
+        }
+    }
+
+    private Map<?, ?> uploadToCloudinary(MultipartFile file) {
+=======
+=======
+>>>>>>> origin
             throw new BadHttpException("Failed to upload contract PDF: " + exception.getMessage());
         }
     }
@@ -106,6 +165,10 @@ public class CloudinaryService {
     }
 
     private Map uploadToCloudinary(MultipartFile file) {
+<<<<<<< HEAD
+>>>>>>> 7d6eb51fe9c660b46d1a1bc0200bcbbc73cf5f51
+=======
+>>>>>>> origin
         try {
             return cloudinary.uploader().upload(
                     file.getBytes(),
@@ -118,4 +181,48 @@ public class CloudinaryService {
             throw new BadHttpException("Failed to upload file: " + e.getMessage());
         }
     }
+<<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> origin
+
+    private void requirePdf(byte[] content) {
+        if (content == null
+                || content.length < 5
+                || content[0] != '%'
+                || content[1] != 'P'
+                || content[2] != 'D'
+                || content[3] != 'F'
+                || content[4] != '-') {
+            throw new BadHttpException("A valid PDF file is required");
+        }
+    }
+
+    private String normalizePdfName(String originalName) {
+        String value = originalName == null ? "contract.pdf" : originalName;
+        value = value.trim().replaceAll("[^a-zA-Z0-9._-]", "-");
+        value = value.replaceAll("-+", "-");
+        if (value.isBlank() || value.equals(".pdf")) {
+            value = "contract.pdf";
+        }
+        if (!value.toLowerCase(Locale.ROOT).endsWith(".pdf")) {
+            value += ".pdf";
+        }
+        return value;
+    }
+
+    private String requireUploadValue(Map<?, ?> uploadResult, String key) {
+        Object value = uploadResult.get(key);
+        if (!(value instanceof String text) || text.isBlank()) {
+            throw new BadHttpException(
+                    "Cloudinary did not return " + key + " for the uploaded file"
+            );
+        }
+        return text;
+    }
+<<<<<<< HEAD
+=======
+>>>>>>> 7d6eb51fe9c660b46d1a1bc0200bcbbc73cf5f51
+=======
+>>>>>>> origin
 }

@@ -2,6 +2,7 @@ package com.fpt.backend.service.impl.contract;
 
 import com.fpt.backend.dto.request.contract.ContractPositionRequest;
 import com.fpt.backend.dto.request.contract.ContractTemplateLayout;
+import com.fpt.backend.dto.request.contract.ContractTemplateBlockRequest;
 import com.fpt.backend.dto.response.contract.ContractPositionResponse;
 import com.fpt.backend.entity.ContractPositions;
 import com.fpt.backend.entity.ContractTemplateVersions;
@@ -15,6 +16,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.regex.Pattern;
 
@@ -42,6 +44,17 @@ public class ContractTemplateLayoutMapper {
             "DIRECTOR",
             "PARTNER"
     );
+    private static final Set<String> BLOCK_TYPES = Set.of(
+            "NATIONAL_HEADER",
+            "CONTRACT_HEADING",
+            "LEGAL_INTRODUCTION",
+            "PARTY_A",
+            "PARTY_B",
+            "CLAUSE_HEADING",
+            "CONTENT",
+            "SIGNATURE_SECTION"
+    );
+    private static final int MAX_BLOCK_TEXT_LENGTH = 10_000;
 
     private final ObjectMapper objectMapper;
 
@@ -50,50 +63,27 @@ public class ContractTemplateLayoutMapper {
             List<ContractPositionRequest> requestedPositions,
             String layoutJson
     ) {
-        if (requestedPositions != null) {
-            return validateLayout(requestedPageCount, requestedPositions);
-        }
-
-        if (layoutJson == null || layoutJson.isBlank()) {
-            return validateLayout(requestedPageCount, List.of());
-        }
-
-        ContractTemplateLayout parsedLayout;
-        try {
-            parsedLayout = objectMapper.readValue(
-                    layoutJson,
-                    ContractTemplateLayout.class
-            );
-        } catch (JacksonException exception) {
-            throw new BadHttpException(
-                    "Template layout must be valid JSON with normalized field positions"
-            );
-        }
-
-        if (parsedLayout == null) {
-            throw new BadHttpException("Template layout information is required");
-        }
+        ContractTemplateLayout parsedLayout = parseLayout(layoutJson);
 
         Integer pageCount = requestedPageCount != null
                 ? requestedPageCount
-                : parsedLayout.pageCount();
-        return validateLayout(pageCount, parsedLayout.fields());
+                : parsedLayout == null ? null : parsedLayout.pageCount();
+        List<ContractPositionRequest> positions = requestedPositions != null
+                ? requestedPositions
+                : parsedLayout == null ? List.of() : parsedLayout.fields();
+        List<ContractTemplateBlockRequest> blocks = parsedLayout == null
+                ? defaultBlocks()
+                : parsedLayout.blocks();
+        return validateLayout(pageCount, positions, blocks);
     }
 
     public ContractTemplateLayout fromVersion(ContractTemplateVersions version) {
         List<ContractPositions> savedPositions = version.getPositions();
-        if (savedPositions != null && !savedPositions.isEmpty()) {
-            return validateLayout(
-                    version.getPageCount(),
-                    savedPositions.stream()
-                            .map(this::toRequest)
-                            .toList()
-            );
-        }
-
         return normalize(
                 version.getPageCount(),
-                null,
+                savedPositions == null || savedPositions.isEmpty()
+                        ? null
+                        : savedPositions.stream().map(this::toRequest).toList(),
                 version.getLayoutJson()
         );
     }
@@ -104,7 +94,8 @@ public class ContractTemplateLayoutMapper {
     ) {
         ContractTemplateLayout normalized = validateLayout(
                 layout.pageCount(),
-                layout.fields()
+                layout.fields(),
+                layout.blocks()
         );
         LocalDateTime now = LocalDateTime.now();
         List<ContractPositions> positions = new ArrayList<>();
@@ -171,7 +162,8 @@ public class ContractTemplateLayoutMapper {
 
     private ContractTemplateLayout validateLayout(
             Integer requestedPageCount,
-            List<ContractPositionRequest> requestedPositions
+            List<ContractPositionRequest> requestedPositions,
+            List<ContractTemplateBlockRequest> requestedBlocks
     ) {
         int pageCount = requestedPageCount == null
                 ? DEFAULT_PAGE_COUNT
@@ -192,7 +184,123 @@ public class ContractTemplateLayoutMapper {
         return new ContractTemplateLayout(
                 pageCount,
                 COORDINATE_SYSTEM,
-                normalizedPositions
+                normalizedPositions,
+                normalizeBlocks(requestedBlocks)
+        );
+    }
+
+    private ContractTemplateLayout parseLayout(String layoutJson) {
+        if (layoutJson == null || layoutJson.isBlank()) {
+            return null;
+        }
+        try {
+            ContractTemplateLayout parsed = objectMapper.readValue(
+                    layoutJson,
+                    ContractTemplateLayout.class
+            );
+            if (parsed == null) {
+                throw new BadHttpException("Template layout information is required");
+            }
+            return parsed;
+        } catch (JacksonException exception) {
+            throw new BadHttpException(
+                    "Template layout must be valid JSON with normalized field positions"
+            );
+        }
+    }
+
+    private List<ContractTemplateBlockRequest> normalizeBlocks(
+            List<ContractTemplateBlockRequest> requestedBlocks
+    ) {
+        List<ContractTemplateBlockRequest> source = requestedBlocks == null
+                || requestedBlocks.isEmpty()
+                ? defaultBlocks()
+                : requestedBlocks;
+        Set<String> keys = new LinkedHashSet<>();
+        List<ContractTemplateBlockRequest> normalized = new ArrayList<>();
+        for (ContractTemplateBlockRequest block : source) {
+            if (block == null) {
+                throw new BadHttpException("Template block information is required");
+            }
+            String key = requireText(block.key(), "Template block key is required")
+                    .toLowerCase(Locale.ROOT);
+            if (!ATTRIBUTE_KEY_PATTERN.matcher(key).matches()) {
+                throw new BadHttpException("Template block key is invalid: " + key);
+            }
+            if (!keys.add(key)) {
+                throw new BadHttpException("Template block keys must be unique: " + key);
+            }
+            String type = normalizeEnum(
+                    block.type(),
+                    BLOCK_TYPES,
+                    "Unsupported template block type"
+            );
+            normalized.add(new ContractTemplateBlockRequest(
+                    key,
+                    type,
+                    !Boolean.FALSE.equals(block.enabled()),
+                    normalizeBlockText(block.heading()),
+                    normalizeBlockText(block.content()),
+                    normalizeBlockText(block.leftLabel()),
+                    normalizeBlockText(block.rightLabel())
+            ));
+        }
+        if (normalized.stream().noneMatch(block -> "CONTENT".equals(block.type()))) {
+            throw new BadHttpException("Template layout requires a CONTENT block");
+        }
+        return List.copyOf(normalized);
+    }
+
+    private String normalizeBlockText(String value) {
+        if (value == null) {
+            return null;
+        }
+        String normalized = value.trim();
+        if (normalized.length() > MAX_BLOCK_TEXT_LENGTH) {
+            throw new BadHttpException("Template block text is too long");
+        }
+        return normalized;
+    }
+
+    public static List<ContractTemplateBlockRequest> defaultBlocks() {
+        return List.of(
+                new ContractTemplateBlockRequest(
+                        "national_header", "NATIONAL_HEADER", true,
+                        "CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM",
+                        "Độc lập - Tự do - Hạnh phúc", null, null
+                ),
+                new ContractTemplateBlockRequest(
+                        "contract_heading", "CONTRACT_HEADING", true,
+                        "{{contract_title}}", "Số: {{contract_number}}", null, null
+                ),
+                new ContractTemplateBlockRequest(
+                        "legal_introduction", "LEGAL_INTRODUCTION", true,
+                        null,
+                        "- Căn cứ các quy định pháp luật hiện hành;\n"
+                                + "- Căn cứ nhu cầu và sự thỏa thuận của các bên.\n"
+                                + "Hôm nay, {{contract_date}}, các bên gồm:",
+                        null, null
+                ),
+                new ContractTemplateBlockRequest(
+                        "party_a", "PARTY_A", true,
+                        "BÊN A", null, null, null
+                ),
+                new ContractTemplateBlockRequest(
+                        "party_b", "PARTY_B", true,
+                        "BÊN B", null, null, null
+                ),
+                new ContractTemplateBlockRequest(
+                        "clause_heading", "CLAUSE_HEADING", true,
+                        "CÁC ĐIỀU KHOẢN HỢP ĐỒNG", null, null, null
+                ),
+                new ContractTemplateBlockRequest(
+                        "main_content", "CONTENT", true,
+                        null, null, null, null
+                ),
+                new ContractTemplateBlockRequest(
+                        "signature_section", "SIGNATURE_SECTION", true,
+                        "ĐẠI DIỆN CÁC BÊN", null, "BÊN A", "BÊN B"
+                )
         );
     }
 

@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
     IconCalendar,
+    IconArrowDown,
+    IconArrowUp,
     IconCheckbox,
     IconEye,
     IconFileText,
@@ -14,6 +16,7 @@ import {
     splitContractPages,
 } from "../ContractManagement/contractPageUtils.js";
 import { createPositionClientId } from "./templatePositionUtils.js";
+import { DEFAULT_TEMPLATE_BLOCKS } from "./templateBlockUtils.js";
 
 const MAX_PAGE_COUNT = 50;
 const STANDARD_FIELDS = [
@@ -133,15 +136,29 @@ const FIELD_BY_KEY = new Map(
     STANDARD_FIELDS.map((field) => [field.key, field])
 );
 const PLACEHOLDER_PATTERN = /\{\{\s*([a-z][a-z0-9_]*)\s*}}/gi;
+const BLOCK_LABELS = {
+    NATIONAL_HEADER: "Quốc hiệu và tiêu ngữ",
+    CONTRACT_HEADING: "Tiêu đề hợp đồng",
+    LEGAL_INTRODUCTION: "Căn cứ và lời mở đầu",
+    PARTY_A: "Thông tin Bên A",
+    PARTY_B: "Thông tin Bên B",
+    CLAUSE_HEADING: "Tiêu đề phần điều khoản",
+    CONTENT: "Nội dung điều khoản",
+    SIGNATURE_SECTION: "Khu vực chữ ký",
+};
 
 function TemplatePositionDesigner({
     content = "",
     pageCount = 1,
     positions = [],
+    blocks = DEFAULT_TEMPLATE_BLOCKS,
     onChange,
     onContentChange,
 }) {
     const [currentPage, setCurrentPage] = useState(1);
+    const layoutBlocks = Array.isArray(blocks) && blocks.length > 0
+        ? blocks
+        : DEFAULT_TEMPLATE_BLOCKS;
     const editorRef = useRef(null);
     const selectionRef = useRef(null);
     const pages = useMemo(
@@ -380,6 +397,27 @@ function TemplatePositionDesigner({
         onChange({ pageCount: totalPages, positions: nextPositions });
     };
 
+    const updateBlock = (key, patch) => {
+        onChange({
+            blocks: layoutBlocks.map((block) =>
+                block.key === key ? { ...block, ...patch } : block
+            ),
+        });
+    };
+
+    const moveBlock = (index, offset) => {
+        const targetIndex = index + offset;
+        if (targetIndex < 0 || targetIndex >= layoutBlocks.length) {
+            return;
+        }
+        const nextBlocks = [...layoutBlocks];
+        [nextBlocks[index], nextBlocks[targetIndex]] = [
+            nextBlocks[targetIndex],
+            nextBlocks[index],
+        ];
+        onChange({ blocks: nextBlocks });
+    };
+
     return (
         <section className="template-simple-editor">
             <header className="template-simple-editor-header">
@@ -396,6 +434,28 @@ function TemplatePositionDesigner({
             </header>
 
             <div className="template-simple-editor-body">
+                <section className="template-block-editor">
+                    <div className="template-section-heading">
+                        <strong>Cấu trúc tài liệu PDF</strong>
+                        <small>
+                            Bật/tắt, sửa nội dung và đổi thứ tự tất cả phần của
+                            hợp đồng. Có thể dùng placeholder dạng {"{{contract_title}}"}.
+                        </small>
+                    </div>
+                    <div className="template-block-list">
+                        {layoutBlocks.map((block, index) => (
+                            <TemplateBlockRow
+                                key={block.key}
+                                block={block}
+                                index={index}
+                                total={layoutBlocks.length}
+                                onChange={(patch) => updateBlock(block.key, patch)}
+                                onMove={(offset) => moveBlock(index, offset)}
+                            />
+                        ))}
+                    </div>
+                </section>
+
                 <div className="template-page-navigation">
                     <div className="template-page-tabs" role="tablist">
                         {pages.map((_page, index) => {
@@ -583,6 +643,102 @@ function TemplatePositionDesigner({
                 </section>
             </div>
         </section>
+    );
+}
+
+function TemplateBlockRow({
+    block,
+    index,
+    total,
+    onChange,
+    onMove,
+}) {
+    const showHeading = !["LEGAL_INTRODUCTION", "CONTENT"].includes(block.type);
+    const showContent = [
+        "NATIONAL_HEADER",
+        "CONTRACT_HEADING",
+        "LEGAL_INTRODUCTION",
+    ].includes(block.type);
+    const isSignature = block.type === "SIGNATURE_SECTION";
+
+    return (
+        <article className={`template-block-row${block.enabled ? "" : " disabled"}`}>
+            <div className="template-block-toolbar">
+                <label className="template-block-enabled">
+                    <input
+                        type="checkbox"
+                        checked={Boolean(block.enabled)}
+                        onChange={(event) => onChange({ enabled: event.target.checked })}
+                    />
+                    <strong>{BLOCK_LABELS[block.type] || block.type}</strong>
+                </label>
+                <div className="template-block-order-actions">
+                    <button
+                        type="button"
+                        disabled={index === 0}
+                        onClick={() => onMove(-1)}
+                        aria-label="Move block up"
+                    >
+                        <IconArrowUp size={16} />
+                    </button>
+                    <button
+                        type="button"
+                        disabled={index === total - 1}
+                        onClick={() => onMove(1)}
+                        aria-label="Move block down"
+                    >
+                        <IconArrowDown size={16} />
+                    </button>
+                </div>
+            </div>
+
+            {showHeading && (
+                <label>
+                    <span>Tiêu đề</span>
+                    <input
+                        value={block.heading || ""}
+                        disabled={!block.enabled}
+                        onChange={(event) => onChange({ heading: event.target.value })}
+                    />
+                </label>
+            )}
+            {showContent && (
+                <label>
+                    <span>{block.type === "LEGAL_INTRODUCTION" ? "Nội dung" : "Dòng phụ"}</span>
+                    <textarea
+                        rows={block.type === "LEGAL_INTRODUCTION" ? 4 : 2}
+                        value={block.content || ""}
+                        disabled={!block.enabled}
+                        onChange={(event) => onChange({ content: event.target.value })}
+                    />
+                </label>
+            )}
+            {isSignature && (
+                <div className="template-block-signature-labels">
+                    <label>
+                        <span>Nhãn cột trái</span>
+                        <input
+                            value={block.leftLabel || ""}
+                            disabled={!block.enabled}
+                            onChange={(event) => onChange({ leftLabel: event.target.value })}
+                        />
+                    </label>
+                    <label>
+                        <span>Nhãn cột phải</span>
+                        <input
+                            value={block.rightLabel || ""}
+                            disabled={!block.enabled}
+                            onChange={(event) => onChange({ rightLabel: event.target.value })}
+                        />
+                    </label>
+                </div>
+            )}
+            {block.type === "CONTENT" && (
+                <small className="template-block-note">
+                    Nội dung chi tiết được chỉnh theo từng trang ở phần bên dưới.
+                </small>
+            )}
+        </article>
     );
 }
 

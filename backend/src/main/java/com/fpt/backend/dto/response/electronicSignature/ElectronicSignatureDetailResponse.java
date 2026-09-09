@@ -2,6 +2,7 @@ package com.fpt.backend.dto.response.electronicSignature;
 
 import com.fpt.backend.enums.ElectronicSignatureType;
 import com.fpt.backend.enums.ElectronicStatus;
+import com.fpt.backend.enums.KeyAlgorithm;
 import com.fpt.backend.enums.SignatureStatus;
 import com.fpt.backend.enums.SignatureType;
 import jakarta.persistence.EnumType;
@@ -23,4 +24,9 @@ public class ElectronicSignatureDetailResponse {
     private ElectronicStatus electronicSignatureStatus;
     private boolean isDefault;
     private LocalDate createAt;
+    private String imageUrl;
+    private String publicKey;
+    private String publicKeyFingerprint;
+    private KeyAlgorithm keyAlgorithm;
+    private Long keySize;
 }

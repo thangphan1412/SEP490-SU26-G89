@@ -2,6 +2,7 @@ package com.fpt.backend.dto.response.electronicSignature;
 
 import com.fpt.backend.enums.ElectronicSignatureType;
 import com.fpt.backend.enums.ElectronicStatus;
+import com.fpt.backend.enums.KeyAlgorithm;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import lombok.*;
@@ -24,5 +25,17 @@ public class ListElectronicResponse {
     private ElectronicStatus status;
     private boolean isDefault;
     private LocalDate uploadAt;
+<<<<<<< HEAD
+<<<<<<< HEAD
+    private String imageUrl;
+    private String publicKey;
+    private String publicKeyFingerprint;
+    private KeyAlgorithm keyAlgorithm;
+    private Long keySize;
+=======
     private String fileUrl;
+>>>>>>> 7d6eb51fe9c660b46d1a1bc0200bcbbc73cf5f51
+=======
+    private String fileUrl;
+>>>>>>> origin
 }
