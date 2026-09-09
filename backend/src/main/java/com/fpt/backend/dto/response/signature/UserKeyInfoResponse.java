@@ -10,6 +10,7 @@ public record UserKeyInfoResponse(
         String algorithm,
         String keyCode,
         long keySize,
-        LocalDateTime createdAt
+        LocalDateTime createdAt,
+        String privateKey
 ) {
 }

@@ -48,17 +48,16 @@ public class UserKeyServiceImpl
                         keyPair.modulus(),
                         keyPair.publicExponent());
 
-       BigInteger number = new BigInteger(publicKey, 16);
-        int publicKeyCode = number.mod(BigInteger.valueOf(1000000)).intValue();
-        String publicKeyCodeStr = String.format("%06d", publicKeyCode);
+       String publicKeyCodeStr= changToPing(publicKey);
         System.out.println("Public Key Code: " + publicKeyCodeStr);
-        // Private Key = (n, d)
-        String privateKey =
-                RSAKeyConverter.encode(
+        String privateKey = RSAKeyConverter.encode(
                         keyPair.modulus(),
                         keyPair.privateExponent()
                 );
 
+        String privateKeyCodeStr = changToPing(privateKey);
+        byte[] privateKeyBytes = privateKeyProtectionService.encrypt(privateKey).getBytes();
+        System.out.println("Private Key Code: " + privateKeyCodeStr);
         UserKeys userKeys =
                 UserKeys.builder()
                         .user(user)
@@ -71,5 +70,11 @@ public class UserKeyServiceImpl
                         .build();
 
         return userKeysRepository.save(userKeys);
+    }
+    public String changToPing(String key){
+        BigInteger number = new BigInteger(key, 16);
+        int publicKeyCode = number.mod(BigInteger.valueOf(1000000)).intValue();
+        String publicKeyCodeStr = String.format("%06d", publicKeyCode);
+        return publicKeyCodeStr;
     }
 }
