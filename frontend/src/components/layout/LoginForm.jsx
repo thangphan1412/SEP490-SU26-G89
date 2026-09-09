@@ -15,6 +15,7 @@ function LoginForm() {
   const navigate = useNavigate();
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
+
     const handelLogin = async()=> {
         try {
             localStorage.removeItem("token");
@@ -24,14 +25,20 @@ function LoginForm() {
 
             const response = await authenService.login({ email, password });
             console.log("Response data:", response.data);
-            const { token, role, fullName, departmentName } = response.data.data;
+            const { token, role, fullName, departmentName , hasSignatureKey} = response.data.data;
             console.log("token:", token, "role:", role, "fullName:", fullName, "department:", departmentName);
             localStorage.setItem("token", token);
             localStorage.setItem("role", role ?? "");
             localStorage.setItem("fullName", fullName ?? "");
             localStorage.setItem("departmentName", departmentName ?? "");
+            localStorage.setItem("hasSignatureKey", hasSignatureKey);
+            console.log("hasSignatureKey:", hasSignatureKey);
+            if(!hasSignatureKey){
+                navigate("/signature-management/create-signature");
+            } else {
+                navigate("/home_page");
+            }
 
-            navigate("/home_page");
         } catch (error) {
             console.log(error.response?.data);
         }

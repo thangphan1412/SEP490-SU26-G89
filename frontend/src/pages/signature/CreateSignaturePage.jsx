@@ -9,6 +9,7 @@ import InfoBanner from "../../components/signature/createSignature/InforBanner.j
 
 import electronicSignatureService
     from "../../services/signatureService/electronicSignatureService.js";
+import SigningKeyCard from "../../components/signature/SigningKeyCard.jsx";
 
 function CreateSignaturePage() {
 
@@ -25,11 +26,56 @@ function CreateSignaturePage() {
 
 
     const [signatureFile, setSignatureFile] = useState(null);
-
+    const [keyStatus, setKeyStatus] = useState("NOT_CONFIGURED");
+    const [keyId, setKeyId] = useState(null);
+    const [keyLoading, setKeyLoading] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
     const [success, setSuccess] = useState("");
 
+    const handleGenerateKey = async () => {
+        try {
+            setKeyLoading(true);
+            setError("");
+            setSuccess("");
+
+            const keyPair = await window.crypto.subtle.generateKey(
+                {
+                    name: "RSA-PSS",
+                    modulusLength: 2048,
+                    publicExponent: new Uint8Array([1, 0, 1]),
+                    hash: "SHA-256",
+                },
+                false,
+                ["sign", "verify"]
+            );
+
+            console.log("Key pair generated:", keyPair);
+
+            setKeyStatus("ACTIVE");
+
+            // Tạm thời tạo ID phía frontend
+            // Sau này ID này sẽ lấy từ Backend
+            const generatedKeyId = crypto.randomUUID();
+
+            setKeyId(generatedKeyId);
+
+            setSuccess(
+                "Signing key generated successfully."
+            );
+
+        } catch (error) {
+
+            console.error("GENERATE KEY ERROR:", error);
+
+            setError(
+                "Failed to generate signing key."
+            );
+
+        } finally {
+            setKeyLoading(false);
+        }
+    };
 
     const handleTypeChange = (type) => {
 
@@ -199,6 +245,13 @@ function CreateSignaturePage() {
                     onClear={() => {
                         setSignatureFile(null);
                     }}
+                />
+
+                <SigningKeyCard
+                    keyStatus={keyStatus}
+                    keyId={keyId}
+                    onGenerateKey={handleGenerateKey}
+                    loading={keyLoading}
                 />
 
                 <DocumentAutomationPreview />

@@ -14,5 +14,5 @@ public class AuthenticateResponse {
     private String role;
     private String fullName;
     private String departmentName;
-   
+    private boolean hasSignatureKey;
 }

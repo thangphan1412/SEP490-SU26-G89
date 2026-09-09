@@ -12,7 +12,8 @@ public class CalculateRSA {
 
     private final PrimeGenerator primeGenerator;
 
-    public RSAKeyPair generateKeyPair() {BigInteger p;BigInteger q;
+    public RSAKeyPair generateKeyPair() {
+        BigInteger p;BigInteger q;
         do {
             p = primeGenerator.generatePrime(KEY_SIZE / 2);
             q = primeGenerator.generatePrime(KEY_SIZE / 2);

@@ -9,6 +9,8 @@ import com.fpt.backend.dto.request.authentication.ForgotPasswordRequest;
 import com.fpt.backend.dto.request.authentication.ResetPasswordRequest;
 import com.fpt.backend.dto.response.authentication.AuthenticateResponse;
 import com.fpt.backend.entity.Users;
+import com.fpt.backend.enums.KeyStatus;
+import com.fpt.backend.repository.signature.UserKeysRepository;
 import com.fpt.backend.service.impl.user.UserServiceImpl;
 import com.fpt.backend.util.BaseResponse;
 import jakarta.validation.Valid;
@@ -31,6 +33,8 @@ public class AuthenticateController {
     private JWTService jwtService;
     @Autowired
     private UserServiceImpl userServiceImpl;
+    @Autowired
+    private UserKeysRepository userKeysRepository;
     @PostMapping(ApiConstant.Authentication.LOGIN)
     public ResponseEntity<BaseResponse<AuthenticateResponse>> authenticateUser(@RequestBody AuthenticateRequest authenticateRequest)  {
         try{
@@ -81,7 +85,8 @@ public class AuthenticateController {
                 authenticateResponse.setDepartmentName(""); // Đề phòng user chưa có phòng ban
             }
             // ---------------------------------------
-
+            boolean checkUserKey = userKeysRepository.existsAllByKeyStatus(users.getId(), KeyStatus.ACTIVE);
+            authenticateResponse.setHasSignatureKey(checkUserKey);
             BaseResponse<AuthenticateResponse> response = new BaseResponse<>(
                     HttpStatus.CREATED.value(),
                     "Login susscessed",

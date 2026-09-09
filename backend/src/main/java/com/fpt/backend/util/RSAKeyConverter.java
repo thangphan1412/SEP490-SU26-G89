@@ -1,12 +1,14 @@
 package com.fpt.backend.util;
 
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
+
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
-
+@Component
+@RequiredArgsConstructor
 public class RSAKeyConverter {
-    private RSAKeyConverter() {
-    }
     public static String encode(BigInteger modulus, BigInteger exponent
     ) {
         String key = modulus.toString(16)

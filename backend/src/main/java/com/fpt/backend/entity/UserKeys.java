@@ -1,6 +1,7 @@
 package com.fpt.backend.entity;
 
 import com.fpt.backend.enums.KeyAlgorithm;
+import com.fpt.backend.enums.KeyStatus;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -28,6 +29,9 @@ public class UserKeys extends BaseEntity{
     @Column(name = "key_algorithm")
     @Enumerated(EnumType.STRING)
     private KeyAlgorithm keyAlgorithm;
+    @Column(name = "key_status")
+    @Enumerated(EnumType.STRING)
+    private KeyStatus keyStatus;
     /// relation
     //User
     @ManyToOne(fetch = FetchType.LAZY)

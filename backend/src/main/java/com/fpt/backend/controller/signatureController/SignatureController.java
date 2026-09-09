@@ -34,6 +34,8 @@ public class SignatureController {
     private final CloudinaryService cloudinaryService;
     private final UserKeyServiceImpl userKeyService;
 
+
+
     @GetMapping("/keys/me")
     public ResponseEntity<BaseResponse<UserKeyInfoResponse>> getMyPublicKey() {
         var user = currentUser.getCurrentUser();
