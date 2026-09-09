@@ -6,7 +6,9 @@ public record UserKeyInfoResponse(
         boolean available,
         String publicKey,
         String publicKeyFingerprint,
+
         String algorithm,
+        String keyCode,
         long keySize,
         LocalDateTime createdAt
 ) {

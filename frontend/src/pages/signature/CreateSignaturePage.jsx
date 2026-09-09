@@ -28,6 +28,7 @@ function CreateSignaturePage() {
     const [signatureFile, setSignatureFile] = useState(null);
     const [keyStatus, setKeyStatus] = useState("NOT_CONFIGURED");
     const [keyId, setKeyId] = useState(null);
+    const [keyCode, setKeyCode] = useState(null);
     const [keyLoading, setKeyLoading] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
@@ -250,6 +251,7 @@ function CreateSignaturePage() {
                 <SigningKeyCard
                     keyStatus={keyStatus}
                     keyId={keyId}
+                    keyCode={keyCode}
                     onGenerateKey={handleGenerateKey}
                     loading={keyLoading}
                 />

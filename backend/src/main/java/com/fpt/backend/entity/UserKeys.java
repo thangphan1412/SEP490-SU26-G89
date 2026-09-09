@@ -24,8 +24,8 @@ public class UserKeys extends BaseEntity{
     @Column(name = "public_key", columnDefinition = "nvarchar(max)")
     private String publicKey;
     @Lob
-    @Column(name = "private_key", columnDefinition = "nvarchar(max)")
-    private String privateKey;
+    @Column(name = "key_code", columnDefinition = "nvarchar(max)")
+    private String keyCode;
     @Column(name = "key_algorithm")
     @Enumerated(EnumType.STRING)
     private KeyAlgorithm keyAlgorithm;

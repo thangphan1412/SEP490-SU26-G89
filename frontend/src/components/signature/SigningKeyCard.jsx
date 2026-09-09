@@ -3,6 +3,7 @@ import React from "react";
 function SigningKeyCard({
                             keyStatus,
                             keyId,
+                            keyCode,
                             onGenerateKey,
                             loading = false,
                         }) {
@@ -125,7 +126,15 @@ function SigningKeyCard({
                                     {keyId}
                                 </div>
                             </div>
+                            <div>
+                                <div className="text-muted small">
+                                    Public Key Code
+                                </div>
 
+                                <div className="fw-semibold font-monospace mt-1">
+                                    {keyCode}
+                                </div>
+                            </div>
                             <span className="text-success">
                                 <i className="bi bi-shield-check fs-4"></i>
                             </span>
@@ -151,7 +160,7 @@ function SigningKeyCard({
 
                         <div>
                             <div className="fw-semibold">
-                                Private Key Protection
+                                Private Key Code Protection
                             </div>
 
                             <div className="small text-muted mt-1">

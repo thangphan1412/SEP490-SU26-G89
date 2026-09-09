@@ -38,7 +38,7 @@ public class DigitalSignatureService {
 
         // 3. Decode private key
         BigInteger[] privateKey = RSAKeyConverter.decode(
-                        privateKeyProtectionService.decrypt(userKeys.getPrivateKey())
+                        privateKeyProtectionService.decrypt(userKeys.getPublicKey())
                 );
         BigInteger n = privateKey[0];
         BigInteger d = privateKey[1];

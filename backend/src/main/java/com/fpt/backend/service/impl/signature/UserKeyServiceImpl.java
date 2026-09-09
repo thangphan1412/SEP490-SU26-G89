@@ -11,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigInteger;
 import java.time.LocalDateTime;
 @Service
 @RequiredArgsConstructor
@@ -42,17 +43,15 @@ public class UserKeyServiceImpl
             );
         }
 
-        // Generate RSA
-        CalculateRSA.RSAKeyPair keyPair =
-                calculateRSA.generateKeyPair();
-
-        // Public Key = (n, e)
-        String publicKey =
-                RSAKeyConverter.encode(
+        CalculateRSA.RSAKeyPair keyPair = calculateRSA.generateKeyPair();
+        String publicKey = RSAKeyConverter.encode(
                         keyPair.modulus(),
-                        keyPair.publicExponent()
-                );
+                        keyPair.publicExponent());
 
+       BigInteger number = new BigInteger(publicKey, 16);
+        int publicKeyCode = number.mod(BigInteger.valueOf(1000000)).intValue();
+        String publicKeyCodeStr = String.format("%06d", publicKeyCode);
+        System.out.println("Public Key Code: " + publicKeyCodeStr);
         // Private Key = (n, d)
         String privateKey =
                 RSAKeyConverter.encode(
@@ -66,7 +65,8 @@ public class UserKeyServiceImpl
                         .keyAlgorithm(KeyAlgorithm.RSA)
                         .keySize(2048)
                         .publicKey(publicKey)
-                        .privateKey(privateKeyProtectionService.encrypt(privateKey))
+                        .keyCode(publicKeyCodeStr)
+//                        .privateKey(privateKeyProtectionService.encrypt(privateKey))
                         .createAt(LocalDateTime.now())
                         .build();
 

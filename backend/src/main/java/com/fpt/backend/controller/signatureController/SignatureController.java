@@ -93,7 +93,7 @@ public class SignatureController {
             String fingerprint = HexFormat.ofDelimiter(":").withUpperCase().formatHex(digest);
             return new UserKeyInfoResponse(
                     true, key.getPublicKey(), fingerprint,
-                    key.getKeyAlgorithm().name(), key.getKeySize(), key.getCreateAt()
+                    key.getKeyAlgorithm().name(),key.getKeyCode(), key.getKeySize(), key.getCreateAt()
             );
         } catch (Exception exception) {
             throw new IllegalStateException("Unable to create public key fingerprint", exception);
