@@ -635,11 +635,6 @@ function CreateProject() {
                     <div className="create-project-section-header">
                         <div>
                             <Card.Title as="h2" className="project-management-card-title">Project Members</Card.Title>
-                            <p className="create-project-section-note">
-                                The signed-in user will be added automatically with the
-                                Project Full Access permission after the project is created.
-                                Use Add Members to choose additional users.
-                            </p>
                         </div>
                         <div className="create-project-member-header-actions">
                             <span className="create-project-selected-count">

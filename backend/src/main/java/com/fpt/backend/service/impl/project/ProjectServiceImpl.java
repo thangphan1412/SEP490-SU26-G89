@@ -43,7 +43,6 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
@@ -377,8 +376,8 @@ public class ProjectServiceImpl implements IProjectService {
         // Giới hạn kết quả vào các dự án mà người dùng là thành viên khi được yêu cầu.
         if (viewOnlyYourProjects) {
             return projectRepository.searchViewableProjects(
-                    search.toLowerCase(Locale.ROOT),
-                    status.toLowerCase(Locale.ROOT),
+                    search.toLowerCase(),
+                    status.toLowerCase(),
                     currentUserId,
                     pageable
             );
@@ -398,8 +397,8 @@ public class ProjectServiceImpl implements IProjectService {
         }
 
         return projectRepository.searchProjects(
-                search.toLowerCase(Locale.ROOT),
-                status.toLowerCase(Locale.ROOT),
+                search.toLowerCase(),
+                status.toLowerCase(),
                 pageable
         );
     }
