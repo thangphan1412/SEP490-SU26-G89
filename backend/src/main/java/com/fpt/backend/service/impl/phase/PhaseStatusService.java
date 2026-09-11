@@ -91,8 +91,7 @@ public class PhaseStatusService {
             return PhaseStatus.OVER_DUE;
         }
 
-        boolean dateIsInPhase = !today.isBefore(startDate)
-                && !today.isAfter(endDate);
+        boolean dateIsInPhase = !today.isBefore(startDate);
         boolean previousPhaseIsCompleted = previousStatus
                 == PhaseStatus.COMPLETED;
 

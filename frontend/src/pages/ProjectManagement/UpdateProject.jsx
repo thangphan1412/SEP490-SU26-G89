@@ -28,7 +28,7 @@ import {
 import "../../assets/styles/css/projectStyles/UpdateProject.css";
 
 // Hiển thị biểu mẫu cập nhật dự án theo các action người dùng được cấp.
-function UpdateProject({ onUpdateProject }) {
+function UpdateProject() {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const projectId = searchParams.get("id");
@@ -327,7 +327,7 @@ function UpdateProject({ onUpdateProject }) {
         try {
             setSaving(true);
             setSubmitError("");
-            const updatedProject = await updateProject(projectId, {
+            await updateProject(projectId, {
                 projectName: canEditProject
                     ? project.projectName.trim()
                     : null,
@@ -355,7 +355,6 @@ function UpdateProject({ onUpdateProject }) {
                 members: canManageMembers ? project.members : null,
             });
 
-            onUpdateProject?.(updatedProject);
             navigate("/project-management/view?id=" + projectId);
         } catch (error) {
             console.error("Unable to update project:", error);
@@ -810,11 +809,10 @@ function ProjectDateInput({
     value = "",
     className = "",
     disabled = false,
-    readOnly = false,
     ...inputProperties
 }) {
     function openDatePicker(event) {
-        if (!readOnly && typeof event.currentTarget.showPicker === "function") {
+        if (typeof event.currentTarget.showPicker === "function") {
             event.currentTarget.showPicker();
         }
     }
@@ -836,7 +834,6 @@ function ProjectDateInput({
                 type="date"
                 value={value}
                 disabled={disabled}
-                readOnly={readOnly}
                 className="project-date-input__native"
                 onClick={openDatePicker}
             />
