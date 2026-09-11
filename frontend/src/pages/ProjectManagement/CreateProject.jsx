@@ -107,12 +107,6 @@ function CreateProject() {
             return;
         }
 
-        // Yêu cầu chọn ngày bắt đầu trước khi chọn ngày kết thúc.
-        if (name === "projectEndDate" && !project.projectStartDate) {
-            setSubmitError("Select the project start date before selecting its end date.");
-            return;
-        }
-
         // Ngăn ngày kết thúc dự án nằm trong quá khứ.
         if (
             name === "projectEndDate"
@@ -740,11 +734,10 @@ function ProjectDateInput({
     value = "",
     className = "",
     disabled = false,
-    readOnly = false,
     ...inputProperties
 }) {
     function openDatePicker(event) {
-        if (!readOnly && typeof event.currentTarget.showPicker === "function") {
+        if (typeof event.currentTarget.showPicker === "function") {
             event.currentTarget.showPicker();
         }
     }
@@ -766,7 +759,6 @@ function ProjectDateInput({
                 type="date"
                 value={value}
                 disabled={disabled}
-                readOnly={readOnly}
                 className="project-date-input__native"
                 onClick={openDatePicker}
             />

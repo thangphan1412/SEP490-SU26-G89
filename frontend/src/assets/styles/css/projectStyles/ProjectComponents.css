@@ -227,21 +227,6 @@
     background: #eef3ff;
 }
 
-.project-management-info-alert.alert {
-    min-height: 43px;
-    margin: 0 28px 22px;
-    padding: 10px 16px;
-    border: 1px solid #b9ceff;
-    border-radius: 7px;
-    background: #edf4ff;
-    color: #2450f5;
-    font-size: 14px;
-}
-
-.project-management-info-alert .hstack {
-    align-items: center;
-}
-
 .project-date-input {
     position: relative;
     width: 100%;
@@ -291,5 +276,4 @@
     .project-management-page-header.card-header { padding: 22px; align-items: flex-start; flex-direction: column; }
     .project-management-actions { width: 100%; flex-wrap: wrap; }
     .project-management-card.card { margin: 16px; }
-    .project-management-info-alert.alert { margin: 0 16px 16px; }
 }

@@ -323,9 +323,9 @@ public class PermissionServiceImpl implements IPermissionService {
                 permissionActionService.getWorkScope(permission),
                 permission.getPermissionDescription(),
                 permission.getStatus(),
-                project == null ? null : project.getId(),
-                project == null ? null : project.getProjectCode(),
-                project == null ? null : project.getProjectName(),
+                project.getId(),
+                project.getProjectCode(),
+                project.getProjectName(),
                 permission.getCreatedAt(),
                 canManage);
     }
