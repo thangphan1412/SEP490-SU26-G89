@@ -11,6 +11,7 @@ public class DashboardStatsDTO {
     // Dành cho màn Statistical Reports
     private long totalAgreements;
     private long activeAgreements;
+    // Lifecycle-ended agreements; field name is retained for dashboard API compatibility.
     private long expiredAgreements;
     private long canceledAgreements;
     private List<DashboardOverviewDTO.ChartData> typesDistribution;
@@ -21,8 +22,10 @@ public class DashboardStatsDTO {
 
     // Dành cho màn Pending Signatures
     private long totalPending;
-    private long dueIn7Days; // Tạm dùng logic: Đã chờ > 7 ngày
-    private long overdue;    // Tạm dùng logic: Đã chờ > 14 ngày
+    // Contracts that have waited from 8 through 14 full days.
+    private long dueIn7Days;
+    // Contracts that have waited more than 14 full days.
+    private long overdue;
     private double avgDaysPending;
     private List<DashboardOverviewDTO.ChartData> pendingByAge;
     private List<ProjectPendingData> pendingByProject;
