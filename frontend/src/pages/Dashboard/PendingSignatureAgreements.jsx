@@ -1,48 +1,98 @@
-import React, { useState, useEffect } from "react";
-import { Card, Col, Form, Row, Table, Pagination, Stack, Spinner } from "react-bootstrap";
-import { IconArrowLeft, IconArrowRight, IconCalendar, IconClock, IconDots, IconEye, IconSearch, IconSignature, IconTrendingDown, IconTrendingUp } from "@tabler/icons-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Alert, Button, Card, Col, Form, Row, Table, Pagination, Stack, Spinner } from "react-bootstrap";
+import { IconCalendar, IconClock, IconEye, IconSearch, IconSignature } from "@tabler/icons-react";
+import { useNavigate } from "react-router-dom";
 import contractApi from "../../services/contractService/contractApi.js";
 import dashboardApi from "../../services/dashboardService/dashboardApi.js";
+import {
+    buildDonutGradient,
+    formatAverageDays,
+    formatDashboardStatus,
+    getDashboardStatusStyle,
+    unwrapDashboardResponse,
+} from "./dashboardUtils.js";
 
 const BLUE = "#1f5eff";
 const NAVY = "#101a3e";
 const MUTED = "#687694";
 const BORDER = "#e7ebf3";
 
+const EMPTY_PENDING_STATS = {
+    totalPending: 0,
+    overdue: 0,
+    dueIn7Days: 0,
+    avgDaysPending: 0,
+    pendingByAge: [],
+    pendingByProject: [],
+};
+
 function PendingSignatureAgreements() {
+    const navigate = useNavigate();
     const [search, setSearch] = useState("");
     const [loadingStats, setLoadingStats] = useState(true);
-    const [stats, setStats] = useState(null);
+    const [statsError, setStatsError] = useState("");
+    const [stats, setStats] = useState(EMPTY_PENDING_STATS);
 
-    // Table State
     const [loadingTable, setLoadingTable] = useState(true);
+    const [tableError, setTableError] = useState("");
     const [agreements, setAgreements] = useState([]);
     const [pagination, setPagination] = useState({ page: 0, size: 10, totalElements: 0, totalPages: 0 });
 
-    useEffect(() => {
-        dashboardApi.getPendingSignatures().then(res => {
-            setStats(res.data.data);
+    const loadStats = useCallback(async () => {
+        setLoadingStats(true);
+        setStatsError("");
+        try {
+            const response = await dashboardApi.getPendingSignatures();
+            setStats(unwrapDashboardResponse(response, EMPTY_PENDING_STATS));
+        } catch (error) {
+            console.error("Unable to load pending signature statistics:", error);
+            setStats(EMPTY_PENDING_STATS);
+            setStatsError("Unable to load pending signature statistics. Please try again.");
+        } finally {
             setLoadingStats(false);
-        }).catch(err => { console.error(err); setLoadingStats(false); });
+        }
     }, []);
 
-    const fetchContracts = async (currPage = 0, currentKeyword = search, currentSize = pagination.size) => {
+    const fetchContracts = useCallback(async (currPage = 0, currentKeyword = search) => {
         setLoadingTable(true);
+        setTableError("");
         try {
-            // Chỉ lấy hợp đồng trạng thái PENDING_SIGNATURE
-            const response = await contractApi.getAllContracts({ search: currentKeyword, status: "PENDING_SIGNATURE", page: currPage, size: currentSize, sortBy: "contractCreatedAt", sortDirection: "desc" });
-            const pageData = response.data.data;
+            const response = await contractApi.getAllContracts({
+                search: currentKeyword,
+                status: "PENDING_SIGNATURE",
+                page: currPage,
+                sortBy: "contractCreatedAt",
+                sortDirection: "desc",
+            });
+            const pageData = response?.data?.data || {};
             setAgreements(pageData.items || []);
-            setPagination({ page: currPage, size: currentSize, totalElements: pageData.totalElements || 0, totalPages: pageData.totalPages || 0 });
-        } catch (error) { console.error(error); setAgreements([]); } finally { setLoadingTable(false); }
-    };
-
-    useEffect(() => {
-        const delay = setTimeout(() => fetchContracts(0, search, pagination.size), 500);
-        return () => clearTimeout(delay);
+            setPagination({
+                page: pageData.page ?? currPage,
+                size: pageData.size || 10,
+                totalElements: pageData.totalElements || 0,
+                totalPages: pageData.totalPages || 0,
+            });
+        } catch (error) {
+            console.error("Unable to load pending signature agreements:", error);
+            setAgreements([]);
+            setPagination((current) => ({ ...current, page: currPage, totalElements: 0, totalPages: 0 }));
+            setTableError("Unable to load pending signature agreements. Please try again.");
+        } finally {
+            setLoadingTable(false);
+        }
     }, [search]);
 
-    if (loadingStats || !stats) {
+    useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- starts the initial asynchronous API request.
+        loadStats();
+    }, [loadStats]);
+
+    useEffect(() => {
+        const delay = setTimeout(() => fetchContracts(0, search), 400);
+        return () => clearTimeout(delay);
+    }, [fetchContracts, search]);
+
+    if (loadingStats) {
         return <div className="vh-100 d-flex justify-content-center align-items-center"><Spinner animation="border" variant="primary" /></div>;
     }
 
@@ -53,6 +103,13 @@ function PendingSignatureAgreements() {
                 <p className="mb-0" style={{ color: MUTED }}>Track and manage agreements waiting for signatures.</p>
             </div>
 
+            {statsError && (
+                <Alert variant="danger" className="d-flex justify-content-between align-items-center">
+                    <span>{statsError}</span>
+                    <Button variant="outline-danger" size="sm" onClick={loadStats}>Retry</Button>
+                </Alert>
+            )}
+
             <div className="d-flex flex-wrap gap-3 mb-4">
                 <SearchField value={search} onChange={setSearch} />
             </div>
@@ -60,14 +117,14 @@ function PendingSignatureAgreements() {
             <Row className="g-3 mb-3">
                 <Col xl={3} md={6}><MetricCard label="Pending Signatures" value={stats.totalPending} icon={IconSignature} tone="blue" /></Col>
                 <Col xl={3} md={6}><MetricCard label="Overdue (>14d)" value={stats.overdue} direction="down" icon={IconClock} tone="red" /></Col>
-                <Col xl={3} md={6}><MetricCard label="Long Wait (>7d)" value={stats.dueIn7Days} icon={IconCalendar} tone="green" /></Col>
-                <Col xl={3} md={6}><MetricCard label="Avg. Days Pending" value={stats.avgDaysPending.toFixed(1)} direction="down" icon={IconClock} tone="slate" /></Col>
+                <Col xl={3} md={6}><MetricCard label="Waiting 8–14d" value={stats.dueIn7Days} icon={IconCalendar} tone="green" /></Col>
+                <Col xl={3} md={6}><MetricCard label="Avg. Days Pending" value={formatAverageDays(stats.avgDaysPending)} direction="down" icon={IconClock} tone="slate" /></Col>
             </Row>
 
             <Row className="g-3 mb-3">
                 <Col lg={6}>
                     <ChartCard title="Pending by Project" description="Top projects with pending signature requests">
-                        <PartyChart data={stats.pendingByProject} maxVal={stats.totalPending} />
+                        <PartyChart data={stats.pendingByProject} />
                     </ChartCard>
                 </Col>
                 <Col lg={6}>
@@ -77,7 +134,15 @@ function PendingSignatureAgreements() {
                 </Col>
             </Row>
 
-            <PendingTable rows={agreements} loading={loadingTable} pagination={pagination} fetchContracts={fetchContracts} search={search} />
+            <PendingTable
+                rows={agreements}
+                loading={loadingTable}
+                errorMessage={tableError}
+                pagination={pagination}
+                fetchContracts={fetchContracts}
+                search={search}
+                onView={(contractId) => navigate(`/contract-management/list?viewContractId=${contractId}`)}
+            />
         </div>
     );
 }
@@ -91,7 +156,7 @@ function SearchField({ value, onChange }) {
     );
 }
 
-function MetricCard({ label, value, direction = "up", icon: Icon, tone }) {
+function MetricCard({ label, value, icon: Icon, tone }) {
     const tones = { blue: ["#eaf0ff", BLUE], green: ["#e5f8ef", "#08b875"], red: ["#ffebed", "#f3273b"], slate: ["#edf1fb", "#42527b"] };
     const [background, color] = tones[tone];
     return (
@@ -121,15 +186,16 @@ function ChartCard({ title, description, children }) {
     );
 }
 
-function PartyChart({ data, maxVal }) {
+function PartyChart({ data }) {
     if (!data || data.length === 0) return <div className="text-center text-muted mt-5 fst-italic">No data</div>;
+    const largestProjectCount = Math.max(...data.map((row) => Number(row.value) || 0));
     return (
         <div className="pt-2 px-2">
             {data.slice(0, 5).map((row, index) => (
                 <div className="d-flex align-items-center gap-3 mb-3" key={index}>
                     <span className="text-truncate" style={{ width: 150, color: "#3d4a68", fontSize: 13 }}>{row.name}</span>
                     <div className="flex-grow-1" style={{ height: 10, background: "#edf0f6", borderRadius: 4 }}>
-                        <div className="h-100 rounded" style={{ width: `${maxVal===0?0:(row.value / maxVal) * 100}%`, background: BLUE }} />
+                        <div className="h-100 rounded" style={{ width: `${largestProjectCount === 0 ? 0 : (row.value / largestProjectCount) * 100}%`, background: BLUE }} />
                     </div>
                     <span className="fw-medium" style={{ width: 24, fontSize: 13 }}>{row.value}</span>
                 </div>
@@ -139,15 +205,7 @@ function PartyChart({ data, maxVal }) {
 }
 
 function AgeChart({ data, total }) {
-    const gradient = React.useMemo(() => {
-        if (!data || total === 0) return "conic-gradient(#e7ebf3 100%)";
-        let start = 0;
-        return `conic-gradient(${data.map(item => {
-            const end = start + (item.value / total) * 100;
-            const res = `${item.color} ${start.toFixed(2)}% ${(end - 0.5).toFixed(2)}%`;
-            start = end; return res;
-        }).join(", ")})`;
-    }, [data, total]);
+    const gradient = useMemo(() => buildDonutGradient(data, total), [data, total]);
 
     return (
         <div className="d-flex flex-column flex-sm-row align-items-center justify-content-center gap-4 mt-3">
@@ -168,7 +226,7 @@ function AgeChart({ data, total }) {
     );
 }
 
-function PendingTable({ rows, loading, pagination, fetchContracts, search }) {
+function PendingTable({ rows, loading, errorMessage, pagination, fetchContracts, search, onView }) {
     const headers = ["Agreement No", "Title", "Project", "Created Date", "Creator", "Status", "Actions"];
     return (
         <Card className="border shadow-sm overflow-hidden" style={{ borderColor: BORDER, borderRadius: 10 }}>
@@ -176,6 +234,12 @@ function PendingTable({ rows, loading, pagination, fetchContracts, search }) {
                 <div className="p-3 px-4 border-bottom" style={{ borderColor: BORDER }}>
                     <h2 className="h6 fw-bold mb-0">Pending Agreements <span style={{ color: MUTED }}>({pagination.totalElements})</span></h2>
                 </div>
+                {errorMessage && (
+                    <Alert variant="danger" className="m-3 mb-0 d-flex justify-content-between align-items-center">
+                        <span>{errorMessage}</span>
+                        <Button variant="outline-danger" size="sm" onClick={() => fetchContracts(pagination.page, search)}>Retry</Button>
+                    </Alert>
+                )}
                 <div className="table-responsive">
                     <Table className="align-middle mb-0" style={{ minWidth: 1050, fontSize: 13 }}>
                         <thead style={{ background: "#fafbfe", color: "#3d4a67" }}>
@@ -190,14 +254,14 @@ function PendingTable({ rows, loading, pagination, fetchContracts, search }) {
                             rows.map(row => (
                                 <tr key={row.id}>
                                     <td className="px-4 py-3 fw-semibold text-primary">{row.contractNumber || 'N/A'}</td>
-                                    <td className="px-4 py-3 fw-semibold">{row.contractTitle}</td>
-                                    <td className="px-4 py-3">{row.projectName || 'General'}</td>
+                                    <td className="px-4 py-3 fw-semibold">{row.contractTitle || 'Untitled agreement'}</td>
+                                    <td className="px-4 py-3">{row.projectName || 'Standalone'}</td>
                                     <td className="px-4 py-3">{row.contractCreatedAt ? new Date(row.contractCreatedAt).toLocaleDateString() : 'N/A'}</td>
                                     <td className="px-4 py-3">{row.contractCreatedBy || 'N/A'}</td>
-                                    <td className="px-4 py-3"><span className="rounded-2 fw-semibold px-2 py-1" style={{ background: "#fff4e8", color: "#ff8500", fontSize: 12 }}>Pending Signature</span></td>
+                                    <td className="px-4 py-3"><StatusBadge status={row.contractStatus} /></td>
                                     <td className="px-4 py-2">
                                         <div className="d-flex gap-2">
-                                            <button className="btn btn-sm bg-white border"><IconEye size={17}/></button>
+                                            <button type="button" className="btn btn-sm bg-white border" aria-label="View agreement" onClick={() => onView(row.id)}><IconEye size={17}/></button>
                                         </div>
                                     </td>
                                 </tr>
@@ -210,19 +274,23 @@ function PendingTable({ rows, loading, pagination, fetchContracts, search }) {
                     <span>Showing {rows.length > 0 ? (pagination.page * pagination.size) + 1 : 0} to {(pagination.page * pagination.size) + rows.length} of {pagination.totalElements} results</span>
                     <div className="d-flex align-items-center gap-2">
                         <Pagination className="mb-0">
-                            <Pagination.Prev disabled={pagination.page === 0 || loading} onClick={() => fetchContracts(pagination.page - 1, search, pagination.size)} />
-                            <Pagination.Item active>{pagination.page + 1}</Pagination.Item>
-                            <Pagination.Next disabled={(pagination.page + 1) >= pagination.totalPages || loading} onClick={() => fetchContracts(pagination.page + 1, search, pagination.size)} />
+                            <Pagination.Prev disabled={pagination.page === 0 || loading} onClick={() => fetchContracts(pagination.page - 1, search)} />
+                            <Pagination.Item active>{pagination.totalPages > 0 ? pagination.page + 1 : 0}</Pagination.Item>
+                            <Pagination.Next disabled={(pagination.page + 1) >= pagination.totalPages || loading} onClick={() => fetchContracts(pagination.page + 1, search)} />
                         </Pagination>
-                        <Form.Select size="sm" style={{ width: "90px" }} value={pagination.size} onChange={(e) => fetchContracts(0, search, parseInt(e.target.value, 10))}>
-                            <option value={10}>10 / page</option>
-                            <option value={20}>20 / page</option>
-                            <option value={50}>50 / page</option>
-                        </Form.Select>
                     </div>
                 </Stack>
             </Card.Body>
         </Card>
+    );
+}
+
+function StatusBadge({ status }) {
+    const { background, color } = getDashboardStatusStyle(status);
+    return (
+        <span className="rounded-2 fw-semibold px-2 py-1" style={{ background, color, fontSize: 12 }}>
+            {formatDashboardStatus(status)}
+        </span>
     );
 }
 

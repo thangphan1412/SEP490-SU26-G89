@@ -16,6 +16,7 @@ public class DashboardOverviewDTO {
     private long totalAgreements;
     private long activeAgreements;
     private long pendingSignatures;
+    // Lifecycle-ended agreements; field name is retained for dashboard API compatibility.
     private long expiredAgreements;
 
     // Dữ liệu cho Biểu đồ Donut (Status)

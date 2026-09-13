@@ -1,29 +1,57 @@
-import React, { useState, useEffect, useMemo } from "react";
-import { Button, Card, Col, Form, Row, Table, Spinner } from "react-bootstrap";
-import { IconArrowLeft, IconArrowRight, IconCalendar, IconFileInvoice, IconRefresh, IconTrendingUp, IconTrendingDown, IconUpload, IconCircleCheck, IconCircleX } from "@tabler/icons-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Alert, Button, Card, Col, Row, Table, Spinner } from "react-bootstrap";
+import { IconCalendar, IconFileInvoice, IconCircleCheck, IconCircleX } from "@tabler/icons-react";
 import { BarChart as RechartsBarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import dashboardApi from "../../services/dashboardService/dashboardApi.js";
+import {
+    buildDonutGradient,
+    formatDashboardStatus,
+    unwrapDashboardResponse,
+} from "./dashboardUtils.js";
 
 const BLUE = "#1f5eff";
 const NAVY = "#101a3e";
 const MUTED = "#687694";
 const BORDER = "#e7ebf3";
 
+const EMPTY_REPORTS = {
+    totalAgreements: 0,
+    activeAgreements: 0,
+    expiredAgreements: 0,
+    canceledAgreements: 0,
+    typesDistribution: [],
+    statusDistribution: [],
+    agreementsOverTime: [],
+    topExpiring: [],
+    topTypes: [],
+};
+
 function ContractStatisticalReports() {
     const [loading, setLoading] = useState(true);
-    const [stats, setStats] = useState(null);
+    const [errorMessage, setErrorMessage] = useState("");
+    const [stats, setStats] = useState(EMPTY_REPORTS);
 
-    useEffect(() => {
-        dashboardApi.getStatisticalReports().then(res => {
-            setStats(res.data.data);
+    const loadReports = useCallback(async () => {
+        setLoading(true);
+        setErrorMessage("");
+        try {
+            const response = await dashboardApi.getStatisticalReports();
+            setStats(unwrapDashboardResponse(response, EMPTY_REPORTS));
+        } catch (error) {
+            console.error("Unable to load contract statistical reports:", error);
+            setStats(EMPTY_REPORTS);
+            setErrorMessage("Unable to load contract statistical reports. Please try again.");
+        } finally {
             setLoading(false);
-        }).catch(err => {
-            console.error(err);
-            setLoading(false);
-        });
+        }
     }, []);
 
-    if (loading || !stats) {
+    useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- starts the initial asynchronous API request.
+        loadReports();
+    }, [loadReports]);
+
+    if (loading) {
         return <div className="vh-100 d-flex justify-content-center align-items-center"><Spinner animation="border" variant="primary" /></div>;
     }
 
@@ -34,16 +62,17 @@ function ContractStatisticalReports() {
                 <p className="mb-0" style={{ color: MUTED }}>In-depth insights and analytics on your contract lifecycle.</p>
             </div>
 
-            {/*<div className="d-flex flex-wrap align-items-center gap-3 mb-4">*/}
-            {/*    <Button className="ms-lg-auto d-flex align-items-center gap-2 px-3" style={{ minHeight: 41, background: BLUE, borderColor: BLUE }}>*/}
-            {/*        <IconUpload size={18} />Export Report*/}
-            {/*    </Button>*/}
-            {/*</div>*/}
+            {errorMessage && (
+                <Alert variant="danger" className="d-flex justify-content-between align-items-center">
+                    <span>{errorMessage}</span>
+                    <Button variant="outline-danger" size="sm" onClick={loadReports}>Retry</Button>
+                </Alert>
+            )}
 
             <Row className="g-3 mb-3">
                 <Col xl={3} md={6}><MetricCard label="Total Agreements" value={stats.totalAgreements} icon={IconFileInvoice} tone="blue" /></Col>
                 <Col xl={3} md={6}><MetricCard label="Active Agreements" value={stats.activeAgreements} icon={IconCircleCheck} tone="green" /></Col>
-                <Col xl={3} md={6}><MetricCard label="Expired Agreements" value={stats.expiredAgreements} icon={IconCalendar} tone="orange" /></Col>
+                <Col xl={3} md={6}><MetricCard label="Ended Agreements" value={stats.expiredAgreements} icon={IconCalendar} tone="orange" /></Col>
                 <Col xl={3} md={6}><MetricCard label="Canceled" value={stats.canceledAgreements} icon={IconCircleX} tone="red" /></Col>
             </Row>
 
@@ -104,23 +133,7 @@ function ChartCard({ title, description, children }) {
 }
 
 function DonutChart({ data, total }) {
-    const gradient = useMemo(() => {
-        if (!data || data.length === 0 || total === 0) return "conic-gradient(#e7ebf3 100%)";
-        let start = 0;
-        return `conic-gradient(${data.map(item => {
-            const end = start + (item.value / total) * 100;
-            const res = `${item.color} ${start.toFixed(2)}% ${(end - 0.5).toFixed(2)}%`;
-            start = end; return res;
-        }).join(", ")})`;
-    }, [data, total]);
-
-    // Hàm làm ngắn các trạng thái dài ngoằng của Backend
-    const formatLabel = (label) => {
-        if (label === 'PENDING_DIRECTOR_SIGNATURE') return 'Pending Director';
-        if (label === 'PENDING_PARTNER_SIGNATURE') return 'Pending Partner';
-        if (label === 'PENDING_INTERNAL_APPROVAL') return 'Pending Approval';
-        return label;
-    };
+    const gradient = useMemo(() => buildDonutGradient(data, total), [data, total]);
 
     return (
         <div className="d-flex flex-column flex-sm-row align-items-center justify-content-center gap-3 mt-4">
@@ -131,15 +144,15 @@ function DonutChart({ data, total }) {
             </div>
             {/* Nới rộng maxWidth lên 280 và cho phép chữ tự cắt ... */}
             <div className="flex-grow-1" style={{ maxWidth: 280 }}>
-                {data?.map(item => (
+                {data?.length > 0 ? data.map(item => (
                     <div key={item.label} className="d-flex justify-content-between align-items-center mb-3 gap-2" style={{ color: "#3f4e6b", fontSize: 12 }}>
-                        <span className="d-flex align-items-center gap-2 text-truncate" title={item.label}>
+                        <span className="d-flex align-items-center gap-2 text-truncate" title={formatDashboardStatus(item.label)}>
                             <i className="rounded-circle flex-shrink-0" style={{ width: 9, height: 9, background: item.color }} />
-                            <span className="text-truncate">{formatLabel(item.label)}</span>
+                            <span className="text-truncate">{formatDashboardStatus(item.label)}</span>
                         </span>
                         <span className="fw-semibold text-nowrap">{item.value} ({item.percent})</span>
                     </div>
-                ))}
+                )) : <div className="text-muted fst-italic">No data available</div>}
             </div>
         </div>
     );
@@ -153,8 +166,8 @@ function AutoBarChart({ data }) {
                 <RechartsBarChart data={data} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#edf0f5" />
                     <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fill: '#71809b', fontSize: 11 }} dy={10} />
-                    <YAxis axisLine={false} tickLine={false} tick={{ fill: '#71809b', fontSize: 11 }} />
-                    <Tooltip cursor={{ fill: '#f4f6fa' }} contentStyle={{ borderRadius: 8 }} />
+                    <YAxis allowDecimals={false} axisLine={false} tickLine={false} tick={{ fill: '#71809b', fontSize: 11 }} />
+                    <Tooltip cursor={{ fill: '#f4f6fa' }} contentStyle={{ borderRadius: 8 }} formatter={(value) => [`${value} Agreements`, 'Total']} />
                     <Bar dataKey="count" fill={BLUE} radius={[4, 4, 0, 0]} barSize={25} />
                 </RechartsBarChart>
             </ResponsiveContainer>
@@ -183,15 +196,17 @@ function TopExpiringTable({ data }) {
                         </tr>
                         </thead>
                         <tbody>
-                        {data?.map((row, i) => (
+                        {data?.length > 0 ? data.map((row, i) => (
                             <tr key={i}>
-                                <td className="px-4 py-3 fw-semibold">{row.title}</td>
-                                <td className="px-3 py-3">{row.company}</td>
+                                <td className="px-4 py-3 fw-semibold">{row.title || "Untitled agreement"}</td>
+                                <td className="px-3 py-3">{row.company || "Standalone"}</td>
                                 <td className="px-3 py-3">{row.date}</td>
                                 <td className="px-3 py-3"><span className="text-danger fw-bold">{row.period}</span></td>
                                 <td className="px-3 py-3"><span className="rounded-2 fw-semibold" style={{ padding: "6px 10px", background: "#fff4e8", color: "#ff8500" }}>Expiring Soon</span></td>
                             </tr>
-                        ))}
+                        )) : (
+                            <tr><td colSpan="5" className="text-center py-5 text-muted fst-italic">No active contracts are expiring soon.</td></tr>
+                        )}
                         </tbody>
                     </Table>
                 </div>
@@ -206,7 +221,7 @@ function TopTypes({ data }) {
             <Card.Body className="p-4">
                 <h2 className="h6 fw-bold mb-1">Agreements by Type</h2>
                 <p className="mb-4" style={{ color: MUTED, fontSize: 12 }}>Total count by contract type</p>
-                {data?.map((row, index) => (
+                {data?.length > 0 ? data.map((row, index) => (
                     <div key={index} className="d-flex align-items-center gap-3 mb-3">
                         <span className="fw-semibold text-truncate" style={{ fontSize: 12, width: 112 }}>{row.name}</span>
                         <div className="flex-grow-1 rounded" style={{ height: 12, background: "#eff2f7" }}>
@@ -214,7 +229,7 @@ function TopTypes({ data }) {
                         </div>
                         <span className="text-end fw-semibold" style={{ width: 55, fontSize: 12, color: "#50607e" }}>{row.count}</span>
                     </div>
-                ))}
+                )) : <div className="text-center text-muted py-5 fst-italic">No contract type data available.</div>}
             </Card.Body>
         </Card>
     );
