@@ -32,36 +32,200 @@ function CreateSignaturePage() {
     const [keyCode, setKeyCode] = useState(null);
     const [keyLoading, setKeyLoading] = useState(false);
     const [loading, setLoading] = useState(false);
-    const [error, setError] = useState("");
     const [success, setSuccess] = useState("");
-
+    const [pin, setPin] = useState("");
+    const [confirmPin, setConfirmPin] = useState("");
+    const [error, setError] = useState("");
     const handleGenerateKey = async () => {
         try {
             setKeyLoading(true);
             setError("");
             setSuccess("");
 
-            const response = await digitalSignatureService.getMyPublicKey();
-            const keyPair = response.data;
+            if (!validatePin()) {
+                return;
+            }
 
-            console.log("Key pair generated:", keyPair);
+            // POST /api/v1/signature/keys/generate
+            const response =
+                await digitalSignatureService.generateKey();
 
-            // Backend không có "id" riêng, dùng fingerprint làm định danh hiển thị
-            setKeyId(keyPair.publicKeyFingerprint);
+            console.log(
+                "Generate key response:",
+                response
+            );
 
-            setKeyCode(keyPair.keyCode);
+            // BaseResponse.data
+            const keyData =
+                response?.data?.data;
 
-            // Backend không có field "keyStatus", tự suy ra từ "available"
-            setKeyStatus(keyPair.available ? "ACTIVE" : "NOT_CONFIGURED");
+            if (!keyData) {
+                throw new Error(
+                    "Backend did not return key information."
+                );
+            }
 
-            setSuccess("Signing key generated successfully.");
+            const {
+                keyCode,
+                publicKey,
+                privateKey,
+            } = keyData;
+
+            if (!privateKey) {
+                throw new Error(
+                    "Private key was not returned."
+                );
+            }
+
+            if (!publicKey) {
+                throw new Error(
+                    "Public key was not returned."
+                );
+            }
+
+            // Encrypt private key bằng PIN
+            const encryptedData =
+                await encryptPrivateKey(
+                    privateKey,
+                    pin
+                );
+
+            // Lưu browser
+            localStorage.setItem(
+                "encryptedPrivateKey",
+                JSON.stringify(encryptedData)
+            );
+
+            // Download backup
+            downloadPrivateKeyBackup(
+                encryptedData
+            );
+
+            setKeyCode(
+                keyCode ?? null
+            );
+
+            setKeyStatus("ACTIVE");
+
+            setSuccess(
+                "Signing key generated successfully. " +
+                "Private key has been encrypted and backup downloaded."
+            );
 
         } catch (error) {
-            console.error("GENERATE KEY ERROR:", error);
-            setError("Failed to generate signing key.");
+
+            console.error(
+                "GENERATE KEY ERROR:",
+                error
+            );
+
+            console.error(
+                "RESPONSE:",
+                error?.response?.data
+            );
+
+            setError(
+                error?.response?.data?.message ||
+                error?.message ||
+                "Failed to generate signing key."
+            );
+
         } finally {
             setKeyLoading(false);
         }
+    };
+    const encryptPrivateKey = async (
+        privateKey,
+        pin
+    ) => {
+        const encoder = new TextEncoder();
+
+        const privateKeyBytes =
+            encoder.encode(privateKey);
+
+        const salt =
+            crypto.getRandomValues(
+                new Uint8Array(16)
+            );
+
+        const iv =
+            crypto.getRandomValues(
+                new Uint8Array(12)
+            );
+
+        const keyMaterial =
+            await crypto.subtle.importKey(
+                "raw",
+                encoder.encode(pin),
+                "PBKDF2",
+                false,
+                ["deriveKey"]
+            );
+
+        const encryptionKey =
+            await crypto.subtle.deriveKey(
+                {
+                    name: "PBKDF2",
+                    salt: salt,
+                    iterations: 600000,
+                    hash: "SHA-256",
+                },
+                keyMaterial,
+                {
+                    name: "AES-GCM",
+                    length: 256,
+                },
+                false,
+                ["encrypt"]
+            );
+
+        const encrypted =
+            await crypto.subtle.encrypt(
+                {
+                    name: "AES-GCM",
+                    iv: iv,
+                },
+                encryptionKey,
+                privateKeyBytes
+            );
+
+        return {
+            version: 1,
+            keyAlgorithm: "RSA",
+            keySize: 2048,
+            encryption: "AES-GCM",
+            kdf: "PBKDF2",
+            iterations: 600000,
+            salt: arrayBufferToBase64(salt),
+            iv: arrayBufferToBase64(iv),
+            encryptedPrivateKey:
+                arrayBufferToBase64(encrypted),
+        };
+    };
+    const arrayBufferToBase64 = (buffer) => {
+        const bytes = new Uint8Array(buffer);
+
+        let binary = "";
+
+        bytes.forEach((byte) => {
+            binary += String.fromCharCode(byte);
+        });
+
+        return window.btoa(binary);
+    };
+    const validatePin = () => {
+        if (!/^\d{6}$/.test(pin)) {
+            setError("PIN must contain exactly 6 digits.");
+            return false;
+        }
+
+        if (pin !== confirmPin) {
+            setError("PIN confirmation does not match.");
+            return false;
+        }
+
+        setError("");
+        return true;
     };
 
     const handleTypeChange = (type) => {
@@ -233,10 +397,40 @@ function CreateSignaturePage() {
                         setSignatureFile(null);
                     }}
                 />
+                <div>
+                    <label>PIN for Private Key</label>
 
+                    <input
+                        type="password"
+                        inputMode="numeric"
+                        maxLength={6}
+                        value={pin}
+                        onChange={(e) => {
+                            const value = e.target.value.replace(/\D/g, "");
+                            setPin(value);
+                        }}
+                        placeholder="Enter 6-digit PIN"
+                    />
+                </div>
+
+                <div>
+                    <label>Confirm PIN</label>
+
+                    <input
+                        type="password"
+                        inputMode="numeric"
+                        maxLength={6}
+                        value={confirmPin}
+                        onChange={(e) => {
+                            const value = e.target.value.replace(/\D/g, "");
+                            setConfirmPin(value);
+                        }}
+                        placeholder="Confirm 6-digit PIN"
+                    />
+                </div>
                 <SigningKeyCard
+
                     keyStatus={keyStatus}
-                    keyId={keyId}
                     keyCode={keyCode}
                     onGenerateKey={handleGenerateKey}
                     loading={keyLoading}

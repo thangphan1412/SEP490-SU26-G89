@@ -2,7 +2,7 @@ import React from "react";
 
 function SigningKeyCard({
                             keyStatus,
-                            keyId,
+
                             keyCode,
                             onGenerateKey,
                             loading = false,
@@ -112,7 +112,7 @@ function SigningKeyCard({
                 </div>
 
                 {/* Key ID */}
-                {isActive && keyId && (
+                {isActive  && (
                     <div className="border rounded p-3 mt-3">
 
                         <div className="d-flex justify-content-between align-items-center">
@@ -122,9 +122,6 @@ function SigningKeyCard({
                                     Signing Key ID
                                 </div>
 
-                                <div className="fw-semibold font-monospace mt-1">
-                                    {keyId}
-                                </div>
                             </div>
                             <div>
                                 <div className="text-muted small">

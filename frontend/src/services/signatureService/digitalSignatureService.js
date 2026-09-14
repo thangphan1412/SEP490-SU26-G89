@@ -7,6 +7,7 @@ const digitalSignatureService = {
         });
     },
 
+    generateKey() { return axiosClient.post("/signature/keys/generate"); },
     verify(signatureId, file) {
         const formData = new FormData();
         formData.append("file", file);

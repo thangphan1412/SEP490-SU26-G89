@@ -38,14 +38,41 @@ public class SignatureController {
 
     @GetMapping("/keys/me")
     public ResponseEntity<BaseResponse<UserKeyInfoResponse>> getMyPublicKey() {
+
         var user = currentUser.getCurrentUser();
         UUID userId = user.getId();
-        UserKeyInfoResponse response = userKeysRepository.findByUserId(userId)
-                .map(this::toResponse)
-                .orElseGet(() -> toResponse(userKeyService.generateUserKey(user)));
-        return ResponseEntity.ok(new BaseResponse<>(response));
-    }
 
+        UserKeyInfoResponse response =
+                userKeysRepository.findByUserId(userId)
+                        .map(this::toResponse)
+                        .orElseGet(() ->
+                                new UserKeyInfoResponse(
+                                        false,
+                                        null,
+                                        null,
+                                        null,
+                                        0,
+                                        null,
+                                        null
+                                )
+                        );
+
+        return ResponseEntity.ok(
+                new BaseResponse<>(response)
+        );
+    }
+    @PostMapping("/keys/generate")
+    public ResponseEntity<BaseResponse<UserKeyInfoResponse>> generateKey() {
+
+        var user = currentUser.getCurrentUser();
+
+        UserKeyInfoResponse response =
+                userKeyService.generateUserKey(user);
+
+        return ResponseEntity.ok(
+                new BaseResponse<>(response)
+        );
+    }
     @PostMapping("/{signatureId}/verify")
     public ResponseEntity<BaseResponse<SignatureVerificationResponse>> verify(
             @PathVariable UUID signatureId,
@@ -92,8 +119,8 @@ public class SignatureController {
                     .digest(key.getPublicKey().getBytes(StandardCharsets.UTF_8));
             String fingerprint = HexFormat.ofDelimiter(":").withUpperCase().formatHex(digest);
             return new UserKeyInfoResponse(
-                    true, key.getPublicKey(), fingerprint,
-                    key.getKeyAlgorithm().name(),key.getKeyCode(), key.getKeySize(), key.getCreateAt()
+                    true, key.getPublicKey(),
+                    key.getKeyAlgorithm().name(),key.getKeyCode(), key.getKeySize(), key.getCreateAt(), null
             );
         } catch (Exception exception) {
             throw new IllegalStateException("Unable to create public key fingerprint", exception);

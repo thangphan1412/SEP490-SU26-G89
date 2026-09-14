@@ -1,5 +1,6 @@
 package com.fpt.backend.service.impl.signature;
 
+import com.fpt.backend.dto.response.signature.UserKeyInfoResponse;
 import com.fpt.backend.entity.UserKeys;
 import com.fpt.backend.entity.Users;
 import com.fpt.backend.enums.KeyAlgorithm;
@@ -26,7 +27,7 @@ public class UserKeyServiceImpl
 
     @Override
     @Transactional
-    public UserKeys generateUserKey(Users user) {
+    public UserKeyInfoResponse generateUserKey(Users user) {
 
         if (user == null || user.getId() == null) {
             throw new IllegalArgumentException(
@@ -56,20 +57,29 @@ public class UserKeyServiceImpl
                 );
 
         String privateKeyCodeStr = changToPing(privateKey);
-        byte[] privateKeyBytes = privateKeyProtectionService.encrypt(privateKey, privateKeyCodeStr).getBytes();
+//        byte[] privateKeyBytes = privateKeyProtectionService.encrypt(privateKey, privateKeyCodeStr).getBytes();
         System.out.println("Private Key Code: " + privateKeyCodeStr);
-        UserKeys userKeys =
-                UserKeys.builder()
+        UserKeys userKeys = UserKeys.builder()
                         .user(user)
                         .keyAlgorithm(KeyAlgorithm.RSA)
                         .keySize(2048)
                         .publicKey(publicKey)
                         .keyCode(publicKeyCodeStr)
 //                        .privateKey(privateKeyProtectionService.encrypt(privateKey))
+
                         .createAt(LocalDateTime.now())
                         .build();
 
-        return userKeysRepository.save(userKeys);
+        UserKeys savedUserKeys = userKeysRepository.save(userKeys);
+        return new UserKeyInfoResponse(
+                true,
+                savedUserKeys.getPublicKey(),
+                savedUserKeys.getKeyAlgorithm().name(),
+                savedUserKeys.getKeyCode(),
+                savedUserKeys.getKeySize(),
+                savedUserKeys.getCreateAt(),
+                privateKey
+        );
     }
     public String changToPing(String key){
         BigInteger number = new BigInteger(key, 16);
