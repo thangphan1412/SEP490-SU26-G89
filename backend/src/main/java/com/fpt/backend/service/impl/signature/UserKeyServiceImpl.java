@@ -61,25 +61,32 @@ public class UserKeyServiceImpl
         String privateKeyCodeStr = changToPingPrivateKey(privateKey);
 //        byte[] privateKeyBytes = privateKeyProtectionService.encrypt(privateKey, privateKeyCodeStr).getBytes();
         System.out.println("Private Key Code: " + privateKeyCodeStr);
-        UserKeys userKeys = UserKeys.builder()
-                        .user(user)
-                        .keyAlgorithm(KeyAlgorithm.RSA)
-                        .keySize(2048)
-                        .publicKey(publicKey)
-                        .keyCode(publicKeyCodeStr)
-//                        .privateKey(privateKeyProtectionService.encrypt(privateKey))
-
-                        .createAt(LocalDateTime.now())
-                        .build();
-
-        UserKeys savedUserKeys = userKeysRepository.save(userKeys);
+//        UserKeys userKeys = UserKeys.builder()
+//                        .user(user)
+//                        .keyAlgorithm(KeyAlgorithm.RSA)
+//                        .keySize(2048)
+//                        .publicKey(publicKey)
+//                        .keyCode(publicKeyCodeStr)
+////                        .privateKey(privateKeyProtectionService.encrypt(privateKey))
+//
+//                        .createAt(LocalDateTime.now())
+//                        .build();
+//
+//        UserKeys savedUserKeys = userKeysRepository.save(userKeys);
         return new UserKeyInfoResponse(
+//                true,
+//                savedUserKeys.getPublicKey(),
+//                savedUserKeys.getKeyAlgorithm().name(),
+//                savedUserKeys.getKeyCode(),
+//                savedUserKeys.getKeySize(),
+//                savedUserKeys.getCreateAt(),
+//                privateKey
                 true,
-                savedUserKeys.getPublicKey(),
-                savedUserKeys.getKeyAlgorithm().name(),
-                savedUserKeys.getKeyCode(),
-                savedUserKeys.getKeySize(),
-                savedUserKeys.getCreateAt(),
+                publicKey,
+                KeyAlgorithm.RSA.name(),
+                publicKeyCodeStr,
+                2048,
+                LocalDateTime.now(),
                 privateKey
         );
     }
@@ -108,5 +115,23 @@ public class UserKeyServiceImpl
                     e
             );
         }
+    }
+
+    @Transactional
+    public void saveUserKey(
+            Users user,
+            String publicKey,
+            String keyCode
+    ) {
+        UserKeys userKeys = UserKeys.builder()
+                .user(user)
+                .keyAlgorithm(KeyAlgorithm.RSA)
+                .keySize(2048)
+                .publicKey(publicKey)
+                .keyCode(keyCode)
+                .createAt(LocalDateTime.now())
+                .build();
+
+        userKeysRepository.save(userKeys);
     }
 }

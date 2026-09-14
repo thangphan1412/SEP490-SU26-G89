@@ -36,6 +36,7 @@ function CreateSignaturePage() {
     const [pin, setPin] = useState("");
     const [confirmPin, setConfirmPin] = useState("");
     const [error, setError] = useState("");
+    const [generatedKey, setGeneratedKey] = useState(null);
     const downloadPrivateKeyBackup = (encryptedData, keyCode) => {
         const blob = new Blob(
             [JSON.stringify(encryptedData, null, 2)],
@@ -59,11 +60,18 @@ function CreateSignaturePage() {
             setError("");
             setSuccess("");
 
+            // ==========================================
+            // 1. Validate PIN
+            // ==========================================
+
             if (!validatePin()) {
                 return;
             }
 
-            // POST /api/v1/signature/keys/generate
+            // ==========================================
+            // 2. Generate RSA key
+            // ==========================================
+
             const response =
                 await digitalSignatureService.generateKey();
 
@@ -72,7 +80,6 @@ function CreateSignaturePage() {
                 response
             );
 
-            // BaseResponse.data
             const keyData =
                 response?.data?.data;
 
@@ -85,7 +92,7 @@ function CreateSignaturePage() {
             const {
                 keyCode,
                 publicKey,
-                privateKey,
+                privateKey
             } = keyData;
 
             if (!privateKey) {
@@ -100,26 +107,51 @@ function CreateSignaturePage() {
                 );
             }
 
-            // Encrypt private key bằng PIN
+            if (!keyCode) {
+                throw new Error(
+                    "Key code was not returned."
+                );
+            }
+
+            // ==========================================
+            // 3. Encrypt private key using PIN
+            // ==========================================
+
             const encryptedData =
                 await encryptPrivateKey(
                     privateKey,
                     pin
                 );
 
-            // Lưu browser
+            // ==========================================
+            // 4. Store encrypted private key locally
+            // ==========================================
+
             localStorage.setItem(
-                "encryptedPrivateKey",
+                `encryptedPrivateKey_${keyCode}`,
                 JSON.stringify(encryptedData)
             );
-            console.log("Encrypted data:", encryptedData);
-            // Download backup
-            downloadPrivateKeyBackup(encryptedData, keyCode);
-            console.log("Download function called");
-            setKeyCode(
-                keyCode ?? null
+
+            // ==========================================
+            // 5. Download backup
+            // ==========================================
+
+            downloadPrivateKeyBackup(
+                encryptedData,
+                keyCode
             );
 
+            // ==========================================
+            // 6. Store generated key in React state
+            // ==========================================
+
+            setGeneratedKey({
+                keyCode,
+                publicKey
+            });
+
+            setKeyCode(keyCode);
+            setPublicKey(publicKey);
             setKeyStatus("ACTIVE");
 
             setSuccess(
@@ -267,39 +299,38 @@ function CreateSignaturePage() {
             setSuccess("");
 
             // ==========================================
-            // 1. Check RSA key
+            // 1. Check generated key
             // ==========================================
 
-            const keyResponse =
-                await digitalSignatureService.getMyPublicKey();
-
-            const keyData =
-                keyResponse?.data?.data;
-
-            // Backend chưa có public key
-            if (!keyData?.available || !keyData?.publicKey) {
+            if (
+                !generatedKey?.keyCode ||
+                !generatedKey?.publicKey
+            ) {
                 setError(
-                    "Please generate your signing key before saving an electronic signature."
+                    "Please generate your signing key before saving."
                 );
                 return;
             }
 
             // ==========================================
-            // 2. Check encrypted private key in browser
+            // 2. Check encrypted private key
             // ==========================================
 
             const encryptedPrivateKey =
-                localStorage.getItem("encryptedPrivateKey");
+                localStorage.getItem(
+                    `encryptedPrivateKey_${generatedKey.keyCode}`
+                );
 
             if (!encryptedPrivateKey) {
                 setError(
-                    "Your private key is not configured. Please generate your signing key again."
+                    "Encrypted private key was not found. " +
+                    "Please generate your signing key again."
                 );
                 return;
             }
 
             // ==========================================
-            // 3. Check signature name
+            // 3. Validate signature name
             // ==========================================
 
             if (!form.electronicSignatureName.trim()) {
@@ -310,27 +341,99 @@ function CreateSignaturePage() {
             }
 
             // ==========================================
-            // 4. Check DRAW / UPLOAD
+            // 4. Validate signature image
             // ==========================================
 
-            if (activeTab === "upload" && !signatureFile) {
+            if (!signatureFile) {
                 setError(
-                    "Please upload your signature image."
+                    "Please upload or draw your signature."
                 );
                 return;
             }
 
             // ==========================================
-            // 5. Save electronic signature
+            // 5. Create FormData
             // ==========================================
 
-            // phần code save hiện tại của bạn đặt ở đây
+            const formData = new FormData();
+
+            // Electronic Signature
+            formData.append(
+                "electronicSignatureName",
+                form.electronicSignatureName
+            );
+
+            formData.append(
+                "electronicSignatureType",
+                form.electronicSignatureType
+            );
+
+            formData.append(
+                "isDefault",
+                String(form.isDefault)
+            );
+
+            formData.append(
+                "electronicStatus",
+                form.electronicStatus
+            );
+
+            // Signing Key
+            formData.append(
+                "publicKey",
+                generatedKey.publicKey
+            );
+
+            formData.append(
+                "keyCode",
+                generatedKey.keyCode
+            );
+
+            // Signature image
+            formData.append(
+                "multipartFile",
+                signatureFile
+            );
+
+            // ==========================================
+            // 6. Send ONE request
+            // ==========================================
+
+            console.log(
+                "Saving electronic signature..."
+            );
+
+            const response =
+                await electronicSignatureService
+                    .createElectronicSignature(formData);
+
+            console.log(
+                "CREATE SIGNATURE RESPONSE:",
+                response
+            );
+
+            // ==========================================
+            // 7. Success
+            // ==========================================
+
+            setSuccess(
+                "Electronic signature and signing key saved successfully."
+            );
+
+            setTimeout(() => {
+                navigate("/signatures");
+            }, 1000);
 
         } catch (error) {
 
             console.error(
                 "SAVE SIGNATURE ERROR:",
                 error
+            );
+
+            console.error(
+                "RESPONSE:",
+                error?.response?.data
             );
 
             setError(

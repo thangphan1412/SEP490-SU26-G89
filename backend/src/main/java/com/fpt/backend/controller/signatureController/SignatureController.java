@@ -4,6 +4,7 @@ import com.fpt.backend.dto.response.signature.SignatureVerificationResponse;
 import com.fpt.backend.dto.response.signature.UserKeyInfoResponse;
 import com.fpt.backend.entity.Signature;
 import com.fpt.backend.entity.UserKeys;
+import com.fpt.backend.entity.Users;
 import com.fpt.backend.repository.signature.SignatureRepository;
 
 import com.fpt.backend.repository.signature.UserKeysRepository;
@@ -64,7 +65,7 @@ public class SignatureController {
     @PostMapping("/keys/generate")
     public ResponseEntity<BaseResponse<UserKeyInfoResponse>> generateKey() {
 
-        var user = currentUser.getCurrentUser();
+        Users user = currentUser.getCurrentUser();
 
         UserKeyInfoResponse response =
                 userKeyService.generateUserKey(user);
@@ -73,6 +74,7 @@ public class SignatureController {
                 new BaseResponse<>(response)
         );
     }
+
     @PostMapping("/{signatureId}/verify")
     public ResponseEntity<BaseResponse<SignatureVerificationResponse>> verify(
             @PathVariable UUID signatureId,

@@ -6,7 +6,12 @@ const digitalSignatureService = {
             headers: { "Cache-Control": "no-cache" },
         });
     },
-
+    saveKey(data) {
+        return axiosClient.post(
+            "/signature/keys/save",
+            data
+        );
+    },
     generateKey() { return axiosClient.post("/signature/keys/generate"); },
     verify(signatureId, file) {
         const formData = new FormData();
