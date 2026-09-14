@@ -123,11 +123,6 @@
     min-height: 68px;
 }
 
-.update-project-phase-start-input.form-control[readonly] {
-    background: #f1f4f9;
-    color: #52617f;
-}
-
 .update-project-phase-date-note.form-text {
     display: block;
     margin-top: 5px;
