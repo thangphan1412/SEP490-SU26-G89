@@ -2,8 +2,8 @@ import React from "react";
 
 function SigningKeyCard({
                             keyStatus,
-
                             keyCode,
+                            publicKey,
                             onGenerateKey,
                             loading = false,
                         }) {
@@ -11,8 +11,10 @@ function SigningKeyCard({
 
     return (
         <div className="card border-0 shadow-sm mt-4">
+
             <div className="card-header bg-white py-3">
                 <div className="d-flex align-items-center gap-2">
+
                     <div
                         className="d-flex align-items-center justify-content-center rounded"
                         style={{
@@ -34,6 +36,7 @@ function SigningKeyCard({
                             Cryptographic key used to sign electronic documents.
                         </small>
                     </div>
+
                 </div>
             </div>
 
@@ -94,6 +97,7 @@ function SigningKeyCard({
                             </div>
 
                             <div className="mt-1">
+
                                 {isActive ? (
                                     <span className="badge bg-success-subtle text-success">
                                         <i className="bi bi-check-circle me-1"></i>
@@ -105,38 +109,54 @@ function SigningKeyCard({
                                         Not configured
                                     </span>
                                 )}
+
                             </div>
                         </div>
                     </div>
 
                 </div>
 
-                {/* Key ID */}
-                {isActive  && (
+                {/* Public key information */}
+                {isActive && (
                     <div className="border rounded p-3 mt-3">
 
-                        <div className="d-flex justify-content-between align-items-center">
+                        <div className="row g-3">
 
-                            <div>
-                                <div className="text-muted small">
-                                    Signing Key ID
-                                </div>
+                            {/* Public Key Code */}
+                            <div className="col-md-6">
 
-                            </div>
-                            <div>
                                 <div className="text-muted small">
                                     Public Key Code
                                 </div>
 
                                 <div className="fw-semibold font-monospace mt-1">
-                                    {keyCode}
+                                    {keyCode || "N/A"}
                                 </div>
+
                             </div>
-                            <span className="text-success">
-                                <i className="bi bi-shield-check fs-4"></i>
-                            </span>
 
                         </div>
+
+                        {/* Public Key */}
+                        {publicKey && (
+                            <div className="mt-3">
+
+                                <div className="text-muted small">
+                                    Public Key
+                                </div>
+
+                                <div
+                                    className="border rounded p-2 mt-1 bg-light"
+                                    style={{
+                                        wordBreak: "break-all",
+                                        fontSize: "12px",
+                                    }}
+                                >
+                                    {publicKey}
+                                </div>
+
+                            </div>
+                        )}
 
                     </div>
                 )}
@@ -156,8 +176,9 @@ function SigningKeyCard({
                         ></i>
 
                         <div>
+
                             <div className="fw-semibold">
-                                Private Key Code Protection
+                                Private Key Protection
                             </div>
 
                             <div className="small text-muted mt-1">
@@ -165,12 +186,13 @@ function SigningKeyCard({
                                 other users or exposed publicly. Only the
                                 public key is registered with the system.
                             </div>
+
                         </div>
 
                     </div>
                 </div>
 
-                {/* Generate button */}
+                {/* Generate */}
                 {!isActive && (
                     <div className="d-flex justify-content-end mt-4">
 
@@ -180,6 +202,7 @@ function SigningKeyCard({
                             onClick={onGenerateKey}
                             disabled={loading}
                         >
+
                             {loading ? (
                                 <>
                                     <span
@@ -194,12 +217,13 @@ function SigningKeyCard({
                                     Generate Key Pair
                                 </>
                             )}
+
                         </button>
 
                     </div>
                 )}
 
-                {/* Active state */}
+                {/* Active */}
                 {isActive && (
                     <div className="d-flex justify-content-end mt-4">
 

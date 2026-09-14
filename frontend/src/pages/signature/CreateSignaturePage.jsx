@@ -28,14 +28,31 @@ function CreateSignaturePage() {
 
     const [signatureFile, setSignatureFile] = useState(null);
     const [keyStatus, setKeyStatus] = useState("NOT_CONFIGURED");
-    const [keyId, setKeyId] = useState(null);
     const [keyCode, setKeyCode] = useState(null);
+    const [publicKey, setPublicKey] = useState(null);
     const [keyLoading, setKeyLoading] = useState(false);
     const [loading, setLoading] = useState(false);
     const [success, setSuccess] = useState("");
     const [pin, setPin] = useState("");
     const [confirmPin, setConfirmPin] = useState("");
     const [error, setError] = useState("");
+    const downloadPrivateKeyBackup = (encryptedData, keyCode) => {
+        const blob = new Blob(
+            [JSON.stringify(encryptedData, null, 2)],
+            { type: "application/json" }
+        );
+
+        const url = URL.createObjectURL(blob);
+
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `private-key-${keyCode}.enc`;
+        document.body.appendChild(a);
+        a.click();
+
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    };
     const handleGenerateKey = async () => {
         try {
             setKeyLoading(true);
@@ -95,12 +112,10 @@ function CreateSignaturePage() {
                 "encryptedPrivateKey",
                 JSON.stringify(encryptedData)
             );
-
+            console.log("Encrypted data:", encryptedData);
             // Download backup
-            downloadPrivateKeyBackup(
-                encryptedData
-            );
-
+            downloadPrivateKeyBackup(encryptedData, keyCode);
+            console.log("Download function called");
             setKeyCode(
                 keyCode ?? null
             );
@@ -246,98 +261,85 @@ function CreateSignaturePage() {
 
 
     const handleSave = async () => {
-
-        setError("");
-        setSuccess("");
-
-
-        if (!form.electronicSignatureName?.trim()) {
-            setError("Please enter signature name.");
-            return;
-        }
-
-
-        if (!signatureFile) {
-            if (form.electronicSignatureType === "DRAW") {
-                setError("Please draw your signature first.");
-            } else {
-                setError("Please upload your signature file.");
-            }
-
-            return;
-        }
-
         try {
-
             setLoading(true);
+            setError("");
+            setSuccess("");
 
-            const formData = new FormData();
+            // ==========================================
+            // 1. Check RSA key
+            // ==========================================
 
+            const keyResponse =
+                await digitalSignatureService.getMyPublicKey();
 
-            formData.append(
-                "electronicSignatureName",
-                form.electronicSignatureName
-            );
+            const keyData =
+                keyResponse?.data?.data;
 
-
-            formData.append(
-                "electronicSignatureType",
-                form.electronicSignatureType
-            );
-
-
-            formData.append(
-                "default",
-                String(form.isDefault)
-            );
-
-
-            formData.append(
-                "electronicStatus",
-                form.electronicStatus
-            );
-
-
-            formData.append(
-                "multipartFile",
-                signatureFile
-            );
-            console.log("form.isDefault before submit:", form.isDefault);
-            console.log("===== CREATE SIGNATURE =====");
-
-            for (const [key, value] of formData.entries()) {
-                console.log(key, value);
+            // Backend chưa có public key
+            if (!keyData?.available || !keyData?.publicKey) {
+                setError(
+                    "Please generate your signing key before saving an electronic signature."
+                );
+                return;
             }
 
+            // ==========================================
+            // 2. Check encrypted private key in browser
+            // ==========================================
 
-            await electronicSignatureService
-                .createElectronicSignature(formData);
+            const encryptedPrivateKey =
+                localStorage.getItem("encryptedPrivateKey");
 
+            if (!encryptedPrivateKey) {
+                setError(
+                    "Your private key is not configured. Please generate your signing key again."
+                );
+                return;
+            }
 
-            setSuccess("Signature created successfully!");
+            // ==========================================
+            // 3. Check signature name
+            // ==========================================
 
+            if (!form.electronicSignatureName.trim()) {
+                setError(
+                    "Please enter an electronic signature name."
+                );
+                return;
+            }
 
-            setSignatureFile(null);
+            // ==========================================
+            // 4. Check DRAW / UPLOAD
+            // ==========================================
+
+            if (activeTab === "upload" && !signatureFile) {
+                setError(
+                    "Please upload your signature image."
+                );
+                return;
+            }
+
+            // ==========================================
+            // 5. Save electronic signature
+            // ==========================================
+
+            // phần code save hiện tại của bạn đặt ở đây
 
         } catch (error) {
 
             console.error(
-                "CREATE SIGNATURE ERROR:",
+                "SAVE SIGNATURE ERROR:",
                 error
-            );
-
-            console.error(
-                "RESPONSE:",
-                error?.response?.data
             );
 
             setError(
                 error?.response?.data?.message ||
-                "Create signature failed."
+                error?.message ||
+                "Failed to save electronic signature."
             );
 
         } finally {
-
             setLoading(false);
         }
     };
@@ -429,9 +431,9 @@ function CreateSignaturePage() {
                     />
                 </div>
                 <SigningKeyCard
-
                     keyStatus={keyStatus}
                     keyCode={keyCode}
+                    publicKey={publicKey}
                     onGenerateKey={handleGenerateKey}
                     loading={keyLoading}
                 />

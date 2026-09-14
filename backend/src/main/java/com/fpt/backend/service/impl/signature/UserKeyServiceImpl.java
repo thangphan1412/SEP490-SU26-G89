@@ -13,6 +13,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigInteger;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.time.LocalDateTime;
 @Service
 @RequiredArgsConstructor
@@ -35,28 +37,28 @@ public class UserKeyServiceImpl
             );
         }
 
-        if (userKeysRepository.existsByUserId(
-                user.getId()
-        )) {
-
-            throw new IllegalStateException(
-                    "User already has RSA key"
-            );
-        }
+//        if (userKeysRepository.existsByUserId(
+//                user.getId()
+//        )) {
+//
+//            throw new IllegalStateException(
+//                    "User already has RSA key"
+//            );
+//        }
 
         CalculateRSA.RSAKeyPair keyPair = calculateRSA.generateKeyPair();
         String publicKey = RSAKeyConverter.encode(
                         keyPair.modulus(),
                         keyPair.publicExponent());
 
-       String publicKeyCodeStr= changToPing(publicKey);
+       String publicKeyCodeStr= changToPingPrivateKey(publicKey);
         System.out.println("Public Key Code: " + publicKeyCodeStr);
         String privateKey = RSAKeyConverter.encode(
                         keyPair.modulus(),
                         keyPair.privateExponent()
                 );
 
-        String privateKeyCodeStr = changToPing(privateKey);
+        String privateKeyCodeStr = changToPingPrivateKey(privateKey);
 //        byte[] privateKeyBytes = privateKeyProtectionService.encrypt(privateKey, privateKeyCodeStr).getBytes();
         System.out.println("Private Key Code: " + privateKeyCodeStr);
         UserKeys userKeys = UserKeys.builder()
@@ -81,10 +83,30 @@ public class UserKeyServiceImpl
                 privateKey
         );
     }
-    public String changToPing(String key){
-        BigInteger number = new BigInteger(key, 16);
-        int publicKeyCode = number.mod(BigInteger.valueOf(1000000)).intValue();
-        String publicKeyCodeStr = String.format("%06d", publicKeyCode);
-        return publicKeyCodeStr;
+//    public String changToPing(String key){
+//        BigInteger number = new BigInteger(key, 16);
+//        int publicKeyCode = number.mod(BigInteger.valueOf(1000000)).intValue();
+//        String publicKeyCodeStr = String.format("%06d", publicKeyCode);
+//        return publicKeyCodeStr;
+//    }
+    public String changToPingPrivateKey(String key) {
+        try {
+            byte[] digest = MessageDigest.getInstance("SHA-256")
+                    .digest(key.getBytes(StandardCharsets.UTF_8));
+
+            BigInteger number = new BigInteger(1, digest);
+
+            int code = number
+                    .mod(BigInteger.valueOf(1_000_000))
+                    .intValue();
+
+            return String.format("%06d", code);
+
+        } catch (Exception e) {
+            throw new IllegalStateException(
+                    "Unable to generate key code",
+                    e
+            );
+        }
     }
 }
