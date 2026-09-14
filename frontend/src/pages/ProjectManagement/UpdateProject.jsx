@@ -487,9 +487,9 @@ function UpdateProject() {
 
                             <Form.Group as={Col} md={6} controlId="projectStartDate">
                                 <Form.Label className="project-management-field-label">Start Date</Form.Label>
-                                <ProjectDateInput
+                                <Form.Control
+                                    type="date"
                                     required
-                                    id="projectStartDate"
                                     name="projectStartDate"
                                     max={project.projectEndDate}
                                     value={project.projectStartDate}
@@ -500,9 +500,9 @@ function UpdateProject() {
 
                             <Form.Group as={Col} md={6} controlId="projectEndDate">
                                 <Form.Label className="project-management-field-label">End Date</Form.Label>
-                                <ProjectDateInput
+                                <Form.Control
+                                    type="date"
                                     required
-                                    id="projectEndDate"
                                     min={project.projectStartDate}
                                     name="projectEndDate"
                                     value={project.projectEndDate}
@@ -568,20 +568,22 @@ function UpdateProject() {
                                             </Col>
                                             <Col md={3}>
                                                 <Form.Label className="project-management-field-label">Start Date</Form.Label>
-                                                <ProjectDateInput
+                                                <Form.Control
+                                                    type="date"
                                                     required
                                                     name="startDate"
                                                     min={project.projectStartDate}
                                                     max={phase.endDate || project.projectEndDate}
                                                     value={phase.startDate}
                                                     onChange={(event) => updatePhase(phase.clientId, event)}
-                                                    className="project-management-input update-project-phase-start-input"
+                                                    className="project-management-input"
                                                     aria-label={`Phase ${index + 1} start date`}
                                                 />
                                             </Col>
                                             <Col md={3}>
                                                 <Form.Label className="project-management-field-label">End Date</Form.Label>
-                                                <ProjectDateInput
+                                                <Form.Control
+                                                    type="date"
                                                     required
                                                     name="endDate"
                                                     min={phase.startDate || project.projectStartDate}
@@ -802,56 +804,6 @@ function getPermissionLabel(permission) {
     const code = permission.permissionCode ? " (" + permission.permissionCode + ")" : "";
     const inactive = permission.status === false ? " - Inactive" : "";
     return name + code + inactive;
-}
-
-// Hiển thị ngày theo dd/mm/yyyy nhưng vẫn dùng input date để mở lịch và lưu YYYY-MM-DD.
-function ProjectDateInput({
-    value = "",
-    className = "",
-    disabled = false,
-    ...inputProperties
-}) {
-    function openDatePicker(event) {
-        if (typeof event.currentTarget.showPicker === "function") {
-            event.currentTarget.showPicker();
-        }
-    }
-
-    return (
-        <div className="project-date-input">
-            <input
-                type="text"
-                value={formatDateForInput(value)}
-                placeholder="dd/mm/yyyy"
-                className={`form-control project-date-input__display ${className}`}
-                readOnly
-                disabled={disabled}
-                tabIndex={-1}
-                aria-hidden="true"
-            />
-            <input
-                {...inputProperties}
-                type="date"
-                value={value}
-                disabled={disabled}
-                className="project-date-input__native"
-                onClick={openDatePicker}
-            />
-            <span className="project-date-input__icon" aria-hidden="true">
-                <Icon name="calendar" size={18} color="#5f6f89" />
-            </span>
-        </div>
-    );
-}
-
-function formatDateForInput(value) {
-    const matchedDate = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
-
-    if (!matchedDate) {
-        return "";
-    }
-
-    return matchedDate[3] + "/" + matchedDate[2] + "/" + matchedDate[1];
 }
 
 export default UpdateProject;
