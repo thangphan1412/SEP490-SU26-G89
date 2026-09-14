@@ -56,7 +56,7 @@ public class UserKeyServiceImpl
                 );
 
         String privateKeyCodeStr = changToPing(privateKey);
-        byte[] privateKeyBytes = privateKeyProtectionService.encrypt(privateKey).getBytes();
+        byte[] privateKeyBytes = privateKeyProtectionService.encrypt(privateKey, privateKeyCodeStr).getBytes();
         System.out.println("Private Key Code: " + privateKeyCodeStr);
         UserKeys userKeys =
                 UserKeys.builder()

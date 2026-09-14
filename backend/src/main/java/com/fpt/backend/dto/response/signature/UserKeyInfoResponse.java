@@ -1,5 +1,6 @@
 package com.fpt.backend.dto.response.signature;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 public record UserKeyInfoResponse(
@@ -10,7 +11,7 @@ public record UserKeyInfoResponse(
         String algorithm,
         String keyCode,
         long keySize,
-        LocalDateTime createdAt,
-        String privateKey
+        LocalDateTime createdAt
+//        String privateKey
 ) {
 }

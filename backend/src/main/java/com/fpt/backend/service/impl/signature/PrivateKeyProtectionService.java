@@ -29,14 +29,15 @@ public class PrivateKeyProtectionService {
         this.encryptionKey = new SecretKeySpec(key, "AES");
     }
 
-    public String encrypt(String privateKey) {
+    public String encrypt(String privateKey, String pin) {
         try {
             byte[] iv = new byte[IV_LENGTH];
             secureRandom.nextBytes(iv);
             Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
             cipher.init(Cipher.ENCRYPT_MODE, encryptionKey, new GCMParameterSpec(TAG_LENGTH, iv));
             byte[] encrypted = cipher.doFinal(privateKey.getBytes(StandardCharsets.UTF_8));
-            byte[] payload = new byte[iv.length + encrypted.length];
+            byte[] pinBytes = pin.getBytes(StandardCharsets.UTF_8);
+            byte[] payload = new byte[iv.length + encrypted.length +pinBytes.length];
             System.arraycopy(iv, 0, payload, 0, iv.length);
             System.arraycopy(encrypted, 0, payload, iv.length, encrypted.length);
             return PREFIX + Base64.getEncoder().encodeToString(payload);

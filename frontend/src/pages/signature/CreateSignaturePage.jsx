@@ -10,6 +10,7 @@ import InfoBanner from "../../components/signature/createSignature/InforBanner.j
 import electronicSignatureService
     from "../../services/signatureService/electronicSignatureService.js";
 import SigningKeyCard from "../../components/signature/SigningKeyCard.jsx";
+import digitalSignatureService from "../../services/signatureService/digitalSignatureService.js";
 
 function CreateSignaturePage() {
 
@@ -40,39 +41,24 @@ function CreateSignaturePage() {
             setError("");
             setSuccess("");
 
-            const keyPair = await window.crypto.subtle.generateKey(
-                {
-                    name: "RSA-PSS",
-                    modulusLength: 2048,
-                    publicExponent: new Uint8Array([1, 0, 1]),
-                    hash: "SHA-256",
-                },
-                false,
-                ["sign", "verify"]
-            );
+            const response = await digitalSignatureService.getMyPublicKey();
+            const keyPair = response.data;
 
             console.log("Key pair generated:", keyPair);
 
-            setKeyStatus("ACTIVE");
+            // Backend không có "id" riêng, dùng fingerprint làm định danh hiển thị
+            setKeyId(keyPair.publicKeyFingerprint);
 
-            // Tạm thời tạo ID phía frontend
-            // Sau này ID này sẽ lấy từ Backend
-            const generatedKeyId = crypto.randomUUID();
+            setKeyCode(keyPair.keyCode);
 
-            setKeyId(generatedKeyId);
+            // Backend không có field "keyStatus", tự suy ra từ "available"
+            setKeyStatus(keyPair.available ? "ACTIVE" : "NOT_CONFIGURED");
 
-            setSuccess(
-                "Signing key generated successfully."
-            );
+            setSuccess("Signing key generated successfully.");
 
         } catch (error) {
-
             console.error("GENERATE KEY ERROR:", error);
-
-            setError(
-                "Failed to generate signing key."
-            );
-
+            setError("Failed to generate signing key.");
         } finally {
             setKeyLoading(false);
         }
