@@ -147,18 +147,6 @@ function UpdatePermissionPage() {
     });
   }
 
-  // Cập nhật work scope được chọn cho quyền.
-  function handleWorkScopeChange(event) {
-    const workScope = event.target.value;
-
-    setPermission(function (currentPermission) {
-      return {
-        ...currentPermission,
-        workScope,
-      };
-    });
-  }
-
   // Chuẩn hóa biểu mẫu rồi gửi yêu cầu cập nhật quyền.
   async function handleSubmit(event) {
     event.preventDefault();
@@ -375,7 +363,7 @@ function UpdatePermissionPage() {
                   value={option.value}
                   label={option.label}
                   checked={permission.workScope === option.value}
-                  onChange={handleWorkScopeChange}
+                  onChange={handleChange}
                 />
               ))}
             </div>

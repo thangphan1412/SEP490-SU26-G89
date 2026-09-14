@@ -43,7 +43,6 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
@@ -52,7 +51,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class ProjectServiceImpl implements IProjectService {
-    private static final int PAGE_SIZE = 7;
+    
     private static final String NEW_PROJECT_STATUS = "On Hold";
     private static final String CANCELLED_PROJECT_STATUS = "Cancelled";
     private static final String COMPLETED_PROJECT_STATUS = "Completed";
@@ -377,8 +376,8 @@ public class ProjectServiceImpl implements IProjectService {
         // Giới hạn kết quả vào các dự án mà người dùng là thành viên khi được yêu cầu.
         if (viewOnlyYourProjects) {
             return projectRepository.searchViewableProjects(
-                    search.toLowerCase(Locale.ROOT),
-                    status.toLowerCase(Locale.ROOT),
+                    search.toLowerCase(),
+                    status.toLowerCase(),
                     currentUserId,
                     pageable
             );
@@ -398,8 +397,8 @@ public class ProjectServiceImpl implements IProjectService {
         }
 
         return projectRepository.searchProjects(
-                search.toLowerCase(Locale.ROOT),
-                status.toLowerCase(Locale.ROOT),
+                search.toLowerCase(),
+                status.toLowerCase(),
                 pageable
         );
     }
@@ -411,7 +410,7 @@ public class ProjectServiceImpl implements IProjectService {
                 "projectCreatedAt"
         );
 
-        return PageRequest.of(page, PAGE_SIZE, newestProjectFirst);
+        return PageRequest.of(page, 7, newestProjectFirst);
     }
 
     // Kiểm tra và áp dụng các trường thông tin cơ bản vào entity dự án.

@@ -33,7 +33,6 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -65,7 +64,7 @@ public class PermissionServiceImpl implements IPermissionService {
         List<UUID> manageableProjectIds = permissionAccessService
                 .getCurrentUserProjectIdsWithAction("MANAGE_MEMBERS");
         Page<Permissions> permissions = permissionRepository.searchPermissions(
-                search.toLowerCase(Locale.ROOT),
+                search.toLowerCase(),
                 request.projectId(),
                 request.status(),
                 user.getId(),
@@ -324,9 +323,9 @@ public class PermissionServiceImpl implements IPermissionService {
                 permissionActionService.getWorkScope(permission),
                 permission.getPermissionDescription(),
                 permission.getStatus(),
-                project == null ? null : project.getId(),
-                project == null ? null : project.getProjectCode(),
-                project == null ? null : project.getProjectName(),
+                project.getId(),
+                project.getProjectCode(),
+                project.getProjectName(),
                 permission.getCreatedAt(),
                 canManage);
     }

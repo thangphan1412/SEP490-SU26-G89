@@ -154,8 +154,6 @@ function ViewPhase() {
         <Alert variant="danger" className="phase-page-message">{error || "Phase was not found."}</Alert>
       ) : (
         <div className="phase-view-content">
-          {error && <Alert variant="danger">{error}</Alert>}
-
           <Card as="section" className="phase-hero">
             <span className="phase-hero-icon"><IconTimelineEvent size={38} stroke={1.7} /></span>
             <div className="phase-hero-main">

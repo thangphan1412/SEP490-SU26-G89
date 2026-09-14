@@ -19,6 +19,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -621,6 +622,65 @@ class RoleControllerTest {
 
                 assertUpdateBadRequest(response, errorMessage);
                 verify(roleService).updateRole(roleId, null);
+        }
+
+        /**
+         * TC25 - View Role thành công khi id tồn tại.
+         * Input: id = "00000000-0000-0000-0000-000000000019";
+         * service được mock trả Role ADMIN, name = "Administrator",
+         * description = "Manage users and roles", createdAt = 28/08/2026 09:30,
+         * updatedAt = 03/09/2026 15:45.
+         * Expected: HTTP 200, body.status = 200, message = "Role found",
+         * data giữ nguyên DTO từ service; gọi getRoleById đúng id một lần.
+         */
+        @Test
+        void getRoleById_returnsOkWithRoleDetails() {
+                UUID roleId = UUID.fromString("00000000-0000-0000-0000-000000000019");
+                RoleResponseDTO expectedRole = updatedRole(
+                                roleId,
+                                "ADMIN",
+                                "Administrator",
+                                "Manage users and roles");
+                when(roleService.getRoleById(roleId)).thenReturn(expectedRole);
+
+                ResponseEntity<BaseResponse<RoleResponseDTO>> response =
+                                roleController.getRoleById(roleId);
+
+                assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+                assertThat(response.getBody()).satisfies(body -> {
+                        assertThat(body.getStatus()).isEqualTo(HttpStatus.OK.value());
+                        assertThat(body.getMessage()).isEqualTo("Role found");
+                        assertThat(body.getData()).isSameAs(expectedRole);
+                });
+                verify(roleService).getRoleById(roleId);
+                verifyNoMoreInteractions(roleService);
+        }
+
+        /**
+         * TC26 - View Role thất bại khi id không tồn tại.
+         * Input: id = "00000000-0000-0000-0000-000000000999";
+         * service được mock ném RuntimeException "Role not found with id: " + id.
+         * Expected: HTTP 404, body.status = 404, data = null,
+         * message giữ nguyên lỗi từ service; gọi getRoleById đúng id một lần.
+         */
+        @Test
+        void getRoleById_returnsNotFoundWhenRoleDoesNotExist() {
+                UUID roleId = UUID.fromString("00000000-0000-0000-0000-000000000999");
+                String errorMessage = "Role not found with id: " + roleId;
+                when(roleService.getRoleById(roleId))
+                                .thenThrow(new RuntimeException(errorMessage));
+
+                ResponseEntity<BaseResponse<RoleResponseDTO>> response =
+                                roleController.getRoleById(roleId);
+
+                assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+                assertThat(response.getBody()).satisfies(body -> {
+                        assertThat(body.getStatus()).isEqualTo(HttpStatus.NOT_FOUND.value());
+                        assertThat(body.getMessage()).isEqualTo(errorMessage);
+                        assertThat(body.getData()).isNull();
+                });
+                verify(roleService).getRoleById(roleId);
+                verifyNoMoreInteractions(roleService);
         }
 
         private static void assertCreateBadRequest(

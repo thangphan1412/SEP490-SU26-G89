@@ -58,7 +58,10 @@ function HeaderForm(){
                             </Nav.Link>
                         )}
 
-                        <Nav.Link as={NavLink} to="#" className="nav-item"><IconReportAnalytics stroke={2} />Reports</Nav.Link>
+                        {/* --- ĐÃ FIX Ở ĐÂY: GIẤU Reports VỚI CÁC ROLE KHÁC --- */}
+                        {['CEO', 'Administrator', 'Accountant'].includes(role) && (
+                        <Nav.Link as={NavLink} to="/dashboard/agreement-statistics" className="nav-item"><IconReportAnalytics stroke={2} />Reports</Nav.Link>
+                        )}
                         {/*<Nav.Link href="#" className="nav-item"><IconSettings stroke={2} />Settings</Nav.Link>*/}
 
                     </Nav>
@@ -79,9 +82,9 @@ function HeaderForm(){
                      }  id="basic-nav-dropdown">
 
                          {/* --- ĐÃ FIX Ở ĐÂY: GIẤU DASHBOARD VỚI CÁC ROLE KHÁC --- */}
-                         {['CEO', 'Administrator', 'Accountant'].includes(role) && (
-                             <NavDropdown.Item as={NavLink} to="/dashboard/agreement-statistics">Dashboard</NavDropdown.Item>
-                         )}
+                         {/*{['CEO', 'Administrator', 'Accountant'].includes(role) && (*/}
+                         {/*    <NavDropdown.Item as={NavLink} to="/dashboard/agreement-statistics">Dashboard</NavDropdown.Item>*/}
+                         {/*)}*/}
                          <NavDropdown.Item as={NavLink} to="/user-profile/view">My profile</NavDropdown.Item>
                          <NavDropdown.Item as={NavLink} to="/company-profile/view">
                             Company profile

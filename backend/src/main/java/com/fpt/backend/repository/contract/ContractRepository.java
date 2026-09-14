@@ -129,9 +129,20 @@ public interface ContractRepository extends JpaRepository<Contracts, UUID> {
     @Query("SELECT c.contractStatus, COUNT(c) FROM Contracts c GROUP BY c.contractStatus")
     List<Object[]> countContractsByStatus();
 
-    // Lấy các hợp đồng sắp hết hạn (Trong vòng 30 ngày tới)
-    @Query("SELECT c FROM Contracts c WHERE c.contractStatus = 'ACTIVE' AND c.expirationDate BETWEEN :today AND :thirtyDaysLater ORDER BY c.expirationDate ASC")
-    List<Contracts> findUpcomingExpirations(@Param("today") LocalDate today, @Param("thirtyDaysLater") LocalDate thirtyDaysLater, Pageable pageable);
+    @Query("""
+            SELECT contract
+            FROM Contracts contract
+            LEFT JOIN FETCH contract.project
+            WHERE UPPER(COALESCE(contract.contractStatus, '')) = UPPER(:activeStatus)
+                AND contract.expirationDate BETWEEN :today AND :thirtyDaysLater
+            ORDER BY contract.expirationDate ASC
+            """)
+    List<Contracts> findUpcomingExpirations(
+            @Param("activeStatus") String activeStatus,
+            @Param("today") LocalDate today,
+            @Param("thirtyDaysLater") LocalDate thirtyDaysLater,
+            Pageable pageable
+    );
 
     // Lấy số lượng hợp đồng nhóm theo Năm và Tháng
     @Query("SELECT YEAR(c.contractCreatedAt), MONTH(c.contractCreatedAt), COUNT(c) " +
@@ -145,9 +156,14 @@ public interface ContractRepository extends JpaRepository<Contracts, UUID> {
     @Query("SELECT ct.contractTypeName, COUNT(c) FROM Contracts c LEFT JOIN c.contractType ct GROUP BY ct.contractTypeName")
     List<Object[]> countContractsByType();
 
-    // Lấy danh sách hợp đồng Pending để tính toán thời gian chờ
-    @Query("SELECT p.projectName, c.contractCreatedAt FROM Contracts c LEFT JOIN c.project p WHERE c.contractStatus IN ('PENDING_DIRECTOR_SIGNATURE', 'PENDING_PARTNER_SIGNATURE')")
-    List<Object[]> getPendingSignatureDetails();
+    @Query("""
+            SELECT project.projectName,
+                   COALESCE(contract.contractStatusUpdatedAt, contract.contractCreatedAt)
+            FROM Contracts contract
+            LEFT JOIN contract.project project
+            WHERE UPPER(COALESCE(contract.contractStatus, '')) IN :statuses
+            """)
+    List<Object[]> getPendingSignatureDetails(@Param("statuses") List<String> statuses);
 
     // Đếm hợp đồng đã hết hạn dựa vào ngày
     @Query("SELECT COUNT(c) FROM Contracts c WHERE c.expirationDate < :today")

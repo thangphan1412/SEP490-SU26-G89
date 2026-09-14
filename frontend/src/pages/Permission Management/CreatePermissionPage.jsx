@@ -123,18 +123,6 @@ function CreatePermissionPage() {
     });
   }
 
-  // Cập nhật work scope được chọn cho quyền.
-  function handleWorkScopeChange(event) {
-    const workScope = event.target.value;
-
-    setPermission(function (currentPermission) {
-      return {
-        ...currentPermission,
-        workScope,
-      };
-    });
-  }
-
   // Xác định đường dẫn quay lại danh sách quyền hoặc dự án nguồn.
   function getBackPath() {
     if (returnProjectId) {
@@ -379,7 +367,7 @@ function CreatePermissionPage() {
                   value={option.value}
                   label={option.label}
                   checked={permission.workScope === option.value}
-                  onChange={handleWorkScopeChange}
+                  onChange={handleChange}
                 />
               ))}
             </div>

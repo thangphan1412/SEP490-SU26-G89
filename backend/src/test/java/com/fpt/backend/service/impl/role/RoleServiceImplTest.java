@@ -22,6 +22,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -1266,6 +1267,155 @@ class RoleServiceImplTest {
         verify(roleRepository).findById(roleId);
         verify(roleRepository).existsByRoleCodeIgnoreCaseAndIdNot("ADMIN", roleId);
         verify(roleRepository).save(existingRole);
+    }
+
+    /**
+     * TC63 - View Role thành công và chuyển đầy đủ entity sang DTO.
+     * Input: id = "00000000-0000-0000-0000-000000000040";
+     * repository được mock trả ADMIN, name = "Administrator",
+     * description = "Manage users and roles", createdAt = 20/08/2026 09:15,
+     * updatedAt = 25/08/2026 14:30.
+     * Expected: DTO giữ đúng cả 6 trường; chỉ gọi findById đúng id một lần,
+     * không ghi dữ liệu xuống repository.
+     */
+    @Test
+    void getRoleById_mapsEveryEntityFieldToDto() {
+        UUID roleId = UUID.fromString("00000000-0000-0000-0000-000000000040");
+        LocalDateTime createdAt = LocalDateTime.of(2026, 8, 20, 9, 15);
+        LocalDateTime updatedAt = LocalDateTime.of(2026, 8, 25, 14, 30);
+        Role admin = role(
+                roleId.toString(),
+                "ADMIN",
+                "Administrator",
+                "Manage users and roles",
+                createdAt,
+                updatedAt
+        );
+        when(roleRepository.findById(roleId)).thenReturn(Optional.of(admin));
+
+        RoleResponseDTO result = roleService.getRoleById(roleId);
+
+        assertThat(result).isNotNull();
+        assertThat(result.getId()).isEqualTo(roleId);
+        assertThat(result.getRoleCode()).isEqualTo("ADMIN");
+        assertThat(result.getRoleName()).isEqualTo("Administrator");
+        assertThat(result.getRoleDescription()).isEqualTo("Manage users and roles");
+        assertThat(result.getCreatedAt()).isEqualTo(createdAt);
+        assertThat(result.getUpdatedAt()).isEqualTo(updatedAt);
+        verify(roleRepository).findById(roleId);
+        verifyNoMoreInteractions(roleRepository);
+    }
+
+    /**
+     * TC64 - View Role thất bại khi repository không tìm thấy id.
+     * Input: id = "00000000-0000-0000-0000-000000000999";
+     * findById được mock trả Optional.empty().
+     * Expected: ném RuntimeException "Role not found with id: " + id;
+     * chỉ gọi findById một lần, không ghi dữ liệu xuống repository.
+     */
+    @Test
+    void getRoleById_whenRoleDoesNotExistThrowsException() {
+        UUID roleId = UUID.fromString("00000000-0000-0000-0000-000000000999");
+        when(roleRepository.findById(roleId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> roleService.getRoleById(roleId))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessage("Role not found with id: " + roleId);
+        verify(roleRepository).findById(roleId);
+        verifyNoMoreInteractions(roleRepository);
+    }
+
+    /**
+     * TC65 - View Role thành công khi description là null.
+     * Input: id = "00000000-0000-0000-0000-000000000041";
+     * repository trả EMPLOYEE, name = "Employee", description = null,
+     * createdAt = 20/08/2026 09:15, updatedAt = 25/08/2026 14:30.
+     * Expected: DTO đúng Role EMPLOYEE, description vẫn null và các trường còn lại
+     * giữ nguyên; chỉ đọc repository, không phát sinh exception.
+     */
+    @Test
+    void getRoleById_withNullDescriptionKeepsDescriptionNull() {
+        UUID roleId = UUID.fromString("00000000-0000-0000-0000-000000000041");
+        LocalDateTime createdAt = LocalDateTime.of(2026, 8, 20, 9, 15);
+        LocalDateTime updatedAt = LocalDateTime.of(2026, 8, 25, 14, 30);
+        Role employee = role(
+                roleId.toString(),
+                "EMPLOYEE",
+                "Employee",
+                null,
+                createdAt,
+                updatedAt
+        );
+        when(roleRepository.findById(roleId)).thenReturn(Optional.of(employee));
+
+        RoleResponseDTO result = roleService.getRoleById(roleId);
+
+        assertThat(result).isNotNull();
+        assertThat(result.getId()).isEqualTo(roleId);
+        assertThat(result.getRoleCode()).isEqualTo("EMPLOYEE");
+        assertThat(result.getRoleName()).isEqualTo("Employee");
+        assertThat(result.getRoleDescription()).isNull();
+        assertThat(result.getCreatedAt()).isEqualTo(createdAt);
+        assertThat(result.getUpdatedAt()).isEqualTo(updatedAt);
+        verify(roleRepository).findById(roleId);
+        verifyNoMoreInteractions(roleRepository);
+    }
+
+    /**
+     * TC66 - View Role chưa từng được cập nhật.
+     * Input: id = "00000000-0000-0000-0000-000000000042";
+     * repository trả ADMIN, name = "Administrator",
+     * description = "Manage users and roles", createdAt = 20/08/2026 09:15,
+     * updatedAt = null.
+     * Expected: DTO đúng Role ADMIN, updatedAt vẫn null và các trường còn lại
+     * giữ nguyên; chỉ đọc repository, không phát sinh exception.
+     */
+    @Test
+    void getRoleById_withNullUpdatedAtKeepsUpdatedAtNull() {
+        UUID roleId = UUID.fromString("00000000-0000-0000-0000-000000000042");
+        LocalDateTime createdAt = LocalDateTime.of(2026, 8, 20, 9, 15);
+        Role admin = role(
+                roleId.toString(),
+                "ADMIN",
+                "Administrator",
+                "Manage users and roles",
+                createdAt,
+                null
+        );
+        when(roleRepository.findById(roleId)).thenReturn(Optional.of(admin));
+
+        RoleResponseDTO result = roleService.getRoleById(roleId);
+
+        assertThat(result).isNotNull();
+        assertThat(result.getId()).isEqualTo(roleId);
+        assertThat(result.getRoleCode()).isEqualTo("ADMIN");
+        assertThat(result.getRoleName()).isEqualTo("Administrator");
+        assertThat(result.getRoleDescription()).isEqualTo("Manage users and roles");
+        assertThat(result.getCreatedAt()).isEqualTo(createdAt);
+        assertThat(result.getUpdatedAt()).isNull();
+        verify(roleRepository).findById(roleId);
+        verifyNoMoreInteractions(roleRepository);
+    }
+
+    /**
+     * TC67 - Repository phát sinh lỗi khi View Role.
+     * Input: id = "00000000-0000-0000-0000-000000000043";
+     * findById được mock ném RuntimeException "Database unavailable".
+     * Expected: service truyền nguyên exception ra ngoài, giữ nguyên message;
+     * chỉ gọi findById một lần, không ghi dữ liệu xuống repository.
+     */
+    @Test
+    void getRoleById_whenRepositoryFindFailsPropagatesException() {
+        UUID roleId = UUID.fromString("00000000-0000-0000-0000-000000000043");
+        RuntimeException repositoryException =
+                new RuntimeException("Database unavailable");
+        when(roleRepository.findById(roleId)).thenThrow(repositoryException);
+
+        assertThatThrownBy(() -> roleService.getRoleById(roleId))
+                .isSameAs(repositoryException)
+                .hasMessage("Database unavailable");
+        verify(roleRepository).findById(roleId);
+        verifyNoMoreInteractions(roleRepository);
     }
 
     private void stubSuccessfulUpdate(

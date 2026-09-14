@@ -96,49 +96,9 @@ function CreateProject() {
     function handleChange(event) {
         const { name, value } = event.target;
 
-        // Ngăn ngày bắt đầu mới nằm sau ngày kết thúc hiện tại.
-        if (
-            name === "projectStartDate"
-            && value
-            && project.projectEndDate
-            && value > project.projectEndDate
-        ) {
-            setSubmitError("Project start date must not be after its end date.");
-            return;
-        }
-
-        // Yêu cầu chọn ngày bắt đầu trước khi chọn ngày kết thúc.
-        if (name === "projectEndDate" && !project.projectStartDate) {
-            setSubmitError("Select the project start date before selecting its end date.");
-            return;
-        }
-
-        // Ngăn ngày kết thúc dự án nằm trong quá khứ.
-        if (
-            name === "projectEndDate"
-            && value
-            && value < getTodayDate()
-        ) {
-            setSubmitError("Project end date must not be before today.");
-            return;
-        }
-
-        // Ngăn ngày kết thúc nằm trước ngày bắt đầu dự án.
-        if (
-            name === "projectEndDate"
-            && value
-            && value < project.projectStartDate
-        ) {
-            setSubmitError("Project end date must not be before its start date.");
-            return;
-        }
-
-        let nextProjectStartDate = project.projectStartDate;
         let nextProjectEndDate = project.projectEndDate;
 
         if (name === "projectStartDate") {
-            nextProjectStartDate = value;
-
             if (!value) {
                 nextProjectEndDate = "";
             }
@@ -148,12 +108,10 @@ function CreateProject() {
             nextProjectEndDate = value;
         }
 
+        // Không validate khi đang gõ từng phần của input date vì trình duyệt có
+        // thể tạm phát ra một ngày chưa hoàn chỉnh (ví dụ năm 0001).
         if (name === "projectStartDate" || name === "projectEndDate") {
-            setSubmitError(getPhaseDateError(
-                project.phases,
-                nextProjectStartDate,
-                nextProjectEndDate
-            ));
+            setSubmitError("");
         }
 
         setProject((currentProject) => ({
@@ -163,11 +121,31 @@ function CreateProject() {
         }));
     }
 
+    // Chỉ hiển thị lỗi timeline sau khi người dùng đã nhập xong và rời ô ngày.
+    function handleProjectDateBlur() {
+        setSubmitError(getProjectTimelineError(
+            project.projectStartDate,
+            project.projectEndDate,
+            project.phases
+        ));
+    }
+
     // Thêm phase mới với khoảng ngày mặc định nằm trong timeline dự án.
     function addPhase() {
         // Yêu cầu đầy đủ timeline dự án trước khi thêm phase.
         if (!project.projectStartDate || !project.projectEndDate) {
             setSubmitError("Select the project start date and end date before adding phases.");
+            return;
+        }
+
+        const projectTimelineError = getProjectTimelineError(
+            project.projectStartDate,
+            project.projectEndDate,
+            project.phases
+        );
+
+        if (projectTimelineError) {
+            setSubmitError(projectTimelineError);
             return;
         }
 
@@ -276,23 +254,14 @@ function CreateProject() {
     async function handleSubmit(event) {
         event.preventDefault();
 
-        // Từ chối gửi khi ngày kết thúc dự án nằm trong quá khứ.
-        if (
-            project.projectEndDate
-            && project.projectEndDate < getTodayDate()
-        ) {
-            setSubmitError("Project end date must not be before today.");
-            return;
-        }
-
-        const phaseDateError = getPhaseDateError(
-            project.phases,
+        const projectTimelineError = getProjectTimelineError(
             project.projectStartDate,
-            project.projectEndDate
+            project.projectEndDate,
+            project.phases
         );
 
-        if (phaseDateError) {
-            setSubmitError(phaseDateError);
+        if (projectTimelineError) {
+            setSubmitError(projectTimelineError);
             return;
         }
 
@@ -399,7 +368,13 @@ function CreateProject() {
         if (project.phases.length === 0) {
             return (
                 <div className="create-project-empty-state">
-                    No phases yet. You can create the project now and add phases later.
+                    <span className="create-project-empty-icon" aria-hidden="true">
+                        <Icon name="chart" size={22} color="#3659d9" />
+                    </span>
+                    <span className="create-project-empty-copy">
+                        <strong>No phases added</strong>
+                        <small>You can create the project now and add phases later.</small>
+                    </span>
                 </div>
             );
         }
@@ -425,20 +400,22 @@ function CreateProject() {
                             </Col>
                             <Col md={3}>
                                 <Form.Label className="project-management-field-label">Start Date</Form.Label>
-                                <ProjectDateInput
+                                <Form.Control
+                                    type="date"
                                     required
                                     name="startDate"
                                     min={project.projectStartDate}
                                     max={phase.endDate || project.projectEndDate}
                                     value={phase.startDate}
                                     onChange={(event) => updatePhase(phase.clientId, event)}
-                                    className="project-management-input create-project-phase-start-input"
+                                    className="project-management-input"
                                     aria-label={`Phase ${index + 1} start date`}
                                 />
                             </Col>
                             <Col md={3}>
                                 <Form.Label className="project-management-field-label">End Date</Form.Label>
-                                <ProjectDateInput
+                                <Form.Control
+                                    type="date"
                                     required
                                     name="endDate"
                                     min={phase.startDate || project.projectStartDate}
@@ -474,7 +451,15 @@ function CreateProject() {
         // Hiển thị trạng thái chờ trong khi tải nhân viên.
         if (loadingEmployees) {
             return (
-                <div className="create-project-empty-state">Loading employees...</div>
+                <div className="create-project-empty-state">
+                    <span className="create-project-empty-icon" aria-hidden="true">
+                        <Icon name="users" size={22} color="#3659d9" />
+                    </span>
+                    <span className="create-project-empty-copy">
+                        <strong>Loading employees</strong>
+                        <small>Getting the latest team member information...</small>
+                    </span>
+                </div>
             );
         }
 
@@ -482,8 +467,13 @@ function CreateProject() {
         if (currentProjectMembers.length === 0) {
             return (
                 <div className="create-project-empty-state">
-                    No additional members have been selected. The signed-in
-                    user will be added automatically after creation.
+                    <span className="create-project-empty-icon" aria-hidden="true">
+                        <Icon name="users" size={22} color="#3659d9" />
+                    </span>
+                    <span className="create-project-empty-copy">
+                        <strong>No additional members selected</strong>
+                        <small>The signed-in user will be added automatically after creation.</small>
+                    </span>
                 </div>
             );
         }
@@ -559,51 +549,73 @@ function CreateProject() {
     );
 
     return (
-        <PagePanel
-            title="Create Project"
-            description="Create the project, optionally add phases, and select its initial members."
-            action={pageAction}
-        >
-            <Form id="create-project-form" onSubmit={handleSubmit}>
+        <div className="create-project-page">
+            <PagePanel
+                title="Create Project"
+                description="Start with the essentials, then add phases and teammates when you need them."
+                action={pageAction}
+            >
+            <Form id="create-project-form" className="create-project-form" onSubmit={handleSubmit}>
                 {submitError && <Alert variant="danger" className="create-project-alert">{submitError}</Alert>}
 
-                <Card as="section" className="project-management-card">
-                    <Card.Title as="h2" className="project-management-card-title">Basic Information</Card.Title>
+                <Card as="section" className="project-management-card create-project-card">
+                    <div className="create-project-section-header create-project-section-header--basic">
+                        <div className="create-project-section-heading">
+                            <span className="create-project-section-icon" aria-hidden="true">
+                                <Icon name="document" size={20} color="#3659d9" />
+                            </span>
+                            <div>
+                                <Card.Title as="h2" className="project-management-card-title">Basic Information</Card.Title>
+                                <p className="create-project-section-note">Define the project identity and planned timeline.</p>
+                            </div>
+                        </div>
+                        <span className="create-project-section-tag create-project-section-tag--required">Required</span>
+                    </div>
 
                     <Row className="create-project-form-grid">
                         <Form.Group as={Col} md={6} controlId="projectName">
-                            <Form.Label className="project-management-field-label">Project Name</Form.Label>
+                            <Form.Label className="project-management-field-label">
+                                Project Name <span className="create-project-required-mark" aria-hidden="true">*</span>
+                            </Form.Label>
                             <Form.Control required maxLength={50} name="projectName" value={project.projectName} onChange={handleChange} placeholder="Enter project name" className="project-management-input" />
                         </Form.Group>
 
                         <Form.Group as={Col} md={6} controlId="projectCode">
-                            <Form.Label className="project-management-field-label">Project Code</Form.Label>
+                            <Form.Label className="project-management-field-label">
+                                Project Code <span className="create-project-required-mark" aria-hidden="true">*</span>
+                            </Form.Label>
                             <Form.Control required maxLength={50} name="projectCode" value={project.projectCode} onChange={handleChange} placeholder="Example: PRJ-2026-Thời trang mùa đông" className="project-management-input" />
                         </Form.Group>
 
                         <Form.Group as={Col} md={6} controlId="projectStartDate">
-                            <Form.Label className="project-management-field-label">Start Date</Form.Label>
-                            <ProjectDateInput
+                            <Form.Label className="project-management-field-label">
+                                Start Date <span className="create-project-required-mark" aria-hidden="true">*</span>
+                            </Form.Label>
+                            <Form.Control
+                                type="date"
                                 required
-                                id="projectStartDate"
                                 name="projectStartDate"
                                 max={project.projectEndDate}
                                 value={project.projectStartDate}
                                 onChange={handleChange}
+                                onBlur={handleProjectDateBlur}
                                 className="project-management-input"
                             />
                         </Form.Group>
 
                         <Form.Group as={Col} md={6} controlId="projectEndDate">
-                            <Form.Label className="project-management-field-label">End Date</Form.Label>
-                            <ProjectDateInput
+                            <Form.Label className="project-management-field-label">
+                                End Date <span className="create-project-required-mark" aria-hidden="true">*</span>
+                            </Form.Label>
+                            <Form.Control
+                                type="date"
                                 required
                                 disabled={!project.projectStartDate}
-                                id="projectEndDate"
                                 min={minimumEndDate}
                                 name="projectEndDate"
                                 value={project.projectEndDate}
                                 onChange={handleChange}
+                                onBlur={handleProjectDateBlur}
                                 className="project-management-input"
                             />
                         </Form.Group>
@@ -611,39 +623,52 @@ function CreateProject() {
                     </Row>
 
                     <Form.Group className="create-project-full-width" controlId="projectDescription">
-                        <Form.Label className="project-management-field-label">Description</Form.Label>
+                        <Form.Label className="project-management-field-label">
+                            Description <span className="create-project-field-optional">Optional</span>
+                        </Form.Label>
                         <Form.Control as="textarea" maxLength={255} name="projectDescription" value={project.projectDescription} onChange={handleChange} placeholder="Describe the purpose and expected result of this project..." className="project-management-textarea" />
                         <div className="create-project-counter">{project.projectDescription.length} / 255</div>
                     </Form.Group>
                 </Card>
 
-                <Card as="section" className="project-management-card">
+                <Card as="section" className="project-management-card create-project-card">
                     <div className="create-project-section-header">
-                        <div>
-                            <Card.Title as="h2" className="project-management-card-title">Project Phases</Card.Title>
-                            <p className="create-project-section-note">Phases are optional. Each phase date range only needs to stay within the project date range.</p>
+                        <div className="create-project-section-heading">
+                            <span className="create-project-section-icon" aria-hidden="true">
+                                <Icon name="chart" size={20} color="#3659d9" />
+                            </span>
+                            <div>
+                                <Card.Title as="h2" className="project-management-card-title">Project Phases</Card.Title>
+                                <p className="create-project-section-note">Break the work into optional phases within the project timeline.</p>
+                            </div>
                         </div>
-                        <Button type="button" variant="light" className="create-project-add-button" onClick={addPhase}>
-                            <Icon name="plus" size={18} /> Add Phase
-                        </Button>
+                        <div className="create-project-section-actions">
+                            <span className="create-project-selected-count">
+                                {project.phases.length} {project.phases.length === 1 ? "phase" : "phases"}
+                            </span>
+                            <Button type="button" variant="light" className="create-project-add-button" onClick={addPhase}>
+                                <Icon name="plus" size={18} /> Add Phase
+                            </Button>
+                        </div>
                     </div>
 
                     {renderPhaseContent()}
                 </Card>
 
-                <Card as="section" className="project-management-card">
+                <Card as="section" className="project-management-card create-project-card">
                     <div className="create-project-section-header">
-                        <div>
-                            <Card.Title as="h2" className="project-management-card-title">Project Members</Card.Title>
-                            <p className="create-project-section-note">
-                                The signed-in user will be added automatically with the
-                                Project Full Access permission after the project is created.
-                                Use Add Members to choose additional users.
-                            </p>
+                        <div className="create-project-section-heading">
+                            <span className="create-project-section-icon" aria-hidden="true">
+                                <Icon name="users" size={20} color="#3659d9" />
+                            </span>
+                            <div>
+                                <Card.Title as="h2" className="project-management-card-title">Project Members</Card.Title>
+                                <p className="create-project-section-note">Invite teammates now or manage the team after creation.</p>
+                            </div>
                         </div>
                         <div className="create-project-member-header-actions">
                             <span className="create-project-selected-count">
-                                {project.members.length} additional members
+                                {project.members.length} {project.members.length === 1 ? "member" : "members"}
                             </span>
                             <Button
                                 type="button"
@@ -726,7 +751,8 @@ function CreateProject() {
                     </Button>
                 </Modal.Footer>
             </Modal>
-        </PagePanel>
+            </PagePanel>
+        </div>
     );
 }
 
@@ -740,56 +766,21 @@ function getTodayDate() {
     return year + "-" + month + "-" + day;
 }
 
-// Hiển thị ngày theo dd/mm/yyyy nhưng vẫn dùng input date để mở lịch và lưu YYYY-MM-DD.
-function ProjectDateInput({
-    value = "",
-    className = "",
-    disabled = false,
-    readOnly = false,
-    ...inputProperties
-}) {
-    function openDatePicker(event) {
-        if (!readOnly && typeof event.currentTarget.showPicker === "function") {
-            event.currentTarget.showPicker();
-        }
+// Kiểm tra toàn bộ ràng buộc ngày sau khi người dùng nhập xong hoặc khi submit.
+function getProjectTimelineError(projectStartDate, projectEndDate, phases) {
+    if (projectEndDate && projectEndDate < getTodayDate()) {
+        return "Project end date must not be before today.";
     }
 
-    return (
-        <div className="project-date-input">
-            <input
-                type="text"
-                value={formatDateForInput(value)}
-                placeholder="dd/mm/yyyy"
-                className={`form-control project-date-input__display ${className}`}
-                readOnly
-                disabled={disabled}
-                tabIndex={-1}
-                aria-hidden="true"
-            />
-            <input
-                {...inputProperties}
-                type="date"
-                value={value}
-                disabled={disabled}
-                readOnly={readOnly}
-                className="project-date-input__native"
-                onClick={openDatePicker}
-            />
-            <span className="project-date-input__icon" aria-hidden="true">
-                <Icon name="calendar" size={18} color="#5f6f89" />
-            </span>
-        </div>
-    );
-}
-
-function formatDateForInput(value) {
-    const matchedDate = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
-
-    if (!matchedDate) {
-        return "";
+    if (
+        projectStartDate
+        && projectEndDate
+        && projectStartDate > projectEndDate
+    ) {
+        return "Project start date must not be after its end date.";
     }
 
-    return matchedDate[3] + "/" + matchedDate[2] + "/" + matchedDate[1];
+    return getPhaseDateError(phases, projectStartDate, projectEndDate);
 }
 
 export default CreateProject;
