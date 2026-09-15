@@ -1,15 +1,16 @@
+
 package com.fpt.backend.service.impl.signature;
 
 import com.fpt.backend.entity.Contracts;
 import com.fpt.backend.entity.ElectronicSignatures;
 import com.fpt.backend.entity.Signature;
+import com.fpt.backend.entity.UserKeys;
 import com.fpt.backend.enums.SignatureAlgorithm;
 import com.fpt.backend.enums.SignatureHash;
 import com.fpt.backend.enums.SignatureStatus;
 import com.fpt.backend.enums.SignatureType;
 import com.fpt.backend.repository.signature.SignatureRepository;
 import com.fpt.backend.repository.signature.UserKeysRepository;
-import com.fpt.backend.repository.user.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,17 +23,20 @@ import java.util.UUID;
 public class ContractSigningService {
 
     private final DigitalSignatureService digitalSignatureService;
+
+    private final DigitalSignatureVerificationService verificationService;
+
     private final SignatureRepository signatureRepository;
+
     private final UserKeysRepository userKeysRepository;
-    private final UserRepository userRepository;
-    private final UserKeyServiceImpl userKeyService;
 
     @Transactional
     public Signature signContract(
             Contracts contract,
             byte[] document,
             UUID userId,
-            ElectronicSignatures electronicSignature
+            ElectronicSignatures electronicSignature,
+            String signatureValue
     ) throws Exception {
 
         // =========================================
@@ -56,14 +60,32 @@ public class ContractSigningService {
         }
 
         // =========================================
-        // 3. Digital Signature
+        // 3. Validate signature value
         // =========================================
 
-        // Existing users receive their key on first authorized signing action.
-        if (!userKeysRepository.existsByUserId(userId)) {
-            userKeyService.generateUserKey(userRepository.findById(userId)
-                    .orElseThrow(() -> new IllegalArgumentException("Signer not found")));
+        if (signatureValue == null
+                || signatureValue.isBlank()) {
+
+            throw new IllegalArgumentException(
+                    "Digital signature is required"
+            );
         }
+
+        // =========================================
+        // 4. Get User RSA Key
+        // =========================================
+
+        UserKeys userKeys = userKeysRepository
+                .findByUserId(userId)
+                .orElseThrow(() ->
+                        new IllegalArgumentException(
+                                "User RSA key not found"
+                        )
+                );
+
+        // =========================================
+        // 5. Calculate document hash
+        // =========================================
 
         DigitalSignatureService.SignatureResult result =
                 digitalSignatureService.sign(
@@ -72,72 +94,139 @@ public class ContractSigningService {
                 );
 
         // =========================================
-        // 4. Create Signature entity
+        // 6. Verify digital signature
+        //
+        // Frontend created signature using
+        // user's private key.
+        //
+        // Backend verifies using public key.
+        // =========================================
+
+        boolean valid =
+                verificationService.verify(
+                        document,
+                        signatureValue,
+                        userId
+                );
+
+        if (!valid) {
+            throw new IllegalArgumentException(
+                    "Invalid digital signature"
+            );
+        }
+
+        // =========================================
+        // 7. Create Signature entity
         // =========================================
 
         Signature signature =
                 Signature.builder()
 
-                        // Tên chữ ký
+                        // ---------------------------------
+                        // Signature information
+                        // ---------------------------------
+
                         .signatureName(
                                 "Digital Signature"
                         )
 
-                        // Loại chữ ký
                         .signatureType(
                                 SignatureType.INTERNAL_RSA
                         )
 
-                        // SHA-256(PDF)
+                        // ---------------------------------
+                        // Document hash
+                        // ---------------------------------
+
                         .documentHash(
                                 result.documentHash()
                         )
 
-                        // RSA(privateKey, SHA-256(PDF))
-                        .signatureValue(result.signatureValue())
+                        // ---------------------------------
+                        // Actual RSA signature
+                        // ---------------------------------
 
+                        .signatureValue(
+                                signatureValue
+                        )
+
+                        // ---------------------------------
                         // RSA
+                        // ---------------------------------
+
                         .signatureAlgorithm(
                                 SignatureAlgorithm.RSA
                         )
 
-                        // Hash algorithm
+                        // ---------------------------------
+                        // SHA-256
+                        // ---------------------------------
+
                         .signatureHash(
                                 SignatureHash.SHA256
                         )
 
-                        // Chưa dùng CA
+                        // ---------------------------------
+                        // No CA certificate
+                        // ---------------------------------
+
                         .certificateSerial(null)
 
+                        // ---------------------------------
                         // Signature status
+                        // ---------------------------------
+
                         .status(
                                 SignatureStatus.SIGNED
                         )
 
-                        // Time
+                        // ---------------------------------
+                        // Signature creation time
+                        // ---------------------------------
+
                         .signatureCreateAt(
                                 LocalDateTime.now()
                         )
 
-                        // User's RSA key
+                        // ---------------------------------
+                        // User RSA Key
+                        // ---------------------------------
+
                         .userKey(
-                                result.userKey()
+                                userKeys
                         )
 
+                        // ---------------------------------
                         // Contract
-                        .contract(contract)
+                        // ---------------------------------
 
-                        // The visual electronic signature selected by the signer.
-                        .electronicSignatures(electronicSignature)
-                        // Bind the digital signature to the immutable contract PDF.
-                        .fileStorage(contract.getDocumentFile())
+                        .contract(
+                                contract
+                        )
+
+                        // ---------------------------------
+                        // Visual electronic signature
+                        // ---------------------------------
+
+                        .electronicSignatures(
+                                electronicSignature
+                        )
+
+                        // ---------------------------------
+                        // Contract PDF
+                        // ---------------------------------
+
+                        .fileStorage(
+                                contract.getDocumentFile()
+                        )
 
                         .build();
 
         // =========================================
-        // 5. Save
+        // 8. Save signature
         // =========================================
 
         return signatureRepository.save(signature);
     }
 }
+

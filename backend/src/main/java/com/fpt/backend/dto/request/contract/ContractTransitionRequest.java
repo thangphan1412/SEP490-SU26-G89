@@ -7,6 +7,7 @@ public record ContractTransitionRequest(
         String actorName,
         String actorRole,
         String comment,
+        String signatureValue,
         UUID electronicSignatureId
 ) {
 }

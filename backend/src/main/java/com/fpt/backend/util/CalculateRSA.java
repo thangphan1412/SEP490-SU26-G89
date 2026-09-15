@@ -27,12 +27,21 @@ public class CalculateRSA {
             throw new IllegalStateException("Invalid RSA public exponent");
         }
         BigInteger d = e.modInverse(phi);
-        return new RSAKeyPair(n, e, d);
+        BigInteger dP = d.mod(p.subtract(BigInteger.ONE));
+        BigInteger dQ = d.mod(q.subtract(BigInteger.ONE));
+        BigInteger qInv = q.modInverse(p);
+        return new RSAKeyPair( n, e, d, p, q, dP, dQ, qInv);
     }
+
     public record RSAKeyPair(
             BigInteger modulus,
             BigInteger publicExponent,
-            BigInteger privateExponent
+            BigInteger privateExponent,
+            BigInteger prime1,
+            BigInteger prime2,
+            BigInteger exponent1,
+            BigInteger exponent2,
+            BigInteger coefficient
     ) {
     }
 }

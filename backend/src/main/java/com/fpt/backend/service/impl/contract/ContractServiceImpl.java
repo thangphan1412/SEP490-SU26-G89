@@ -430,7 +430,11 @@ public class ContractServiceImpl implements ContractService {
         byte[] pdf = loadAndValidateCanonicalDocument(contract, actor);
         try {
             return contractSigningService.signContract(
-                    contract, pdf, actor.getId(), selected
+                    contract,
+                    pdf,
+                    actor.getId(),
+                    selected,
+                    request.signatureValue()
             );
         } catch (Exception exception) {
             throw new BadHttpException("Unable to sign the generated contract PDF");

@@ -16,6 +16,8 @@ import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.LocalDateTime;
+import java.util.Base64;
+
 @Service
 @RequiredArgsConstructor
 public class UserKeyServiceImpl
@@ -37,50 +39,40 @@ public class UserKeyServiceImpl
             );
         }
 
-//        if (userKeysRepository.existsByUserId(
-//                user.getId()
-//        )) {
-//
-//            throw new IllegalStateException(
-//                    "User already has RSA key"
-//            );
-//        }
 
         CalculateRSA.RSAKeyPair keyPair = calculateRSA.generateKeyPair();
-        String publicKey = RSAKeyConverter.encode(
+        String publicKey = encodePublicKey(
                         keyPair.modulus(),
                         keyPair.publicExponent());
 
        String publicKeyCodeStr= changToPingPrivateKey(publicKey);
         System.out.println("Public Key Code: " + publicKeyCodeStr);
-        String privateKey = RSAKeyConverter.encode(
-                        keyPair.modulus(),
-                        keyPair.privateExponent()
-                );
+        String privateKey;
+        try {
 
+            privateKey = RSAKeyConverter.encodePKCS8(
+                    keyPair.modulus(),
+                    keyPair.publicExponent(),
+                    keyPair.privateExponent(),
+                    keyPair.prime1(),
+                    keyPair.prime2(),
+                    keyPair.exponent1(),
+                    keyPair.exponent2(),
+                    keyPair.coefficient()
+            );
+
+        } catch (Exception e) {
+
+            throw new IllegalStateException(
+                    "Unable to encode RSA private key to PKCS#8",
+                    e
+            );
+        }
         String privateKeyCodeStr = changToPingPrivateKey(privateKey);
 //        byte[] privateKeyBytes = privateKeyProtectionService.encrypt(privateKey, privateKeyCodeStr).getBytes();
         System.out.println("Private Key Code: " + privateKeyCodeStr);
-//        UserKeys userKeys = UserKeys.builder()
-//                        .user(user)
-//                        .keyAlgorithm(KeyAlgorithm.RSA)
-//                        .keySize(2048)
-//                        .publicKey(publicKey)
-//                        .keyCode(publicKeyCodeStr)
-////                        .privateKey(privateKeyProtectionService.encrypt(privateKey))
-//
-//                        .createAt(LocalDateTime.now())
-//                        .build();
-//
-//        UserKeys savedUserKeys = userKeysRepository.save(userKeys);
+
         return new UserKeyInfoResponse(
-//                true,
-//                savedUserKeys.getPublicKey(),
-//                savedUserKeys.getKeyAlgorithm().name(),
-//                savedUserKeys.getKeyCode(),
-//                savedUserKeys.getKeySize(),
-//                savedUserKeys.getCreateAt(),
-//                privateKey
                 true,
                 publicKey,
                 KeyAlgorithm.RSA.name(),
@@ -133,5 +125,41 @@ public class UserKeyServiceImpl
                 .build();
 
         userKeysRepository.save(userKeys);
+    }
+    public String encodePublicKey(
+            BigInteger modulus,
+            BigInteger publicExponent
+    ) {
+
+        try {
+
+            org.bouncycastle.asn1.pkcs.RSAPublicKey rsaPublicKey =
+                    new org.bouncycastle.asn1.pkcs.RSAPublicKey(
+                            modulus,
+                            publicExponent
+                    );
+
+            org.bouncycastle.asn1.x509.AlgorithmIdentifier algorithmIdentifier =
+                    new org.bouncycastle.asn1.x509.AlgorithmIdentifier(
+                            org.bouncycastle.asn1.pkcs.PKCSObjectIdentifiers.rsaEncryption,
+                            org.bouncycastle.asn1.DERNull.INSTANCE
+                    );
+
+            org.bouncycastle.asn1.x509.SubjectPublicKeyInfo publicKeyInfo =
+                    new org.bouncycastle.asn1.x509.SubjectPublicKeyInfo(
+                            algorithmIdentifier,
+                            rsaPublicKey
+                    );
+
+            return Base64.getEncoder()
+                    .encodeToString(publicKeyInfo.getEncoded());
+
+        } catch (Exception e) {
+
+            throw new IllegalStateException(
+                    "Unable to encode RSA public key",
+                    e
+            );
+        }
     }
 }

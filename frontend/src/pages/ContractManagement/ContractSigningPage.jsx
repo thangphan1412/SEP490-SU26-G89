@@ -12,42 +12,47 @@ import { useNavigate, useParams } from "react-router-dom";
 
 import contractApi from "../../services/contractService/contractApi.js";
 import electronicSignatureService from "../../services/signatureService/electronicSignatureService.js";
-import digitalSignatureService from "../../services/signatureService/digitalSignatureService.js";
 import { getApiErrorMessage, unwrapApiResponse } from "./contractUtils.js";
 
 import "../../assets/styles/css/layoutStyles/ContractSigning.css";
 
 export default function ContractSigningPage() {
+
     const { id } = useParams();
     const navigate = useNavigate();
+
+    // =========================================================
+    // CONTRACT
+    // =========================================================
+
     const [contract, setContract] = useState(null);
-    // =========================
+
+    // =========================================================
     // ELECTRONIC SIGNATURE
-    // =========================
+    // =========================================================
+
     const [signatures, setSignatures] = useState([]);
     const [selectedId, setSelectedId] = useState("");
-    // =========================
+
+    // =========================================================
     // PDF
-    // =========================
+    // =========================================================
+
     const [pdfUrl, setPdfUrl] = useState("");
     const [pdfBlob, setPdfBlob] = useState(null);
 
-    // =========================
-    // KEY INFORMATION
-    // =========================
-    const [keyInfo, setKeyInfo] = useState(null);
+    // =========================================================
+    // SIGNING KEY
+    // =========================================================
 
-    // =========================
-    // SIGNING INPUT
-    // =========================
     const [publicKeyCode, setPublicKeyCode] = useState("");
     const [pin, setPin] = useState("");
-
     const [privateKey, setPrivateKey] = useState("");
 
-    // =========================
-    // UI STATE
-    // =========================
+    // =========================================================
+    // UI
+    // =========================================================
+
     const [showPin, setShowPin] = useState(false);
     const [showPrivateKey, setShowPrivateKey] = useState(false);
 
@@ -59,10 +64,11 @@ export default function ContractSigningPage() {
     const [success, setSuccess] = useState("");
 
     // =========================================================
-    // LOAD DATA
+    // LOAD CONTRACT / SIGNATURES / PDF
     // =========================================================
 
     useEffect(() => {
+
         let active = true;
         let objectUrl = "";
 
@@ -70,26 +76,33 @@ export default function ContractSigningPage() {
             contractApi.getContractById(id),
             electronicSignatureService.getAllElectronicSignature(),
             contractApi.exportContractPdf(id),
-            digitalSignatureService.getMyPublicKey(),
         ])
             .then(async ([
-                             contractResult,
-                             signatureResult,
-                             pdfResult,
-                             keyResult,
-                         ]) => {
-                if (!active) return;
+                contractResult,
+                signatureResult,
+                pdfResult,
+            ]) => {
+
+                if (!active) {
+                    return;
+                }
 
                 const errors = [];
 
-                // =========================
+                // =====================================================
                 // CONTRACT
-                // =========================
+                // =====================================================
+
                 if (contractResult.status === "fulfilled") {
+
                     setContract(
-                        unwrapApiResponse(contractResult.value)
+                        unwrapApiResponse(
+                            contractResult.value
+                        )
                     );
+
                 } else {
+
                     errors.push(
                         await readApiError(
                             contractResult.reason,
@@ -98,16 +111,20 @@ export default function ContractSigningPage() {
                     );
                 }
 
-                // =========================
+                // =====================================================
                 // ELECTRONIC SIGNATURES
-                // =========================
+                // =====================================================
+
                 if (signatureResult.status === "fulfilled") {
+
                     const rows =
                         signatureResult.value?.data?.data || [];
 
-                    const activeRows = rows.filter(
-                        (item) => item.status === "ACTIVE"
-                    );
+                    const activeRows =
+                        rows.filter(
+                            (item) =>
+                                item.status === "ACTIVE"
+                        );
 
                     setSignatures(activeRows);
 
@@ -120,7 +137,9 @@ export default function ContractSigningPage() {
                         activeRows[0]?.id ||
                         ""
                     );
+
                 } else {
+
                     errors.push(
                         await readApiError(
                             signatureResult.reason,
@@ -129,11 +148,14 @@ export default function ContractSigningPage() {
                     );
                 }
 
-                // =========================
+                // =====================================================
                 // PDF
-                // =========================
+                // =====================================================
+
                 if (pdfResult.status === "fulfilled") {
-                    const pdfData = pdfResult.value.data;
+
+                    const pdfData =
+                        pdfResult.value.data;
 
                     const blob =
                         pdfData instanceof Blob
@@ -151,7 +173,9 @@ export default function ContractSigningPage() {
                         URL.createObjectURL(blob);
 
                     setPdfUrl(objectUrl);
+
                 } else {
+
                     errors.push(
                         await readApiError(
                             pdfResult.reason,
@@ -160,67 +184,63 @@ export default function ContractSigningPage() {
                     );
                 }
 
-                // =========================
-                // KEY INFORMATION
-                // =========================
-                if (keyResult.status === "fulfilled") {
-                    setKeyInfo(
-                        unwrapApiResponse(
-                            keyResult.value
-                        )
-                    );
-                } else {
-                    errors.push(
-                        await readApiError(
-                            keyResult.reason,
-                            "Unable to load the digital signing key."
-                        )
-                    );
-                }
+                // =====================================================
+                // ERRORS
+                // =====================================================
 
                 if (
                     active &&
                     errors.length > 0
                 ) {
+
                     setError(
                         [...new Set(errors)].join(" ")
                     );
                 }
+
             })
             .finally(() => {
+
                 if (active) {
                     setLoading(false);
                 }
+
             });
 
         return () => {
+
             active = false;
 
             if (objectUrl) {
                 URL.revokeObjectURL(objectUrl);
             }
+
         };
+
     }, [id]);
 
     // =========================================================
-    // SELECTED ELECTRONIC SIGNATURE
+    // SELECTED SIGNATURE
     // =========================================================
 
     const selectedSignature = useMemo(
         () =>
             signatures.find(
-                (item) => item.id === selectedId
+                (item) =>
+                    item.id === selectedId
             ),
         [signatures, selectedId]
     );
 
     // =========================================================
-    // INPUT: PUBLIC KEY CODE
+    // PUBLIC KEY CODE INPUT
     // =========================================================
 
     function handlePublicKeyCodeChange(event) {
+
         const value =
-            event.target.value.replace(/\D/g, "");
+            event.target.value
+                .replace(/\D/g, "");
 
         if (value.length <= 6) {
             setPublicKeyCode(value);
@@ -231,12 +251,14 @@ export default function ContractSigningPage() {
     }
 
     // =========================================================
-    // INPUT: PIN
+    // PIN INPUT
     // =========================================================
 
     function handlePinChange(event) {
+
         const value =
-            event.target.value.replace(/\D/g, "");
+            event.target.value
+                .replace(/\D/g, "");
 
         if (value.length <= 6) {
             setPin(value);
@@ -247,28 +269,43 @@ export default function ContractSigningPage() {
     }
 
     // =========================================================
-    // BASE64
+    // BASE64 -> ARRAY BUFFER
     // =========================================================
 
-    function base64ToArrayBuffer(base64) {
-        const binaryString =
-            window.atob(base64);
+    // =========================================================
+    // ARRAY BUFFER -> BASE64
+    // =========================================================
+
+    function bufferToBase64(buffer) {
 
         const bytes =
-            new Uint8Array(
-                binaryString.length
-            );
+            new Uint8Array(buffer);
+
+        let binary = "";
+
+        const chunkSize = 0x8000;
 
         for (
             let i = 0;
-            i < binaryString.length;
-            i++
+            i < bytes.length;
+            i += chunkSize
         ) {
-            bytes[i] =
-                binaryString.charCodeAt(i);
+
+            const chunk =
+                bytes.subarray(
+                    i,
+                    Math.min(
+                        i + chunkSize,
+                        bytes.length
+                    )
+                );
+
+            binary += String.fromCharCode(
+                ...chunk
+            );
         }
 
-        return bytes.buffer;
+        return window.btoa(binary);
     }
 
     // =========================================================
@@ -279,8 +316,13 @@ export default function ContractSigningPage() {
         encryptedData,
         pinValue
     ) {
+
         const encoder =
             new TextEncoder();
+
+        // =====================================================
+        // SALT
+        // =====================================================
 
         const salt =
             new Uint8Array(
@@ -289,6 +331,10 @@ export default function ContractSigningPage() {
                 )
             );
 
+        // =====================================================
+        // IV
+        // =====================================================
+
         const iv =
             new Uint8Array(
                 base64ToArrayBuffer(
@@ -296,12 +342,19 @@ export default function ContractSigningPage() {
                 )
             );
 
+        // =====================================================
+        // ENCRYPTED PRIVATE KEY
+        // =====================================================
+
         const encrypted =
             base64ToArrayBuffer(
                 encryptedData.encryptedPrivateKey
             );
 
-        // PIN
+        // =====================================================
+        // IMPORT PIN
+        // =====================================================
+
         const keyMaterial =
             await crypto.subtle.importKey(
                 "raw",
@@ -311,14 +364,17 @@ export default function ContractSigningPage() {
                 ["deriveKey"]
             );
 
-        // PBKDF2 -> AES-GCM key
+        // =====================================================
+        // DERIVE AES KEY
+        // =====================================================
+
         const encryptionKey =
             await crypto.subtle.deriveKey(
                 {
                     name: "PBKDF2",
                     salt,
                     iterations:
-                    encryptedData.iterations,
+                        encryptedData.iterations,
                     hash: "SHA-256",
                 },
                 keyMaterial,
@@ -330,7 +386,10 @@ export default function ContractSigningPage() {
                 ["decrypt"]
             );
 
-        // AES-GCM decrypt
+        // =====================================================
+        // DECRYPT
+        // =====================================================
+
         const decrypted =
             await crypto.subtle.decrypt(
                 {
@@ -351,25 +410,43 @@ export default function ContractSigningPage() {
     // =========================================================
 
     async function handleUnlockPrivateKey() {
+
         setError("");
         setSuccess("");
 
-        if (!/^\d{6}$/.test(pin)) {
-            setError(
-                "PIN must contain exactly 6 digits."
-            );
-            return;
-        }
+        // =====================================================
+        // VALIDATE KEY CODE
+        // =====================================================
 
         if (!/^\d{6}$/.test(publicKeyCode)) {
+
             setError(
                 "Public Key Code must contain exactly 6 digits."
             );
+
+            return;
+        }
+
+        // =====================================================
+        // VALIDATE PIN
+        // =====================================================
+
+        if (!/^\d{6}$/.test(pin)) {
+
+            setError(
+                "PIN must contain exactly 6 digits."
+            );
+
             return;
         }
 
         try {
+
             setUnlockingKey(true);
+
+            // =================================================
+            // FIND LOCAL STORAGE
+            // =================================================
 
             const storageKey =
                 `encryptedPrivateKey_${publicKeyCode}`;
@@ -380,54 +457,76 @@ export default function ContractSigningPage() {
                 );
 
             if (!encryptedRaw) {
+
+                setPrivateKey("");
+                setShowPrivateKey(false);
+
                 setError(
                     `Encrypted private key for key code ${publicKeyCode} was not found on this browser.`
                 );
 
-                setPrivateKey("");
-                setShowPrivateKey(false);
-
                 return;
             }
+
+            // =================================================
+            // PARSE
+            // =================================================
 
             let encryptedData;
 
             try {
+
                 encryptedData =
-                    JSON.parse(encryptedRaw);
+                    JSON.parse(
+                        encryptedRaw
+                    );
+
             } catch {
-                setError(
-                    "The encrypted private key data is corrupted."
-                );
 
                 setPrivateKey("");
                 setShowPrivateKey(false);
 
+                setError(
+                    "The encrypted private key data is corrupted."
+                );
+
                 return;
             }
+
+            // =================================================
+            // DECRYPT
+            // =================================================
 
             const decryptedPrivateKey =
                 await decryptPrivateKey(
                     encryptedData,
                     pin
                 );
-
+            console.log("DECRYPTED PRIVATE KEY:", decryptedPrivateKey);
+            console.log("PRIVATE KEY LENGTH:", decryptedPrivateKey?.length);
             if (!decryptedPrivateKey) {
+
                 throw new Error(
                     "Private key is empty."
                 );
             }
 
+            // =================================================
+            // STORE ONLY IN MEMORY
+            // =================================================
+
             setPrivateKey(
                 decryptedPrivateKey
             );
 
-            setShowPrivateKey(true);
+            setShowPrivateKey(false);
 
             setSuccess(
                 "Private key unlocked successfully."
             );
+
         } catch (unlockError) {
+
             console.error(
                 "UNLOCK PRIVATE KEY ERROR:",
                 unlockError
@@ -439,7 +538,9 @@ export default function ContractSigningPage() {
             setError(
                 "Invalid PIN or corrupted encrypted private key."
             );
+
         } finally {
+
             setUnlockingKey(false);
         }
     }
@@ -451,6 +552,7 @@ export default function ContractSigningPage() {
     async function calculateSha256(
         arrayBuffer
     ) {
+
         const hashBuffer =
             await crypto.subtle.digest(
                 "SHA-256",
@@ -463,113 +565,106 @@ export default function ContractSigningPage() {
     }
 
     // =========================================================
-    // ARRAY BUFFER -> BASE64
-    // =========================================================
-
-    function bufferToBase64(buffer) {
-        const bytes =
-            new Uint8Array(buffer);
-
-        let binary = "";
-
-        const chunkSize = 0x8000;
-
-        for (
-            let i = 0;
-            i < bytes.length;
-            i += chunkSize
-        ) {
-            const chunk =
-                bytes.subarray(
-                    i,
-                    Math.min(
-                        i + chunkSize,
-                        bytes.length
-                    )
-                );
-
-            binary += String.fromCharCode(
-                ...chunk
-            );
-        }
-
-        return window.btoa(binary);
-    }
-
-    // =========================================================
     // IMPORT RSA PRIVATE KEY
     // =========================================================
 
-    async function importPrivateKey(
-        privateKeyText
-    ) {
-        let jwk;
+    const base64ToArrayBuffer = (base64) => {
+        const binaryString = window.atob(base64);
+        const bytes = new Uint8Array(binaryString.length);
 
+        for (let i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+        }
+
+        return bytes.buffer;
+    };
+
+    const importPrivateKey = async (privateKeyText) => {
         try {
-            jwk =
-                JSON.parse(
-                    privateKeyText
-                );
-        } catch {
+            if (!privateKeyText || !privateKeyText.trim()) {
+                throw new Error("Private key is empty.");
+            }
+
+            const base64Key = privateKeyText.trim();
+
+            console.log("========== IMPORT PRIVATE KEY ==========");
+            console.log("Private key length:", base64Key.length);
+            console.log(
+                "Private key preview:",
+                base64Key.substring(0, 30)
+            );
+
+            const keyBuffer = base64ToArrayBuffer(base64Key);
+
+            console.log(
+                "Private key byte length:",
+                keyBuffer.byteLength
+            );
+
+            const keyBytes = new Uint8Array(keyBuffer);
+
+            console.log(
+                "First 10 bytes:",
+                Array.from(keyBytes.slice(0, 10))
+            );
+
+            console.log(
+                "First 10 bytes HEX:",
+                Array.from(keyBytes.slice(0, 10))
+                    .map(b => b.toString(16).padStart(2, "0"))
+                    .join(" ")
+            );
+
+            const cryptoKey = await window.crypto.subtle.importKey(
+                "pkcs8",
+                keyBuffer,
+                {
+                    name: "RSASSA-PKCS1-v1_5",
+                    hash: "SHA-256"
+                },
+                false,
+                ["sign"]
+            );
+
+            console.log("PRIVATE KEY IMPORT SUCCESS");
+
+            return cryptoKey;
+
+        } catch (error) {
+            console.error("IMPORT PRIVATE KEY ERROR:", error);
+
             throw new Error(
-                "Private key format is invalid. The decrypted private key must be a JWK JSON."
+                "Invalid RSA private key. The private key must be a valid PKCS#8 RSA key."
             );
         }
-
-        if (
-            !jwk ||
-            jwk.kty !== "RSA" ||
-            !jwk.d ||
-            !jwk.n ||
-            !jwk.e
-        ) {
-            throw new Error(
-                "Invalid RSA private key."
-            );
-        }
-
-        return crypto.subtle.importKey(
-            "jwk",
-            jwk,
-            {
-                name:
-                    "RSASSA-PKCS1-v1_5",
-                hash: "SHA-256",
-            },
-            false,
-            ["sign"]
-        );
-    }
+    };
 
     // =========================================================
-    // SIGN PDF
+    // SIGN PDF WITH PRIVATE KEY
     // =========================================================
 
     async function signPdf(
         privateKeyText,
         pdfArrayBuffer
     ) {
+
         const cryptoKey =
             await importPrivateKey(
                 privateKeyText
             );
 
         /*
-         * IMPORTANT:
+         * IMPORTANT
          *
-         * Do NOT hash the PDF first and then
-         * pass the hash into crypto.subtle.sign().
+         * We sign the RAW PDF bytes.
          *
-         * Web Crypto with SHA-256 already performs
-         * SHA-256 internally for RSASSA-PKCS1-v1_5.
+         * Web Crypto will perform SHA-256
+         * internally because the algorithm
+         * is configured with:
          *
-         * Therefore:
+         * RSASSA-PKCS1-v1_5 + SHA-256
          *
-         * sign(raw PDF bytes)
-         *
-         * and separately:
-         *
-         * SHA-256(raw PDF bytes)
+         * Do NOT pass documentHash here.
          */
 
         const signatureBuffer =
@@ -592,6 +687,7 @@ export default function ContractSigningPage() {
     // =========================================================
 
     async function handleSign() {
+
         if (signing) {
             return;
         }
@@ -599,67 +695,94 @@ export default function ContractSigningPage() {
         setError("");
         setSuccess("");
 
-        // =========================
-        // VALIDATION
-        // =========================
+        // =====================================================
+        // VALIDATE SIGNATURE
+        // =====================================================
 
         if (!selectedId) {
+
             setError(
                 "Please select an electronic signature."
             );
+
             return;
         }
 
+        // =====================================================
+        // VALIDATE PDF
+        // =====================================================
+
         if (!pdfBlob) {
+
             setError(
                 "Contract PDF is not available."
             );
+
             return;
         }
 
+        // =====================================================
+        // VALIDATE KEY CODE
+        // =====================================================
+
         if (!/^\d{6}$/.test(publicKeyCode)) {
+
             setError(
                 "Public Key Code must contain exactly 6 digits."
             );
+
             return;
         }
 
+        // =====================================================
+        // VALIDATE PIN
+        // =====================================================
+
         if (!/^\d{6}$/.test(pin)) {
+
             setError(
                 "PIN must contain exactly 6 digits."
             );
+
             return;
         }
 
+        // =====================================================
+        // VALIDATE PRIVATE KEY
+        // =====================================================
+
         if (!privateKey) {
+
             setError(
                 "Please unlock your private key first."
             );
+
             return;
         }
 
         try {
+
             setSigning(true);
 
-            // =========================
+            // =================================================
             // PDF -> ARRAY BUFFER
-            // =========================
+            // =================================================
 
             const pdfArrayBuffer =
                 await pdfBlob.arrayBuffer();
 
-            // =========================
-            // SHA-256 DOCUMENT HASH
-            // =========================
+            // =================================================
+            // CALCULATE DOCUMENT HASH
+            // =================================================
 
             const documentHash =
                 await calculateSha256(
                     pdfArrayBuffer
                 );
 
-            // =========================
-            // RSA SIGN
-            // =========================
+            // =================================================
+            // CREATE DIGITAL SIGNATURE
+            // =================================================
 
             const signatureValue =
                 await signPdf(
@@ -667,22 +790,23 @@ export default function ContractSigningPage() {
                     pdfArrayBuffer
                 );
 
-            // =========================
+            // =================================================
             // REQUEST
-            // =========================
+            // =================================================
 
             const signRequest = {
+
                 electronicSignatureId:
-                selectedId,
+                    selectedId,
 
                 keyCode:
-                publicKeyCode,
+                    publicKeyCode,
 
                 documentHash:
-                documentHash,
+                    documentHash,
 
                 signatureValue:
-                signatureValue,
+                    signatureValue,
 
                 signatureAlgorithm:
                     "RSA",
@@ -691,27 +815,29 @@ export default function ContractSigningPage() {
                     "SHA-256",
             };
 
+            // =================================================
+            // DEBUG
+            // =================================================
+            // IMPORTANT:
+            // Never log privateKey or PIN.
+
             console.log(
                 "SIGN REQUEST:",
-                {
-                    ...signRequest,
-                    // NEVER log privateKey
-                    // NEVER log PIN
-                }
+                signRequest
             );
 
-            // =========================
+            // =================================================
             // SEND TO BACKEND
-            // =========================
+            // =================================================
 
             await contractApi.signContract(
                 id,
                 signRequest
             );
 
-            // =========================
-            // CLEAR PRIVATE KEY
-            // =========================
+            // =================================================
+            // CLEAR PRIVATE KEY FROM MEMORY
+            // =================================================
 
             setPrivateKey("");
             setPin("");
@@ -721,9 +847,9 @@ export default function ContractSigningPage() {
                 "Contract signed successfully."
             );
 
-            // =========================
+            // =================================================
             // NAVIGATE
-            // =========================
+            // =================================================
 
             navigate(
                 `/contract-management/list?viewContractId=${id}`,
@@ -731,7 +857,9 @@ export default function ContractSigningPage() {
                     replace: true,
                 }
             );
+
         } catch (signError) {
+
             console.error(
                 "SIGN CONTRACT ERROR:",
                 signError
@@ -743,7 +871,9 @@ export default function ContractSigningPage() {
                     "The contract could not be signed."
                 )
             );
+
         } finally {
+
             setSigning(false);
         }
     }
@@ -755,9 +885,9 @@ export default function ContractSigningPage() {
     return (
         <main className="contract-signing-page">
 
-            {/* =========================================
+            {/* =================================================
                 HEADER
-            ========================================== */}
+            ================================================= */}
 
             <header className="contract-signing-header">
 
@@ -776,6 +906,7 @@ export default function ContractSigningPage() {
                 </Button>
 
                 <div>
+
                     <h1>
                         Review and sign contract
                     </h1>
@@ -789,6 +920,7 @@ export default function ContractSigningPage() {
                         {contract?.contractTitle ||
                             ""}
                     </p>
+
                 </div>
 
                 <Button
@@ -802,6 +934,7 @@ export default function ContractSigningPage() {
                         loading
                     }
                 >
+
                     {signing ? (
                         <Spinner
                             animation="border"
@@ -816,12 +949,14 @@ export default function ContractSigningPage() {
                     {signing
                         ? "Signing..."
                         : "Sign contract"}
+
                 </Button>
+
             </header>
 
-            {/* =========================================
+            {/* =================================================
                 ERROR
-            ========================================== */}
+            ================================================= */}
 
             {error && (
                 <Alert
@@ -835,9 +970,9 @@ export default function ContractSigningPage() {
                 </Alert>
             )}
 
-            {/* =========================================
+            {/* =================================================
                 SUCCESS
-            ========================================== */}
+            ================================================= */}
 
             {success && (
                 <Alert
@@ -851,28 +986,33 @@ export default function ContractSigningPage() {
                 </Alert>
             )}
 
-            {/* =========================================
+            {/* =================================================
                 LOADING
-            ========================================== */}
+            ================================================= */}
 
             {loading ? (
+
                 <div className="contract-signing-loading">
+
                     <Spinner animation="border" />
 
                     Preparing PDF and signatures...
+
                 </div>
+
             ) : (
+
                 <div className="contract-signing-workspace">
 
-                    {/* =====================================
+                    {/* =========================================
                         LEFT PANEL
-                    ====================================== */}
+                    ========================================== */}
 
                     <aside className="contract-signature-panel">
 
-                        {/* ================================
+                        {/* =====================================
                             ELECTRONIC SIGNATURE
-                        ================================= */}
+                        ====================================== */}
 
                         <div className="contract-signing-section-title">
 
@@ -889,26 +1029,33 @@ export default function ContractSigningPage() {
                         </div>
 
                         {signatures.length === 0 ? (
+
                             <Alert variant="warning">
+
                                 You have no active
                                 signature. Create one
                                 in Signature Management
                                 first.
+
                             </Alert>
+
                         ) : (
+
                             signatures.map(
                                 (signature) => (
+
                                     <label
                                         key={
                                             signature.id
                                         }
                                         className={`contract-signature-choice ${
-                                            selectedId ===
-                                            signature.id
-                                                ? "selected"
-                                                : ""
-                                        }`}
+    selectedId ===
+    signature.id
+        ? "selected"
+        : ""
+}`}
                                     >
+
                                         <input
                                             type="radio"
                                             name="electronicSignature"
@@ -926,6 +1073,7 @@ export default function ContractSigningPage() {
                                         <div className="contract-signature-image-wrap">
 
                                             {signature.fileUrl ? (
+
                                                 <img
                                                     src={
                                                         signature.fileUrl
@@ -934,11 +1082,14 @@ export default function ContractSigningPage() {
                                                         signature.signatureName
                                                     }
                                                 />
+
                                             ) : (
+
                                                 <span>
                                                     Signature
                                                     image
                                                 </span>
+
                                             )}
 
                                         </div>
@@ -950,13 +1101,15 @@ export default function ContractSigningPage() {
                                         </strong>
 
                                         <small>
+
                                             {
                                                 signature.type
                                             }
 
                                             {(signature.default ||
-                                                    signature.isDefault) &&
+                                                signature.isDefault) &&
                                                 " · Default"}
+
                                         </small>
 
                                     </label>
@@ -965,6 +1118,7 @@ export default function ContractSigningPage() {
                         )}
 
                         {selectedSignature && (
+
                             <div className="contract-signing-confirmation">
 
                                 <IconCheck
@@ -977,11 +1131,12 @@ export default function ContractSigningPage() {
                                 }
 
                             </div>
+
                         )}
 
-                        {/* =================================
-                            DIGITAL SIGNING KEY
-                        ================================== */}
+                        {/* =====================================
+                            SIGNING KEY INFORMATION
+                        ====================================== */}
 
                         <div className="contract-signing-key-info">
 
@@ -990,157 +1145,143 @@ export default function ContractSigningPage() {
                             </strong>
 
                             <span>
-                                {keyInfo?.available
-                                    ? `${keyInfo.algorithm} · ${keyInfo.keySize} bit`
-                                    : "Signing key information unavailable"}
+                                RSA 2048-bit
                             </span>
 
-                            {keyInfo?.publicKeyFingerprint && (
-                                <small>
-                                    Fingerprint:{" "}
-                                    {
-                                        keyInfo.publicKeyFingerprint
-                                    }
-                                </small>
-                            )}
+                            <small>
+                                Your encrypted private
+                                key is stored locally
+                                on this browser.
+                            </small>
 
                             <small>
-                                Your private key is
-                                encrypted and stored
-                                locally on this browser.
-                                It is never sent to the
-                                server.
+                                The PIN and private key
+                                are never sent to the
+                                backend.
                             </small>
 
                         </div>
 
-                        {/* =================================
+                        {/* =====================================
                             PUBLIC KEY CODE
-                        ================================== */}
+                        ====================================== */}
 
-                        <div className="contract-signing-public-key">
+                        <Form.Group className="mb-3">
 
-                            <Form.Group className="mb-3">
+                            <Form.Label
+                                htmlFor="public-key-code"
+                            >
+                                Public Key Code
+                            </Form.Label>
 
-                                <Form.Label
-                                    htmlFor="public-key-code"
-                                >
-                                    Public Key Code
-                                </Form.Label>
+                            <Form.Control
+                                id="public-key-code"
+                                type="text"
+                                inputMode="numeric"
+                                maxLength={6}
+                                value={
+                                    publicKeyCode
+                                }
+                                onChange={
+                                    handlePublicKeyCodeChange
+                                }
+                                placeholder="Enter 6-digit key code"
+                            />
+
+                            <Form.Text>
+                                Enter the 6-digit code
+                                associated with your
+                                signing key.
+                            </Form.Text>
+
+                        </Form.Group>
+
+                        {/* =====================================
+                            PIN
+                        ====================================== */}
+
+                        <Form.Group className="mb-3">
+
+                            <Form.Label
+                                htmlFor="signing-pin"
+                            >
+                                PIN
+                            </Form.Label>
+
+                            <div
+                                style={{
+                                    position:
+                                        "relative",
+                                }}
+                            >
 
                                 <Form.Control
-                                    id="public-key-code"
-                                    type="text"
+                                    id="signing-pin"
+                                    type={
+                                        showPin
+                                            ? "text"
+                                            : "password"
+                                    }
                                     inputMode="numeric"
                                     maxLength={6}
-                                    value={
-                                        publicKeyCode
-                                    }
+                                    value={pin}
                                     onChange={
-                                        handlePublicKeyCodeChange
+                                        handlePinChange
                                     }
-                                    placeholder="Enter 6-digit key code"
+                                    placeholder="Enter 6-digit PIN"
+                                    style={{
+                                        paddingRight:
+                                            "45px",
+                                    }}
                                 />
 
-                                <Form.Text>
-                                    Enter the 6-digit code
-                                    associated with your
-                                    signing key.
-                                </Form.Text>
-
-                            </Form.Group>
-
-                        </div>
-
-                        {/* =================================
-                            PIN
-                        ================================== */}
-
-                        <div className="contract-signing-pin">
-
-                            <Form.Group className="mb-3">
-
-                                <Form.Label
-                                    htmlFor="signing-pin"
-                                >
-                                    PIN
-                                </Form.Label>
-
-                                <div
+                                <Button
+                                    variant="link"
+                                    type="button"
+                                    onClick={() =>
+                                        setShowPin(
+                                            !showPin
+                                        )
+                                    }
                                     style={{
                                         position:
-                                            "relative",
+                                            "absolute",
+                                        right: 0,
+                                        top: 0,
+                                        height: "100%",
                                     }}
+                                    aria-label={
+                                        showPin
+                                            ? "Hide PIN"
+                                            : "Show PIN"
+                                    }
                                 >
 
-                                    <Form.Control
-                                        id="signing-pin"
-                                        type={
-                                            showPin
-                                                ? "text"
-                                                : "password"
-                                        }
-                                        inputMode="numeric"
-                                        maxLength={6}
-                                        value={pin}
-                                        onChange={
-                                            handlePinChange
-                                        }
-                                        placeholder="Enter 6-digit PIN"
-                                        style={{
-                                            paddingRight:
-                                                "45px",
-                                        }}
-                                    />
+                                    {showPin ? (
+                                        <IconEyeOff
+                                            size={18}
+                                        />
+                                    ) : (
+                                        <IconEye
+                                            size={18}
+                                        />
+                                    )}
 
-                                    <Button
-                                        variant="link"
-                                        type="button"
-                                        onClick={() =>
-                                            setShowPin(
-                                                !showPin
-                                            )
-                                        }
-                                        style={{
-                                            position:
-                                                "absolute",
-                                            right: 0,
-                                            top: 0,
-                                            height: "100%",
-                                        }}
-                                        aria-label={
-                                            showPin
-                                                ? "Hide PIN"
-                                                : "Show PIN"
-                                        }
-                                    >
-                                        {showPin ? (
-                                            <IconEyeOff
-                                                size={18}
-                                            />
-                                        ) : (
-                                            <IconEye
-                                                size={18}
-                                            />
-                                        )}
-                                    </Button>
+                                </Button>
 
-                                </div>
+                            </div>
 
-                                <Form.Text>
-                                    Your PIN is used only
-                                    in the browser to
-                                    decrypt your private
-                                    key.
-                                </Form.Text>
+                            <Form.Text>
+                                The PIN is used locally
+                                to decrypt your private
+                                key.
+                            </Form.Text>
 
-                            </Form.Group>
+                        </Form.Group>
 
-                        </div>
-
-                        {/* =================================
-                            UNLOCK BUTTON
-                        ================================== */}
+                        {/* =====================================
+                            UNLOCK
+                        ====================================== */}
 
                         <Button
                             variant="outline-primary"
@@ -1160,14 +1301,18 @@ export default function ContractSigningPage() {
                         >
 
                             {unlockingKey ? (
+
                                 <Spinner
                                     animation="border"
                                     size="sm"
                                 />
+
                             ) : (
+
                                 <IconLock
                                     size={18}
                                 />
+
                             )}
 
                             {unlockingKey
@@ -1176,14 +1321,14 @@ export default function ContractSigningPage() {
 
                         </Button>
 
-                        {/* =================================
+                        {/* =====================================
                             PRIVATE KEY STATUS
-                        ================================== */}
+                        ====================================== */}
 
                         <div className="contract-signing-private-key">
 
                             <Form.Label>
-                                Private Key
+                                Private Key Status
                             </Form.Label>
 
                             <div
@@ -1196,19 +1341,17 @@ export default function ContractSigningPage() {
                             >
 
                                 <Form.Control
-                                    type={
-                                        showPrivateKey
-                                            ? "text"
-                                            : "password"
-                                    }
+                                    type="text"
+                                    readOnly
                                     value={
                                         privateKey
-                                            ? privateKey
+                                            ? showPrivateKey
+                                                ? privateKey
+                                                : "Private key unlocked"
                                             : ""
                                     }
-                                    readOnly
                                     placeholder={
-                                        "Private key will be unlocked locally"
+                                        "Private key is encrypted locally"
                                     }
                                 />
 
@@ -1224,6 +1367,7 @@ export default function ContractSigningPage() {
                                         !privateKey
                                     }
                                 >
+
                                     {showPrivateKey ? (
                                         <IconEyeOff
                                             size={18}
@@ -1233,24 +1377,24 @@ export default function ContractSigningPage() {
                                             size={18}
                                         />
                                     )}
+
                                 </Button>
 
                             </div>
 
                             <Form.Text>
-                                The private key is
-                                decrypted only in your
-                                browser and is never
-                                uploaded to the backend.
+                                Private key is decrypted
+                                only in browser memory
+                                and is never uploaded.
                             </Form.Text>
 
                         </div>
 
                     </aside>
 
-                    {/* =====================================
-                        PDF
-                    ====================================== */}
+                    {/* =========================================
+                        PDF PANEL
+                    ========================================== */}
 
                     <section className="contract-pdf-panel">
 
@@ -1267,14 +1411,18 @@ export default function ContractSigningPage() {
                         </div>
 
                         {pdfUrl ? (
+
                             <iframe
                                 title="Contract PDF preview"
                                 src={pdfUrl}
                             />
+
                         ) : (
+
                             <Alert variant="danger">
                                 PDF preview is unavailable.
                             </Alert>
+
                         )}
 
                     </section>
@@ -1286,21 +1434,24 @@ export default function ContractSigningPage() {
     );
 }
 
-// =========================================================
+// =============================================================
 // READ API ERROR
-// =========================================================
+// =============================================================
 
 async function readApiError(
     error,
     fallbackMessage
 ) {
+
     const responseData =
         error?.response?.data;
 
     if (
         responseData instanceof Blob
     ) {
+
         try {
+
             const body =
                 JSON.parse(
                     await responseData.text()
@@ -1310,7 +1461,9 @@ async function readApiError(
                 body?.message ||
                 fallbackMessage
             );
+
         } catch {
+
             return fallbackMessage;
         }
     }
