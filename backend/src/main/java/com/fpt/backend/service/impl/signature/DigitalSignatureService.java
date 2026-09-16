@@ -14,19 +14,36 @@ import java.util.UUID;
 public class DigitalSignatureService {
 
     private final UserKeysRepository userKeysRepository;
-
-    public SignatureResult sign(byte[] document, UUID userId) throws Exception {
+    public SignatureResult prepareSigning(
+            byte[] document,
+            UUID userId,
+            String keyCode
+    ) throws Exception {
 
         if (document == null || document.length == 0) {
             throw new IllegalArgumentException("Document is empty");
         }
 
-        MessageDigest digest = MessageDigest.getInstance("SHA-256");
-        byte[] hash = digest.digest(document);
-        String documentHash = Base64.getEncoder().encodeToString(hash);
+        if (userId == null) {
+            throw new IllegalArgumentException("User ID is required");
+        }
 
-        UserKeys userKeys = userKeysRepository.findByUserId(userId)
-                .orElseThrow(() -> new IllegalArgumentException("User RSA key not found"));
+        UserKeys userKeys = userKeysRepository
+                .findByUserIdAndKeyCode(userId, keyCode)
+                .orElseThrow(() ->
+                        new IllegalArgumentException(
+                                "User RSA key not found"
+                        )
+                );
+
+        MessageDigest digest =
+                MessageDigest.getInstance("SHA-256");
+
+        byte[] hash = digest.digest(document);
+
+        String documentHash =
+                Base64.getEncoder()
+                        .encodeToString(hash);
 
         return new SignatureResult(
                 documentHash,
@@ -35,17 +52,30 @@ public class DigitalSignatureService {
                 userKeys.getKeyAlgorithm().name()
         );
     }
+    public boolean verifyDocumentHash(
+            byte[] document,
+            String documentHash
+    ) throws Exception {
 
-    public boolean verifyDocumentHash(byte[] document, String documentHash) throws Exception {
         if (document == null || document.length == 0) {
-            throw new IllegalArgumentException("Document is empty");
+            throw new IllegalArgumentException(
+                    "Document is empty"
+            );
         }
+
         if (documentHash == null || documentHash.isBlank()) {
             return false;
         }
-        MessageDigest digest = MessageDigest.getInstance("SHA-256");
+
+        MessageDigest digest =
+                MessageDigest.getInstance("SHA-256");
+
         byte[] hash = digest.digest(document);
-        String currentDocumentHash = Base64.getEncoder().encodeToString(hash);
+
+        String currentDocumentHash =
+                Base64.getEncoder()
+                        .encodeToString(hash);
+
         return currentDocumentHash.equals(documentHash);
     }
 

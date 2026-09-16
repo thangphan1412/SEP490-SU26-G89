@@ -434,10 +434,15 @@ public class ContractServiceImpl implements ContractService {
                     pdf,
                     actor.getId(),
                     selected,
-                    request.signatureValue()
+                    request.signatureValue(),
+                    request.keyCode()
             );
         } catch (Exception exception) {
-            throw new BadHttpException("Unable to sign the generated contract PDF");
+            exception.printStackTrace();
+            throw new BadHttpException(
+                    "Unable to sign the generated contract PDF: "
+                            + exception.getMessage()
+            );
         }
     }
 

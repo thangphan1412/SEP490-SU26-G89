@@ -46,7 +46,7 @@ public class ElectronicSignatureServiceImpl implements IElectronicSignatureServi
     @Override
     public ElectronicSignatures createElectronicSignature(CreateElectronicSignatureRequest createElectronicSignatureRequest) {
         Users users = currentUser.getCurrentUser();
-        userKeyService.saveUserKey(users, createElectronicSignatureRequest.getPublicKey(), createElectronicSignatureRequest.getKeyCode());
+        userKeyService.saveUserKey(users, createElectronicSignatureRequest.getPublicKey(), createElectronicSignatureRequest.getKeyCode(), createElectronicSignatureRequest.getCertificate());
         MultipartFile img = createElectronicSignatureRequest.getCreateFileStorageRequests().getMultipartFile();
         FileStorage fileStorage = cloudinaryService.uploadAndSave(img, users);
         ElectronicSignatures electronicSignatures = ElectronicSignatures.builder()
