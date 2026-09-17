@@ -24,7 +24,8 @@ import {
 } from "./templatePositionUtils.js";
 import "../../assets/styles/css/layoutStyles/ContractWorkspace.css";
 
-const DEFAULT_TEMPLATE_CONTENT = `ĐIỀU 1. NỘI DUNG VÀ PHẠM VI HỢP ĐỒNG
+const FULL_DOCUMENT_MODE = "FULL_DOCUMENT";
+const DEFAULT_CLAUSE_CONTENT = `ĐIỀU 1. NỘI DUNG VÀ PHẠM VI HỢP ĐỒNG
 Hai bên thống nhất thực hiện {{contract_title}} thuộc dự án {{project_name}} theo nội dung, phạm vi và yêu cầu được quy định trong hợp đồng này.
 
 ĐIỀU 2. THỜI HẠN VÀ HIỆU LỰC
@@ -46,6 +47,52 @@ Mọi tranh chấp phát sinh được ưu tiên giải quyết thông qua thư�
 
 ĐIỀU 7. ĐIỀU KHOẢN CHUNG
 Các bên cam kết thực hiện đúng các nội dung đã thỏa thuận. Hợp đồng là căn cứ ràng buộc quyền và nghĩa vụ của các bên trong suốt thời gian có hiệu lực.`;
+
+function buildFullDocumentContent(clauseContent = DEFAULT_CLAUSE_CONTENT) {
+    const clauses = clauseContent?.trim() || DEFAULT_CLAUSE_CONTENT;
+
+    return `CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM
+Độc lập - Tự do - Hạnh phúc
+
+HỢP ĐỒNG
+Tên hợp đồng: {{contract_title}}
+Số hợp đồng: {{contract_number}}
+Loại hợp đồng: {{contract_type_code}} - {{contract_type_name}}
+Ngày lập: {{contract_date}}
+
+- Căn cứ các quy định pháp luật hiện hành;
+- Căn cứ nhu cầu và sự thỏa thuận của các bên.
+
+Hôm nay, ngày {{contract_date}}, các bên gồm:
+
+BÊN A
+Họ và tên: {{party_a_name}}
+Chức vụ/Vai trò: {{party_a_role}}
+Email: {{party_a_email}}
+Số điện thoại: {{party_a_phone}}
+Ngày sinh: {{party_a_date_of_birth}}
+Phòng ban: {{party_a_department}}
+Đơn vị: {{party_a_company}}
+
+BÊN B
+Họ và tên: {{party_b_name}}
+Chức vụ/Vai trò: {{party_b_role}}
+Email: {{party_b_email}}
+Số điện thoại: {{party_b_phone}}
+Ngày sinh: {{party_b_date_of_birth}}
+Phòng ban: {{party_b_department}}
+Đơn vị: {{party_b_company}}
+
+CÁC ĐIỀU KHOẢN HỢP ĐỒNG
+
+${clauses}
+
+ĐẠI DIỆN BÊN A
+{{director_signature}}
+
+ĐẠI DIỆN BÊN B
+{{partner_signature}}`;
+}
 
 function createEmptyTemplateForm() {
     return {
@@ -75,16 +122,20 @@ function createEmptyVersionForm(sourceVersion = null) {
         && sourceVersion.positions.length > 0
         ? sourceVersion.positions
         : savedLayout.fields;
-    const sourceContent = sourceVersion?.templateContent;
+    const sourceContent = sourceVersion?.templateContent?.trim()
+        ? sourceVersion.templateContent
+        : DEFAULT_CLAUSE_CONTENT;
+    const isFullDocument = savedLayout.documentMode === FULL_DOCUMENT_MODE;
 
     return {
         versionName: "",
-        templateContent: sourceContent?.trim()
+        templateContent: isFullDocument
             ? sourceContent
-            : DEFAULT_TEMPLATE_CONTENT,
+            : buildFullDocumentContent(sourceContent),
         changeNote: "",
         createdBy: localStorage.getItem("fullName") || "",
         pageCount: Number(sourceVersion?.pageCount || savedLayout.pageCount) || 1,
+        documentMode: FULL_DOCUMENT_MODE,
         positions: cloneVersionPositions(sourcePositions),
     };
 }
@@ -383,6 +434,7 @@ function ListContractTemplate() {
                     changeNote: versionForm.changeNote.trim() || null,
                     createdBy: versionForm.createdBy.trim() || null,
                     pageCount: versionForm.pageCount,
+                    documentMode: versionForm.documentMode,
                     positions: versionForm.positions.map(toPositionRequest),
                 }
             );
@@ -958,9 +1010,9 @@ function VersionModal({
                 <Modal.Body>
                     <Alert variant="info">
                         This creates V{(template?.latestVersion || 0) + 1}. Existing
-                        versions remain unchanged. Start from the latest content,
-                        insert dynamic fields, and check the example preview before
-                        saving.
+                        versions remain unchanged. The complete document—including
+                        headings, party information, clauses, and signature areas—is
+                        editable in this version.
                     </Alert>
                     {error && <Alert variant="danger">{error}</Alert>}
                     <div className="contract-form-grid">

@@ -24,6 +24,8 @@ public class ContractTemplateLayoutMapper {
     private static final int DEFAULT_PAGE_COUNT = 1;
     private static final int MAX_PAGE_COUNT = 50;
     private static final String COORDINATE_SYSTEM = "NORMALIZED";
+    public static final String LEGACY_DOCUMENT_MODE = "LEGACY_WRAPPED";
+    public static final String FULL_DOCUMENT_MODE = "FULL_DOCUMENT";
     private static final Pattern ATTRIBUTE_KEY_PATTERN = Pattern.compile(
             "^[a-z][a-z0-9_]{1,79}$"
     );
@@ -50,25 +52,37 @@ public class ContractTemplateLayoutMapper {
             List<ContractPositionRequest> requestedPositions,
             String layoutJson
     ) {
+        return normalize(
+                requestedPageCount,
+                requestedPositions,
+                layoutJson,
+                null
+        );
+    }
+
+    public ContractTemplateLayout normalize(
+            Integer requestedPageCount,
+            List<ContractPositionRequest> requestedPositions,
+            String layoutJson,
+            String requestedDocumentMode
+    ) {
         if (requestedPositions != null) {
-            return validateLayout(requestedPageCount, requestedPositions);
+            return validateLayout(
+                    requestedPageCount,
+                    requestedPositions,
+                    requestedDocumentMode
+            );
         }
 
         if (layoutJson == null || layoutJson.isBlank()) {
-            return validateLayout(requestedPageCount, List.of());
+            return validateLayout(
+                    requestedPageCount,
+                    List.of(),
+                    requestedDocumentMode
+            );
         }
 
-        ContractTemplateLayout parsedLayout;
-        try {
-            parsedLayout = objectMapper.readValue(
-                    layoutJson,
-                    ContractTemplateLayout.class
-            );
-        } catch (JacksonException exception) {
-            throw new BadHttpException(
-                    "Template layout must be valid JSON with normalized field positions"
-            );
-        }
+        ContractTemplateLayout parsedLayout = parseLayout(layoutJson);
 
         if (parsedLayout == null) {
             throw new BadHttpException("Template layout information is required");
@@ -77,17 +91,23 @@ public class ContractTemplateLayoutMapper {
         Integer pageCount = requestedPageCount != null
                 ? requestedPageCount
                 : parsedLayout.pageCount();
-        return validateLayout(pageCount, parsedLayout.fields());
+        String documentMode = requestedDocumentMode == null
+                || requestedDocumentMode.isBlank()
+                ? parsedLayout.documentMode()
+                : requestedDocumentMode;
+        return validateLayout(pageCount, parsedLayout.fields(), documentMode);
     }
 
     public ContractTemplateLayout fromVersion(ContractTemplateVersions version) {
         List<ContractPositions> savedPositions = version.getPositions();
+        String documentMode = readDocumentMode(version.getLayoutJson());
         if (savedPositions != null && !savedPositions.isEmpty()) {
             return validateLayout(
                     version.getPageCount(),
                     savedPositions.stream()
                             .map(this::toRequest)
-                            .toList()
+                            .toList(),
+                    documentMode
             );
         }
 
@@ -104,7 +124,8 @@ public class ContractTemplateLayoutMapper {
     ) {
         ContractTemplateLayout normalized = validateLayout(
                 layout.pageCount(),
-                layout.fields()
+                layout.fields(),
+                layout.documentMode()
         );
         LocalDateTime now = LocalDateTime.now();
         List<ContractPositions> positions = new ArrayList<>();
@@ -169,9 +190,14 @@ public class ContractTemplateLayoutMapper {
         }
     }
 
+    public boolean isFullDocument(String layoutJson) {
+        return FULL_DOCUMENT_MODE.equals(readDocumentMode(layoutJson));
+    }
+
     private ContractTemplateLayout validateLayout(
             Integer requestedPageCount,
-            List<ContractPositionRequest> requestedPositions
+            List<ContractPositionRequest> requestedPositions,
+            String requestedDocumentMode
     ) {
         int pageCount = requestedPageCount == null
                 ? DEFAULT_PAGE_COUNT
@@ -192,8 +218,58 @@ public class ContractTemplateLayoutMapper {
         return new ContractTemplateLayout(
                 pageCount,
                 COORDINATE_SYSTEM,
+                normalizeDocumentMode(requestedDocumentMode),
                 normalizedPositions
         );
+    }
+
+    private ContractTemplateLayout parseLayout(String layoutJson) {
+        try {
+            return objectMapper.readValue(
+                    layoutJson,
+                    ContractTemplateLayout.class
+            );
+        } catch (JacksonException exception) {
+            throw new BadHttpException(
+                    "Template layout must be valid JSON with normalized field positions"
+            );
+        }
+    }
+
+    private String readDocumentMode(String layoutJson) {
+        if (layoutJson == null || layoutJson.isBlank()) {
+            return LEGACY_DOCUMENT_MODE;
+        }
+
+        try {
+            ContractTemplateLayout layout = objectMapper.readValue(
+                    layoutJson,
+                    ContractTemplateLayout.class
+            );
+            return normalizeDocumentMode(
+                    layout == null ? null : layout.documentMode()
+            );
+        } catch (JacksonException | BadHttpException exception) {
+            return LEGACY_DOCUMENT_MODE;
+        }
+    }
+
+    private String normalizeDocumentMode(String value) {
+        if (value == null || value.isBlank()) {
+            return LEGACY_DOCUMENT_MODE;
+        }
+
+        String normalized = value.trim()
+                .toUpperCase(Locale.ROOT)
+                .replace('-', '_')
+                .replace(' ', '_');
+        if (!Set.of(LEGACY_DOCUMENT_MODE, FULL_DOCUMENT_MODE)
+                .contains(normalized)) {
+            throw new BadHttpException(
+                    "Unsupported template document mode: " + normalized
+            );
+        }
+        return normalized;
     }
 
     private ContractPositionRequest normalizePosition(

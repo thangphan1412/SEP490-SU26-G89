@@ -4,6 +4,7 @@ import com.fpt.backend.entity.Contracts;
 import com.fpt.backend.entity.ContractWorkflowStepInstance;
 import com.fpt.backend.entity.ProjectMember;
 import com.fpt.backend.entity.Users;
+import lombok.RequiredArgsConstructor;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDDocumentInformation;
 import org.apache.pdfbox.pdmodel.PDPage;
@@ -28,6 +29,7 @@ import java.util.Set;
 import java.util.regex.Pattern;
 
 @Component
+@RequiredArgsConstructor
 public class ContractPdfGenerator {
     private static final String NATIONAL_HEADER =
             "CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM";
@@ -53,6 +55,7 @@ public class ContractPdfGenerator {
             "EXTERNAL",
             "EXTERNAL_PARTNER"
     );
+    private final ContractTemplateLayoutMapper layoutMapper;
 
     public byte[] generate(
             Contracts contract,
@@ -63,35 +66,45 @@ public class ContractPdfGenerator {
             PDFont regularFont = loadUnicodeFont(document, false);
             PDFont boldFont = loadUnicodeFont(document, true);
             configureDocumentInformation(document, contract);
-
-            PartyInformation partyA = resolveParty(
-                    contract,
-                    renderedDocument.directorSignerName(),
-                    PARTY_A_ROLES
-            );
-            PartyInformation partyB = resolveParty(
-                    contract,
-                    renderedDocument.partnerSignerName(),
-                    PARTY_B_ROLES
+            boolean fullDocument = layoutMapper.isFullDocument(
+                    contract.getContractLayoutJson()
             );
 
             try (DocumentWriter writer = new DocumentWriter(
                     document,
                     regularFont,
                     boldFont,
-                    contract
+                    contract,
+                    !fullDocument
             )) {
-                writer.writeNationalHeader();
-                writer.writeContractHeading();
-                writer.writeLegalIntroduction();
-                writer.writeParty("BÊN A", partyA);
-                writer.writeParty("BÊN B", partyB);
-                writer.writeSectionTitle();
-                writer.writeContractContent(
-                        contract.getContractContent(),
-                        renderedDocument.content()
-                );
-                writer.writeSignatureSection(renderedDocument);
+                if (fullDocument) {
+                    writer.writeContractContent(
+                            contract.getContractContent(),
+                            renderedDocument.content()
+                    );
+                } else {
+                    PartyInformation partyA = resolveParty(
+                            contract,
+                            renderedDocument.directorSignerName(),
+                            PARTY_A_ROLES
+                    );
+                    PartyInformation partyB = resolveParty(
+                            contract,
+                            renderedDocument.partnerSignerName(),
+                            PARTY_B_ROLES
+                    );
+                    writer.writeNationalHeader();
+                    writer.writeContractHeading();
+                    writer.writeLegalIntroduction();
+                    writer.writeParty("BÊN A", partyA);
+                    writer.writeParty("BÊN B", partyB);
+                    writer.writeSectionTitle();
+                    writer.writeContractContent(
+                            contract.getContractContent(),
+                            renderedDocument.content()
+                    );
+                    writer.writeSignatureSection(renderedDocument);
+                }
             }
 
             document.save(output);
@@ -284,6 +297,7 @@ public class ContractPdfGenerator {
         private final PDFont regularFont;
         private final PDFont boldFont;
         private final Contracts contract;
+        private final boolean systemFooterEnabled;
         private PDPageContentStream stream;
         private float cursorY;
         private int pageNumber;
@@ -292,12 +306,14 @@ public class ContractPdfGenerator {
                 PDDocument document,
                 PDFont regularFont,
                 PDFont boldFont,
-                Contracts contract
+                Contracts contract,
+                boolean systemFooterEnabled
         ) throws IOException {
             this.document = document;
             this.regularFont = regularFont;
             this.boldFont = boldFont;
             this.contract = contract;
+            this.systemFooterEnabled = systemFooterEnabled;
             newPage();
         }
 
@@ -438,9 +454,8 @@ public class ContractPdfGenerator {
             String[] templateLines = normalizedTemplate.split("\n", -1);
             String[] renderedLines = normalizedRendered.split("\n", -1);
             List<String> visibleLines = new ArrayList<>();
-            boolean placeholderOnlyContent = containsOnlyStandaloneFormFields(
-                    templateLines
-            );
+            boolean placeholderOnlyContent = systemFooterEnabled
+                    && containsOnlyStandaloneFormFields(templateLines);
 
             for (int index = 0; index < renderedLines.length; index++) {
                 boolean standaloneFormField = placeholderOnlyContent
@@ -453,9 +468,10 @@ public class ContractPdfGenerator {
                 }
             }
 
-            String content = withoutEmbeddedSignatureBlock(
-                    String.join("\n", visibleLines)
-            );
+            String visibleContent = String.join("\n", visibleLines);
+            String content = systemFooterEnabled
+                    ? withoutEmbeddedSignatureBlock(visibleContent)
+                    : visibleContent;
             return content.isBlank()
                     ? "Nội dung điều khoản chưa được cập nhật."
                     : content;
@@ -693,7 +709,8 @@ public class ContractPdfGenerator {
         }
 
         private void ensureSpace(float requiredHeight) throws IOException {
-            if (cursorY - requiredHeight < MARGIN + FOOTER_HEIGHT) {
+            float reservedFooter = systemFooterEnabled ? FOOTER_HEIGHT : 0f;
+            if (cursorY - requiredHeight < MARGIN + reservedFooter) {
                 newPage();
             }
         }
@@ -707,7 +724,9 @@ public class ContractPdfGenerator {
             document.addPage(page);
             stream = new PDPageContentStream(document, page);
             pageNumber++;
-            drawFooter();
+            if (systemFooterEnabled) {
+                drawFooter();
+            }
             cursorY = PAGE_SIZE.getHeight() - MARGIN;
         }
 

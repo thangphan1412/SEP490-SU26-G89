@@ -9,6 +9,7 @@ public record ContractTemplateVersionRequest(
         String changeNote,
         String createdBy,
         Integer pageCount,
+        String documentMode,
         List<ContractPositionRequest> positions
 ) {
 }

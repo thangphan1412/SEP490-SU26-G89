@@ -152,7 +152,8 @@ public class ContractTemplateServiceImpl implements ContractTemplateService {
         ContractTemplateLayout layout = layoutMapper.normalize(
                 request.pageCount(),
                 request.positions(),
-                request.layoutJson()
+                request.layoutJson(),
+                request.documentMode()
         );
         int nextVersionNumber =
                 contractTemplateVersionRepository.findLatestVersionNumber(contractTemplateId) + 1;
