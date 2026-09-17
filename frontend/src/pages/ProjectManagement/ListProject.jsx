@@ -8,7 +8,7 @@ import {
     Spinner,
     Table,
 } from "react-bootstrap";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
     approveProject,
     listProjects,
@@ -21,16 +21,7 @@ import { PROJECT_STATUS_OPTIONS }
     from "../../components/projectComponents/projectFormUtils.js";
 import "../../assets/styles/css/projectStyles/ListProject.css";
 
-const PROJECT_COLUMN_LABELS = [
-    "Project",
-    "Code",
-    "Status",
-    "Start Date",
-    "End Date",
-    "Created By",
-    "Created At",
-    "Actions",
-];
+const PROJECT_COLUMN_LABELS = ["Project", "Status", "Timeline", "Created by", "Actions"];
 
 // Tạo danh sách số trang rút gọn và chèn dấu ba chấm khi cần.
 function createPageNumbers(currentPage, totalPages) {
@@ -69,6 +60,7 @@ function createPageNumbers(currentPage, totalPages) {
 // Hiển thị danh sách dự án cùng bộ lọc, phân trang và thao tác phê duyệt.
 function ListProject() {
     const navigate = useNavigate();
+    const location = useLocation();
     const [projects, setProjects] = useState([]);
     const [searchInput, setSearchInput] = useState("");
     const [search, setSearch] = useState("");
@@ -79,7 +71,7 @@ function ListProject() {
     const [totalPages, setTotalPages] = useState(0);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
-    const [successMessage, setSuccessMessage] = useState("");
+    const [successMessage, setSuccessMessage] = useState(location.state?.successMessage || "");
     const [approvingProjectId, setApprovingProjectId] = useState(null);
     const [reloadVersion, setReloadVersion] = useState(0);
 
@@ -193,7 +185,10 @@ function ListProject() {
 
         // Thông báo khi backend đánh dấu người dùng không được xem dự án.
         if (project.canView === false) {
-            window.alert("Bạn không được quyền xem project này!");
+            const isPendingApproval = String(project.projectStatus || "").toLowerCase() === "on hold";
+            window.alert(isPendingApproval
+                ? "Dự án đang chờ duyệt. Chỉ CEO và trưởng phòng Administrative được xem thông tin."
+                : "Bạn không được quyền xem project này!");
             return;
         }
 
@@ -229,272 +224,270 @@ function ListProject() {
         }
     }
 
-    // Tạo nút điều hướng tới màn hình tạo dự án.
+    const hasFilters = Boolean(searchInput || status || viewOnlyYourProjects);
+
     const pageAction = (
         <PrimaryButton onClick={() => navigate("/project-management/create")}>
-            <Icon name="plus" size={19} color="#fff" />
+            <Icon name="plus" size={18} color="currentColor" />
             <span>Create Project</span>
         </PrimaryButton>
     );
 
     return (
-        <PagePanel
-            title="Projects"
-            description="View and find projects, timelines, ownership, and current status."
-            action={pageAction}
-        >
-            {error && <Alert variant="danger" className="mb-3">{error}</Alert>}
-            {successMessage && (
-                <Alert variant="success" className="mb-3">
-                    {successMessage}
-                </Alert>
-            )}
-
-            <div className="list-project-toolbar">
-                <InputGroup className="list-project-search-box">
-                    <InputGroup.Text className="list-project-search-icon">
-                        <Icon name="search" size={22} color="#3f4d6f" />
-                    </InputGroup.Text>
-
-                    <Form.Control
-                        aria-label="Search projects"
-                        placeholder="Search by code, name, description, or creator..."
-                        className="list-project-search-input"
-                        value={searchInput}
-                        onChange={(event) => setSearchInput(event.target.value)}
-                    />
-
-                    {searchInput && (
-                        <Button
-                            type="button"
-                            variant="light"
-                            aria-label="Clear search"
-                            className="list-project-clear-search"
-                            onClick={() => setSearchInput("")}
-                        >
-                            x
-                        </Button>
-                    )}
-                </InputGroup>
-
-                <Form.Group className="list-project-select-box" controlId="project-status-filter">
-                    <Form.Label className="list-project-select-label">Status</Form.Label>
-
-                    <Form.Select
-                        className="list-project-select"
-                        value={status}
-                        onChange={handleStatusChange}
-                    >
-                        <option value="">All statuses</option>
-
-                        {PROJECT_STATUS_OPTIONS.map((projectStatus) => (
-                            <option key={projectStatus} value={projectStatus}>
-                                {projectStatus}
-                            </option>
-                        ))}
-                    </Form.Select>
-
-                    <span className="list-project-select-icon">
-                        <Icon name="chevron" size={18} color="#243452" />
-                    </span>
-                </Form.Group>
-
-                <Form.Group
-                    className="list-project-view-filter"
-                    controlId="view-only-your-projects-filter"
-                >
-                    <Form.Check
-                        type="switch"
-                        label="View Only Your Projects"
-                        checked={viewOnlyYourProjects}
-                        onChange={handleViewOnlyYourProjectsChange}
-                    />
-                </Form.Group>
-
-                {(searchInput || status || viewOnlyYourProjects) && (
-                    <Button
-                        type="button"
-                        variant="light"
-                        className="list-project-filter-button"
-                        onClick={clearFilters}
-                    >
-                        Clear filters
-                    </Button>
+        <div className="list-project-page">
+            <PagePanel
+                title="Projects"
+                description="Track project timelines, ownership and approvals."
+                action={pageAction}
+            >
+                {error && <Alert variant="danger" className="list-project-alert">{error}</Alert>}
+                {successMessage && (
+                    <Alert variant="success" className="list-project-alert" dismissible onClose={() => setSuccessMessage("")}>
+                        {successMessage}
+                    </Alert>
                 )}
-            </div>
 
-            <div className="list-project-table-wrap">
-                <Table hover responsive={false} className="list-project-table mb-0">
-                    <thead>
-                        <tr>
-                            {PROJECT_COLUMN_LABELS.map((label) => (
-                                <th key={label} className="list-project-th">
-                                    {label}
-                                </th>
-                            ))}
-                        </tr>
-                    </thead>
-
-                    <tbody>
-                        {loading ? (
-                            <tr>
-                                <td
-                                    colSpan={PROJECT_COLUMN_LABELS.length}
-                                    className="list-project-state-cell"
+                <section className="list-project-content" aria-label="Project directory" aria-busy={loading}>
+                    <div className="list-project-toolbar">
+                        <InputGroup className="list-project-search-box">
+                            <InputGroup.Text className="list-project-search-icon">
+                                <Icon name="search" size={19} color="currentColor" />
+                            </InputGroup.Text>
+                            <Form.Control
+                                type="search"
+                                aria-label="Search projects"
+                                placeholder="Search by name, code or creator..."
+                                className="list-project-search-input"
+                                value={searchInput}
+                                onChange={(event) => setSearchInput(event.target.value)}
+                            />
+                            {searchInput && (
+                                <Button
+                                    type="button"
+                                    variant="light"
+                                    aria-label="Clear search"
+                                    className="list-project-clear-search"
+                                    onClick={() => setSearchInput("")}
                                 >
-                                    <Spinner animation="border" size="sm" />
-                                    <strong className="list-project-state-title">
-                                        Loading projects...
-                                    </strong>
-                                </td>
-                            </tr>
-                        ) : projects.length === 0 ? (
-                            <tr>
-                                <td
-                                    colSpan={PROJECT_COLUMN_LABELS.length}
-                                    className="list-project-state-cell"
-                                >
-                                    <span className="list-project-empty-icon">
-                                        <Icon name="document" size={28} color="#5b6b8a" />
-                                    </span>
+                                    <span aria-hidden="true">×</span>
+                                </Button>
+                            )}
+                        </InputGroup>
 
-                                    <strong className="list-project-state-title">
-                                        No projects found
-                                    </strong>
+                        <Form.Group className="list-project-select-box" controlId="project-status-filter">
+                            <Form.Label className="visually-hidden">Status</Form.Label>
+                            <span className="list-project-filter-icon">
+                                <Icon name="filter" size={17} color="currentColor" />
+                            </span>
+                            <Form.Select
+                                className="list-project-select"
+                                value={status}
+                                onChange={handleStatusChange}
+                            >
+                                <option value="">All statuses</option>
+                                {PROJECT_STATUS_OPTIONS.map((projectStatus) => (
+                                    <option key={projectStatus} value={projectStatus}>{projectStatus}</option>
+                                ))}
+                            </Form.Select>
+                        </Form.Group>
 
-                                    <span>
-                                        Try changing the search term or status filter.
-                                    </span>
-                                </td>
-                            </tr>
+                        <Form.Group className="list-project-view-filter" controlId="view-only-your-projects-filter">
+                            <Form.Check
+                                type="switch"
+                                label="Only my projects"
+                                checked={viewOnlyYourProjects}
+                                onChange={handleViewOnlyYourProjectsChange}
+                            />
+                        </Form.Group>
+                    </div>
+
+                    <div className="list-project-results-bar">
+                        <span aria-live="polite" role="status">
+                            {loading ? "Loading projects..." : (
+                                <>
+                                    <strong>{totalElements}</strong> {totalElements === 1 ? "project" : "projects"}
+                                    {hasFilters ? " matching your filters" : " in this list"}
+                                </>
+                            )}
+                        </span>
+                        {hasFilters ? (
+                            <Button type="button" variant="link" className="list-project-reset" onClick={clearFilters}>
+                                Clear filters <span aria-hidden="true">×</span>
+                            </Button>
                         ) : (
-                            projects.map((project) => (
-                                <tr
-                                    key={project.id}
-                                    className="list-project-row"
-                                    onClick={() => openProjectDetail(project)}
-                                >
-                                    <td className="list-project-project-cell">
-                                        <span className="project-management-icon-circle list-project-avatar">
-                                            <Icon name="document" size={20} />
-                                        </span>
+                            <span className="list-project-sort-note">
+                                <Icon name="sort" size={15} color="currentColor" /> Newest first
+                            </span>
+                        )}
+                    </div>
 
-                                        <span className="list-project-project-text">
-                                            <strong className="list-project-name">
-                                                {project.projectName || "Untitled project"}
-                                            </strong>
-
-                                            <span
-                                                title={project.projectDescription || ""}
-                                                className="list-project-description"
-                                            >
-                                                {project.projectDescription || "No description"}
+                    <div className="list-project-table-wrap">
+                        <Table hover responsive={false} className="list-project-table mb-0">
+                            <caption className="visually-hidden">Projects with status, timeline, creator and available actions.</caption>
+                            <thead>
+                                <tr>
+                                    {PROJECT_COLUMN_LABELS.map((label) => (
+                                        <th key={label} scope="col" className="list-project-th">{label}</th>
+                                    ))}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {loading ? (
+                                    <tr>
+                                        <td colSpan={PROJECT_COLUMN_LABELS.length} className="list-project-state-cell">
+                                            <Spinner animation="border" size="sm" aria-hidden="true" />
+                                            <strong className="list-project-state-title">Loading your projects</strong>
+                                            <span>Getting the latest project information.</span>
+                                        </td>
+                                    </tr>
+                                ) : projects.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={PROJECT_COLUMN_LABELS.length} className="list-project-state-cell">
+                                            <span className="list-project-empty-icon">
+                                                <Icon name={error ? "info" : "document"} size={27} color="currentColor" />
                                             </span>
-                                        </span>
-                                    </td>
-
-                                    <td className="list-project-td">
-                                        <span className="list-project-code-badge">
-                                            {project.projectCode || "-"}
-                                        </span>
-                                    </td>
-
-                                    <td className="list-project-td">
-                                        <StatusBadge status={project.projectStatus} />
-                                    </td>
-
-                                    <td className="list-project-td">
-                                        {project.projectStartDate}
-                                    </td>
-
-                                    <td className="list-project-td">
-                                        {project.projectEndDate}
-                                    </td>
-
-                                    <td className="list-project-td">
-                                        {project.projectCreatedBy || "-"}
-                                    </td>
-
-                                    <td className="list-project-td">
-                                        {project.projectCreatedAt}
-                                    </td>
-
-                                    <td className="list-project-td list-project-action-cell">
-                                        {project.canApprove ? (
+                                            <strong className="list-project-state-title">
+                                                {error ? "Projects couldn't be loaded" : hasFilters ? "No matching projects" : "Your projects start here"}
+                                            </strong>
+                                            <span>
+                                                {error ? "Please try again to load the latest information."
+                                                    : hasFilters ? "Try another keyword or clear your filters."
+                                                        : "Create a project to start organising your team's work."}
+                                            </span>
                                             <Button
                                                 type="button"
-                                                variant="success"
-                                                className="list-project-approve-button"
-                                                disabled={approvingProjectId === project.id}
-                                                onClick={(event) =>
-                                                    handleApproveProject(event, project)
-                                                }
+                                                variant="light"
+                                                className="list-project-empty-action"
+                                                onClick={error ? () => setReloadVersion((version) => version + 1)
+                                                    : hasFilters ? clearFilters
+                                                        : () => navigate("/project-management/create")}
                                             >
-                                                {approvingProjectId === project.id
-                                                    ? "Approving..."
-                                                    : "Approve Project"}
+                                                {error ? "Try again" : hasFilters ? "Clear filters" : "Create Project"}
                                             </Button>
-                                        ) : (
-                                            <span className="list-project-no-action">-</span>
-                                        )}
-                                    </td>
-                                </tr>
-                            ))
-                        )}
-                    </tbody>
-                </Table>
-            </div>
+                                        </td>
+                                    </tr>
+                                ) : projects.map((project) => (
+                                    <tr key={project.id} className="list-project-row" onClick={() => openProjectDetail(project)}>
+                                        <td className="list-project-project-cell">
+                                            <div className="list-project-project-info">
+                                                <span className="list-project-avatar">
+                                                    <Icon name="document" size={21} color="currentColor" />
+                                                </span>
+                                                <div className="list-project-project-text">
+                                                    <button
+                                                        type="button"
+                                                        className="list-project-name"
+                                                        title={project.projectName || "Untitled project"}
+                                                        onClick={(event) => {
+                                                            event.stopPropagation();
+                                                            openProjectDetail(project);
+                                                        }}
+                                                    >
+                                                        {project.projectName || "Untitled project"}
+                                                    </button>
+                                                    <span className="list-project-code" title={project.projectCode || ""}>
+                                                        {project.projectCode || "No project code"}
+                                                    </span>
+                                                    <span className="list-project-description" title={project.projectDescription || ""}>
+                                                        {project.projectDescription || "No description"}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td className="list-project-status-cell" data-label="Status">
+                                            <StatusBadge status={project.projectStatus} />
+                                        </td>
+                                        <td className="list-project-timeline-cell" data-label="Timeline">
+                                            <div className="list-project-date"><span>Start</span><span>{project.projectStartDate || "—"}</span></div>
+                                            <div className="list-project-date"><span>End</span><span>{project.projectEndDate || "—"}</span></div>
+                                        </td>
+                                        <td className="list-project-creator-cell" data-label="Created by">
+                                            <span className="list-project-creator-name" title={project.projectCreatedBy || ""}>
+                                                {project.projectCreatedBy || "Unknown"}
+                                            </span>
+                                            <span className="list-project-created-date">Created {project.projectCreatedAt || "—"}</span>
+                                        </td>
+                                        <td className="list-project-action-cell">
+                                            <div className="list-project-row-actions">
+                                                {(project.canApprove || project.waitingForDepartmentApproval) && (
+                                                    <Button
+                                                        type="button"
+                                                        variant="light"
+                                                        className="list-project-approve-button"
+                                                        disabled={!project.canApprove || approvingProjectId === project.id}
+                                                        title={project.waitingForDepartmentApproval
+                                                            ? "Waiting for HeadOfDepartment of Administrative to approve first"
+                                                            : "Approve project"}
+                                                        aria-label={(project.waitingForDepartmentApproval ? "Waiting Approve: " : "Approve project ") + project.projectName}
+                                                        onClick={(event) => handleApproveProject(event, project)}
+                                                    >
+                                                        {project.waitingForDepartmentApproval
+                                                            ? "Waiting Approve"
+                                                            : approvingProjectId === project.id
+                                                                ? <><Spinner animation="border" size="sm" aria-hidden="true" /> Approving...</>
+                                                                : <><Icon name="shield" size={15} color="currentColor" /> Approve</>}
+                                                    </Button>
+                                                )}
+                                                <Button
+                                                    type="button"
+                                                    variant="light"
+                                                    className="list-project-open-button"
+                                                    aria-label={"View project " + (project.projectName || "Untitled project")}
+                                                    title="View project"
+                                                    onClick={(event) => {
+                                                        event.stopPropagation();
+                                                        openProjectDetail(project);
+                                                    }}
+                                                >
+                                                    <Icon name="arrowRight" size={17} color="currentColor" />
+                                                </Button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </Table>
+                    </div>
 
-            <div className="list-project-footer">
-                <span>Total: {totalElements} results</span>
-
-                <Pagination className="list-project-pagination mb-0">
-                    <Pagination.Prev
-                        aria-label="Previous page"
-                        className="list-project-page-item"
-                        onClick={() =>
-                            setPage((currentPage) => Math.max(0, currentPage - 1))
-                        }
-                        disabled={loading || page === 0}
-                    >
-                        <Icon name="arrowLeft" size={18} color="#243452" />
-                    </Pagination.Prev>
-
-                    {pageNumbers.map((pageNumber) =>
-                        typeof pageNumber === "number" ? (
-                            <Pagination.Item
-                                key={pageNumber}
-                                className="list-project-page-item"
-                                active={pageNumber === page}
-                                onClick={() => setPage(pageNumber)}
-                                disabled={loading}
-                            >
-                                {pageNumber + 1}
-                            </Pagination.Item>
-                        ) : (
-                            <Pagination.Ellipsis
-                                key={pageNumber}
-                                disabled
-                                className="list-project-page-item list-project-ellipsis"
-                            />
-                        )
-                    )}
-
-                    <Pagination.Next
-                        aria-label="Next page"
-                        className="list-project-page-item"
-                        onClick={() =>
-                            setPage((currentPage) =>
-                                Math.min(totalPages - 1, currentPage + 1)
-                            )
-                        }
-                        disabled={loading || totalPages === 0 || page >= totalPages - 1}
-                    >
-                        <Icon name="arrowRight" size={18} color="#243452" />
-                    </Pagination.Next>
-                </Pagination>
-            </div>
-        </PagePanel>
+                    <div className="list-project-footer">
+                        <span>{loading ? "Updating list..." : <>Showing <strong>{projects.length}</strong> of <strong>{totalElements}</strong> projects</>}</span>
+                        <nav aria-label="Project pages">
+                            <Pagination className="list-project-pagination mb-0">
+                                <Pagination.Prev
+                                    aria-label="Previous page"
+                                    onClick={() => setPage((currentPage) => Math.max(0, currentPage - 1))}
+                                    disabled={loading || page === 0}
+                                >
+                                    <Icon name="arrowLeft" size={16} color="currentColor" />
+                                </Pagination.Prev>
+                                {pageNumbers.map((pageNumber) =>
+                                    typeof pageNumber === "number" ? (
+                                        <Pagination.Item
+                                            key={pageNumber}
+                                            active={pageNumber === page}
+                                            aria-label={"Page " + (pageNumber + 1)}
+                                            onClick={() => setPage(pageNumber)}
+                                            disabled={loading}
+                                        >
+                                            {pageNumber + 1}
+                                        </Pagination.Item>
+                                    ) : (
+                                        <Pagination.Ellipsis key={pageNumber} disabled />
+                                    )
+                                )}
+                                <Pagination.Next
+                                    aria-label="Next page"
+                                    onClick={() => setPage((currentPage) => Math.min(totalPages - 1, currentPage + 1))}
+                                    disabled={loading || totalPages === 0 || page >= totalPages - 1}
+                                >
+                                    <Icon name="arrowRight" size={16} color="currentColor" />
+                                </Pagination.Next>
+                            </Pagination>
+                        </nav>
+                    </div>
+                </section>
+            </PagePanel>
+        </div>
     );
 }
 

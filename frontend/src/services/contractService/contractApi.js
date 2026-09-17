@@ -7,6 +7,57 @@ const noCacheConfig = {
         "Cache-Control": "no-cache",
     },
 };
+const preparePadesSigning = async (
+    contractId,
+    electronicSignatureId,
+    keyCode,
+    pdfBlob
+) => {
+
+    const formData = new FormData();
+
+    formData.append(
+        "electronicSignatureId",
+        electronicSignatureId
+    );
+
+    formData.append(
+        "keyCode",
+        keyCode
+    );
+
+    formData.append(
+        "file",
+        pdfBlob,
+        "contract.pdf"
+    );
+
+    return axiosClient.post(
+        `/contracts/${contractId}/sign/prepare`,
+        formData,
+        {
+            headers: {
+                "Content-Type": "multipart/form-data",
+            },
+        }
+    );
+};
+
+
+const completePadesSigning = async (
+    contractId,
+    sessionId,
+    signatureValue
+) => {
+
+    return axiosClient.post(
+        `/contracts/${contractId}/sign/complete`,
+        {
+            sessionId,
+            signatureValue,
+        }
+    );
+};
 
 const contractApi = {
     getAllContracts(params) {
@@ -38,15 +89,24 @@ const contractApi = {
     },
 
     getContractById(id) {
-        return axiosClient.get(CONTRACT_ENDPOINT + "/" + id, noCacheConfig);
+        return axiosClient.get(
+            CONTRACT_ENDPOINT + "/" + id,
+            noCacheConfig
+        );
     },
 
     createContract(data) {
-        return axiosClient.post(CONTRACT_ENDPOINT, data);
+        return axiosClient.post(
+            CONTRACT_ENDPOINT,
+            data
+        );
     },
 
     updateContract(id, data) {
-        return axiosClient.put(CONTRACT_ENDPOINT + "/" + id, data);
+        return axiosClient.put(
+            CONTRACT_ENDPOINT + "/" + id,
+            data
+        );
     },
 
     transitionContract(id, data) {
@@ -56,28 +116,46 @@ const contractApi = {
         );
     },
 
-    signContract(id, electronicSignatureId, comment = null) {
+    signContract(id, electronicSignatureId, signatureValue, publicKeyCode) {
         return this.transitionContract(id, {
             action: "COMPLETE_STEP",
-            actorName: localStorage.getItem("fullName") || localStorage.getItem("email"),
-            actorRole: localStorage.getItem("role") || localStorage.getItem("roleName"),
-            comment,
+            actorName:
+                localStorage.getItem("fullName") ||
+                localStorage.getItem("email"),
+            actorRole:
+                localStorage.getItem("role") ||
+                localStorage.getItem("roleName"),
+            comment: null,
             electronicSignatureId,
+            signatureValue,
+            keyCode: publicKeyCode
         });
     },
-
     exportContractPdf(id) {
-        return axiosClient.get(CONTRACT_ENDPOINT + "/" + id + "/pdf", {
-            responseType: "blob",
-            headers: {
-                "Cache-Control": "no-cache",
-            },
-        });
+        return axiosClient.get(
+            CONTRACT_ENDPOINT + "/" + id + "/pdf",
+            {
+                responseType: "blob",
+                headers: {
+                    "Cache-Control": "no-cache",
+                },
+            }
+        );
     },
 
     deleteContract(id) {
-        return axiosClient.delete(CONTRACT_ENDPOINT + "/" + id);
+        return axiosClient.delete(
+            CONTRACT_ENDPOINT + "/" + id
+        );
     },
+
+    // =====================================================
+    // PADES
+    // =====================================================
+
+    preparePadesSigning,
+
+    completePadesSigning,
 };
 
 export default contractApi;

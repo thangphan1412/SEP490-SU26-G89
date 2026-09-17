@@ -15,6 +15,8 @@ import com.fpt.backend.exception.BadHttpException;
 import com.fpt.backend.repository.FileStorageRepository;
 import com.fpt.backend.repository.electronicSignature.ElectronicSignatureRepository;
 import com.fpt.backend.service.impl.CloudinaryService;
+import com.fpt.backend.service.impl.signature.UserKeyServiceImpl;
+import com.fpt.backend.service.impl.user.UserServiceImpl;
 import com.fpt.backend.service.interfaces.electronicSignature.IElectronicSignatureService;
 import com.fpt.backend.util.CurrentUser;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -39,9 +41,12 @@ public class ElectronicSignatureServiceImpl implements IElectronicSignatureServi
     private CloudinaryService cloudinaryService;
     @Autowired
     private FileStorageRepository fileStorageRepository;
+    @Autowired
+    private UserKeyServiceImpl userKeyService;
     @Override
     public ElectronicSignatures createElectronicSignature(CreateElectronicSignatureRequest createElectronicSignatureRequest) {
         Users users = currentUser.getCurrentUser();
+        userKeyService.saveUserKey(users, createElectronicSignatureRequest.getPublicKey(), createElectronicSignatureRequest.getKeyCode(), createElectronicSignatureRequest.getCertificate());
         MultipartFile img = createElectronicSignatureRequest.getCreateFileStorageRequests().getMultipartFile();
         FileStorage fileStorage = cloudinaryService.uploadAndSave(img, users);
         ElectronicSignatures electronicSignatures = ElectronicSignatures.builder()

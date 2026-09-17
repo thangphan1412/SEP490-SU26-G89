@@ -32,6 +32,8 @@ public class UserKeys extends BaseEntity{
     @Column(name = "key_status")
     @Enumerated(EnumType.STRING)
     private KeyStatus keyStatus;
+    @Column(name = "certificate", columnDefinition = "TEXT")
+    private String certificate;
     /// relation
     //User
     @ManyToOne(fetch = FetchType.LAZY)

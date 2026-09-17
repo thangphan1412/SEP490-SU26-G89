@@ -24,17 +24,21 @@ import java.util.UUID;
 public class ElectronicSignatureController {
     @Autowired
     private ElectronicSignatureServiceImpl electronicSignatureService;
+
     @PostMapping(ApiConstant.Signatures.ELECTRONICSIGNATURES)
     public ResponseEntity<BaseResponse<?>> createElectronic(
             @ModelAttribute CreateElectronicSignatureRequest createElectronicSignatureRequest,
-            @RequestParam("multipartFile") MultipartFile multipartFile){
+            @RequestParam("multipartFile") MultipartFile multipartFile) {
+
         createElectronicSignatureRequest.setCreateFileStorageRequests(
                 CreateFileStorageRequest.builder()
                         .multipartFile(multipartFile)
                         .build()
         );
 
-        electronicSignatureService.createElectronicSignature(createElectronicSignatureRequest);
+        electronicSignatureService.createElectronicSignature(
+                createElectronicSignatureRequest
+        );
 
         return ResponseEntity
                 .status(HttpStatus.CREATED)

@@ -4,6 +4,7 @@ import com.fpt.backend.dto.response.signature.SignatureVerificationResponse;
 import com.fpt.backend.dto.response.signature.UserKeyInfoResponse;
 import com.fpt.backend.entity.Signature;
 import com.fpt.backend.entity.UserKeys;
+import com.fpt.backend.entity.Users;
 import com.fpt.backend.repository.signature.SignatureRepository;
 
 import com.fpt.backend.repository.signature.UserKeysRepository;
@@ -38,12 +39,41 @@ public class SignatureController {
 
     @GetMapping("/keys/me")
     public ResponseEntity<BaseResponse<UserKeyInfoResponse>> getMyPublicKey() {
+
         var user = currentUser.getCurrentUser();
         UUID userId = user.getId();
-        UserKeyInfoResponse response = userKeysRepository.findByUserId(userId)
-                .map(this::toResponse)
-                .orElseGet(() -> toResponse(userKeyService.generateUserKey(user)));
-        return ResponseEntity.ok(new BaseResponse<>(response));
+
+        UserKeyInfoResponse response =
+                userKeysRepository.findByUserId(userId)
+                        .map(this::toResponse)
+                        .orElseGet(() ->
+                                new UserKeyInfoResponse(
+                                        false,
+                                        null,
+                                        null,
+                                        null,
+                                        0,
+                                        null,
+                                        null,
+                                        null
+                                )
+                        );
+
+        return ResponseEntity.ok(
+                new BaseResponse<>(response)
+        );
+    }
+    @PostMapping("/keys/generate")
+    public ResponseEntity<BaseResponse<UserKeyInfoResponse>> generateKey() {
+
+        Users user = currentUser.getCurrentUser();
+
+        UserKeyInfoResponse response =
+                userKeyService.generateUserKey(user);
+
+        return ResponseEntity.ok(
+                new BaseResponse<>(response)
+        );
     }
 
     @PostMapping("/{signatureId}/verify")
@@ -57,7 +87,7 @@ public class SignatureController {
             throw new IllegalArgumentException("Signature value or public key is unavailable");
         }
         UUID signerId = signature.getUserKey().getUser().getId();
-        boolean valid = verificationService.verify(file.getBytes(), signature.getSignatureValue(), signerId);
+        boolean valid = verificationService.verify(file.getBytes(), signature.getSignatureValue(), signerId, signature.getUserKey().getKeyCode());
         SignatureVerificationResponse response = new SignatureVerificationResponse(
                 signature.getId(), signature.getContract().getId(), signerId,
                 signature.getDocumentHash(), valid
@@ -78,7 +108,7 @@ public class SignatureController {
         }
         byte[] pdf = cloudinaryService.download(signature.getFileStorage());
         UUID signerId = signature.getUserKey().getUser().getId();
-        boolean valid = verificationService.verify(pdf, signature.getSignatureValue(), signerId);
+        boolean valid = verificationService.verify(pdf, signature.getSignatureValue(), signerId, signature.getUserKey().getKeyCode());
         SignatureVerificationResponse response = new SignatureVerificationResponse(
                 signature.getId(), signature.getContract().getId(), signerId,
                 signature.getDocumentHash(), valid
@@ -92,8 +122,8 @@ public class SignatureController {
                     .digest(key.getPublicKey().getBytes(StandardCharsets.UTF_8));
             String fingerprint = HexFormat.ofDelimiter(":").withUpperCase().formatHex(digest);
             return new UserKeyInfoResponse(
-                    true, key.getPublicKey(), fingerprint,
-                    key.getKeyAlgorithm().name(),key.getKeyCode(), key.getKeySize(), key.getCreateAt()
+                    true, key.getPublicKey(),
+                    key.getKeyAlgorithm().name(),key.getKeyCode(), key.getKeySize(), key.getCreateAt(), null, null
             );
         } catch (Exception exception) {
             throw new IllegalStateException("Unable to create public key fingerprint", exception);

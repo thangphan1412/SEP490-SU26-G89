@@ -23,4 +23,7 @@ public class CreateElectronicSignatureRequest {
     @Enumerated(EnumType.STRING)
     private ElectronicStatus  electronicStatus;
     private CreateFileStorageRequest createFileStorageRequests;
+    private String publicKey;
+    private String keyCode;
+    private String certificate;
 }

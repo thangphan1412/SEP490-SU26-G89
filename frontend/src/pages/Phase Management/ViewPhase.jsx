@@ -1,12 +1,17 @@
 import { useEffect, useState } from "react";
-import { Alert, Button, Card, ProgressBar, Spinner, Stack, Table } from "react-bootstrap";
+import { Alert, Button, Card, ProgressBar, Spinner, Table } from "react-bootstrap";
 import {
   IconArrowLeft,
+  IconBuilding,
+  IconCalendar,
   IconChecklist,
   IconFileDescription,
   IconFileText,
+  IconFlag,
+  IconInfoCircle,
   IconSettings,
   IconTimelineEvent,
+  IconUser,
 } from "@tabler/icons-react";
 import { useNavigate, useParams } from "react-router-dom";
 import EmptyTableRow from "../../components/phaseComponents/EmptyTableRow.jsx";
@@ -120,9 +125,19 @@ function ViewPhase() {
   function renderTask(task) {
     return (
       <tr key={task.id}>
-        <td><strong>{task.title || `Task #${task.id}`}</strong></td>
-        <td>{formatAssignee(task)}</td>
-        <td>{formatDateRange(task.startDate, task.endDate)}</td>
+        <td className="phase-title-cell">
+          <div className="phase-task-title">
+            <span className="phase-task-icon" aria-hidden="true"><IconChecklist size={17} stroke={1.7} /></span>
+            <strong>{task.title || `Task #${task.id}`}</strong>
+          </div>
+        </td>
+        <td>
+          <div className="phase-assignee">
+            <span className="phase-assignee-avatar" aria-hidden="true"><IconUser size={16} stroke={1.7} /></span>
+            <span>{formatAssignee(task)}</span>
+          </div>
+        </td>
+        <td><DateRange startDate={task.startDate} endDate={task.endDate} /></td>
         <td><PhaseStatusBadge status={task.status} /></td>
       </tr>
     );
@@ -138,53 +153,64 @@ function ViewPhase() {
           : "/project-management/list"
       )}
     >
-      <IconArrowLeft size={18} /> Back to project
+      <IconArrowLeft size={17} aria-hidden="true" /> Back to project
     </Button>
   );
 
   return (
     <PhasePage
-      title="View Phase"
-      description="Review the phase information, tasks, deliverables, and linked contracts."
+      title="Phase Details"
+      description="Track the timeline, progress, and work connected to this phase."
       action={backAction}
     >
       {loading ? (
-        <div className="phase-page-state"><Spinner animation="border" /> Loading phase...</div>
+        <Card as="section" className="phase-page-state" role="status">
+          <Spinner animation="border" size="sm" aria-hidden="true" />
+          <h2>Loading phase</h2>
+          <p>Getting the latest phase information...</p>
+        </Card>
       ) : !phase ? (
-        <Alert variant="danger" className="phase-page-message">{error || "Phase was not found."}</Alert>
+        <Card as="section" className="phase-page-state" role="alert">
+          <span className="phase-state-icon" aria-hidden="true"><IconInfoCircle size={24} /></span>
+          <h2>Unable to open phase</h2>
+          <p>{error || "Phase was not found."}</p>
+        </Card>
       ) : (
         <div className="phase-view-content">
-          {error && <Alert variant="danger">{error}</Alert>}
-
           <Card as="section" className="phase-hero">
-            <span className="phase-hero-icon"><IconTimelineEvent size={38} stroke={1.7} /></span>
-            <div className="phase-hero-main">
-              <div className="phase-title-line">
-                <h2>{phase.title || "Unnamed phase"}</h2>
-                <PhaseStatusBadge status={phase.status} />
+            <div className="phase-hero-heading">
+              <div className="phase-identity">
+                <span className="phase-hero-icon" aria-hidden="true"><IconTimelineEvent size={28} stroke={1.7} /></span>
+                <div className="phase-hero-main">
+                  <span className="phase-eyebrow">Phase overview</span>
+                  <h2>{phase.title || "Unnamed phase"}</h2>
+                  <p className="phase-project-name"><IconBuilding size={15} aria-hidden="true" /> {formatProjectName(phase)}</p>
+                </div>
               </div>
-              <p className="phase-project-name">{formatProjectName(phase)}</p>
-              <p className="phase-description">{phase.description || "No description has been added for this phase."}</p>
+              <PhaseStatusBadge status={phase.status} />
             </div>
-            <span className="phase-id">ID #{phase.id}</span>
-          </Card>
 
-          <Card as="section" className="phase-overview-card">
-            <div className="phase-overview-grid">
-              <PhaseInfoItem label="Start date" value={formatDate(phase.startDate)} />
-              <PhaseInfoItem label="End date" value={formatDate(phase.endDate)} />
-              <PhaseInfoItem label="Project" value={formatProjectName(phase)} />
-              <PhaseInfoItem label="Status">
-                <PhaseStatusBadge status={phase.status} />
-              </PhaseInfoItem>
+            <div className="phase-summary-grid">
+              <div className="phase-summary-details">
+                <div className="phase-overview-grid">
+                  <PhaseInfoItem label="Start date" value={formatDate(phase.startDate)} icon={<IconCalendar size={20} stroke={1.7} />} />
+                  <PhaseInfoItem label="End date" value={formatDate(phase.endDate)} icon={<IconFlag size={20} stroke={1.7} />} />
+                </div>
+                <div className="phase-description-block">
+                  <span className="phase-info-label">About this phase</span>
+                  <p className="phase-description">{phase.description || "No description has been added for this phase."}</p>
+                </div>
+              </div>
+              <div className="phase-overall-progress">
+                <span className="phase-progress-label">Overall progress</span>
+                <strong className="phase-progress-value">{progress}<small>%</small></strong>
+                <ProgressBar>
+                  <ProgressBar now={progress} aria-label="Overall phase progress" />
+                </ProgressBar>
+                <p>Based on completed tasks</p>
+              </div>
             </div>
-            <div className="phase-overall-progress">
-              <Stack direction="horizontal" className="phase-progress-label">
-                <span>Overall progress</span>
-                <strong>{progress}%</strong>
-              </Stack>
-              <ProgressBar now={progress} aria-label={`Phase progress ${progress}%`} />
-            </div>
+            <div className="phase-reference"><span>Phase ID</span><span>{phase.id}</span></div>
           </Card>
 
           {!canViewAnyWorkModule && (
@@ -212,8 +238,9 @@ function ViewPhase() {
               </Button>
             ) : null}
           >
-            <div className="phase-table-wrap">
-              <Table responsive hover className="phase-data-table mb-0">
+            <div className={`phase-table-wrap${tasks.length === 0 ? " phase-table-wrap--empty" : ""}`}>
+              <Table hover className="phase-data-table mb-0">
+                <caption className="visually-hidden">Tasks in this phase</caption>
                 <thead><tr><th>Task</th><th>Assignee</th><th>Date range</th><th>Status</th></tr></thead>
                 <tbody>
                   {tasks.length === 0 ? (
@@ -241,17 +268,18 @@ function ViewPhase() {
               </Button>
             ) : null}
           >
-            <div className="phase-table-wrap">
-              <Table responsive hover className="phase-data-table mb-0">
+            <div className={`phase-table-wrap${deliverables.length === 0 ? " phase-table-wrap--empty" : ""}`}>
+              <Table hover className="phase-data-table mb-0">
+                <caption className="visually-hidden">Deliverables in this phase</caption>
                 <thead><tr><th>Deliverable</th><th>Description</th><th>Due date</th><th>Status</th></tr></thead>
                 <tbody>
                   {deliverables.length === 0 ? (
                     <EmptyTableRow colSpan={4} message="No deliverables have been added to this phase." />
                   ) : deliverables.map((deliverable) => (
                     <tr key={deliverable.id}>
-                      <td><strong>{deliverable.title || `Deliverable #${deliverable.id}`}</strong></td>
+                      <td className="phase-title-cell"><strong>{deliverable.title || `Deliverable #${deliverable.id}`}</strong></td>
                       <td className="phase-description-cell">{deliverable.description || "-"}</td>
-                      <td>{formatDate(deliverable.dueDate)}</td>
+                      <td className="phase-date-cell">{formatDate(deliverable.dueDate)}</td>
                       <td><PhaseStatusBadge status={deliverable.status} /></td>
                     </tr>
                   ))}
@@ -278,17 +306,18 @@ function ViewPhase() {
               </Button>
             ) : null}
           >
-            <div className="phase-table-wrap">
-              <Table responsive hover className="phase-data-table mb-0">
+            <div className={`phase-table-wrap${contracts.length === 0 ? " phase-table-wrap--empty" : ""}`}>
+              <Table hover className="phase-data-table phase-contract-table mb-0">
+                <caption className="visually-hidden">Contracts linked to this phase</caption>
                 <thead><tr><th>Contract</th><th>Number</th><th>Effective period</th><th>Linked at</th><th>Status</th></tr></thead>
                 <tbody>
                   {contracts.length === 0 ? (
                     <EmptyTableRow colSpan={5} message="No contracts are linked to this phase." />
                   ) : contracts.map((contract) => (
                     <tr key={contract.id}>
-                      <td><strong>{contract.contractTitle || `Contract #${contract.id}`}</strong></td>
-                      <td>{contract.contractNumber || "-"}</td>
-                      <td>{formatDateRange(contract.effectiveDate, contract.expirationDate)}</td>
+                      <td className="phase-title-cell"><strong>{contract.contractTitle || `Contract #${contract.id}`}</strong></td>
+                      <td><span className="phase-contract-number">{contract.contractNumber || "-"}</span></td>
+                      <td><DateRange startDate={contract.effectiveDate} endDate={contract.expirationDate} /></td>
                       <td>{formatDateTime(contract.linkedAt)}</td>
                       <td><PhaseStatusBadge status={contract.contractStatus} /></td>
                     </tr>
@@ -338,9 +367,14 @@ function formatDate(value) {
   return parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : value;
 }
 
-// Ghép ngày bắt đầu và kết thúc thành một khoảng thời gian.
-function formatDateRange(startDate, endDate) {
-  return `${formatDate(startDate)} - ${formatDate(endDate)}`;
+// Hiển thị khoảng ngày trên hai dòng để bảng dễ đọc ở màn hình nhỏ.
+function DateRange({ startDate, endDate }) {
+  return (
+    <div className="phase-date-range">
+      <span>{formatDate(startDate)}</span>
+      <small>to {formatDate(endDate)}</small>
+    </div>
+  );
 }
 
 // Định dạng thời điểm liên kết hợp đồng theo locale en-GB.

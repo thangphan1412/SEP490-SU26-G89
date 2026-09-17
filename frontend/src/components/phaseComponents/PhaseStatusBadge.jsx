@@ -20,7 +20,7 @@ function PhaseStatusBadge({ status }) {
   };
 
   return (
-    <Badge className={`phase-status ${classByStatus[normalizedStatus] || "phase-status--draft"}`}>
+    <Badge bg="" className={`phase-status ${classByStatus[normalizedStatus] || "phase-status--draft"}`}>
       {status || "Not set"}
     </Badge>
   );

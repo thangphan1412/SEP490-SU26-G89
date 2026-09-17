@@ -3,9 +3,9 @@ package com.fpt.backend.controller.dashboard;
 import com.fpt.backend.constant.ApiConstant;
 import com.fpt.backend.dto.response.dashboard.DashboardOverviewDTO;
 import com.fpt.backend.dto.response.dashboard.DashboardStatsDTO;
-import com.fpt.backend.service.impl.dashboard.DashboardServiceImpl;
+import com.fpt.backend.service.interfaces.dashboard.IDashboardService;
 import com.fpt.backend.util.BaseResponse;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -15,10 +15,10 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping(ApiConstant.Dashboard.DASHBOARD)
+@RequiredArgsConstructor
 public class DashboardController {
 
-    @Autowired
-    private DashboardServiceImpl dashboardService;
+    private final IDashboardService dashboardService;
 
     @PreAuthorize("hasAnyAuthority('CEO', 'Administrator', 'Accountant', 'HeadOfDepartment')")
     @GetMapping(ApiConstant.Dashboard.OVERVIEW)

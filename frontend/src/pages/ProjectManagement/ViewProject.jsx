@@ -8,12 +8,13 @@ import PagePanel from "../../components/projectComponents/PagePanel.jsx";
 import PermissionConfigureModal from "../../components/projectComponents/PermissionConfigureModal.jsx";
 import PrimaryButton from "../../components/projectComponents/PrimaryButton.jsx";
 import StatusBadge from "../../components/projectComponents/StatusBadge.jsx";
-import { isCompletedProjectStatus } from "../../components/projectComponents/projectFormUtils.js";
+import { getProjectErrorMessage, isCompletedProjectStatus } from "../../components/projectComponents/projectFormUtils.js";
 import {
     hasAnyProjectAction,
     hasProjectAction,
     PROJECT_ACTIONS,
 } from "../../components/permissionComponents/permissionAccess.js";
+import "../../assets/styles/css/projectStyles/ProjectDetail.css";
 import "../../assets/styles/css/projectStyles/ViewProject.css";
 
 // Hiển thị ký hiệu trống cho giá trị chưa được cung cấp.
@@ -43,16 +44,17 @@ function normalizeText(value) {
     return String(value || "").trim().toLowerCase();
 }
 
-// Hiển thị một hàng thông tin chi tiết, hỗ trợ định dạng trạng thái.
-function DetailRow({ label, value, isStatus = false }) {
+// Hiển thị thông tin tóm tắt với biểu tượng và nhãn riêng.
+function DetailRow({ label, value, icon }) {
     return (
         <div className="view-project-detail-row">
-            <span className="view-project-detail-label">{label}</span>
-            {isStatus ? (
-                <StatusBadge status={value} />
-            ) : (
+            <span className="view-project-detail-icon">
+                <Icon name={icon} size={19} color="#667085" />
+            </span>
+            <div>
+                <span className="view-project-detail-label">{label}</span>
                 <span className="view-project-detail-value">{showValue(value)}</span>
-            )}
+            </div>
         </div>
     );
 }
@@ -62,7 +64,10 @@ function EmptyRow({ colSpan, message }) {
     return (
         <tr>
             <td colSpan={colSpan} className="view-project-empty-cell">
-                {message}
+                <div className="view-project-empty-content">
+                    <Icon name="search" size={23} color="#98a2b3" />
+                    <span>{message}</span>
+                </div>
             </td>
         </tr>
     );
@@ -113,7 +118,7 @@ function ViewProject() {
 
                 // Hiển thị thông báo riêng khi backend từ chối quyền truy cập.
                 if (apiError.response?.status === 403) {
-                    setError("Bạn không được quyền xem project này!");
+                    setError(getProjectErrorMessage(apiError, "Bạn không được quyền xem project này!"));
                 } else {
                     setError("Unable to load this project. Please try again later.");
                 }
@@ -280,6 +285,7 @@ function ViewProject() {
                 className="view-project-back-button"
                 onClick={() => navigate("/project-management/list")}
             >
+                <Icon name="arrowLeft" size={17} color="currentColor" />
                 Back
             </Button>
 
@@ -320,20 +326,23 @@ function ViewProject() {
     );
 
     return (
+        <div className="project-detail-page view-project-page">
         <PagePanel
             title="Project Details"
-            description="View project information, phases, members, permissions, and contracts."
+            description="An overview of your project, its timeline, and the people behind it."
             action={pageAction}
         >
             {loading ? (
-                <Card as="section" className="project-management-card">
-                    <p className="view-project-state-text">Loading project...</p>
+                <Card as="section" className="project-management-card project-detail-state" role="status">
+                    <span className="project-detail-section-icon"><Icon name="document" size={23} /></span>
+                    <h2>Loading project</h2>
+                    <p>Getting the latest project information...</p>
                 </Card>
             ) : error ? (
-                <Card as="section" className="project-management-card">
-                    <p className="view-project-state-text view-project-state-text--error">
-                        {error}
-                    </p>
+                <Card as="section" className="project-management-card project-detail-state" role="alert">
+                    <span className="project-detail-section-icon"><Icon name="info" size={23} color="#b42318" /></span>
+                    <h2>Unable to open project</h2>
+                    <p>{error}</p>
                 </Card>
             ) : (
                 <>
@@ -349,37 +358,46 @@ function ViewProject() {
                         </Alert>
                     )}
 
-                    <Card as="section" className="project-management-card">
-                        <Card.Title as="h2" className="project-management-card-title">
-                            Basic Information
-                        </Card.Title>
+                    <Card as="section" className="project-management-card view-project-overview">
+                        <div className="view-project-overview-heading">
+                            <div className="view-project-identity">
+                                <span className="view-project-project-icon"><Icon name="building" size={27} color="#3659d9" /></span>
+                                <div>
+                                    <span className="project-detail-eyebrow">Project overview</span>
+                                    <h2 className="view-project-name">{showValue(project.projectName)}</h2>
+                                    <span className="project-detail-code">{showValue(project.projectCode)}</span>
+                                </div>
+                            </div>
+                            <StatusBadge status={project.projectStatus} />
+                        </div>
 
                         <div className="view-project-info-grid">
-                            <DetailRow label="Name" value={project.projectName} />
-                            <DetailRow label="Project Code" value={project.projectCode} />
-                            <DetailRow label="Status" value={project.projectStatus} isStatus />
-                            <DetailRow label="Start Date" value={formatDate(project.projectStartDate)} />
-                            <DetailRow label="End Date" value={formatDate(project.projectEndDate)} />
-                            <DetailRow label="Created By" value={project.projectCreatedBy} />
-                            <DetailRow label="Created At" value={formatDate(project.projectCreatedAt)} />
-                            <div className="view-project-description-row">
-                                <span className="view-project-detail-label">Description</span>
-                                <p className="view-project-description-text">
-                                    {showValue(project.projectDescription)}
-                                </p>
-                            </div>
+                            <DetailRow label="Start date" value={formatDate(project.projectStartDate)} icon="calendar" />
+                            <DetailRow label="End date" value={formatDate(project.projectEndDate)} icon="flag" />
+                            <DetailRow label="Created by" value={project.projectCreatedBy} icon="users" />
+                            <DetailRow label="Created on" value={formatDate(project.projectCreatedAt)} icon="calendar" />
+                        </div>
+                        <div className="view-project-description-row">
+                            <span className="view-project-detail-label">About this project</span>
+                            <p className="view-project-description-text">
+                                {project.projectDescription || "No description has been added yet."}
+                            </p>
                         </div>
                     </Card>
 
                     <Card as="section" className="project-management-card">
                         <div className="view-project-section-header">
-                            <Card.Title as="h2" className="project-management-card-title">
-                                Project Phases
-                            </Card.Title>
+                            <div className="project-detail-section-heading">
+                                <span className="project-detail-section-icon"><Icon name="chart" size={21} color="#3659d9" /></span>
+                                <div>
+                                    <Card.Title as="h2" className="project-management-card-title">Project Phases</Card.Title>
+                                    <p className="project-detail-section-note">Follow the schedule and progress of each phase.</p>
+                                </div>
+                            </div>
                             <span className="view-project-result-count">{projectPhases.length} phases</span>
                         </div>
 
-                        <div className="view-project-table-wrap">
+                        <div className={`view-project-table-wrap${projectPhases.length === 0 ? " view-project-table-wrap--empty" : ""}`}>
                             <Table hover responsive={false} className="view-project-table view-project-phase-table mb-0">
                                 <thead>
                                     <tr>
@@ -417,7 +435,7 @@ function ViewProject() {
                                                 <td className="view-project-td"><StatusBadge status={phase.status} /></td>
                                                 <td className="view-project-td">
                                                     <div className="view-project-progress-wrap">
-                                                        <ProgressBar now={clampProgress(phase.progress)} />
+                                                        <ProgressBar now={clampProgress(phase.progress)} aria-label={`Progress of ${phase.title}`} />
                                                         <span>{clampProgress(phase.progress)}%</span>
                                                     </div>
                                                 </td>
@@ -433,9 +451,13 @@ function ViewProject() {
                     {canViewMembers && (
                     <Card as="section" className="project-management-card">
                         <div className="view-project-section-header">
-                            <Card.Title as="h2" className="project-management-card-title">
-                                Project Members
-                            </Card.Title>
+                            <div className="project-detail-section-heading">
+                                <span className="project-detail-section-icon"><Icon name="users" size={21} color="#3659d9" /></span>
+                                <div>
+                                    <Card.Title as="h2" className="project-management-card-title">Project Members</Card.Title>
+                                    <p className="project-detail-section-note">The team and their access to this project.</p>
+                                </div>
+                            </div>
                             <span className="view-project-result-count">
                                 {filteredUsers.length} / {projectUsers.length} members
                             </span>
@@ -459,7 +481,7 @@ function ViewProject() {
                             )}
                         </div>
 
-                        <div className="view-project-table-wrap">
+                        <div className={`view-project-table-wrap${filteredUsers.length === 0 ? " view-project-table-wrap--empty" : ""}`}>
                             <Table hover responsive={false} className="view-project-table view-project-member-table mb-0">
                                 <thead>
                                     <tr>
@@ -478,7 +500,12 @@ function ViewProject() {
                                     ) : (
                                         filteredUsers.map((user) => (
                                             <tr key={user.userId} className="view-project-row">
-                                                <td className="view-project-td view-project-user-name">{showValue(user.userName)}</td>
+                                                <td className="view-project-td view-project-user-name">
+                                                    <div className="view-project-member-identity">
+                                                        <span className="view-project-member-avatar" aria-hidden="true">{String(user.userName || "?").trim().charAt(0).toUpperCase()}</span>
+                                                        <span>{showValue(user.userName)}</span>
+                                                    </div>
+                                                </td>
                                                 <td className="view-project-td">{showValue(user.email)}</td>
                                                 <td className="view-project-td"><StatusBadge status={user.userStatus} /></td>
                                                 <td className="view-project-td">
@@ -500,9 +527,13 @@ function ViewProject() {
                     {canViewContracts && (
                     <Card as="section" className="project-management-card">
                         <div className="view-project-section-header">
-                            <Card.Title as="h2" className="project-management-card-title">
-                                Project Contracts
-                            </Card.Title>
+                            <div className="project-detail-section-heading">
+                                <span className="project-detail-section-icon"><Icon name="document" size={21} color="#3659d9" /></span>
+                                <div>
+                                    <Card.Title as="h2" className="project-management-card-title">Project Contracts</Card.Title>
+                                    <p className="project-detail-section-note">Linked agreements and their current status.</p>
+                                </div>
+                            </div>
                             <div className="d-flex flex-wrap align-items-center gap-2">
                                 <span className="view-project-result-count">
                                     {filteredContracts.length} / {projectContracts.length} contracts
@@ -512,7 +543,7 @@ function ViewProject() {
                                         type="button"
                                         variant="outline-primary"
                                         size="sm"
-                                        className="d-inline-flex align-items-center gap-2"
+                                        className="view-project-manage-contracts-button"
                                         onClick={() => navigate("/contract-management/list")}
                                     >
                                         <Icon name="document" size={16} />
@@ -553,7 +584,7 @@ function ViewProject() {
                             )}
                         </div>
 
-                        <div className="view-project-table-wrap">
+                        <div className={`view-project-table-wrap${filteredContracts.length === 0 ? " view-project-table-wrap--empty" : ""}`}>
                             <Table hover responsive={false} className="view-project-table mb-0">
                                 <thead>
                                     <tr>
@@ -596,6 +627,7 @@ function ViewProject() {
                 />
             )}
         </PagePanel>
+        </div>
     );
 }
 

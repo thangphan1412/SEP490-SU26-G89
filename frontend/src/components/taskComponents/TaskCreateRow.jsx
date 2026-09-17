@@ -210,11 +210,10 @@ function getErrorMessage(error) {
 function TaskDateInput({
   value = "",
   disabled = false,
-  readOnly = false,
   ...inputProperties
 }) {
   function openDatePicker(event) {
-    if (!readOnly && typeof event.currentTarget.showPicker === "function") {
+    if (typeof event.currentTarget.showPicker === "function") {
       event.currentTarget.showPicker();
     }
   }
@@ -236,7 +235,6 @@ function TaskDateInput({
         type="date"
         value={value}
         disabled={disabled}
-        readOnly={readOnly}
         className="task-date-input__native"
         onClick={openDatePicker}
       />
