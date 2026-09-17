@@ -92,7 +92,6 @@ function EditTask() {
     });
     setShowCreateRow(false);
     setSuccessMessage("Task created successfully.");
-    return createdTask;
   }
 
   // Đánh dấu task hoàn thành rồi cập nhật bản ghi trong state.
