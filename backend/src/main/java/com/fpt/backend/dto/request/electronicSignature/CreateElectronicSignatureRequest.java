@@ -25,4 +25,5 @@ public class CreateElectronicSignatureRequest {
     private CreateFileStorageRequest createFileStorageRequests;
     private String publicKey;
     private String keyCode;
+    private String certificate;
 }

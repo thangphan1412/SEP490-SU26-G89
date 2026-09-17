@@ -54,6 +54,7 @@ public class SignatureController {
                                         null,
                                         0,
                                         null,
+                                        null,
                                         null
                                 )
                         );
@@ -86,7 +87,7 @@ public class SignatureController {
             throw new IllegalArgumentException("Signature value or public key is unavailable");
         }
         UUID signerId = signature.getUserKey().getUser().getId();
-        boolean valid = verificationService.verify(file.getBytes(), signature.getSignatureValue(), signerId);
+        boolean valid = verificationService.verify(file.getBytes(), signature.getSignatureValue(), signerId, signature.getUserKey().getKeyCode());
         SignatureVerificationResponse response = new SignatureVerificationResponse(
                 signature.getId(), signature.getContract().getId(), signerId,
                 signature.getDocumentHash(), valid
@@ -107,7 +108,7 @@ public class SignatureController {
         }
         byte[] pdf = cloudinaryService.download(signature.getFileStorage());
         UUID signerId = signature.getUserKey().getUser().getId();
-        boolean valid = verificationService.verify(pdf, signature.getSignatureValue(), signerId);
+        boolean valid = verificationService.verify(pdf, signature.getSignatureValue(), signerId, signature.getUserKey().getKeyCode());
         SignatureVerificationResponse response = new SignatureVerificationResponse(
                 signature.getId(), signature.getContract().getId(), signerId,
                 signature.getDocumentHash(), valid
@@ -122,7 +123,7 @@ public class SignatureController {
             String fingerprint = HexFormat.ofDelimiter(":").withUpperCase().formatHex(digest);
             return new UserKeyInfoResponse(
                     true, key.getPublicKey(),
-                    key.getKeyAlgorithm().name(),key.getKeyCode(), key.getKeySize(), key.getCreateAt(), null
+                    key.getKeyAlgorithm().name(),key.getKeyCode(), key.getKeySize(), key.getCreateAt(), null, null
             );
         } catch (Exception exception) {
             throw new IllegalStateException("Unable to create public key fingerprint", exception);

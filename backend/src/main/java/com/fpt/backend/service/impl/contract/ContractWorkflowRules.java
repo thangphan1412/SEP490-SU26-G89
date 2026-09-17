@@ -5,12 +5,12 @@ import com.fpt.backend.enums.ContractWorkflowActionType;
 
 import java.util.List;
 
-final class ContractWorkflowRules {
+public final class ContractWorkflowRules {
 
     private ContractWorkflowRules() {
     }
 
-    static List<String> requiredPermissions(ContractWorkflowActionType actionType) {
+    public static List<String> requiredPermissions(ContractWorkflowActionType actionType) {
         return switch (actionType) {
             case CREATE -> List.of(
                     ContractProjectActions.VIEW,
@@ -33,7 +33,7 @@ final class ContractWorkflowRules {
         };
     }
 
-    static ContractStatus pendingStatus(ContractWorkflowActionType actionType) {
+    public static ContractStatus pendingStatus(ContractWorkflowActionType actionType) {
         return switch (actionType) {
             case CREATE -> ContractStatus.NEW;
             case APPROVE -> ContractStatus.PENDING_APPROVAL;
@@ -41,7 +41,7 @@ final class ContractWorkflowRules {
         };
     }
 
-    static String historyAction(ContractWorkflowActionType actionType) {
+    public static String historyAction(ContractWorkflowActionType actionType) {
         return switch (actionType) {
             case CREATE -> "SUBMIT";
             case APPROVE -> "APPROVE";

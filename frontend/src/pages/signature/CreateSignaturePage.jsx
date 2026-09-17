@@ -92,7 +92,8 @@ function CreateSignaturePage() {
             const {
                 keyCode,
                 publicKey,
-                privateKey
+                privateKey,
+                certificate
             } = keyData;
 
             if (!privateKey) {
@@ -110,6 +111,11 @@ function CreateSignaturePage() {
             if (!keyCode) {
                 throw new Error(
                     "Key code was not returned."
+                );
+            }
+            if (!certificate) {
+                throw new Error(
+                    "Certificate was not returned."
                 );
             }
 
@@ -147,9 +153,14 @@ function CreateSignaturePage() {
 
             setGeneratedKey({
                 keyCode,
-                publicKey
+                publicKey,
+                certificate
             });
-
+            console.log("GENERATED KEY:", {
+                keyCode,
+                publicKey,
+                certificate
+            });
             setKeyCode(keyCode);
             setPublicKey(publicKey);
             setKeyStatus("ACTIVE");
@@ -387,6 +398,10 @@ function CreateSignaturePage() {
             formData.append(
                 "keyCode",
                 generatedKey.keyCode
+            );
+            formData.append(
+                "certificate",
+                generatedKey.certificate
             );
 
             // Signature image

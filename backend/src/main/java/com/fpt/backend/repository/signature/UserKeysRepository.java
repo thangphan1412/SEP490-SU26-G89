@@ -23,4 +23,8 @@ public interface UserKeysRepository extends JpaRepository<UserKeys, UUID> {
               and uk.keyStatus = :keysStatus
     """)
     boolean existsAllByKeyStatus(@Param("userId") UUID id,@Param("keysStatus") KeyStatus keysStatus);
+    Optional<UserKeys> findByUserIdAndKeyCode(
+            UUID userId,
+            String keyCode
+    );
 }

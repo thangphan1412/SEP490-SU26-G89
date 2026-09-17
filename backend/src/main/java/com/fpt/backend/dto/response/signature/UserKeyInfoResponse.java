@@ -10,6 +10,7 @@ public record UserKeyInfoResponse(
         String keyCode,
         long keySize,
         LocalDateTime createdAt,
-        String privateKey
+        String privateKey,
+        String certificate
 ) {
 }
