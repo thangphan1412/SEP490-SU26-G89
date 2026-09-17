@@ -1,5 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useRef, useMemo, useState } from "react";
+
 import { Alert, Button, Form, Spinner } from "react-bootstrap";
+
 import {
     IconArrowLeft,
     IconCheck,
@@ -8,16 +10,24 @@ import {
     IconEyeOff,
     IconLock,
 } from "@tabler/icons-react";
+
 import { useNavigate, useParams } from "react-router-dom";
 
 import contractApi from "../../services/contractService/contractApi.js";
+
 import electronicSignatureService from "../../services/signatureService/electronicSignatureService.js";
+
 import {
     getApiErrorMessage,
     unwrapApiResponse,
 } from "./contractUtils.js";
 
 import "../../assets/styles/css/layoutStyles/ContractSigning.css";
+
+import { Document, Page, pdfjs } from "react-pdf";
+
+pdfjs.GlobalWorkerOptions.workerSrc =
+    `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
 export default function ContractSigningPage() {
 
@@ -65,7 +75,129 @@ export default function ContractSigningPage() {
 
     const [error, setError] = useState("");
     const [success, setSuccess] = useState("");
+    const [pdfNumPages, setPdfNumPages] = useState(0);
+    const [selectedPage, setSelectedPage] = useState(1);
 
+    const [signaturePosition, setSignaturePosition] = useState({
+        x: 50,
+        y: 50,
+        width: 180,
+        height: 70,
+    });
+
+    const [draggingSignature, setDraggingSignature] = useState(false);
+
+    const pdfContainerRef = useRef(null);
+    const dragStartRef = useRef(null);
+    function handlePdfLoadSuccess({ numPages }) {
+        setPdfNumPages(numPages);
+
+        if (selectedPage > numPages) {
+            setSelectedPage(1);
+        }
+    }
+    function handleSignatureMouseDown(event) {
+        event.preventDefault();
+
+        if (!pdfContainerRef.current) {
+            return;
+        }
+
+        const rect =
+            pdfContainerRef.current.getBoundingClientRect();
+
+        dragStartRef.current = {
+            mouseX: event.clientX,
+            mouseY: event.clientY,
+            signatureX: signaturePosition.x,
+            signatureY: signaturePosition.y,
+            containerWidth: rect.width,
+            containerHeight: rect.height,
+        };
+
+        setDraggingSignature(true);
+    }
+    useEffect(() => {
+        function handleMouseMove(event) {
+            if (
+                !draggingSignature ||
+                !dragStartRef.current
+            ) {
+                return;
+            }
+
+            const start = dragStartRef.current;
+
+            const deltaX =
+                event.clientX - start.mouseX;
+
+            const deltaY =
+                event.clientY - start.mouseY;
+
+            let newX =
+                start.signatureX + deltaX;
+
+            let newY =
+                start.signatureY + deltaY;
+
+            newX = Math.max(
+                0,
+                Math.min(
+                    newX,
+                    start.containerWidth -
+                    signaturePosition.width
+                )
+            );
+
+            newY = Math.max(
+                0,
+                Math.min(
+                    newY,
+                    start.containerHeight -
+                    signaturePosition.height
+                )
+            );
+
+            setSignaturePosition((previous) => ({
+                ...previous,
+                x: newX,
+                y: newY,
+            }));
+        }
+
+        function handleMouseUp() {
+            setDraggingSignature(false);
+            dragStartRef.current = null;
+        }
+
+        if (draggingSignature) {
+            window.addEventListener(
+                "mousemove",
+                handleMouseMove
+            );
+
+            window.addEventListener(
+                "mouseup",
+                handleMouseUp
+            );
+        }
+
+        return () => {
+            window.removeEventListener(
+                "mousemove",
+                handleMouseMove
+            );
+
+            window.removeEventListener(
+                "mouseup",
+                handleMouseUp
+            );
+        };
+    }, [
+        draggingSignature,
+        signaturePosition.width,
+        signaturePosition.height,
+    ]);
     // =========================================================
     // LOAD CONTRACT / SIGNATURES / PDF
     // =========================================================
@@ -998,7 +1130,12 @@ export default function ContractSigningPage() {
                     id,
                     selectedId,
                     publicKeyCode,
-                    pdfBlob
+                    pdfBlob,
+                    selectedPage,
+                    signaturePosition.x,
+                    signaturePosition.y,
+                    signaturePosition.width,
+                    signaturePosition.height
                 );
 
             const prepareData = unwrapApiResponse(prepareResponse);
@@ -1715,28 +1852,205 @@ export default function ContractSigningPage() {
                             <strong>
                                 Generated contract PDF
                             </strong>
+                            {pdfNumPages > 0 && (
+                                <>
+                                    <div className="pdf-page-selector">
+                                        <Form.Label>
+                                            Signature page
+                                        </Form.Label>
 
+                                        <Form.Select
+                                            value={selectedPage}
+                                            onChange={(event) => {
+                                                setSelectedPage(
+                                                    Number(event.target.value)
+                                                );
+
+                                                setSignaturePosition({
+                                                    x: 50,
+                                                    y: 50,
+                                                    width: 180,
+                                                    height: 70,
+                                                });
+                                            }}
+                                            disabled={signing}
+                                        >
+                                            {Array.from(
+                                                { length: pdfNumPages },
+                                                (_, index) => (
+                                                    <option
+                                                        key={index + 1}
+                                                        value={index + 1}
+                                                    >
+                                                        Page {index + 1}
+                                                    </option>
+                                                )
+                                            )}
+                                        </Form.Select>
+                                    </div>
+
+                                    <div className="signature-position-info">
+                                        <strong>
+                                            Signature position
+                                        </strong>
+
+                                        <div>
+                                            Page: {selectedPage}
+                                        </div>
+
+                                        <div>
+                                            X: {Math.round(signaturePosition.x)}
+                                        </div>
+
+                                        <div>
+                                            Y: {Math.round(signaturePosition.y)}
+                                        </div>
+
+                                        <div>
+                                            Width: {Math.round(signaturePosition.width)}
+                                        </div>
+
+                                        <div>
+                                            Height: {Math.round(signaturePosition.height)}
+                                        </div>
+                                    </div>
+                                </>
+                            )}
                         </div>
 
                         {pdfUrl ? (
 
-                            <iframe
-                                title="Contract PDF preview"
-                                src={
-                                    pdfUrl
-                                }
-                            />
+                            <div className="pdf-signing-viewer">
+
+                                <Document
+                                    file={pdfUrl}
+                                    onLoadSuccess={handlePdfLoadSuccess}
+                                    onLoadError={(error) => {
+                                        console.error(
+                                            "PDF LOAD ERROR:",
+                                            error
+                                        );
+
+                                        setError(
+                                            "Unable to render the contract PDF."
+                                        );
+                                    }}
+                                    loading={
+                                        <div className="pdf-loading">
+                                            Loading PDF...
+                                        </div>
+                                    }
+                                >
+
+                                    {Array.from(
+                                        { length: pdfNumPages },
+                                        (_, index) => {
+
+                                            const pageNumber =
+                                                index + 1;
+
+                                            return (
+                                                <div
+                                                    key={pageNumber}
+                                                    ref={
+                                                        pageNumber === selectedPage
+                                                            ? pdfContainerRef
+                                                            : null
+                                                    }
+                                                    className="pdf-page-wrapper"
+                                                    style={{
+                                                        position: "relative",
+                                                        width: "fit-content",
+                                                        margin: "0 auto 24px",
+                                                    }}
+                                                >
+
+                                                    <Page
+                                                        pageNumber={
+                                                            pageNumber
+                                                        }
+                                                        width={750}
+                                                        renderTextLayer={false}
+                                                        renderAnnotationLayer={false}
+                                                    />
+
+                                                    {pageNumber ===
+                                                        selectedPage && (
+                                                            <div
+                                                                className="signature-overlay"
+                                                                style={{
+                                                                    position:
+                                                                        "absolute",
+
+                                                                    left:
+                                                                    signaturePosition.x,
+
+                                                                    top:
+                                                                    signaturePosition.y,
+
+                                                                    width:
+                                                                    signaturePosition.width,
+
+                                                                    height:
+                                                                    signaturePosition.height,
+
+                                                                    cursor:
+                                                                        draggingSignature
+                                                                            ? "grabbing"
+                                                                            : "grab",
+                                                                }}
+                                                                onMouseDown={
+                                                                    handleSignatureMouseDown
+                                                                }
+                                                            >
+
+                                                                {selectedSignature?.fileUrl ? (
+
+                                                                    <img
+                                                                        src={
+                                                                            selectedSignature.fileUrl
+                                                                        }
+                                                                        alt={
+                                                                            selectedSignature.signatureName
+                                                                        }
+                                                                        draggable={
+                                                                            false
+                                                                        }
+                                                                    />
+
+                                                                ) : (
+
+                                                                    <div>
+                                                                        ✍
+                                                                        <br />
+                                                                        Signature
+                                                                    </div>
+
+                                                                )}
+
+                                                                <span className="signature-overlay-label">
+                                            Drag to position
+                                        </span>
+
+                                                            </div>
+                                                        )}
+
+                                                </div>
+                                            );
+                                        }
+                                    )}
+
+                                </Document>
+
+                            </div>
 
                         ) : (
 
-                            <Alert
-                                variant="danger"
-                            >
+                            <Alert variant="danger">
                                 PDF preview is unavailable.
                             </Alert>
 
                         )}
-
                     </section>
 
                 </div>

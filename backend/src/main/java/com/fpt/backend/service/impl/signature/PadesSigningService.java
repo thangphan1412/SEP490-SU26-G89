@@ -2,11 +2,9 @@ package com.fpt.backend.service.impl.signature;
 
 import com.fpt.backend.dto.request.signature.PadesSigningSession;
 import com.fpt.backend.dto.response.signature.PadesPrepareResponse;
+import com.fpt.backend.entity.*;
+import com.fpt.backend.repository.electronicSignature.ElectronicSignatureRepository;
 import com.fpt.backend.service.impl.contract.ContractWorkflowRules;
-import com.fpt.backend.entity.Contracts;
-import com.fpt.backend.entity.FileStorage;
-import com.fpt.backend.entity.UserKeys;
-import com.fpt.backend.entity.Users;
 import com.fpt.backend.repository.contract.ContractRepository;
 import com.fpt.backend.repository.contract.ContractStatusHistoryRepository;
 import com.fpt.backend.repository.contract.ContractWorkflowStepInstanceRepository;
@@ -38,7 +36,9 @@ import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-
+import org.apache.pdfbox.pdmodel.PDPage;
+import org.apache.pdfbox.pdmodel.PDPageContentStream;
+import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject;
 @Service
 @RequiredArgsConstructor
 public class PadesSigningService {
@@ -48,7 +48,8 @@ public class PadesSigningService {
     private final CloudinaryService cloudinaryService;
     private final ContractRepository contractRepository;
     private final CurrentUser currentUser;
-
+    private final PadesVerificationService padesVerificationService;
+    private final ElectronicSignatureRepository electronicSignatureRepository;
 
     private final Map<UUID, PadesSigningSession> sessions = new ConcurrentHashMap<>();
 
@@ -57,6 +58,12 @@ public class PadesSigningService {
             UUID userId,
             UUID electronicSignatureId,
             String keyCode,
+            int pageNumber,
+            float positionX,
+            float positionY,
+            float signatureWidth,
+            float signatureHeight,
+
             byte[] pdfBytes
     ) throws Exception {
         validatePrepareRequest(
@@ -64,15 +71,29 @@ public class PadesSigningService {
                 userId,
                 electronicSignatureId,
                 keyCode,
+                pageNumber,
+                positionX,
+                positionY,
+                signatureWidth,
+                signatureHeight,
                 pdfBytes
         );
         try (PDDocument document = Loader.loadPDF(pdfBytes)) {
+
             PDSignature signature = new PDSignature();
             signature.setFilter(PDSignature.FILTER_ADOBE_PPKLITE);
             signature.setSubFilter(PDSignature.SUBFILTER_ADBE_PKCS7_DETACHED);
             signature.setName("Electronic Signature");
             signature.setReason("Contract signing");
             signature.setSignDate(Calendar.getInstance());
+            drawSignatureImage(
+                    document,
+                    electronicSignatureId,
+                    pageNumber,
+                    positionX,
+                    positionY,
+                    signatureWidth,
+                    signatureHeight);
             document.addSignature(signature);
             ByteArrayOutputStream output = new ByteArrayOutputStream();
             ExternalSigningSupport externalSigning = document.saveIncrementalForExternalSigning(output);
@@ -93,17 +114,23 @@ public class PadesSigningService {
             byte[] preparedPdf = output.toByteArray();
             UUID sessionId = UUID.randomUUID();
             PadesSigningSession session = PadesSigningSession.builder()
-                            .sessionId(sessionId)
-                            .contractId(contractId)
-                            .userId(userId)
-                            .electronicSignatureId(electronicSignatureId)
-                            .keyCode(keyCode)
-                            .preparedPdf(preparedPdf)
-                            .contentToSign(contentToSign)
-                            .documentHash(documentHash)
-                            .signatureOffset(signatureOffset)
-                            .signatureCapacity(signatureCapacity)
-                            .build();
+                    .sessionId(sessionId)
+                    .contractId(contractId)
+                    .userId(userId)
+                    .electronicSignatureId(electronicSignatureId)
+                    .keyCode(keyCode)
+                    .originalPdf(pdfBytes)
+                    .preparedPdf(preparedPdf)
+                    .contentToSign(contentToSign)
+                    .documentHash(documentHash)
+                    .signatureOffset(signatureOffset)
+                    .signatureCapacity(signatureCapacity)
+                    .pageNumber(pageNumber)
+                    .positionX(positionX)
+                    .positionY(positionY)
+                    .signatureWidth(signatureWidth)
+                    .signatureHeight(signatureHeight)
+                    .build();
             sessions.put(sessionId, session);
             return new PadesPrepareResponse(
                     sessionId,
@@ -156,7 +183,48 @@ public class PadesSigningService {
         if (!session.getKeyCode().equals(userKeys.getKeyCode())) {
             throw new IllegalArgumentException("Key code does not match signing session");
         }
+        System.out.println(
+                "========== VERIFY EXISTING PADES SIGNATURES =========="
+        );
 
+        List<PadesVerificationService.PadesVerificationResult>
+                existingSignatures =
+                padesVerificationService.verifyAll(
+                        session.getOriginalPdf()
+                );
+
+        System.out.println(
+                "Existing signatures: " +
+                        existingSignatures.size()
+        );
+
+        for (PadesVerificationService.PadesVerificationResult result
+                : existingSignatures) {
+
+            System.out.println(
+                    "Signature #" +
+                            result.signatureIndex() +
+                            " valid = " +
+                            result.valid()
+            );
+
+            if (!result.valid()) {
+                throw new IllegalArgumentException(
+                        "Existing PAdES signature #" +
+                                result.signatureIndex() +
+                                " is invalid. " +
+                                result.message()
+                );
+            }
+        }
+
+        System.out.println(
+                "All existing PAdES signatures are valid"
+        );
+
+        System.out.println(
+                "====================================================="
+        );
         X509Certificate certificate = loadCertificate(userKeys.getCertificate());
         byte[] rsaSignature = Base64.getDecoder().decode(signatureValue);
 
@@ -258,36 +326,15 @@ public class PadesSigningService {
         return verifier.verify(signature);
     }
     private void debugCms(byte[] cmsBytes) throws Exception {
-
         System.out.println("\n========== DEBUG CMS ==========");
-
         System.out.println("CMS size: " + cmsBytes.length + " bytes");
-
         CMSSignedData cms = new CMSSignedData(cmsBytes);
+        System.out.println("Encapsulated content: " + (cms.getSignedContent() != null));
+        Store<X509CertificateHolder> certificateStore = cms.getCertificates();
+        System.out.println("Certificate count: " + certificateStore.getMatches(null).size());
 
-        // 1. Kiểm tra content
-        System.out.println(
-                "Encapsulated content: "
-                        + (cms.getSignedContent() != null)
-        );
-
-        // 2. Certificate
-        Store<X509CertificateHolder> certificateStore =
-                cms.getCertificates();
-
-        System.out.println(
-                "Certificate count: "
-                        + certificateStore.getMatches(null).size()
-        );
-
-        // 3. SignerInfo
-        Collection<SignerInformation> signers =
-                cms.getSignerInfos().getSigners();
-
-        System.out.println(
-                "Signer count: "
-                        + signers.size()
-        );
+        Collection<SignerInformation> signers = cms.getSignerInfos().getSigners();
+        System.out.println("Signer count: " + signers.size());
 
         for (SignerInformation signer : signers) {
 
@@ -409,6 +456,13 @@ public class PadesSigningService {
             UUID userId,
             UUID electronicSignatureId,
             String keyCode,
+            int pageNumber,
+            float positionX,
+            float positionY,
+            float signatureWidth,
+            float signatureHeight,
+
+
             byte[] pdfBytes
     ) {
 
@@ -445,6 +499,35 @@ public class PadesSigningService {
                     "PDF is empty"
             );
         }
+        if (pageNumber <= 0) {
+            throw new IllegalArgumentException(
+                    "Page number must be greater than 0"
+            );
+        }
+
+        if (positionX < 0) {
+            throw new IllegalArgumentException(
+                    "Position X cannot be negative"
+            );
+        }
+
+        if (positionY < 0) {
+            throw new IllegalArgumentException(
+                    "Position Y cannot be negative"
+            );
+        }
+
+        if (signatureWidth <= 0) {
+            throw new IllegalArgumentException(
+                    "Signature width must be greater than 0"
+            );
+        }
+
+        if (signatureHeight <= 0) {
+            throw new IllegalArgumentException(
+                    "Signature height must be greater than 0"
+            );
+        }
     }
 
 
@@ -461,5 +544,229 @@ public class PadesSigningService {
 
         return session;
     }
+    private void drawSignatureImage(
+            PDDocument document,
+            UUID electronicSignatureId,
+            int pageNumber,
+            float positionX,
+            float positionY,
+            float signatureWidth,
+            float signatureHeight
+    ) throws Exception {
 
+        // ==========================================
+        // 1. VALIDATE PAGE
+        // ==========================================
+
+        if (pageNumber <= 0 || pageNumber > document.getNumberOfPages()) {
+            throw new IllegalArgumentException(
+                    "Invalid page number: " + pageNumber
+            );
+        }
+
+        // ==========================================
+        // 2. GET ELECTRONIC SIGNATURE
+        // ==========================================
+
+        ElectronicSignatures electronicSignature =
+                electronicSignatureRepository.findById(electronicSignatureId)
+                        .orElseThrow(() ->
+                                new IllegalArgumentException(
+                                        "Electronic signature not found: "
+                                                + electronicSignatureId
+                                )
+                        );
+
+        FileStorage fileStorage =
+                electronicSignature.getFileStorage();
+
+        if (fileStorage == null) {
+            throw new IllegalArgumentException(
+                    "Electronic signature has no file"
+            );
+        }
+
+        String fileUrl = fileStorage.getFilePath();
+
+        if (fileUrl == null || fileUrl.isBlank()) {
+            throw new IllegalArgumentException(
+                    "Electronic signature image URL is empty"
+            );
+        }
+
+        System.out.println("========== SIGNATURE IMAGE ==========");
+        System.out.println("Signature ID = " + electronicSignatureId);
+        System.out.println("File URL     = " + fileUrl);
+        System.out.println("Page         = " + pageNumber);
+        System.out.println("X            = " + positionX);
+        System.out.println("Y            = " + positionY);
+        System.out.println("Width        = " + signatureWidth);
+        System.out.println("Height       = " + signatureHeight);
+        System.out.println("=====================================");
+
+        // ==========================================
+        // 3. DOWNLOAD IMAGE
+        // ==========================================
+
+        byte[] imageBytes;
+
+        try (java.io.InputStream inputStream =
+                     new java.net.URL(fileUrl).openStream()) {
+
+            imageBytes = inputStream.readAllBytes();
+        }
+
+        System.out.println(
+                "Signature image bytes = " + imageBytes.length
+        );
+
+        if (imageBytes.length == 0) {
+            throw new IllegalArgumentException(
+                    "Signature image is empty"
+            );
+        }
+
+        // ==========================================
+        // 4. GET PDF PAGE
+        // ==========================================
+
+        PDPage page = document.getPage(pageNumber - 1);
+
+        float pdfPageWidth =
+                page.getMediaBox().getWidth();
+
+        float pdfPageHeight =
+                page.getMediaBox().getHeight();
+
+        System.out.println(
+                "PDF page size = "
+                        + pdfPageWidth
+                        + " x "
+                        + pdfPageHeight
+        );
+
+        // ==========================================
+        // 5. FRONTEND PAGE SIZE
+        // ==========================================
+
+        // React PDF:
+        //
+        // <Page width={750} />
+        //
+        float renderedPageWidth = 750f;
+
+        /*
+         * PDFBox uses points.
+         *
+         * Frontend uses CSS pixels.
+         *
+         * Scale based on WIDTH.
+         */
+
+        float scale =
+                pdfPageWidth / renderedPageWidth;
+
+        // ==========================================
+        // 6. CONVERT POSITION
+        // ==========================================
+
+        float pdfX =
+                positionX * scale;
+
+        float pdfWidth =
+                signatureWidth * scale;
+
+        float pdfHeight =
+                signatureHeight * scale;
+
+        /*
+         * Browser:
+         *
+         * (0,0)
+         *  ───────────────→ X
+         *  │
+         *  │
+         *  ↓
+         *  Y
+         *
+         * PDF:
+         *
+         *  ↑ Y
+         *  │
+         *  │
+         * (0,0) ─────────→ X
+         *
+         * Therefore Y must be inverted.
+         */
+
+        float pdfY =
+                pdfPageHeight
+                        - (positionY * scale)
+                        - pdfHeight;
+
+        // ==========================================
+        // 7. KEEP INSIDE PAGE
+        // ==========================================
+
+        pdfX = Math.max(
+                0,
+                Math.min(
+                        pdfX,
+                        pdfPageWidth - pdfWidth
+                )
+        );
+
+        pdfY = Math.max(
+                0,
+                Math.min(
+                        pdfY,
+                        pdfPageHeight - pdfHeight
+                )
+        );
+
+        System.out.println("========== PDF POSITION ==========");
+        System.out.println("Scale           = " + scale);
+        System.out.println("PDF X           = " + pdfX);
+        System.out.println("PDF Y           = " + pdfY);
+        System.out.println("PDF width       = " + pdfWidth);
+        System.out.println("PDF height      = " + pdfHeight);
+        System.out.println("==================================");
+
+        // ==========================================
+        // 8. CREATE PDF IMAGE
+        // ==========================================
+
+        PDImageXObject image =
+                PDImageXObject.createFromByteArray(
+                        document,
+                        imageBytes,
+                        "electronic-signature"
+                );
+
+        // ==========================================
+        // 9. DRAW IMAGE
+        // ==========================================
+
+        try (PDPageContentStream contentStream =
+                     new PDPageContentStream(
+                             document,
+                             page,
+                             PDPageContentStream.AppendMode.APPEND,
+                             true,
+                             true
+                     )) {
+
+            contentStream.drawImage(
+                    image,
+                    pdfX,
+                    pdfY,
+                    pdfWidth,
+                    pdfHeight
+            );
+        }
+
+        System.out.println(
+                "========== SIGNATURE IMAGE DRAWN =========="
+        );
+    }
 }

@@ -27,3 +27,67 @@
 .contract-pdf-panel iframe { width: 100%; flex: 1; min-height: 670px; border: 0; }
 .contract-signing-loading { min-height: 300px; display: flex; justify-content: center; align-items: center; gap: 10px; color: #65718a; }
 @media (max-width: 900px) { .contract-signing-workspace { grid-template-columns: 1fr; } .contract-signing-header { grid-template-columns: auto 1fr; } .contract-signing-header > .btn:last-child { grid-column: 1 / -1; } }
+.pdf-signing-viewer {
+    width: 100%;
+    overflow: auto;
+    padding: 24px;
+    background: #f3f4f6;
+}
+
+.pdf-page-wrapper {
+    position: relative;
+    background: white;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12);
+}
+
+.signature-overlay {
+    border: 2px dashed #0d6efd;
+    background: rgba(13, 110, 253, 0.08);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    user-select: none;
+    z-index: 10;
+}
+
+.signature-overlay img {
+    max-width: 90%;
+    max-height: 70%;
+    object-fit: contain;
+    pointer-events: none;
+}
+
+.signature-overlay-label {
+    position: absolute;
+    left: 4px;
+    bottom: 2px;
+    font-size: 10px;
+    background: rgba(255, 255, 255, 0.85);
+    padding: 1px 4px;
+    pointer-events: none;
+}
+
+.pdf-page-selector {
+    margin-left: auto;
+    width: 140px;
+}
+
+.pdf-page-selector .form-label {
+    font-size: 12px;
+    margin-bottom: 4px;
+}
+
+.signature-position-info {
+    margin-top: 16px;
+    padding: 12px;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    background: #f8f9fa;
+    font-size: 13px;
+}
+
+.signature-position-info strong {
+    display: block;
+    margin-bottom: 8px;
+}

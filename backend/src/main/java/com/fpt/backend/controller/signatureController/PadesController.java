@@ -29,6 +29,11 @@ public class PadesController {
             @PathVariable UUID contractId,
             @RequestParam UUID electronicSignatureId,
             @RequestParam String keyCode,
+            @RequestParam int pageNumber,
+            @RequestParam float positionX,
+            @RequestParam float positionY,
+            @RequestParam float signatureWidth,
+            @RequestParam float signatureHeight,
             @RequestParam("file") MultipartFile file
     ) throws Exception {
         UUID userId = currentUser.getCurrentUser().getId();
@@ -38,16 +43,21 @@ public class PadesController {
                         )
                 );
 
-        PadesPrepareResponse response = padesSigningService.prepare(
+        PadesPrepareResponse response =
+                padesSigningService.prepare(
                         contractId,
                         userId,
                         electronicSignatureId,
                         keyCode,
+                        pageNumber,
+                        positionX,
+                        positionY,
+                        signatureWidth,
+                        signatureHeight,
                         file.getBytes()
                 );
-        return ResponseEntity.ok(
-                response
-        );
+
+        return ResponseEntity.ok(response);
     }
 
 
