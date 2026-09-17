@@ -11,7 +11,12 @@ const preparePadesSigning = async (
     contractId,
     electronicSignatureId,
     keyCode,
-    pdfBlob
+    pdfBlob,
+    pageNumber,
+    positionX,
+    positionY,
+    signatureWidth,
+    signatureHeight
 ) => {
 
     const formData = new FormData();
@@ -32,6 +37,35 @@ const preparePadesSigning = async (
         "contract.pdf"
     );
 
+    // =========================
+    // SIGNATURE POSITION
+    // =========================
+
+    formData.append(
+        "pageNumber",
+        String(pageNumber)
+    );
+
+    formData.append(
+        "positionX",
+        String(positionX)
+    );
+
+    formData.append(
+        "positionY",
+        String(positionY)
+    );
+
+    formData.append(
+        "signatureWidth",
+        String(signatureWidth)
+    );
+
+    formData.append(
+        "signatureHeight",
+        String(signatureHeight)
+    );
+
     return axiosClient.post(
         `/contracts/${contractId}/sign/prepare`,
         formData,
@@ -42,7 +76,6 @@ const preparePadesSigning = async (
         }
     );
 };
-
 
 const completePadesSigning = async (
     contractId,

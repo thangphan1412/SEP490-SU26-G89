@@ -46,6 +46,7 @@ import com.fpt.backend.repository.phase.PhaseTaskRepository;
 import com.fpt.backend.repository.project.ProjectMemberRepository;
 import com.fpt.backend.repository.project.ProjectRepository;
 import com.fpt.backend.repository.user.UserRepository;
+import com.fpt.backend.service.impl.signature.PadesVerificationService;
 import com.fpt.backend.service.interfaces.contract.ContractService;
 import com.fpt.backend.service.interfaces.permission.IPermissionAccessService;
 import com.fpt.backend.util.CurrentUser;
@@ -112,6 +113,7 @@ public class ContractServiceImpl implements ContractService {
     private final IPermissionAccessService permissionAccessService;
     private final CurrentUser currentUser;
     private final ApplicationEventPublisher eventPublisher;
+    private final PadesVerificationService padesVerificationService;
 
     @Override
     @Transactional(readOnly = true)
@@ -406,20 +408,33 @@ public class ContractServiceImpl implements ContractService {
             ContractTransitionRequest request,
             Users actor
     ) {
+
         if (request.electronicSignatureId() == null) {
-            throw new BadHttpException("Please select an electronic signature before signing");
-        }
-        ElectronicSignatures selected = electronicSignatureRepository.findOwnedById(
-                        request.electronicSignatureId(), actor.getId()
-                )
-                .orElseThrow(() -> new BadHttpException(
-                        "Electronic signature not found or does not belong to the current user"
-                ));
-        if (selected.getStatus() != ElectronicStatus.ACTIVE) {
-            throw new BadHttpException("Only an active electronic signature can be used");
+            throw new BadHttpException(
+                    "Please select an electronic signature before signing"
+            );
         }
 
+        ElectronicSignatures selected =
+                electronicSignatureRepository.findOwnedById(
+                                request.electronicSignatureId(),
+                                actor.getId()
+                        )
+                        .orElseThrow(() ->
+                                new BadHttpException(
+                                        "Electronic signature not found or does not belong to the current user"
+                                )
+                        );
+
+        if (selected.getStatus() != ElectronicStatus.ACTIVE) {
+            throw new BadHttpException(
+                    "Only an active electronic signature can be used"
+            );
+        }
+
+
         if (contract.getDocumentFile() == null) {
+
             storeCanonicalDocument(
                     contract,
                     contract.getContractCreatedByUser() != null
@@ -427,8 +442,51 @@ public class ContractServiceImpl implements ContractService {
                             : actor
             );
         }
-        byte[] pdf = loadAndValidateCanonicalDocument(contract, actor);
+
+
+        byte[] pdf =
+                loadAndValidateCanonicalDocument(
+                        contract,
+                        actor
+                );
+
+
         try {
+
+            List<PadesVerificationService.PadesVerificationResult>
+                    verificationResults =
+                    padesVerificationService.verifyAll(pdf);
+
+            for (
+                    PadesVerificationService.PadesVerificationResult result
+                    : verificationResults
+            ) {
+
+                if (!result.valid()) {
+
+                    throw new BadHttpException(
+                            "Existing PAdES signature #" +
+                                    result.signatureIndex() +
+                                    " is invalid. " +
+                                    result.message()
+                    );
+                }
+            }
+
+        } catch (BadHttpException exception) {
+
+            throw exception;
+
+        } catch (Exception exception) {
+
+            throw new BadHttpException(
+                    "Unable to verify existing PAdES signatures"
+            );
+        }
+
+
+        try {
+
             return contractSigningService.signContract(
                     contract,
                     pdf,
@@ -437,11 +495,11 @@ public class ContractServiceImpl implements ContractService {
                     request.signatureValue(),
                     request.keyCode()
             );
+
         } catch (Exception exception) {
-            exception.printStackTrace();
+
             throw new BadHttpException(
-                    "Unable to sign the generated contract PDF: "
-                            + exception.getMessage()
+                    "Unable to sign the generated contract PDF"
             );
         }
     }

@@ -5,10 +5,12 @@ import com.fpt.backend.dto.response.signature.UserKeyInfoResponse;
 import com.fpt.backend.entity.Signature;
 import com.fpt.backend.entity.UserKeys;
 import com.fpt.backend.entity.Users;
+import com.fpt.backend.repository.contract.ContractRepository;
 import com.fpt.backend.repository.signature.SignatureRepository;
 
 import com.fpt.backend.repository.signature.UserKeysRepository;
 import com.fpt.backend.service.impl.signature.DigitalSignatureVerificationService;
+import com.fpt.backend.service.impl.signature.PadesVerificationService;
 import com.fpt.backend.service.impl.signature.UserKeyServiceImpl;
 import com.fpt.backend.service.impl.CloudinaryService;
 import com.fpt.backend.util.BaseResponse;
@@ -21,6 +23,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.HexFormat;
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -34,7 +37,8 @@ public class SignatureController {
     private final DigitalSignatureVerificationService verificationService;
     private final CloudinaryService cloudinaryService;
     private final UserKeyServiceImpl userKeyService;
-
+    private final PadesVerificationService padesVerificationService;
+    private final ContractRepository contractRepository;
 
 
     @GetMapping("/keys/me")
@@ -114,6 +118,31 @@ public class SignatureController {
                 signature.getDocumentHash(), valid
         );
         return ResponseEntity.ok(new BaseResponse<>(response));
+    }
+    @PostMapping("/{contractId}/verify-signatures")
+    public ResponseEntity<?> verifySignatures(
+            @PathVariable UUID contractId,
+            @RequestParam("file") MultipartFile file
+    ) throws Exception {
+
+        contractRepository.findById(contractId)
+                .orElseThrow(() ->
+                        new IllegalArgumentException(
+                                "Contract not found"
+                        ));
+
+        if (file == null || file.isEmpty()) {
+            throw new IllegalArgumentException(
+                    "PDF file is empty"
+            );
+        }
+
+        List<PadesVerificationService.PadesVerificationResult> results =
+                padesVerificationService.verifyAll(
+                        file.getBytes()
+                );
+
+        return ResponseEntity.ok(results);
     }
 
     private UserKeyInfoResponse toResponse(UserKeys key) {

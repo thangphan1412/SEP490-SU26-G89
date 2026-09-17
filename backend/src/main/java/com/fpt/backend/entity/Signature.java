@@ -43,6 +43,16 @@ public class Signature extends BaseEntity{
     private LocalDate signatureUpdateAt;
     @Column(name = "signature_create_at")
     private LocalDateTime signatureCreateAt;
+    @Column(name = "page_number")
+    private Integer pageNumber;
+    @Column(name = "position_x")
+    private Float positionX;
+    @Column(name = "position_y")
+    private Float positionY;
+    @Column(name = "signature_width")
+    private Float signatureWidth;
+    @Column(name = "signature_height")
+    private Float signatureHeight;
     /// Relation
     //User_key
     @ManyToOne(fetch = FetchType.LAZY)
