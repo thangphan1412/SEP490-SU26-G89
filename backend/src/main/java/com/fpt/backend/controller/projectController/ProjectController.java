@@ -6,6 +6,7 @@ import com.fpt.backend.dto.request.project.ProjectListRequest;
 import com.fpt.backend.dto.request.project.ProjectPermissionConfigurationRequest;
 import com.fpt.backend.dto.request.project.ProjectUpdateRequest;
 import com.fpt.backend.dto.response.project.ProjectDetailResponse;
+import com.fpt.backend.dto.response.project.ProjectCreateResponse;
 import com.fpt.backend.dto.response.project.ProjectEmployeeResponse;
 import com.fpt.backend.dto.response.project.ProjectListResponse;
 import com.fpt.backend.dto.response.project.ProjectPermissionConfigurationResponse;
@@ -94,9 +95,9 @@ public class ProjectController {
     // Tạo dự án mới cùng các thông tin cấu hình liên quan.
     @PreAuthorize("hasAnyAuthority('CEO', 'Administrator', 'Accountant', 'HeadOfDepartment', 'Employee')")
     @PostMapping
-    public ResponseEntity<BaseResponse<ProjectDetailResponse>> createProject(
+    public ResponseEntity<BaseResponse<ProjectCreateResponse>> createProject(
             @Valid @RequestBody ProjectCreateRequest request) {
-        ProjectDetailResponse project = projectService.createProject(request);
+        ProjectCreateResponse project = projectService.createProject(request);
 
         return ResponseEntity.status(HttpStatus.CREATED).body(new BaseResponse<>(HttpStatus.CREATED.value(), "Created", project));
     }

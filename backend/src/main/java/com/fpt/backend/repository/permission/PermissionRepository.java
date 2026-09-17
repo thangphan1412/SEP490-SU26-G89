@@ -60,6 +60,10 @@ public interface PermissionRepository extends JpaRepository<Permissions, UUID> {
             AND (:projectId IS NULL OR project.id = :projectId)
             AND (:status IS NULL OR permission.status = :status)
             AND (
+                :canViewPendingProjects = true
+                OR LOWER(COALESCE(project.projectStatus, '')) <> 'on hold'
+            )
+            AND (
                 :canViewAllProjects = true
                 OR (
                     EXISTS (
@@ -88,6 +92,7 @@ public interface PermissionRepository extends JpaRepository<Permissions, UUID> {
             @Param("currentUserId") UUID currentUserId,
             @Param("requiredActionCode") String requiredActionCode,
             @Param("canViewAllProjects") boolean canViewAllProjects,
+            @Param("canViewPendingProjects") boolean canViewPendingProjects,
             Pageable pageable
     );
 }

@@ -14,6 +14,7 @@ public record ProjectListItemResponse(
         String projectCreatedBy,
         String projectCreatedAt,
         boolean canView,
-        boolean canApprove
+        boolean canApprove,
+        boolean waitingForDepartmentApproval
 ) {
 }

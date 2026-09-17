@@ -10,6 +10,7 @@ import CancelButton from "../../components/projectComponents/CancelButton.jsx";
 import Icon from "../../components/projectComponents/Icon.jsx";
 import PagePanel from "../../components/projectComponents/PagePanel.jsx";
 import PrimaryButton from "../../components/projectComponents/PrimaryButton.jsx";
+import StatusBadge from "../../components/projectComponents/StatusBadge.jsx";
 import {
     hasAnyProjectAction,
     hasProjectAction,
@@ -25,6 +26,7 @@ import {
     getProjectErrorMessage,
     isCompletedProjectStatus,
 } from "../../components/projectComponents/projectFormUtils.js";
+import "../../assets/styles/css/projectStyles/ProjectDetail.css";
 import "../../assets/styles/css/projectStyles/UpdateProject.css";
 
 // Hiển thị biểu mẫu cập nhật dự án theo các action người dùng được cấp.
@@ -445,23 +447,38 @@ function UpdateProject() {
     );
 
     return (
+        <div className="project-detail-page update-project-page">
         <PagePanel
             title="Update Project"
-            description="Update project information, phases, members, and each member permission."
+            description="Keep your project details, timeline, and team up to date."
             action={pageAction}
         >
             {loading ? (
-                <Card as="section" className="project-management-card">
-                    <p className="update-project-state-text">Loading project...</p>
+                <Card as="section" className="project-management-card project-detail-state" role="status">
+                    <span className="project-detail-section-icon"><Icon name="edit" size={23} /></span>
+                    <h2>Loading project</h2>
+                    <p>Preparing your project for editing...</p>
                 </Card>
             ) : loadError ? (
-                <Card as="section" className="project-management-card">
-                    <p className="update-project-state-text update-project-state-text--error">
-                        {loadError}
-                    </p>
+                <Card as="section" className="project-management-card project-detail-state" role="alert">
+                    <span className="project-detail-section-icon"><Icon name="info" size={23} color="#b42318" /></span>
+                    <h2>Unable to edit project</h2>
+                    <p>{loadError}</p>
                 </Card>
             ) : (
-                <Form id="update-project-form" onSubmit={handleSubmit}>
+                <Form id="update-project-form" className="update-project-form" onSubmit={handleSubmit}>
+                    <div className="update-project-context">
+                        <div className="update-project-context-identity">
+                            <span className="project-detail-section-icon"><Icon name="building" size={23} color="#3659d9" /></span>
+                            <div>
+                                <span className="project-detail-eyebrow">Editing project</span>
+                                <h2>{project.projectName || "Untitled project"}</h2>
+                                <span className="project-detail-code">{project.projectCode || "No project code"}</span>
+                            </div>
+                        </div>
+                        <StatusBadge status={project.projectStatus} />
+                    </div>
+
                     {submitError && (
                         <Alert variant="danger" className="update-project-alert">
                             {submitError}
@@ -470,23 +487,30 @@ function UpdateProject() {
 
                     {canEditProject && (
                     <Card as="section" className="project-management-card">
-                        <Card.Title as="h2" className="project-management-card-title">
-                            Basic Information
-                        </Card.Title>
+                        <div className="update-project-section-header">
+                            <div className="project-detail-section-heading">
+                                <span className="project-detail-section-icon"><Icon name="document" size={21} color="#3659d9" /></span>
+                                <div>
+                                    <Card.Title as="h2" className="project-management-card-title">Basic Information</Card.Title>
+                                    <p className="project-detail-section-note">Define the project and its overall schedule.</p>
+                                </div>
+                            </div>
+                            <span className="update-project-required-note"><span aria-hidden="true">*</span> Required fields</span>
+                        </div>
 
                         <Row className="update-project-form-grid">
                             <Form.Group as={Col} md={6} controlId="projectName">
-                                <Form.Label className="project-management-field-label">Project Name</Form.Label>
+                                <Form.Label className="project-management-field-label">Project Name <span className="update-project-required-mark" aria-hidden="true">*</span></Form.Label>
                                 <Form.Control required maxLength={50} name="projectName" value={project.projectName} onChange={handleProjectChange} className="project-management-input" />
                             </Form.Group>
 
                             <Form.Group as={Col} md={6} controlId="projectCode">
-                                <Form.Label className="project-management-field-label">Project Code</Form.Label>
+                                <Form.Label className="project-management-field-label">Project Code <span className="update-project-required-mark" aria-hidden="true">*</span></Form.Label>
                                 <Form.Control required maxLength={50} name="projectCode" value={project.projectCode} onChange={handleProjectChange} placeholder="Example: PRJ-2026-Thời trang mùa đông" className="project-management-input" />
                             </Form.Group>
 
                             <Form.Group as={Col} md={6} controlId="projectStartDate">
-                                <Form.Label className="project-management-field-label">Start Date</Form.Label>
+                                <Form.Label className="project-management-field-label">Start Date <span className="update-project-required-mark" aria-hidden="true">*</span></Form.Label>
                                 <Form.Control
                                     type="date"
                                     required
@@ -499,7 +523,7 @@ function UpdateProject() {
                             </Form.Group>
 
                             <Form.Group as={Col} md={6} controlId="projectEndDate">
-                                <Form.Label className="project-management-field-label">End Date</Form.Label>
+                                <Form.Label className="project-management-field-label">End Date <span className="update-project-required-mark" aria-hidden="true">*</span></Form.Label>
                                 <Form.Control
                                     type="date"
                                     required
@@ -511,40 +535,29 @@ function UpdateProject() {
                                 />
                             </Form.Group>
 
-                            <Form.Group as={Col} md={6} controlId="projectStatus">
-                                <Form.Label className="project-management-field-label">Status</Form.Label>
-                                <Form.Control
-                                    disabled
-                                    value={project.projectStatus}
-                                    className="project-management-input update-project-readonly-input"
-                                />
-                            </Form.Group>
-
-                            <Form.Group as={Col} md={3} controlId="projectCreatedBy">
-                                <Form.Label className="project-management-field-label">Created By</Form.Label>
-                                <Form.Control disabled value={project.projectCreatedBy || "-"} className="project-management-input update-project-readonly-input" />
-                            </Form.Group>
-
-                            <Form.Group as={Col} md={3} controlId="projectCreatedAt">
-                                <Form.Label className="project-management-field-label">Created At</Form.Label>
-                                <Form.Control disabled value={project.projectCreatedAt || "-"} className="project-management-input update-project-readonly-input" />
-                            </Form.Group>
                         </Row>
 
                         <Form.Group className="update-project-full-width" controlId="projectDescription">
-                            <Form.Label className="project-management-field-label">Description</Form.Label>
-                            <Form.Control as="textarea" maxLength={255} name="projectDescription" value={project.projectDescription} onChange={handleProjectChange} className="project-management-textarea" />
+                            <Form.Label className="project-management-field-label">Description <span className="update-project-optional">Optional</span></Form.Label>
+                            <Form.Control as="textarea" maxLength={255} name="projectDescription" value={project.projectDescription} onChange={handleProjectChange} placeholder="Add a short description of this project..." className="project-management-textarea" />
                             <div className="update-project-counter">{project.projectDescription.length} / 255</div>
                         </Form.Group>
+                        <div className="update-project-record-meta">
+                            <span><Icon name="users" size={15} color="#667085" /> Created by <strong>{project.projectCreatedBy || "-"}</strong></span>
+                            <span><Icon name="calendar" size={15} color="#667085" /> Created on <strong>{project.projectCreatedAt ? project.projectCreatedAt.slice(0, 10).split("-").reverse().join("/") : "-"}</strong></span>
+                        </div>
                     </Card>
                     )}
 
                     {canEditProject && (
                     <Card as="section" className="project-management-card">
                         <div className="update-project-section-header">
-                            <div>
-                                <Card.Title as="h2" className="project-management-card-title">Project Phases</Card.Title>
-                                <p className="update-project-section-note">Phases are optional. Each phase date range only needs to stay within the project date range.</p>
+                            <div className="project-detail-section-heading">
+                                <span className="project-detail-section-icon"><Icon name="chart" size={21} color="#3659d9" /></span>
+                                <div>
+                                    <Card.Title as="h2" className="project-management-card-title">Project Phases</Card.Title>
+                                    <p className="project-detail-section-note">Optional milestones. Keep phase dates within the project schedule.</p>
+                                </div>
                             </div>
                             <Button type="button" variant="light" className="update-project-add-button" onClick={addPhase}>
                                 <Icon name="plus" size={18} /> Add Phase
@@ -552,22 +565,25 @@ function UpdateProject() {
                         </div>
 
                         {project.phases.length === 0 ? (
-                            <div className="update-project-empty-state">No phases yet. You can save the project without phases.</div>
+                            <div className="update-project-empty-state">
+                                <span className="project-detail-section-icon"><Icon name="chart" size={22} color="#3659d9" /></span>
+                                <div><strong>No phases added</strong><p>You can save the project now and add phases later.</p></div>
+                            </div>
                         ) : (
                             <div className="update-project-phase-list">
                                 {project.phases.map((phase, index) => (
                                     <div key={phase.clientId} className="update-project-phase-card">
                                         <div className="update-project-phase-heading">
                                             <strong>Phase {index + 1}</strong>
-                                            <Button type="button" variant="link" onClick={() => removePhase(phase.clientId)}>Remove</Button>
+                                            <Button type="button" variant="link" aria-label={`Remove phase ${index + 1}`} onClick={() => removePhase(phase.clientId)}><Icon name="trash" size={15} color="currentColor" /> Remove</Button>
                                         </div>
                                         <Row className="g-3">
-                                            <Col md={6}>
-                                                <Form.Label className="project-management-field-label">Title</Form.Label>
+                                            <Form.Group as={Col} md={6} controlId={`update-phase-title-${phase.clientId}`}>
+                                                <Form.Label className="project-management-field-label">Title <span className="update-project-required-mark" aria-hidden="true">*</span></Form.Label>
                                                 <Form.Control required maxLength={150} name="title" value={phase.title} onChange={(event) => updatePhase(phase.clientId, event)} className="project-management-input" />
-                                            </Col>
-                                            <Col md={3}>
-                                                <Form.Label className="project-management-field-label">Start Date</Form.Label>
+                                            </Form.Group>
+                                            <Form.Group as={Col} md={3} controlId={`update-phase-start-${phase.clientId}`}>
+                                                <Form.Label className="project-management-field-label">Start Date <span className="update-project-required-mark" aria-hidden="true">*</span></Form.Label>
                                                 <Form.Control
                                                     type="date"
                                                     required
@@ -579,9 +595,9 @@ function UpdateProject() {
                                                     className="project-management-input"
                                                     aria-label={`Phase ${index + 1} start date`}
                                                 />
-                                            </Col>
-                                            <Col md={3}>
-                                                <Form.Label className="project-management-field-label">End Date</Form.Label>
+                                            </Form.Group>
+                                            <Form.Group as={Col} md={3} controlId={`update-phase-end-${phase.clientId}`}>
+                                                <Form.Label className="project-management-field-label">End Date <span className="update-project-required-mark" aria-hidden="true">*</span></Form.Label>
                                                 <Form.Control
                                                     type="date"
                                                     required
@@ -593,11 +609,11 @@ function UpdateProject() {
                                                     className="project-management-input"
                                                     aria-label={`Phase ${index + 1} end date`}
                                                 />
-                                            </Col>
-                                            <Col xs={12}>
+                                            </Form.Group>
+                                            <Form.Group as={Col} xs={12} controlId={`update-phase-description-${phase.clientId}`}>
                                                 <Form.Label className="project-management-field-label">Description</Form.Label>
                                                 <Form.Control as="textarea" maxLength={500} name="description" value={phase.description} onChange={(event) => updatePhase(phase.clientId, event)} className="project-management-textarea update-project-phase-description" />
-                                            </Col>
+                                            </Form.Group>
                                         </Row>
                                     </div>
                                 ))}
@@ -609,9 +625,12 @@ function UpdateProject() {
                     {canManageMembers && (
                     <Card as="section" className="project-management-card">
                         <div className="update-project-section-header">
-                            <div>
-                                <Card.Title as="h2" className="project-management-card-title">Project Members</Card.Title>
-                                <p className="update-project-section-note">Only current project members are shown here. You can update permission or remove a member before saving.</p>
+                            <div className="project-detail-section-heading">
+                                <span className="project-detail-section-icon"><Icon name="users" size={21} color="#3659d9" /></span>
+                                <div>
+                                    <Card.Title as="h2" className="project-management-card-title">Project Members</Card.Title>
+                                    <p className="project-detail-section-note">Manage the team and assign each member's project permission.</p>
+                                </div>
                             </div>
                             <div className="update-project-member-header-actions">
                                 <span className="update-project-selected-count">{project.members.length} members</span>
@@ -622,7 +641,10 @@ function UpdateProject() {
                         </div>
 
                         {currentProjectMembers.length === 0 ? (
-                            <div className="update-project-empty-state">No members have been added to this project.</div>
+                            <div className="update-project-empty-state">
+                                <span className="project-detail-section-icon"><Icon name="users" size={22} color="#3659d9" /></span>
+                                <div><strong>Build your project team</strong><p>Add members and choose the permissions they need.</p></div>
+                            </div>
                         ) : (
                             <div className="update-project-member-list">
                                 {currentProjectMembers.map((member) => (
@@ -635,8 +657,9 @@ function UpdateProject() {
                                             <small>{getEmployeeDescription(member.employee)}</small>
                                         </div>
                                         <div className="update-project-member-permission">
-                                            <Form.Label className="project-management-field-label">Permission</Form.Label>
+                                            <Form.Label htmlFor={`update-member-permission-${member.userId}`} className="project-management-field-label">Permission</Form.Label>
                                             <Form.Select
+                                                id={`update-member-permission-${member.userId}`}
                                                 aria-label={"Permission for " + getEmployeeName(member.employee)}
                                                 disabled={permissionOptions.length === 0}
                                                 value={member.permissionId ?? ""}
@@ -677,6 +700,13 @@ function UpdateProject() {
                     </Card>
                     )}
 
+                    <div className="update-project-form-footer">
+                        <div className="update-project-save-note">
+                            <Icon name="info" size={19} color="#667085" />
+                            <span>Changes are applied when you save.</span>
+                        </div>
+                        {pageAction}
+                    </div>
                 </Form>
             )}
 
@@ -753,6 +783,7 @@ function UpdateProject() {
             </Modal>
             )}
         </PagePanel>
+        </div>
     );
 }
 

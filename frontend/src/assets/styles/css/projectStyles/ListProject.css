@@ -344,6 +344,7 @@
 }
 .list-project-approve-button.btn:hover { border-color: #8cbea4; background: #eff8f2; color: #276947; }
 .list-project-approve-button .spinner-border { width: 12px; height: 12px; border-width: 2px; }
+.list-project-approve-button.btn:disabled { border-color: #e1e6ed; background: #f5f7fa; color: #667085; opacity: 1; }
 .list-project-open-button.btn {
     display: inline-flex;
     flex: 0 0 29px;

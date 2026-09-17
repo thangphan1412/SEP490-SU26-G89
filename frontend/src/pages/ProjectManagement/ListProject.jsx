@@ -8,7 +8,7 @@ import {
     Spinner,
     Table,
 } from "react-bootstrap";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
     approveProject,
     listProjects,
@@ -60,6 +60,7 @@ function createPageNumbers(currentPage, totalPages) {
 // Hiển thị danh sách dự án cùng bộ lọc, phân trang và thao tác phê duyệt.
 function ListProject() {
     const navigate = useNavigate();
+    const location = useLocation();
     const [projects, setProjects] = useState([]);
     const [searchInput, setSearchInput] = useState("");
     const [search, setSearch] = useState("");
@@ -70,7 +71,7 @@ function ListProject() {
     const [totalPages, setTotalPages] = useState(0);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
-    const [successMessage, setSuccessMessage] = useState("");
+    const [successMessage, setSuccessMessage] = useState(location.state?.successMessage || "");
     const [approvingProjectId, setApprovingProjectId] = useState(null);
     const [reloadVersion, setReloadVersion] = useState(0);
 
@@ -184,7 +185,10 @@ function ListProject() {
 
         // Thông báo khi backend đánh dấu người dùng không được xem dự án.
         if (project.canView === false) {
-            window.alert("Bạn không được quyền xem project này!");
+            const isPendingApproval = String(project.projectStatus || "").toLowerCase() === "on hold";
+            window.alert(isPendingApproval
+                ? "Dự án đang chờ duyệt. Chỉ CEO và trưởng phòng Administrative được xem thông tin."
+                : "Bạn không được quyền xem project này!");
             return;
         }
 
@@ -405,18 +409,23 @@ function ListProject() {
                                         </td>
                                         <td className="list-project-action-cell">
                                             <div className="list-project-row-actions">
-                                                {project.canApprove && (
+                                                {(project.canApprove || project.waitingForDepartmentApproval) && (
                                                     <Button
                                                         type="button"
                                                         variant="light"
                                                         className="list-project-approve-button"
-                                                        disabled={approvingProjectId === project.id}
-                                                        aria-label={"Approve project " + project.projectName}
+                                                        disabled={!project.canApprove || approvingProjectId === project.id}
+                                                        title={project.waitingForDepartmentApproval
+                                                            ? "Waiting for HeadOfDepartment of Administrative to approve first"
+                                                            : "Approve project"}
+                                                        aria-label={(project.waitingForDepartmentApproval ? "Waiting Approve: " : "Approve project ") + project.projectName}
                                                         onClick={(event) => handleApproveProject(event, project)}
                                                     >
-                                                        {approvingProjectId === project.id
-                                                            ? <><Spinner animation="border" size="sm" aria-hidden="true" /> Approving...</>
-                                                            : <><Icon name="shield" size={15} color="currentColor" /> Approve</>}
+                                                        {project.waitingForDepartmentApproval
+                                                            ? "Waiting Approve"
+                                                            : approvingProjectId === project.id
+                                                                ? <><Spinner animation="border" size="sm" aria-hidden="true" /> Approving...</>
+                                                                : <><Icon name="shield" size={15} color="currentColor" /> Approve</>}
                                                     </Button>
                                                 )}
                                                 <Button

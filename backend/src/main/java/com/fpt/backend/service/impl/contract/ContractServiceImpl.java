@@ -130,11 +130,21 @@ public class ContractServiceImpl implements ContractService {
                         ContractProjectActions.VIEW
                 );
         List<UUID> viewableProjectIds = new ArrayList<>(permissionProjectIds);
-        workflowStepRepository.findDistinctProjectIdsByAssignedUserId(user.getId())
-                .stream()
-                .filter(Objects::nonNull)
-                .filter(projectId -> !viewableProjectIds.contains(projectId))
-                .forEach(viewableProjectIds::add);
+        for (UUID projectId : workflowStepRepository.findDistinctProjectIdsByAssignedUserId(user.getId())) {
+            if (projectId == null || viewableProjectIds.contains(projectId)) {
+                continue;
+            }
+            try {
+                // Được giao bước duyệt hợp đồng không vượt qua giới hạn xem dự án On Hold.
+                permissionAccessService.requireProjectAccess(projectId);
+                viewableProjectIds.add(projectId);
+            } catch (ResponseStatusException exception) {
+                // Bỏ dự án không được xem, vẫn cho tải các hợp đồng khác được phép.
+                if (exception.getStatusCode().value() != HttpStatus.FORBIDDEN.value()) {
+                    throw exception;
+                }
+            }
+        }
         Page<Contracts> contracts = findContracts(
                 search,
                 status,

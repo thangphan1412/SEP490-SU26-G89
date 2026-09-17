@@ -7,6 +7,7 @@ import com.fpt.backend.repository.role.RoleRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -19,6 +20,9 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.same;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -1415,6 +1419,168 @@ class RoleServiceImplTest {
                 .isSameAs(repositoryException)
                 .hasMessage("Database unavailable");
         verify(roleRepository).findById(roleId);
+        verifyNoMoreInteractions(roleRepository);
+    }
+
+    /**
+     * TC68 - Xóa Role thành công tại biên không có user nào được gán.
+     * Input: id = "00000000-0000-0000-0000-000000000044"; Role ADMIN tồn tại;
+     * repository.countAssignedUsers(id) trả 0.
+     * Expected: không ném exception; lần lượt tìm Role, kiểm tra số user và xóa đúng
+     * entity vừa tìm được, mỗi thao tác một lần; không gọi thêm phương thức repository.
+     */
+    @Test
+    void deleteRole_withZeroAssignedUsersDeletesExistingRole() {
+        UUID roleId = UUID.fromString("00000000-0000-0000-0000-000000000044");
+        Role existingRole = existingRole(roleId, "ADMIN");
+        when(roleRepository.findById(roleId)).thenReturn(Optional.of(existingRole));
+        when(roleRepository.countAssignedUsers(roleId)).thenReturn(0L);
+
+        roleService.deleteRole(roleId);
+
+        InOrder repositoryCalls = inOrder(roleRepository);
+        repositoryCalls.verify(roleRepository).findById(roleId);
+        repositoryCalls.verify(roleRepository).countAssignedUsers(roleId);
+        repositoryCalls.verify(roleRepository).delete(same(existingRole));
+        verifyNoMoreInteractions(roleRepository);
+    }
+
+    /**
+     * TC69 - Không cho phép xóa Role đang được gán cho đúng một user.
+     * Input: id = "00000000-0000-0000-0000-000000000045"; Role ADMIN tồn tại;
+     * repository.countAssignedUsers(id) trả 1 (biên nhỏ nhất phải chặn xóa).
+     * Expected: ném lỗi "Role cannot be deleted because it is assigned to users!";
+     * chỉ tìm Role và đếm user, không gọi delete hay thao tác ghi dữ liệu khác.
+     */
+    @Test
+    void deleteRole_withOneAssignedUserThrowsExceptionWithoutDeleting() {
+        UUID roleId = UUID.fromString("00000000-0000-0000-0000-000000000045");
+        Role existingRole = existingRole(roleId, "ADMIN");
+        when(roleRepository.findById(roleId)).thenReturn(Optional.of(existingRole));
+        when(roleRepository.countAssignedUsers(roleId)).thenReturn(1L);
+
+        assertThatThrownBy(() -> roleService.deleteRole(roleId))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessage("Role cannot be deleted because it is assigned to users!");
+        verify(roleRepository).findById(roleId);
+        verify(roleRepository).countAssignedUsers(roleId);
+        verify(roleRepository, never()).delete(any(Role.class));
+        verifyNoMoreInteractions(roleRepository);
+    }
+
+    /**
+     * TC70 - Không cho phép xóa Role đang được gán cho nhiều user.
+     * Input: id = "00000000-0000-0000-0000-000000000046"; Role EMPLOYEE tồn tại;
+     * repository.countAssignedUsers(id) trả 5.
+     * Expected: ném lỗi Role đang được gán cho user; không gọi delete hoặc thao tác ghi;
+     * kiểm tra thêm trường hợp nhiều user để tránh chỉ chặn khi số lượng bằng 1.
+     */
+    @Test
+    void deleteRole_withMultipleAssignedUsersThrowsExceptionWithoutDeleting() {
+        UUID roleId = UUID.fromString("00000000-0000-0000-0000-000000000046");
+        Role existingRole = existingRole(roleId, "EMPLOYEE");
+        when(roleRepository.findById(roleId)).thenReturn(Optional.of(existingRole));
+        when(roleRepository.countAssignedUsers(roleId)).thenReturn(5L);
+
+        assertThatThrownBy(() -> roleService.deleteRole(roleId))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessage("Role cannot be deleted because it is assigned to users!");
+        verify(roleRepository).findById(roleId);
+        verify(roleRepository).countAssignedUsers(roleId);
+        verify(roleRepository, never()).delete(any(Role.class));
+        verifyNoMoreInteractions(roleRepository);
+    }
+
+    /**
+     * TC71 - Xóa Role có id không tồn tại.
+     * Input: id = "00000000-0000-0000-0000-000000000999";
+     * repository.findById(id) trả Optional.empty().
+     * Expected: ném RuntimeException "Role not found with id: " + id;
+     * chỉ gọi findById một lần, không đếm user và không gọi delete.
+     */
+    @Test
+    void deleteRole_whenRoleDoesNotExistThrowsExceptionWithoutDeleting() {
+        UUID roleId = UUID.fromString("00000000-0000-0000-0000-000000000999");
+        when(roleRepository.findById(roleId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> roleService.deleteRole(roleId))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessage("Role not found with id: " + roleId);
+        verify(roleRepository).findById(roleId);
+        verify(roleRepository, never()).countAssignedUsers(any(UUID.class));
+        verify(roleRepository, never()).delete(any(Role.class));
+        verifyNoMoreInteractions(roleRepository);
+    }
+
+    /**
+     * TC72 - Repository gặp lỗi khi tìm Role để xóa.
+     * Input: id = "00000000-0000-0000-0000-000000000047";
+     * findById ném RuntimeException "Unable to find role".
+     * Expected: truyền nguyên exception và message; chỉ gọi findById một lần,
+     * không đếm user và không gọi delete.
+     */
+    @Test
+    void deleteRole_whenRepositoryFindFailsPropagatesExceptionWithoutDeleting() {
+        UUID roleId = UUID.fromString("00000000-0000-0000-0000-000000000047");
+        RuntimeException repositoryException = new RuntimeException("Unable to find role");
+        when(roleRepository.findById(roleId)).thenThrow(repositoryException);
+
+        assertThatThrownBy(() -> roleService.deleteRole(roleId))
+                .isSameAs(repositoryException)
+                .hasMessage("Unable to find role");
+        verify(roleRepository).findById(roleId);
+        verify(roleRepository, never()).countAssignedUsers(any(UUID.class));
+        verify(roleRepository, never()).delete(any(Role.class));
+        verifyNoMoreInteractions(roleRepository);
+    }
+
+    /**
+     * TC73 - Repository gặp lỗi khi kiểm tra số user được gán Role.
+     * Input: id = "00000000-0000-0000-0000-000000000048"; Role ADMIN tồn tại;
+     * countAssignedUsers ném RuntimeException "Unable to count assigned users".
+     * Expected: truyền nguyên exception và message; không gọi delete khi chưa xác định
+     * được Role có đang được sử dụng hay không.
+     */
+    @Test
+    void deleteRole_whenUserCountFailsPropagatesExceptionWithoutDeleting() {
+        UUID roleId = UUID.fromString("00000000-0000-0000-0000-000000000048");
+        Role existingRole = existingRole(roleId, "ADMIN");
+        RuntimeException repositoryException = new RuntimeException("Unable to count assigned users");
+        when(roleRepository.findById(roleId)).thenReturn(Optional.of(existingRole));
+        when(roleRepository.countAssignedUsers(roleId)).thenThrow(repositoryException);
+
+        assertThatThrownBy(() -> roleService.deleteRole(roleId))
+                .isSameAs(repositoryException)
+                .hasMessage("Unable to count assigned users");
+        verify(roleRepository).findById(roleId);
+        verify(roleRepository).countAssignedUsers(roleId);
+        verify(roleRepository, never()).delete(any(Role.class));
+        verifyNoMoreInteractions(roleRepository);
+    }
+
+    /**
+     * TC74 - Repository gặp lỗi trong thao tác xóa Role.
+     * Input: id = "00000000-0000-0000-0000-000000000049"; Role ADMIN tồn tại;
+     * countAssignedUsers trả 0; delete ném RuntimeException "Unable to delete role".
+     * Expected: tìm Role và kiểm tra số user trước khi xóa; truyền nguyên exception,
+     * không nuốt lỗi, không thử xóa lần thứ hai hoặc gọi thêm thao tác repository.
+     */
+    @Test
+    void deleteRole_whenRepositoryDeleteFailsPropagatesException() {
+        UUID roleId = UUID.fromString("00000000-0000-0000-0000-000000000049");
+        Role existingRole = existingRole(roleId, "ADMIN");
+        RuntimeException repositoryException = new RuntimeException("Unable to delete role");
+        when(roleRepository.findById(roleId)).thenReturn(Optional.of(existingRole));
+        when(roleRepository.countAssignedUsers(roleId)).thenReturn(0L);
+        doThrow(repositoryException).when(roleRepository).delete(same(existingRole));
+
+        assertThatThrownBy(() -> roleService.deleteRole(roleId))
+                .isSameAs(repositoryException)
+                .hasMessage("Unable to delete role");
+        InOrder repositoryCalls = inOrder(roleRepository);
+        repositoryCalls.verify(roleRepository).findById(roleId);
+        repositoryCalls.verify(roleRepository).countAssignedUsers(roleId);
+        repositoryCalls.verify(roleRepository).delete(same(existingRole));
         verifyNoMoreInteractions(roleRepository);
     }
 

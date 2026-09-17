@@ -286,11 +286,15 @@ function CreateProject() {
 
             let destination = "/project-management/list";
 
-            if (createdProject && createdProject.id) {
+            if (createdProject?.id && createdProject.canView === true) {
                 destination = "/project-management/view?id=" + createdProject.id;
             }
 
-            navigate(destination);
+            navigate(destination, {
+                state: {
+                    successMessage: "Project created successfully. Waiting for Administrative and CEO approval.",
+                },
+            });
         } catch (error) {
             console.error("Unable to create project:", error);
             setSubmitError(
