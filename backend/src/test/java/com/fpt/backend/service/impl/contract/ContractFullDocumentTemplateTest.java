@@ -2,9 +2,11 @@ package com.fpt.backend.service.impl.contract;
 
 import com.fpt.backend.dto.request.contract.ContractTemplateLayout;
 import com.fpt.backend.entity.ContractWorkflowStepInstance;
+import com.fpt.backend.entity.ContractTemplateVersions;
 import com.fpt.backend.entity.Contracts;
 import com.fpt.backend.entity.Users;
 import com.fpt.backend.enums.ContractWorkflowActionType;
+import com.fpt.backend.exception.BadHttpException;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
@@ -17,6 +19,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class ContractFullDocumentTemplateTest {
     private final ContractTemplateLayoutMapper layoutMapper =
@@ -92,6 +95,64 @@ class ContractFullDocumentTemplateTest {
     }
 
     @Test
+    void fullDocumentPdfIncludesBothAssignedSigners() throws Exception {
+        Users partyA = user("An", "Nguyen", "an@example.com");
+        Users partyB = user("Binh", "Tran", "binh@example.com");
+        Contracts contract = contract("""
+                BÊN A
+                Người ký: {{party_a_name}}
+                Email: {{party_a_email}}
+
+                BÊN B
+                Người ký: {{party_b_name}}
+                Email: {{party_b_email}}
+                """);
+        contract.setWorkflowStepInstances(List.of(
+                signingStep(1, "CEO", partyA),
+                signingStep(2, "ExternalPartners", partyB)
+        ));
+        contract.setContractTemplateVersion(new ContractTemplateVersions());
+        contract.setContractLayoutJson(fullDocumentLayout());
+
+        byte[] pdf = pdfGenerator.generate(
+                contract,
+                renderer.render(contract, List.of(), Map.of())
+        );
+
+        try (PDDocument document = Loader.loadPDF(pdf)) {
+            assertThat(new PDFTextStripper().getText(document))
+                    .contains("An Nguyen")
+                    .contains("an@example.com")
+                    .contains("Binh Tran")
+                    .contains("binh@example.com")
+                    .doesNotContain("CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM")
+                    .doesNotContain("Chưa cập nhật");
+        }
+    }
+
+    @Test
+    void fullDocumentPdfDoesNotAddPartyBForOneSigner() throws Exception {
+        Contracts contract = contract("Người ký: {{party_a_name}}");
+        contract.setWorkflowStepInstances(List.of(
+                signingStep(1, "CEO", user("An", "Nguyen", "an@example.com"))
+        ));
+        contract.setContractTemplateVersion(new ContractTemplateVersions());
+        contract.setContractLayoutJson(fullDocumentLayout());
+
+        byte[] pdf = pdfGenerator.generate(
+                contract,
+                renderer.render(contract, List.of(), Map.of())
+        );
+
+        try (PDDocument document = Loader.loadPDF(pdf)) {
+            assertThat(new PDFTextStripper().getText(document))
+                    .contains("Người ký: An Nguyen")
+                    .doesNotContain("BÊN B")
+                    .doesNotContain("binh@example.com");
+        }
+    }
+
+    @Test
     void layoutsWithoutDocumentModeRemainLegacy() {
         ContractTemplateLayout legacyLayout = layoutMapper.normalize(
                 1,
@@ -105,6 +166,20 @@ class ContractFullDocumentTemplateTest {
                 .isFalse();
         assertThat(layoutMapper.isFullDocument("{\"pageCount\":1,\"fields\":[]}"))
                 .isFalse();
+    }
+
+    @Test
+    void oldClauseOnlyVersionCannotRegenerateAnIncompletePdf() {
+        Contracts contract = contract("ĐIỀU 1. Nội dung điều khoản");
+        contract.setContractTemplateVersion(new ContractTemplateVersions());
+        contract.setContractLayoutJson("{\"pageCount\":1,\"fields\":[]}");
+
+        assertThatThrownBy(() -> pdfGenerator.generate(
+                contract,
+                renderer.render(contract, List.of(), Map.of())
+        ))
+                .isInstanceOf(BadHttpException.class)
+                .hasMessageContaining("full-document version");
     }
 
     @Test
@@ -152,6 +227,23 @@ class ContractFullDocumentTemplateTest {
         contract.setExpirationDate(LocalDate.of(2027, 9, 11));
         contract.setContractContent(content);
         return contract;
+    }
+
+    private String fullDocumentLayout() {
+        return layoutMapper.toJson(layoutMapper.normalize(
+                1,
+                List.of(),
+                null,
+                ContractTemplateLayoutMapper.FULL_DOCUMENT_MODE
+        ));
+    }
+
+    private Users user(String firstName, String lastName, String email) {
+        return Users.builder()
+                .firstName(firstName)
+                .lastName(lastName)
+                .email(email)
+                .build();
     }
 
     private ContractWorkflowStepInstance signingStep(

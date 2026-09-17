@@ -33,6 +33,7 @@ import {
     getContractActionDetails,
     getCurrentContractActor,
     getRoleContractTask,
+    isFullDocumentTemplateVersion,
     loadProjectOptions,
     mapContractToForm,
     normalizeContractStatus,
@@ -502,7 +503,7 @@ function ListContract() {
                     (item) => item.id === value
                 );
                 const latestVersion = Array.isArray(template?.versions)
-                    ? template.versions[0]
+                    ? template.versions.find(isFullDocumentTemplateVersion)
                     : null;
 
                 return {

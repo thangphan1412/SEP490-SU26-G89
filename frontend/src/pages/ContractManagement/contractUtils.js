@@ -57,6 +57,15 @@ export function unwrapApiResponse(response) {
     return response?.data?.data ?? response?.data ?? response;
 }
 
+export function isFullDocumentTemplateVersion(version) {
+    try {
+        return JSON.parse(version?.layoutJson || "{}").documentMode
+            === "FULL_DOCUMENT";
+    } catch {
+        return false;
+    }
+}
+
 export function getApiErrorMessage(error, fallbackMessage) {
     return error?.response?.data?.message || error?.message || fallbackMessage;
 }

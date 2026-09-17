@@ -149,12 +149,23 @@ public class ContractTemplateServiceImpl implements ContractTemplateService {
                 request.templateContent(),
                 "Template content is required"
         );
+        String requestedMode = isBlank(request.documentMode())
+                && isBlank(request.layoutJson())
+                ? ContractTemplateLayoutMapper.FULL_DOCUMENT_MODE
+                : request.documentMode();
         ContractTemplateLayout layout = layoutMapper.normalize(
                 request.pageCount(),
                 request.positions(),
                 request.layoutJson(),
-                request.documentMode()
+                requestedMode
         );
+        if (!ContractTemplateLayoutMapper.FULL_DOCUMENT_MODE.equals(
+                layout.documentMode()
+        )) {
+            throw new BadHttpException(
+                    "New template versions must contain the full contract document"
+            );
+        }
         int nextVersionNumber =
                 contractTemplateVersionRepository.findLatestVersionNumber(contractTemplateId) + 1;
 

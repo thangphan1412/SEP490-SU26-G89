@@ -1157,6 +1157,13 @@ public class ContractServiceImpl implements ContractService {
                 request.contractTemplateVersionId()
         );
         validateVersionBelongsToTemplate(version, template);
+        if (version != null
+                && !layoutMapper.isFullDocument(version.getLayoutJson())) {
+            throw new BadHttpException(
+                    "This template version uses the old clause-only format. "
+                            + "Create a full-document version before using it for a contract"
+            );
+        }
 
         if (Boolean.TRUE.equals(request.saveAsTemplateVersion())) {
             version = createTemplateVersion(template, version, request);
@@ -1176,6 +1183,11 @@ public class ContractServiceImpl implements ContractService {
             }
             if (request.contractLayoutJson() == null) {
                 layoutJson = version.getLayoutJson();
+            }
+            if (!layoutMapper.isFullDocument(layoutJson)) {
+                throw new BadHttpException(
+                        "The selected template version must use a full-document layout"
+                );
             }
         }
 
@@ -1583,7 +1595,19 @@ public class ContractServiceImpl implements ContractService {
         } else if (sourceVersion != null) {
             layout = layoutMapper.fromVersion(sourceVersion);
         } else {
-            layout = layoutMapper.normalize(null, null, null);
+            layout = layoutMapper.normalize(
+                    null,
+                    null,
+                    null,
+                    ContractTemplateLayoutMapper.FULL_DOCUMENT_MODE
+            );
+        }
+        if (!ContractTemplateLayoutMapper.FULL_DOCUMENT_MODE.equals(
+                layout.documentMode()
+        )) {
+            throw new BadHttpException(
+                    "New template versions must contain the full contract document"
+            );
         }
         layoutMapper.applyToVersion(version, layout);
 

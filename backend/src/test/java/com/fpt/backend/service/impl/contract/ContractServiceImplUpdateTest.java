@@ -103,6 +103,8 @@ class ContractServiceImplUpdateTest {
     @Mock
     private ContractDocumentRenderer documentRenderer;
     @Mock
+    private ContractTemplateLayoutMapper layoutMapper;
+    @Mock
     private ContractPdfGenerator pdfGenerator;
     @Mock
     private CloudinaryService cloudinaryService;
@@ -147,6 +149,8 @@ class ContractServiceImplUpdateTest {
                 .thenReturn(Optional.of(template));
         when(contractTemplateVersionRepository.findById(version.getId()))
                 .thenReturn(Optional.of(version));
+        when(layoutMapper.isFullDocument(version.getLayoutJson()))
+                .thenReturn(true);
         when(contractTypeWorkflowRepository
                 .findFirstByContractTypeIdAndActiveTrueOrderByVersionNumberDesc(
                         newType.getId()
@@ -383,6 +387,7 @@ class ContractServiceImplUpdateTest {
         version.setVersionNumber(1);
         version.setVersionName("V1");
         version.setTemplateContent("Updated terms");
+        version.setLayoutJson("{\"documentMode\":\"FULL_DOCUMENT\",\"pageCount\":1,\"fields\":[]}");
         version.setPositions(List.of());
         return version;
     }

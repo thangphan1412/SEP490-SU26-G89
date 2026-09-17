@@ -16,6 +16,7 @@ import {
     CONTRACT_PROJECT_ACTION,
     canManageNewContract,
     getApiErrorMessage,
+    isFullDocumentTemplateVersion,
     loadProjectOptions,
     mapContractToForm,
     toContractRequest,
@@ -217,7 +218,7 @@ function UpdateContract() {
                     (item) => item.id === value
                 );
                 const latestVersion = Array.isArray(template?.versions)
-                    ? template.versions[0]
+                    ? template.versions.find(isFullDocumentTemplateVersion)
                     : null;
                 return {
                     ...current,

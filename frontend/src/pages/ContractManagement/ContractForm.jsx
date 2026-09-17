@@ -1,4 +1,7 @@
-import { formatContractStatus } from "./contractUtils.js";
+import {
+    formatContractStatus,
+    isFullDocumentTemplateVersion,
+} from "./contractUtils.js";
 
 function ContractForm({
     contract,
@@ -205,8 +208,15 @@ function ContractForm({
                     </option>
 
                     {versions.map((version) => (
-                        <option key={version.id} value={version.id}>
+                        <option
+                            key={version.id}
+                            value={version.id}
+                            disabled={!isFullDocumentTemplateVersion(version)}
+                        >
                             V{version.versionNumber} - {version.versionName}
+                            {!isFullDocumentTemplateVersion(version)
+                                ? " (old format; create a new version)"
+                                : ""}
                         </option>
                     ))}
                 </SelectField>
