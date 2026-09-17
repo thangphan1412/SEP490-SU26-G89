@@ -1,18 +1,26 @@
 package com.fpt.backend.repository.project;
 
 import com.fpt.backend.entity.Projects;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Repository
 public interface ProjectRepository extends JpaRepository<Projects, UUID> {
+    // Tuần tự hóa các request approve cùng dự án trong transaction hiện tại.
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT project FROM Projects project WHERE project.id = :id")
+    Optional<Projects> findByIdForApproval(@Param("id") UUID id);
+
     // Kiểm tra mã dự án đã tồn tại mà không phân biệt chữ hoa chữ thường.
     boolean existsByProjectCodeIgnoreCase(String projectCode);
 

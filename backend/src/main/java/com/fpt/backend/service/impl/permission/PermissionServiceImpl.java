@@ -70,6 +70,7 @@ public class PermissionServiceImpl implements IPermissionService {
                 user.getId(),
                 "MANAGE_MEMBERS",
                 canViewAllProjects,
+                projectApprovalService.canViewPendingProjects(user),
                 pageable);
         List<PermissionListItemResponse> items = new ArrayList<>();
 
@@ -162,6 +163,10 @@ public class PermissionServiceImpl implements IPermissionService {
         List<PermissionProjectResponse> responses = new ArrayList<>();
 
         for (Projects project : projects) {
+            if (!projectApprovalService.canAccessProjectByApprovalStatus(project, user)) {
+                continue;
+            }
+
             responses.add(new PermissionProjectResponse(
                     project.getId(),
                     project.getProjectCode(),

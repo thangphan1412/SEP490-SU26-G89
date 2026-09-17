@@ -11,6 +11,18 @@ import java.util.Map;
 
 @RestControllerAdvice
 public class AppExceptionHandler {
+    // Giữ nguyên HTTP 403/404 đã được service chỉ định, không đổi thành 400 bởi handler RuntimeException.
+    @ExceptionHandler(org.springframework.web.server.ResponseStatusException.class)
+    public ResponseEntity<BaseResponse<Void>> handleResponseStatusException(
+            org.springframework.web.server.ResponseStatusException ex) {
+        BaseResponse<Void> response = new BaseResponse<>(
+                ex.getStatusCode().value(),
+                ex.getReason(),
+                null
+        );
+        return ResponseEntity.status(ex.getStatusCode()).body(response);
+    }
+
     @ExceptionHandler(AppException.class)
     @ResponseBody
     public ResponseEntity<?> handleException(AppException ex) {

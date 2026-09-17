@@ -105,16 +105,23 @@ public class PermissionAccessServiceImpl
             List<UUID> projectIds = new ArrayList<>();
 
             for (Projects project : projectRepository.findAll()) {
-                projectIds.add(project.getId());
+                if (projectApprovalService.canAccessProjectByApprovalStatus(project, user)) {
+                    projectIds.add(project.getId());
+                }
             }
 
             return projectIds;
         }
 
-        return userPermissionRepository.findProjectIdsByUserAndAction(
+        List<UUID> projectIds = userPermissionRepository.findProjectIdsByUserAndAction(
                 user.getId(),
                 actionCode
         );
+        // Không để quyền thành viên làm lộ dữ liệu On Hold qua danh sách hợp đồng/quyền.
+        return projectRepository.findAllById(projectIds).stream()
+                .filter(project -> projectApprovalService.canAccessProjectByApprovalStatus(project, user))
+                .map(Projects::getId)
+                .toList();
     }
 
     // Tổng hợp vai trò thành viên, action và phạm vi truy cập của người dùng trong dự án.
@@ -122,6 +129,15 @@ public class PermissionAccessServiceImpl
     public ProjectAccessResponse getCurrentUserAccess(UUID projectId) {
         Projects project = findProject(projectId);
         Users user = currentUser.getCurrentUser();
+
+        // Kiểm tra trước quyền thành viên/người tạo để không có ngoại lệ vượt bước chờ duyệt.
+        if (!projectApprovalService.canAccessProjectByApprovalStatus(project, user)) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "Only CEO or HeadOfDepartment of Administrative can view projects awaiting approval"
+            );
+        }
+
         boolean isProjectCreator = user.getId().equals(project.getProjectCreatedBy().getId());
 
         // Kiểm tra người dùng hiện tại có phải thành viên của dự án hay không.

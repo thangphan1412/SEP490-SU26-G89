@@ -1,5 +1,6 @@
 package com.fpt.backend.service.impl.project;
 
+import com.fpt.backend.dto.response.project.ProjectApprovalAccessResponse;
 import com.fpt.backend.entity.Approvals;
 import com.fpt.backend.entity.Proposals;
 import com.fpt.backend.entity.Projects;
@@ -29,6 +30,9 @@ public class ProjectApprovalService {
     private static final String PLANNING_STATUS = "Planning";
     private static final String PENDING_STATUS = "PENDING";
     private static final String APPROVED_STATUS = "APPROVED";
+    private static final String CEO_LEVEL = "CEO";
+    private static final String DEPARTMENT_LEVEL = "HEAD_OF_DEPARTMENT";
+    private static final String ADMINISTRATIVE_DEPARTMENT = "Administrative";
     private static final ZoneId APP_TIME_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
 
     private final ProjectProposalRepository proposalRepository;
@@ -43,30 +47,43 @@ public class ProjectApprovalService {
         getOrCreateProposal(project, requestedBy);
     }
 
-    // Kiểm tra người dùng có thuộc cấp CEO hoặc trưởng bộ phận hay không.
+    // Quyền xem cấp điều hành; dự án On Hold còn phải qua kiểm tra trạng thái phê duyệt.
     public boolean canReviewProjects(Users user) {
+        return hasRole(user, CEO_LEVEL) || hasRole(user, "HeadOfDepartment");
+    }
+
+    // Quyền xem dự án đang chờ duyệt không phụ thuộc việc người dùng đã approve hay chưa.
+    public boolean canViewPendingProjects(Users user) {
         return findApprovalLevel(user) != null;
     }
 
-    // Kiểm tra người dùng còn có thể phê duyệt dự án ở cấp của họ hay không.
-    public boolean canApproveProject(Projects project, Users user) {
+    // On Hold chỉ dành cho CEO và trưởng phòng Administrative; trạng thái khác giữ quyền cũ.
+    public boolean canAccessProjectByApprovalStatus(Projects project, Users user) {
+        return !ON_HOLD_STATUS.equalsIgnoreCase(project.getProjectStatus())
+                || canViewPendingProjects(user);
+    }
+
+    // CEO phải chờ trưởng phòng Administrative; người không có quyền không thấy nút.
+    public ProjectApprovalAccessResponse getApprovalAccess(Projects project, Users user) {
         String approvalLevel = findApprovalLevel(user);
 
-        // Chỉ người có cấp duyệt hợp lệ mới được duyệt dự án đang On Hold.
         if (approvalLevel == null || !ON_HOLD_STATUS.equalsIgnoreCase(project.getProjectStatus())) {
-            return false;
+            return new ProjectApprovalAccessResponse(false, false);
         }
 
         Optional<Proposals> proposal = proposalRepository.findProjectApprovalProposal(
                 project.getId(),
                 createProposalCode(project));
 
-        // Cho phép duyệt lần đầu khi dự án chưa có proposal.
-        if (proposal.isEmpty()) {
-            return true;
+        boolean departmentApproved = proposal
+                .map(value -> isDepartmentApproved(value.getId()))
+                .orElse(false);
+
+        if (CEO_LEVEL.equals(approvalLevel)) {
+            return new ProjectApprovalAccessResponse(departmentApproved, !departmentApproved);
         }
 
-        return !isLevelApproved(proposal.get().getId() , approvalLevel);
+        return new ProjectApprovalAccessResponse(!departmentApproved, false);
     }
 
     // Ghi nhận lượt phê duyệt và chuyển trạng thái khi đủ các cấp bắt buộc.
@@ -82,22 +99,38 @@ public class ProjectApprovalService {
 
         String approvalLevel = findApprovalLevel(approvedBy);
 
-        // Từ chối người dùng không thuộc cấp CEO hoặc trưởng bộ phận.
+        // Chỉ trưởng phòng Administrative mới được thực hiện bước duyệt đầu tiên.
         if (approvalLevel == null) {
             throw new ResponseStatusException(
                     HttpStatus.FORBIDDEN,
-                    "Only CEO or HeadOfDepartment can approve projects");
+                    "Only CEO or HeadOfDepartment of Administrative can approve projects");
         }
 
-        Proposals proposal = getOrCreateProposal(project, approvedBy);
+        Optional<Proposals> existingProposal = proposalRepository.findProjectApprovalProposal(
+                project.getId(), createProposalCode(project));
+        boolean departmentApproved = existingProposal
+                .map(value -> isDepartmentApproved(value.getId()))
+                .orElse(false);
 
-        // Ngăn cùng một cấp duyệt phê duyệt dự án nhiều lần.
-        if (isLevelApproved(proposal.getId(), approvalLevel)) {
+        // Kiểm tra ở backend để không thể bỏ qua thứ tự bằng cách gọi API trực tiếp.
+        if (CEO_LEVEL.equals(approvalLevel) && !departmentApproved) {
+            throw new BadHttpException(
+                    "Waiting for HeadOfDepartment of Administrative to approve first");
+        }
+
+        if (DEPARTMENT_LEVEL.equals(approvalLevel) && departmentApproved) {
             throw new BadHttpException(
                     "This approval level has already approved the project");
         }
 
-        Approvals approval = new Approvals();
+        Proposals proposal = existingProposal
+                .orElseGet(() -> getOrCreateProposal(project, approvedBy));
+
+        // Tái sử dụng bản ghi của cấp duyệt nếu dự án On Hold còn dữ liệu từ luồng cũ.
+        // CEO đã duyệt trước đây vẫn phải xác nhận lại sau trưởng phòng Administrative.
+        Approvals approval = approvalRepository
+                .findByProposalIdAndApprovalLevelIgnoreCase(proposal.getId(), approvalLevel)
+                .orElseGet(Approvals::new);
         approval.setProposal(proposal);
         approval.setApprovedBy(approvedBy);
         approval.setApprovalLevel(approvalLevel);
@@ -105,33 +138,28 @@ public class ProjectApprovalService {
         approval.setApprovalAt(LocalDate.now(APP_TIME_ZONE));
         approvalRepository.saveAndFlush(approval);
 
-        // Chuyển dự án sang Planning sau khi đủ hai cấp phê duyệt.
-        if (hasRequiredApprovals(proposal.getId())) {
+        // Chỉ lượt duyệt CEO sau Administrative mới kết thúc quy trình.
+        if (CEO_LEVEL.equals(approvalLevel)) {
             proposal.setStatus(APPROVED_STATUS);
             project.setProjectStatus(PLANNING_STATUS);
             projectStatusService.activateIfStarted(project);
             projectRepository.save(project);
+        } else {
+            proposal.setStatus(PENDING_STATUS);
         }
 
         proposal.setUpdateAt(LocalDate.now(APP_TIME_ZONE).toString());
         proposalRepository.save(proposal);
     }
 
-    // Kiểm tra proposal đã được cả CEO và trưởng bộ phận phê duyệt hay chưa.
-    private boolean hasRequiredApprovals(UUID proposalId) {
-        return isLevelApproved(proposalId, "CEO")
-                && isLevelApproved(
-                        proposalId,
-                        "HEAD_OF_DEPARTMENT");
-    }
-
-    // Kiểm tra một cấp duyệt đã phê duyệt proposal hay chưa.
-    private boolean isLevelApproved(
-            UUID proposalId,
-            String approvalLevel) {
-        return approvalRepository.countApprovedLevel(
-                proposalId,
-                approvalLevel) > 0;
+    // Lượt duyệt cũ của trưởng phòng khác không thay thế được phòng Administrative.
+    private boolean isDepartmentApproved(UUID proposalId) {
+        return approvalRepository
+                .findByProposalIdAndApprovalLevelIgnoreCase(proposalId, DEPARTMENT_LEVEL)
+                .filter(approval -> APPROVED_STATUS.equalsIgnoreCase(approval.getApprovalStatus()))
+                .map(Approvals::getApprovedBy)
+                .filter(this::isAdministrativeDepartment)
+                .isPresent();
     }
 
     // Lấy proposal hiện có hoặc tạo proposal phê duyệt mới cho dự án.
@@ -171,15 +199,21 @@ public class ProjectApprovalService {
 
     // Xác định cấp phê duyệt cao nhất phù hợp với vai trò người dùng.
     private String findApprovalLevel(Users user) {
-        if (hasRole(user, "CEO")) {
-            return "CEO";
+        if (hasRole(user, CEO_LEVEL)) {
+            return CEO_LEVEL;
         }
 
-        if (hasRole(user, "HeadOfDepartment")) {
-            return "HEAD_OF_DEPARTMENT";
+        if (hasRole(user, "HeadOfDepartment") && isAdministrativeDepartment(user)) {
+            return DEPARTMENT_LEVEL;
         }
 
         return null;
+    }
+
+    private boolean isAdministrativeDepartment(Users user) {
+        return user != null
+                && user.getDepartment() != null
+                && ADMINISTRATIVE_DEPARTMENT.equalsIgnoreCase(user.getDepartment().getDepartmentName());
     }
 
     // Kiểm tra người dùng có vai trò được yêu cầu hay không.

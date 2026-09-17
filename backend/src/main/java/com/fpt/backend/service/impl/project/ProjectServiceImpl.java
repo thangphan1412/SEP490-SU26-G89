@@ -6,7 +6,9 @@ import com.fpt.backend.dto.request.project.ProjectMemberRequest;
 import com.fpt.backend.dto.request.project.ProjectPermissionConfigurationRequest;
 import com.fpt.backend.dto.request.project.ProjectUpdateRequest;
 import com.fpt.backend.dto.response.project.ProjectContractResponse;
+import com.fpt.backend.dto.response.project.ProjectCreateResponse;
 import com.fpt.backend.dto.response.project.ProjectAccessResponse;
+import com.fpt.backend.dto.response.project.ProjectApprovalAccessResponse;
 import com.fpt.backend.dto.response.project.ProjectDetailResponse;
 import com.fpt.backend.dto.response.project.ProjectEmployeeResponse;
 import com.fpt.backend.dto.response.project.ProjectListItemResponse;
@@ -111,7 +113,7 @@ public class ProjectServiceImpl implements IProjectService {
     // Tạo dự án cùng yêu cầu phê duyệt, phase, quyền mặc định và thành viên ban đầu.
     @Override
     @Transactional
-    public ProjectDetailResponse createProject(ProjectCreateRequest request) {
+    public ProjectCreateResponse createProject(ProjectCreateRequest request) {
         Users currentUser = currentUserUtil.getCurrentUser();
         Projects project = new Projects();
         applyProjectInformation(
@@ -153,11 +155,9 @@ public class ProjectServiceImpl implements IProjectService {
         );
         projectRepository.flush();
 
-        return toDetail(
-                savedProject,
-                permissionAccessService.getCurrentUserAccess(
-                        savedProject.getId()
-                )
+        return new ProjectCreateResponse(
+                savedProject.getId(),
+                projectApprovalService.canViewPendingProjects(currentUser)
         );
     }
 
@@ -254,7 +254,8 @@ public class ProjectServiceImpl implements IProjectService {
     @Override
     @Transactional
     public void approveProject(UUID id) {
-        Projects project = findProject(id);
+        Projects project = projectRepository.findByIdForApproval(id)
+                .orElseThrow(() -> new NotFoundException("Project not found"));
         Users currentUser = currentUserUtil.getCurrentUser();
         projectApprovalService.approveProject(project, currentUser);
         projectRepository.flush();
@@ -508,8 +509,10 @@ public class ProjectServiceImpl implements IProjectService {
     // Chuyển entity dự án thành phần tử danh sách kèm quyền xem và phê duyệt.
     private ProjectListItemResponse toListItem(Projects project,Users currentUser) {
         boolean isProjectMember = projectMemberRepository.countByProjectIdAndUserId(project.getId(),currentUser.getId()) > 0;
-        boolean canView = isProjectMember || projectApprovalService.canReviewProjects(currentUser);
-        boolean canApprove = projectApprovalService.canApproveProject(project, currentUser);
+        boolean canView = projectApprovalService.canAccessProjectByApprovalStatus(project, currentUser)
+                && (isProjectMember || projectApprovalService.canReviewProjects(currentUser));
+        ProjectApprovalAccessResponse approvalAccess =
+                projectApprovalService.getApprovalAccess(project, currentUser);
 
         return new ProjectListItemResponse(
                 project.getId(),
@@ -522,7 +525,8 @@ public class ProjectServiceImpl implements IProjectService {
                 project.getProjectCreatedBy().getFirstName() + " " + project.getProjectCreatedBy().getLastName(),
                 project.getProjectCreatedAt(),
                 canView,
-                canApprove
+                approvalAccess.canApprove(),
+                approvalAccess.waitingForDepartmentApproval()
         );
     }
 

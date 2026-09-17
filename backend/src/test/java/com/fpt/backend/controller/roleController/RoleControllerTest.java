@@ -18,6 +18,7 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
@@ -681,6 +682,175 @@ class RoleControllerTest {
                 });
                 verify(roleService).getRoleById(roleId);
                 verifyNoMoreInteractions(roleService);
+        }
+
+        /**
+         * TC27 - Lấy toàn bộ Role qua getAllRoles khi service có dữ liệu.
+         * Input: không có tham số; service trả 2 DTO theo thứ tự ADMIN, EMPLOYEE.
+         * Expected: HTTP 200, body.status = 200, message "Successfully fetched all roles",
+         * data giữ đúng 2 DTO và thứ tự; chỉ gọi service.getAllRoles một lần.
+         */
+        @Test
+        void getAllRoles_returnsOkWithAllRoles() {
+                List<RoleResponseDTO> expectedRoles = List.of(
+                                role(
+                                                "00000000-0000-0000-0000-000000000020",
+                                                "ADMIN",
+                                                "Administrator",
+                                                "Manage users and roles"),
+                                role(
+                                                "00000000-0000-0000-0000-000000000021",
+                                                "EMPLOYEE",
+                                                "Employee",
+                                                null));
+                when(roleService.getAllRoles()).thenReturn(expectedRoles);
+
+                ResponseEntity<BaseResponse<List<RoleResponseDTO>>> response =
+                                roleController.getAllRoles();
+
+                assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+                assertThat(response.getBody()).satisfies(body -> {
+                        assertThat(body.getStatus()).isEqualTo(HttpStatus.OK.value());
+                        assertThat(body.getMessage()).isEqualTo("Successfully fetched all roles");
+                        assertThat(body.getData()).containsExactlyElementsOf(expectedRoles);
+                });
+                verify(roleService).getAllRoles();
+                verifyNoMoreInteractions(roleService);
+        }
+
+        /**
+         * TC28 - Lấy toàn bộ Role khi chưa có Role nào.
+         * Input: không có tham số; service trả danh sách rỗng (0 Role).
+         * Expected: HTTP 200, message thành công, data là danh sách rỗng chứ không phải null;
+         * chỉ gọi service.getAllRoles một lần.
+         */
+        @Test
+        void getAllRoles_returnsOkWithEmptyList() {
+                when(roleService.getAllRoles()).thenReturn(List.of());
+
+                ResponseEntity<BaseResponse<List<RoleResponseDTO>>> response =
+                                roleController.getAllRoles();
+
+                assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+                assertThat(response.getBody()).satisfies(body -> {
+                        assertThat(body.getStatus()).isEqualTo(HttpStatus.OK.value());
+                        assertThat(body.getMessage()).isEqualTo("Successfully fetched all roles");
+                        assertThat(body.getData()).isNotNull().isEmpty();
+                });
+                verify(roleService).getAllRoles();
+                verifyNoMoreInteractions(roleService);
+        }
+
+        /**
+         * TC29 - Service phát sinh lỗi khi lấy toàn bộ Role.
+         * Input: không có tham số; service ném RuntimeException "Unable to fetch roles".
+         * Expected: controller truyền nguyên exception và message ra ngoài;
+         * chỉ gọi service.getAllRoles một lần, không tự trả danh sách rỗng.
+         */
+        @Test
+        void getAllRoles_propagatesServiceException() {
+                RuntimeException serviceException = new RuntimeException("Unable to fetch roles");
+                when(roleService.getAllRoles()).thenThrow(serviceException);
+
+                assertThatThrownBy(() -> roleController.getAllRoles())
+                                .isSameAs(serviceException)
+                                .hasMessage("Unable to fetch roles");
+                verify(roleService).getAllRoles();
+                verifyNoMoreInteractions(roleService);
+        }
+
+        /**
+         * TC30 - Xóa Role thành công ở controller.
+         * Input: id = "00000000-0000-0000-0000-000000000022";
+         * service.deleteRole được mock hoàn thành bình thường.
+         * Expected: HTTP 200, body.status = 200, message "Role deleted successfully",
+         * data = null; chỉ gọi service.deleteRole đúng id một lần.
+         */
+        @Test
+        void deleteRole_returnsOkWhenServiceDeletesRole() {
+                UUID roleId = UUID.fromString("00000000-0000-0000-0000-000000000022");
+
+                ResponseEntity<BaseResponse<Void>> response = roleController.deleteRole(roleId);
+
+                assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+                assertThat(response.getBody()).satisfies(body -> {
+                        assertThat(body.getStatus()).isEqualTo(HttpStatus.OK.value());
+                        assertThat(body.getMessage()).isEqualTo("Role deleted successfully");
+                        assertThat(body.getData()).isNull();
+                });
+                verify(roleService).deleteRole(roleId);
+                verifyNoMoreInteractions(roleService);
+        }
+
+        /**
+         * TC31 - Xóa Role không tồn tại ở controller.
+         * Input: id = "00000000-0000-0000-0000-000000000999";
+         * service ném RuntimeException "Role not found with id: " + id.
+         * Expected: theo xử lý hiện tại, HTTP 400, data = null, giữ nguyên message;
+         * chỉ gọi service.deleteRole đúng id một lần.
+         */
+        @Test
+        void deleteRole_returnsBadRequestWhenRoleDoesNotExist() {
+                UUID roleId = UUID.fromString("00000000-0000-0000-0000-000000000999");
+                String errorMessage = "Role not found with id: " + roleId;
+                doThrow(new RuntimeException(errorMessage)).when(roleService).deleteRole(roleId);
+
+                ResponseEntity<BaseResponse<Void>> response = roleController.deleteRole(roleId);
+
+                assertDeleteBadRequest(response, errorMessage);
+                verify(roleService).deleteRole(roleId);
+                verifyNoMoreInteractions(roleService);
+        }
+
+        /**
+         * TC32 - Service từ chối xóa Role đang được gán cho user.
+         * Input: id = "00000000-0000-0000-0000-000000000023";
+         * service được mock ném lỗi "Role cannot be deleted because it is assigned to users!".
+         * Expected: HTTP 400, data = null và giữ nguyên message lỗi từ service;
+         * chỉ gọi service.deleteRole đúng id một lần.
+         */
+        @Test
+        void deleteRole_returnsBadRequestWhenRoleIsAssignedToUsers() {
+                UUID roleId = UUID.fromString("00000000-0000-0000-0000-000000000023");
+                String errorMessage = "Role cannot be deleted because it is assigned to users!";
+                doThrow(new RuntimeException(errorMessage)).when(roleService).deleteRole(roleId);
+
+                ResponseEntity<BaseResponse<Void>> response = roleController.deleteRole(roleId);
+
+                assertDeleteBadRequest(response, errorMessage);
+                verify(roleService).deleteRole(roleId);
+                verifyNoMoreInteractions(roleService);
+        }
+
+        /**
+         * TC33 - Service gặp lỗi kỹ thuật khi xóa Role.
+         * Input: id = "00000000-0000-0000-0000-000000000024";
+         * service ném RuntimeException "Database unavailable".
+         * Expected: theo xử lý hiện tại, HTTP 400, data = null, message "Database unavailable";
+         * chỉ gọi service.deleteRole đúng id một lần.
+         */
+        @Test
+        void deleteRole_returnsBadRequestWhenServiceFails() {
+                UUID roleId = UUID.fromString("00000000-0000-0000-0000-000000000024");
+                String errorMessage = "Database unavailable";
+                doThrow(new RuntimeException(errorMessage)).when(roleService).deleteRole(roleId);
+
+                ResponseEntity<BaseResponse<Void>> response = roleController.deleteRole(roleId);
+
+                assertDeleteBadRequest(response, errorMessage);
+                verify(roleService).deleteRole(roleId);
+                verifyNoMoreInteractions(roleService);
+        }
+
+        private static void assertDeleteBadRequest(
+                        ResponseEntity<BaseResponse<Void>> response,
+                        String expectedMessage) {
+                assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+                assertThat(response.getBody()).satisfies(body -> {
+                        assertThat(body.getStatus()).isEqualTo(HttpStatus.BAD_REQUEST.value());
+                        assertThat(body.getMessage()).isEqualTo(expectedMessage);
+                        assertThat(body.getData()).isNull();
+                });
         }
 
         private static void assertCreateBadRequest(

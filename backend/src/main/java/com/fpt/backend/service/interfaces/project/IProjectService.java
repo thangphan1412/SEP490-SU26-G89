@@ -5,6 +5,7 @@ import com.fpt.backend.dto.request.project.ProjectListRequest;
 import com.fpt.backend.dto.request.project.ProjectPermissionConfigurationRequest;
 import com.fpt.backend.dto.request.project.ProjectUpdateRequest;
 import com.fpt.backend.dto.response.project.ProjectDetailResponse;
+import com.fpt.backend.dto.response.project.ProjectCreateResponse;
 import com.fpt.backend.dto.response.project.ProjectEmployeeResponse;
 import com.fpt.backend.dto.response.project.ProjectListResponse;
 import com.fpt.backend.dto.response.project.ProjectPermissionConfigurationResponse;
@@ -22,7 +23,7 @@ public interface IProjectService {
     ProjectDetailResponse getProjectById(UUID id);
 
     // Tạo dự án mới từ request.
-    ProjectDetailResponse createProject(ProjectCreateRequest request);
+    ProjectCreateResponse createProject(ProjectCreateRequest request);
 
     // Cập nhật dự án hiện có từ request.
     ProjectDetailResponse updateProject(UUID id, ProjectUpdateRequest request);
