@@ -104,10 +104,6 @@ function CreateProject() {
             }
         }
 
-        if (name === "projectEndDate") {
-            nextProjectEndDate = value;
-        }
-
         // Không validate khi đang gõ từng phần của input date vì trình duyệt có
         // thể tạm phát ra một ngày chưa hoàn chỉnh (ví dụ năm 0001).
         if (name === "projectStartDate" || name === "projectEndDate") {

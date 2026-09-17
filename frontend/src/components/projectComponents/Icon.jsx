@@ -14,9 +14,6 @@ function Icon({ name, size = 22, color = "#1f4fff" }) {
     plus: <><circle cx="12" cy="12" r="9" /><path d="M12 8v8" /><path d="M8 12h8" /></>,
     search: <><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></>,
     filter: <path d="M4 5h16l-6 7v5l-4 2v-7z" />,
-    refresh: <><path d="M20 6v5h-5" /><path d="M4 18v-5h5" /><path d="M18 9a7 7 0 0 0-11.6-2.6L4 9" /><path d="M6 15a7 7 0 0 0 11.6 2.6L20 15" /></>,
-    chevron: <path d="m8 10 4 4 4-4" />,
-    dots: <><circle cx="6" cy="12" r="1" fill="currentColor" stroke="none" /><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none" /><circle cx="18" cy="12" r="1" fill="currentColor" stroke="none" /></>,
     sort: <><path d="m8 9 3-3 3 3" /><path d="m14 15-3 3-3-3" /></>,
     arrowLeft: <path d="m15 18-6-6 6-6" />,
     arrowRight: <path d="m9 18 6-6-6-6" />,
@@ -29,11 +26,7 @@ function Icon({ name, size = 22, color = "#1f4fff" }) {
     trash: <><path d="M4 7h16" /><path d="M9 7V4h6v3" /><path d="M7 7l1 14h8l1-14" /><path d="M10 11v6" /><path d="M14 11v6" /></>,
     save: <><path d="M5 3h12l2 2v16H5z" /><path d="M8 3v6h8V3" /><path d="M8 21v-7h8v7" /></>,
     calendar: <><path d="M5 4h14v16H5z" /><path d="M8 2v4" /><path d="M16 2v4" /><path d="M5 9h14" /></>,
-    dollar: <><circle cx="12" cy="12" r="9" /><path d="M12 6v12" /><path d="M15 8.5c-.8-.7-1.8-1-3-1-1.6 0-2.7.8-2.7 2s1 1.8 2.7 2.2c1.8.4 3 1 3 2.5S13.7 17 12 17c-1.3 0-2.5-.4-3.5-1.2" /></>,
-    location: <><path d="M12 21s7-5.2 7-11a7 7 0 0 0-14 0c0 5.8 7 11 7 11Z" /><circle cx="12" cy="10" r="2.5" /></>,
     flag: <><path d="M5 21V4" /><path d="M5 5h11l-1.5 4L16 13H5" /></>,
-    link: <><path d="M10 13a5 5 0 0 0 7 0l2-2a5 5 0 0 0-7-7l-1 1" /><path d="M14 11a5 5 0 0 0-7 0l-2 2a5 5 0 0 0 7 7l1-1" /></>,
-    task: <><path d="M5 5h14v14H5z" /><path d="m8 12 2.5 2.5L16 9" /></>,
     info: <><circle cx="12" cy="12" r="9" /><path d="M12 11v5" /><path d="M12 8h.01" /></>,
   };
 
