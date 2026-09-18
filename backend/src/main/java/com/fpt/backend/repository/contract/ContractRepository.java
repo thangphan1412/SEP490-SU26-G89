@@ -65,6 +65,15 @@ public interface ContractRepository extends JpaRepository<Contracts, UUID> {
                 )
             )
             AND (
+                UPPER(TRIM(COALESCE(contract.contractStatus, ''))) NOT IN ('NEW', 'DRAFT')
+                OR creator.id = :currentUserId
+                OR (
+                    contract.contractCreatedByUser IS NULL
+                    AND LOWER(TRIM(COALESCE(contract.contractCreateBy, '')))
+                        = :currentUserName
+                )
+            )
+            AND (
                 :search = ''
                 OR LOWER(COALESCE(contract.contractNumber, '')) LIKE CONCAT('%', CONCAT(:search, '%'))
                 OR LOWER(COALESCE(contract.contractTitle, '')) LIKE CONCAT('%', CONCAT(:search, '%'))

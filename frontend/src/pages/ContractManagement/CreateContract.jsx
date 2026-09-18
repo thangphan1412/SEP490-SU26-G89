@@ -147,6 +147,7 @@ function CreateContract() {
                     projects={projects}
                     loadingProjects={loadingProjects}
                     creatorReadOnly={Boolean(localStorage.getItem("fullName"))}
+                    templateSelectionRequired
                 />
 
                 {errorMessage ? (

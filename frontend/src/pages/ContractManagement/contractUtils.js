@@ -247,6 +247,14 @@ export function validateContract(contract, isCreating = true) {
     }
 
     if (isCreating) {
+        if (!contract.contractTemplateId) {
+            return "Please select a contract template.";
+        }
+
+        if (!contract.contractTemplateVersionId) {
+            return "Please select a template version.";
+        }
+
         const workflowSteps = contract.workflowDefinition?.steps;
         if (!Array.isArray(workflowSteps) || workflowSteps.length < 2) {
             return "The selected contract type does not have an active workflow.";

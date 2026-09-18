@@ -270,7 +270,7 @@ function UpdateContract() {
             return;
         }
 
-        const validationMessage = validateContract(contract);
+        const validationMessage = validateContract(contract, false);
 
         if (validationMessage) {
             setErrorMessage(validationMessage);
@@ -334,6 +334,7 @@ function UpdateContract() {
                         loadingProjectContext={loadingProjectContext}
                         loadingContractOptions={loading}
                         creatorReadOnly
+                        templateSelectionRequired={false}
                     />
 
                     {errorMessage ? (

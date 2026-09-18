@@ -558,7 +558,10 @@ function ListContract() {
             return;
         }
 
-        const validationMessage = validateContract(contractForm);
+        const validationMessage = validateContract(
+            contractForm,
+            modalMode !== "edit"
+        );
         if (validationMessage) {
             setModalError(validationMessage);
             return;
@@ -1155,6 +1158,7 @@ function ContractModal({
                             creatorReadOnly={Boolean(
                                 localStorage.getItem("fullName")
                             )}
+                            templateSelectionRequired={mode !== "edit"}
                         />
                     </Modal.Body>
                     <Modal.Footer>

@@ -300,6 +300,7 @@ public class ContractServiceImpl implements ContractService {
         if (request == null) {
             throw new BadHttpException("Contract information is required");
         }
+        validateCreateTemplateSelection(request);
 
         Users actor = currentUser.getCurrentUser();
         if (request.projectId() != null) {
@@ -669,6 +670,13 @@ public class ContractServiceImpl implements ContractService {
             String actionCode,
             Users user
     ) {
+        if (readStatus(contract) == ContractStatus.NEW
+                && !isContractOwner(contract, user)) {
+            throw forbidden(
+                    "Only the contract creator can access a NEW contract before it is submitted"
+            );
+        }
+
         if (contract.getProject() == null
                 || contract.getProject().getId() == null) {
             boolean owner = isContractOwner(contract, user);
@@ -1805,6 +1813,16 @@ public class ContractServiceImpl implements ContractService {
             throw new BadHttpException(
                     "Expiration date must be on or after the effective date"
             );
+        }
+    }
+
+    private void validateCreateTemplateSelection(ContractRequest request) {
+        if (request.contractTemplateId() == null) {
+            throw new BadHttpException("Contract template is required");
+        }
+
+        if (request.contractTemplateVersionId() == null) {
+            throw new BadHttpException("Contract template version is required");
         }
     }
 
