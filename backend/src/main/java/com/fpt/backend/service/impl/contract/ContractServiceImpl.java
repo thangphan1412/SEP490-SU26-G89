@@ -946,12 +946,6 @@ public class ContractServiceImpl implements ContractService {
             completedSignature = registerElectronicSignature(
                     contract, request, actor
             );
->>>>>>> 7d6eb51fe9c660b46d1a1bc0200bcbbc73cf5f51
-=======
-            completedSignature = registerElectronicSignatureWhenRequired(
-                    contract, action, request, actor
-            );
->>>>>>> origin
         }
 
         LocalDateTime now = LocalDateTime.now();
