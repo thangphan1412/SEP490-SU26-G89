@@ -2,6 +2,7 @@ package com.fpt.backend.repository.signature;
 
 
 import com.fpt.backend.entity.Signature;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -12,6 +13,23 @@ import java.util.UUID;
 
 @Repository
 public interface SignatureRepository extends JpaRepository<Signature, UUID> {
+<<<<<<< HEAD
+<<<<<<< HEAD
+    @EntityGraph(attributePaths = {
+            "signedBy",
+            "electronicSignatures",
+            "fileStorage",
+            "workflowStepInstance"
+    })
+    List<Signature> findByContractIdOrderBySignedAtAsc(UUID contractId);
+
+    boolean existsByContractIdAndWorkflowStepInstanceId(
+            UUID contractId,
+            UUID workflowStepInstanceId
+    );
+=======
+=======
+>>>>>>> origin
     boolean existsByContractId(UUID contractId);
 //    @Query("""
 //            select new com.fpt.backend.dto.response.signature.SignatureListResponse(
@@ -28,4 +46,8 @@ public interface SignatureRepository extends JpaRepository<Signature, UUID> {
 //                                                                                     where s.userKey.user.id = :userId
 //        """)
 //    List<SignatureListResponse> findAll(@Param("userId") UUID userId);
+<<<<<<< HEAD
+>>>>>>> 7d6eb51fe9c660b46d1a1bc0200bcbbc73cf5f51
+=======
+>>>>>>> origin
 }

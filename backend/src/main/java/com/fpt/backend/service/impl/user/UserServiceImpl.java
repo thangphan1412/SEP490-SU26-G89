@@ -19,7 +19,6 @@ import com.fpt.backend.repository.department.DepartmentRepository;
 import com.fpt.backend.repository.role.RoleRepository;
 import com.fpt.backend.repository.user.UserRepository;
 import com.fpt.backend.repository.userRole.UserRoleRepository;
-import com.fpt.backend.service.impl.signature.UserKeyServiceImpl;
 import com.fpt.backend.service.interfaces.user.IUserService;
 import com.fpt.backend.util.CurrentUser;
 import com.fpt.backend.util.OTPGenerator;
@@ -60,9 +59,8 @@ public class UserServiceImpl implements IUserService {
     @Autowired
     private UserRoleRepository userRoleRepository;
     @Autowired
-    private UserKeyServiceImpl userKeyService;
-    @Autowired
     private CompanyRepository companyRepository;
+
     @Override
     public Boolean existsByEmail(String email) {
         return userRepository.existsByEmail(email);
@@ -70,25 +68,26 @@ public class UserServiceImpl implements IUserService {
 
     @Override
     public void save(Users user) {
-         userRepository.save(user);
+        userRepository.save(user);
     }
 
-//    @Override
+    // @Override
     public RegisterResponse create(RegisterRequest registerRequest) {
         ValidateEmail validateEmail = new ValidateEmail();
         String regexPattern = "^(.+)@(\\S+)$";
         List<Users> users = userRepository.findAll();
 
-        if(userRepository.existsByEmail(registerRequest.getEmail())){
+        if (userRepository.existsByEmail(registerRequest.getEmail())) {
             throw new RuntimeException("Email already exists");
         }
-        if(!ValidateEmail.validateEmail(registerRequest.getEmail(), regexPattern)){
+        if (!ValidateEmail.validateEmail(registerRequest.getEmail(), regexPattern)) {
             throw new RuntimeException("Invalid format email: abc@domain.com");
         }
-        if(registerRequest.getPassword().length() < 8 || registerRequest.getPassword().length() > 12){
-            throw new RuntimeException("Password too short, have to be at least 8 characters and less than 12 characters");
+        if (registerRequest.getPassword().length() < 8 || registerRequest.getPassword().length() > 12) {
+            throw new RuntimeException(
+                    "Password too short, have to be at least 8 characters and less than 12 characters");
         }
-        if(registerRequest.getPassword().isEmpty()){
+        if (registerRequest.getPassword().isEmpty()) {
             throw new RuntimeException("Password cannot be empty");
         }
         Users user = new Users();
@@ -112,15 +111,18 @@ public class UserServiceImpl implements IUserService {
 
     // 2. View User
 
-    //sua o day o day loi
+    // sua o day o day loi
     @Override
     public UserResponseDTO getUserById(UUID id) {
-        Users user = userRepository.findById(id).orElseThrow(() -> new RuntimeException("User not found with id: " + id));
+        Users user = userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("User not found with id: " + id));
         Users loggedInUser = currentUser.getCurrentUser();
-        String currentRole = loggedInUser.getUserRoles().stream().map(UserRole::getRole).map(Role::getRoleName).findFirst().orElse("");
+        String currentRole = loggedInUser.getUserRoles().stream().map(UserRole::getRole).map(Role::getRoleName)
+                .findFirst().orElse("");
 
         // Lấy Role của cái tài khoản BỊ XEM để đối chiếu
-        String targetRole = user.getUserRoles().stream().map(UserRole::getRole).map(Role::getRoleName).findFirst().orElse("");
+        String targetRole = user.getUserRoles().stream().map(UserRole::getRole).map(Role::getRoleName).findFirst()
+                .orElse("");
 
         // CEO / Admin xem được Kế toán, Trưởng phòng, NV, Đối tác
         if ("CEO".equalsIgnoreCase(currentRole) || "Administrator".equalsIgnoreCase(currentRole)) {
@@ -136,7 +138,8 @@ public class UserServiceImpl implements IUserService {
         }
         // HeadOfDepartment chỉ xem được NV cùng phòng
         else if ("HeadOfDepartment".equalsIgnoreCase(currentRole)) {
-            String myDept = loggedInUser.getDepartment() != null ? loggedInUser.getDepartment().getDepartmentName() : "";
+            String myDept = loggedInUser.getDepartment() != null ? loggedInUser.getDepartment().getDepartmentName()
+                    : "";
             String targetDept = user.getDepartment() != null ? user.getDepartment().getDepartmentName() : "";
             if (!myDept.equals(targetDept) || !"Employee".equalsIgnoreCase(targetRole)) {
                 throw new RuntimeException("Access Denied: Bạn chỉ được phép xem thông tin nhân viên cùng phòng ban!");
@@ -145,7 +148,7 @@ public class UserServiceImpl implements IUserService {
         return UserResponseDTO.fromEntity(user);
     }
 
-//     3. Create User
+    // 3. Create User
     @Override
     @Transactional
     public UserResponseDTO createUser(UserCreateRequestDTO request) {
@@ -157,21 +160,24 @@ public class UserServiceImpl implements IUserService {
         }
 
         Users loggedInUser = currentUser.getCurrentUser();
-        String currentRole = loggedInUser.getUserRoles().stream().map(UserRole::getRole).map(Role::getRoleName).findFirst().orElse("");
-
+        String currentRole = loggedInUser.getUserRoles().stream().map(UserRole::getRole).map(Role::getRoleName)
+                .findFirst().orElse("");
 
         // 1. Phân quyền CREATE
         if ("CEO".equalsIgnoreCase(currentRole) || "Administrator".equalsIgnoreCase(currentRole)) {
-            throw new RuntimeException("Access Denied: Chức vụ của bạn chỉ có quyền xem, không có quyền tạo tài khoản!");
+            throw new RuntimeException(
+                    "Access Denied: Chức vụ của bạn chỉ có quyền xem, không có quyền tạo tài khoản!");
         } else if ("Accountant".equalsIgnoreCase(currentRole)) {
             if (!List.of("HeadOfDepartment", "Employee", "External Parners").contains(request.getRole())) {
-                throw new RuntimeException("Access Denied: Bạn chỉ được tạo tài khoản HeadOfDepartment, Employee, External Parners!");
+                throw new RuntimeException(
+                        "Access Denied: Bạn chỉ được tạo tài khoản HeadOfDepartment, Employee, External Parners!");
             }
         } else if ("HeadOfDepartment".equalsIgnoreCase(currentRole)) {
             if (!"Employee".equalsIgnoreCase(request.getRole())) {
                 throw new RuntimeException("Access Denied: Bạn chỉ được tạo tài khoản Employee!");
             }
-            String myDept = loggedInUser.getDepartment() != null ? loggedInUser.getDepartment().getDepartmentName() : "";
+            String myDept = loggedInUser.getDepartment() != null ? loggedInUser.getDepartment().getDepartmentName()
+                    : "";
             if (!myDept.equals(request.getDepartmentName())) {
                 throw new RuntimeException("Access Denied: Bạn chỉ được phép tạo nhân viên trong phòng " + myDept);
             }
@@ -183,12 +189,19 @@ public class UserServiceImpl implements IUserService {
         if (UserStatus.ACTIVE.equals(request.getStatus())) {
             String roleToCheck = request.getRole();
             if (List.of("CEO", "Administrator", "Accountant").contains(roleToCheck)) {
-                boolean isExist = userRepository.findByUserRoles_Role_RoleName(roleToCheck).stream().anyMatch(u -> UserStatus.ACTIVE.equals(u.getStatus()));
-                if (isExist) throw new RuntimeException("Lỗi: Hệ thống chỉ cho phép có 1 tài khoản " + roleToCheck + " đang hoạt động!");
+                boolean isExist = userRepository.findByUserRoles_Role_RoleName(roleToCheck).stream()
+                        .anyMatch(u -> UserStatus.ACTIVE.equals(u.getStatus()));
+                if (isExist)
+                    throw new RuntimeException(
+                            "Lỗi: Hệ thống chỉ cho phép có 1 tài khoản " + roleToCheck + " đang hoạt động!");
             } else if ("HeadOfDepartment".equalsIgnoreCase(roleToCheck)) {
-                Departments dept = departmentRepository.findByDepartmentName(request.getDepartmentName()).orElseThrow(() -> new RuntimeException("Phòng ban không tồn tại"));
-                boolean isExist = userRepository.findByUserRoles_Role_RoleNameAndDepartment(roleToCheck, dept).stream().anyMatch(u -> UserStatus.ACTIVE.equals(u.getStatus()));
-                if (isExist) throw new RuntimeException("Lỗi: Phòng ban " + request.getDepartmentName() + " đã có Trưởng phòng đang hoạt động!");
+                Departments dept = departmentRepository.findByDepartmentName(request.getDepartmentName())
+                        .orElseThrow(() -> new RuntimeException("Phòng ban không tồn tại"));
+                boolean isExist = userRepository.findByUserRoles_Role_RoleNameAndDepartment(roleToCheck, dept).stream()
+                        .anyMatch(u -> UserStatus.ACTIVE.equals(u.getStatus()));
+                if (isExist)
+                    throw new RuntimeException(
+                            "Lỗi: Phòng ban " + request.getDepartmentName() + " đã có Trưởng phòng đang hoạt động!");
             }
         }
 
@@ -204,10 +217,10 @@ public class UserServiceImpl implements IUserService {
                 .build();
 
         if (request.getDepartmentName() != null && !request.getDepartmentName().isEmpty()) {
-            Departments dept = departmentRepository.findByDepartmentName(request.getDepartmentName()).orElseThrow(() -> new RuntimeException("Department not found"));
+            Departments dept = departmentRepository.findByDepartmentName(request.getDepartmentName())
+                    .orElseThrow(() -> new RuntimeException("Department not found"));
             newUser.setDepartment(dept);
         }
-
 
         // --- BẮT ĐẦU XỬ LÝ COMPANY ---
         Company company;
@@ -227,7 +240,8 @@ public class UserServiceImpl implements IUserService {
                 // ĐÃ CÓ: Lấy công ty cũ dùng luôn, KHÔNG tạo mới, KHÔNG ghi đè
                 company = optInternalCompany.get();
             } else {
-                // CHƯA CÓ (Lần đầu tiên tạo user nội bộ): Tạo công ty nội bộ mới từ data của form
+                // CHƯA CÓ (Lần đầu tiên tạo user nội bộ): Tạo công ty nội bộ mới từ data của
+                // form
                 company = new Company();
                 company.setIsInternal(true);
                 company.setCompanyName(request.getCompanyName());
@@ -240,11 +254,10 @@ public class UserServiceImpl implements IUserService {
         newUser.setCompany(company); // Móc nối vào User
         // --- KẾT THÚC XỬ LÝ COMPANY ---
 
-
         Users savedUser = userRepository.save(newUser);
-//        userKeyService.generateUserKey(savedUser);
         if (request.getRole() != null && !request.getRole().isEmpty()) {
-            Role roleEntity = roleRepository.findByRoleName(request.getRole()).orElseThrow(() -> new RuntimeException("Role không tồn tại"));
+            Role roleEntity = roleRepository.findByRoleName(request.getRole())
+                    .orElseThrow(() -> new RuntimeException("Role không tồn tại"));
             UserRole userRole = UserRole.builder().user(savedUser).role(roleEntity).build();
             userRoleRepository.save(userRole);
 
@@ -257,7 +270,8 @@ public class UserServiceImpl implements IUserService {
             MessageInfor messageInfor = new MessageInfor();
             messageInfor.setEmail(savedUser.getEmail());
             messageInfor.setTitle("Welcome to E-CONTRACT System");
-            messageInfor.setText("Account created. Email: " + savedUser.getEmail() + " | Password: " + request.getPassword());
+            messageInfor.setText(
+                    "Account created. Email: " + savedUser.getEmail() + " | Password: " + request.getPassword());
             emailService.sendEmail(messageInfor);
         }
         return UserResponseDTO.fromEntity(savedUser);
@@ -278,27 +292,35 @@ public class UserServiceImpl implements IUserService {
     public UserResponseDTO updateUser(UUID id, UserUpdateRequestDTO request) {
         Users existingUser = userRepository.findById(id).orElseThrow(() -> new RuntimeException("User not found"));
         Users loggedInUser = currentUser.getCurrentUser();
-        String currentRole = loggedInUser.getUserRoles().stream().map(UserRole::getRole).map(Role::getRoleName).findFirst().orElse("");
+        String currentRole = loggedInUser.getUserRoles().stream().map(UserRole::getRole).map(Role::getRoleName)
+                .findFirst().orElse("");
 
         // Lấy Role hiện tại của tài khoản BỊ SỬA
-        String targetCurrentRole = existingUser.getUserRoles().stream().findFirst().map(ur -> ur.getRole().getRoleName()).orElse("");
+        String targetCurrentRole = existingUser.getUserRoles().stream().findFirst()
+                .map(ur -> ur.getRole().getRoleName()).orElse("");
 
         // 1. Phân quyền UPDATE
         if ("CEO".equalsIgnoreCase(currentRole)) {
             throw new RuntimeException("Access Denied: Bạn không có quyền chỉnh sửa tài khoản!");
         } else if ("Administrator".equalsIgnoreCase(currentRole)) {
-            if (!List.of("Accountant", "HeadOfDepartment", "Employee", "External Parners").contains(targetCurrentRole) ||
-                    !List.of("Accountant", "HeadOfDepartment", "Employee", "External Parners").contains(request.getRole())) {
-                throw new RuntimeException("Access Denied: Admin chỉ được chỉnh sửa Accountant, HeadOfDepartment, Employee, External Parners!");
+            if (!List.of("Accountant", "HeadOfDepartment", "Employee", "External Parners").contains(targetCurrentRole)
+                    ||
+                    !List.of("Accountant", "HeadOfDepartment", "Employee", "External Parners")
+                            .contains(request.getRole())) {
+                throw new RuntimeException(
+                        "Access Denied: Admin chỉ được chỉnh sửa Accountant, HeadOfDepartment, Employee, External Parners!");
             }
         } else if ("Accountant".equalsIgnoreCase(currentRole)) {
             if (!List.of("HeadOfDepartment", "Employee", "External Parners").contains(targetCurrentRole) ||
                     !List.of("HeadOfDepartment", "Employee", "External Parners").contains(request.getRole())) {
-                throw new RuntimeException("Access Denied: Bạn chỉ được chỉnh sửa quyền của HeadOfDepartment, Employee, External Parners!");
+                throw new RuntimeException(
+                        "Access Denied: Bạn chỉ được chỉnh sửa quyền của HeadOfDepartment, Employee, External Parners!");
             }
         } else if ("HeadOfDepartment".equalsIgnoreCase(currentRole)) {
-            String myDept = loggedInUser.getDepartment() != null ? loggedInUser.getDepartment().getDepartmentName() : "";
-            String targetDept = existingUser.getDepartment() != null ? existingUser.getDepartment().getDepartmentName() : "";
+            String myDept = loggedInUser.getDepartment() != null ? loggedInUser.getDepartment().getDepartmentName()
+                    : "";
+            String targetDept = existingUser.getDepartment() != null ? existingUser.getDepartment().getDepartmentName()
+                    : "";
             if (!myDept.equals(targetDept) || !"Employee".equalsIgnoreCase(targetCurrentRole)) {
                 throw new RuntimeException("Access Denied: Bạn chỉ có quyền sửa nhân viên cùng phòng ban!");
             }
@@ -312,13 +334,20 @@ public class UserServiceImpl implements IUserService {
             String roleToCheck = request.getRole();
             if (List.of("CEO", "Administrator", "Accountant").contains(roleToCheck)) {
                 boolean isExist = userRepository.findByUserRoles_Role_RoleName(roleToCheck).stream()
-                        .anyMatch(u -> UserStatus.ACTIVE.equals(u.getStatus()) && !u.getId().equals(existingUser.getId()));
-                if (isExist) throw new RuntimeException("Lỗi: Hệ thống chỉ cho phép có 1 tài khoản " + roleToCheck + " đang hoạt động!");
+                        .anyMatch(u -> UserStatus.ACTIVE.equals(u.getStatus())
+                                && !u.getId().equals(existingUser.getId()));
+                if (isExist)
+                    throw new RuntimeException(
+                            "Lỗi: Hệ thống chỉ cho phép có 1 tài khoản " + roleToCheck + " đang hoạt động!");
             } else if ("HeadOfDepartment".equalsIgnoreCase(roleToCheck)) {
-                Departments dept = departmentRepository.findByDepartmentName(request.getDepartmentName()).orElseThrow(() -> new RuntimeException("Phòng ban không tồn tại"));
+                Departments dept = departmentRepository.findByDepartmentName(request.getDepartmentName())
+                        .orElseThrow(() -> new RuntimeException("Phòng ban không tồn tại"));
                 boolean isExist = userRepository.findByUserRoles_Role_RoleNameAndDepartment(roleToCheck, dept).stream()
-                        .anyMatch(u -> UserStatus.ACTIVE.equals(u.getStatus()) && !u.getId().equals(existingUser.getId()));
-                if (isExist) throw new RuntimeException("Lỗi: Phòng ban " + request.getDepartmentName() + " đã có Trưởng phòng đang hoạt động!");
+                        .anyMatch(u -> UserStatus.ACTIVE.equals(u.getStatus())
+                                && !u.getId().equals(existingUser.getId()));
+                if (isExist)
+                    throw new RuntimeException(
+                            "Lỗi: Phòng ban " + request.getDepartmentName() + " đã có Trưởng phòng đang hoạt động!");
             }
         }
 
@@ -328,7 +357,8 @@ public class UserServiceImpl implements IUserService {
 
         // Update Role
         if (request.getRole() != null && !request.getRole().equals(targetCurrentRole)) {
-            Role newRoleEntity = roleRepository.findByRoleName(request.getRole()).orElseThrow(() -> new RuntimeException("Role không tồn tại"));
+            Role newRoleEntity = roleRepository.findByRoleName(request.getRole())
+                    .orElseThrow(() -> new RuntimeException("Role không tồn tại"));
             if (existingUser.getUserRoles() != null && !existingUser.getUserRoles().isEmpty()) {
                 UserRole ur = existingUser.getUserRoles().get(0);
                 ur.setRole(newRoleEntity);
@@ -344,19 +374,20 @@ public class UserServiceImpl implements IUserService {
         existingUser.setStartDate(request.getStartDate());
 
         if (request.getDepartmentName() != null && !request.getDepartmentName().isEmpty()) {
-            Departments dept = departmentRepository.findByDepartmentName(request.getDepartmentName()).orElseThrow(() -> new RuntimeException("Department not found"));
+            Departments dept = departmentRepository.findByDepartmentName(request.getDepartmentName())
+                    .orElseThrow(() -> new RuntimeException("Department not found"));
             existingUser.setDepartment(dept);
         }
 
         if (!existingUser.getEmail().equals(request.getEmail())) {
-            if (userRepository.existsByEmail(request.getEmail())) throw new RuntimeException("Email is already in use!");
+            if (userRepository.existsByEmail(request.getEmail()))
+                throw new RuntimeException("Email is already in use!");
             existingUser.setEmail(request.getEmail());
         }
 
         if (request.getPassword() != null && !request.getPassword().isEmpty()) {
             existingUser.setPassword(passwordEncoder.encode(request.getPassword()));
         }
-
 
         // --- BẮT ĐẦU XỬ LÝ SỬA COMPANY (Chỉ sửa khi là External Parners) ---
         if ("External Parners".equalsIgnoreCase(targetCurrentRole)) {
@@ -373,7 +404,6 @@ public class UserServiceImpl implements IUserService {
             existingUser.setCompany(existingCompany);
         }
         // --- KẾT THÚC XỬ LÝ COMPANY ---
-
 
         Users updatedUser = userRepository.save(existingUser);
         // --- BẮT ĐẦU CHÈN ĐOẠN GỬI MAIL VÀO ĐÂY ---
@@ -395,12 +425,14 @@ public class UserServiceImpl implements IUserService {
         return UserResponseDTO.fromEntity(updatedUser);
     }
 
-
     @Override
-    public Page<UserResponseDTO> getAllUsersFiltered(UserFilterRequestDTO filter, String currentUsername, int page, int size) {
-        Users currentUsers = userRepository.findByEmail(currentUsername).orElseThrow(() -> new RuntimeException("Current user not found"));
+    public Page<UserResponseDTO> getAllUsersFiltered(UserFilterRequestDTO filter, String currentUsername, int page,
+            int size) {
+        Users currentUsers = userRepository.findByEmail(currentUsername)
+                .orElseThrow(() -> new RuntimeException("Current user not found"));
         Users loggedInUser = currentUser.getCurrentUser();
-        String currentRole = loggedInUser.getUserRoles().stream().map(UserRole::getRole).map(Role::getRoleName).findFirst().orElse("");
+        String currentRole = loggedInUser.getUserRoles().stream().map(UserRole::getRole).map(Role::getRoleName)
+                .findFirst().orElse("");
 
         List<String> allowedRoles;
 
@@ -411,16 +443,19 @@ public class UserServiceImpl implements IUserService {
             allowedRoles = List.of("HeadOfDepartment", "Employee", "External Parners");
         } else if ("HeadOfDepartment".equalsIgnoreCase(currentRole)) {
             allowedRoles = List.of("Employee");
-//            if (currentUser.getDepartment() != null) {
-//                filter.setDepartmentName(currentUser.getDepartment().getDepartmentName()); // Ép cứng phòng ban
-//            }
+            // if (currentUser.getDepartment() != null) {
+            // filter.setDepartmentName(currentUser.getDepartment().getDepartmentName()); //
+            // Ép cứng phòng ban
+            // }
         } else {
             throw new RuntimeException("Access Denied!");
         }
 
         filter.setAllowedRoles(allowedRoles);
-        if (filter.getRole() == null || "All".equalsIgnoreCase(filter.getRole())) filter.setRole("");
-        if (filter.getDepartmentName() == null || "All".equalsIgnoreCase(filter.getDepartmentName())) filter.setDepartmentName("");
+        if (filter.getRole() == null || "All".equalsIgnoreCase(filter.getRole()))
+            filter.setRole("");
+        if (filter.getDepartmentName() == null || "All".equalsIgnoreCase(filter.getDepartmentName()))
+            filter.setDepartmentName("");
         filter.setKeyword(filter.getKeyword() == null ? "" : filter.getKeyword().trim());
         if (filter.getStatus() == null || "All".equalsIgnoreCase(filter.getStatus()) || filter.getStatus().isEmpty()) {
             filter.setStatusEnum(null);
@@ -432,7 +467,6 @@ public class UserServiceImpl implements IUserService {
         Page<Users> resultPage = userRepository.searchAndFilterUsers(filter, pageable);
         return resultPage.map(UserResponseDTO::fromEntity);
     }
-
 
     @Override
     public UserProfileResponseDTO getMyProfile(UUID userId) {
@@ -472,25 +506,27 @@ public class UserServiceImpl implements IUserService {
             messageInfor.setTitle("Security Alert: Your Profile Has Been Updated");
 
             StringBuilder emailBody = new StringBuilder("Hello " + updatedUser.getFirstName() + ",\n\n");
-            emailBody.append("We are writing to let you know that your personal profile information has been successfully updated in the E-CONTRACT system.\n");
+            emailBody.append(
+                    "We are writing to let you know that your personal profile information has been successfully updated in the E-CONTRACT system.\n");
 
             if (isEmailChanged) {
                 emailBody.append("\n- Your registered email address has been changed to this email.\n");
             }
 
-            emailBody.append("\nIf you did not make these changes, please contact the system administrator immediately to secure your account.");
+            emailBody.append(
+                    "\nIf you did not make these changes, please contact the system administrator immediately to secure your account.");
 
             messageInfor.setText(emailBody.toString());
             emailService.sendEmail(messageInfor);
         } catch (Exception e) {
-            // Đặt trong khối try-catch để lỡ cấu hình mail lỗi, hệ thống vẫn lưu profile thành công và không văng lỗi 500 ra FE
+            // Đặt trong khối try-catch để lỡ cấu hình mail lỗi, hệ thống vẫn lưu profile
+            // thành công và không văng lỗi 500 ra FE
             System.err.println("Lỗi khi gửi email thông báo update profile: " + e.getMessage());
         }
         // --- KẾT THÚC ĐOẠN CODE GỬI EMAIL ---
 
         return UserProfileResponseDTO.fromEntity(updatedUser);
     }
-
 
     public void forgotPassword(String email) {
 
@@ -501,31 +537,33 @@ public class UserServiceImpl implements IUserService {
         MessageInfor messageInfor = new MessageInfor();
         messageInfor.setEmail(email);
         messageInfor.setTitle("OTP Reset Password");
-        messageInfor.setText("OTP:"+otp+"\n\n this code will expire in 5 minutes.");
+        messageInfor.setText("OTP:" + otp + "\n\n this code will expire in 5 minutes.");
         emailService.sendEmail(messageInfor);
     }
 
-    public void  resetPassword(ResetPasswordRequest resetPasswordRequest) {
-
+    public void resetPassword(ResetPasswordRequest resetPasswordRequest) {
 
         String otp = redisOtpService.getOTP(resetPasswordRequest.getEmail());
-        if(otp == null || otp.isEmpty()){
+        if (otp == null || otp.isEmpty()) {
             throw new RuntimeException("OTP is empty");
         }
-        if(!otp.equals(resetPasswordRequest.getOtp())){
+        if (!otp.equals(resetPasswordRequest.getOtp())) {
             throw new RuntimeException("Invalid OTP");
         }
         Users users = userRepository.findByEmail(resetPasswordRequest.getEmail())
-                .orElseThrow(() -> new RuntimeException("User not found with email: " + resetPasswordRequest.getEmail()));
-        if(resetPasswordRequest.getEmail() == null || resetPasswordRequest.getEmail().isEmpty()){
+                .orElseThrow(
+                        () -> new RuntimeException("User not found with email: " + resetPasswordRequest.getEmail()));
+        if (resetPasswordRequest.getEmail() == null || resetPasswordRequest.getEmail().isEmpty()) {
             throw new RuntimeException("Email is empty");
-        }  if(resetPasswordRequest.getNewPassword() == null || resetPasswordRequest.getNewPassword().isEmpty()){
+        }
+        if (resetPasswordRequest.getNewPassword() == null || resetPasswordRequest.getNewPassword().isEmpty()) {
             throw new RuntimeException("New password is empty");
         }
-        if(resetPasswordRequest.getNewPasswordConfirm() == null || resetPasswordRequest.getNewPasswordConfirm().isEmpty()){
+        if (resetPasswordRequest.getNewPasswordConfirm() == null
+                || resetPasswordRequest.getNewPasswordConfirm().isEmpty()) {
             throw new RuntimeException("New password confirm is empty");
         }
-        if(!resetPasswordRequest.getNewPassword().equals(resetPasswordRequest.getNewPasswordConfirm())){
+        if (!resetPasswordRequest.getNewPassword().equals(resetPasswordRequest.getNewPasswordConfirm())) {
             throw new RuntimeException("New passwords do not match");
         }
         users.setPassword(passwordEncoder.encode(resetPasswordRequest.getNewPassword()));
@@ -534,15 +572,15 @@ public class UserServiceImpl implements IUserService {
     }
 
     public void changePassword(ChangePasswordRequest changePasswordRequest) {
-//        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-//        String email = authentication.getName();
+        // Authentication authentication =
+        // SecurityContextHolder.getContext().getAuthentication();
+        // String email = authentication.getName();
 
-
-        String email =currentUser.getCurrentUser().getEmail();
+        String email = currentUser.getCurrentUser().getEmail();
         System.out.println(email);
         Users users = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found with email: " + email));
-        if(!passwordEncoder.matches(changePasswordRequest.getOldPassword(), users.getPassword())){
+        if (!passwordEncoder.matches(changePasswordRequest.getOldPassword(), users.getPassword())) {
             throw new RuntimeException("Old password do not match");
         }
 

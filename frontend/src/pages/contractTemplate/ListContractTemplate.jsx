@@ -22,6 +22,7 @@ import {
     cloneVersionPositions,
     toPositionRequest,
 } from "./templatePositionUtils.js";
+import { cloneTemplateBlocks } from "./templateBlockUtils.js";
 import "../../assets/styles/css/layoutStyles/ContractWorkspace.css";
 
 const FULL_DOCUMENT_MODE = "FULL_DOCUMENT";
@@ -137,6 +138,7 @@ function createEmptyVersionForm(sourceVersion = null) {
         pageCount: Number(sourceVersion?.pageCount || savedLayout.pageCount) || 1,
         documentMode: FULL_DOCUMENT_MODE,
         positions: cloneVersionPositions(sourcePositions),
+        blocks: cloneTemplateBlocks(savedLayout.blocks),
     };
 }
 
@@ -308,11 +310,12 @@ function ListContractTemplate() {
         setVersionForm((current) => ({ ...current, [name]: value }));
     };
 
-    const handleLayoutChange = ({ pageCount, positions }) => {
+    const handleLayoutChange = ({ pageCount, positions, blocks }) => {
         setVersionForm((current) => ({
             ...current,
-            pageCount,
-            positions,
+            pageCount: pageCount ?? current.pageCount,
+            positions: positions ?? current.positions,
+            blocks: blocks ?? current.blocks,
         }));
     };
 
@@ -430,7 +433,12 @@ function ListContractTemplate() {
                 {
                     versionName: versionForm.versionName.trim() || null,
                     templateContent: versionForm.templateContent.trim(),
-                    layoutJson: null,
+                    layoutJson: JSON.stringify({
+                        pageCount: versionForm.pageCount,
+                        coordinateSystem: "NORMALIZED",
+                        fields: versionForm.positions.map(toPositionRequest),
+                        blocks: versionForm.blocks,
+                    }),
                     changeNote: versionForm.changeNote.trim() || null,
                     createdBy: versionForm.createdBy.trim() || null,
                     pageCount: versionForm.pageCount,
@@ -1052,6 +1060,7 @@ function VersionModal({
                                 content={form.templateContent}
                                 pageCount={form.pageCount}
                                 positions={form.positions}
+                                blocks={form.blocks}
                                 onChange={onLayoutChange}
                                 onContentChange={onContentChange}
                             />

@@ -35,12 +35,20 @@ public class ContractLifecycleScheduler {
         LocalDateTime now = LocalDateTime.now(CONTRACT_TIME_ZONE);
 
         try {
+            int activatedCount = contractLifecycleService
+                    .activateEffectiveContracts(now.toLocalDate(), now);
             int endedCount = contractLifecycleService.endExpiredContracts(
                     now.toLocalDate(),
                     now
             );
             if (endedCount > 0) {
                 log.info("Automatically ended {} expired contract(s)", endedCount);
+            }
+            if (activatedCount > 0) {
+                log.info(
+                        "Automatically activated {} effective contract(s)",
+                        activatedCount
+                );
             }
         } catch (RuntimeException exception) {
             log.error("Unable to automatically end expired contracts", exception);

@@ -1,5 +1,7 @@
 package com.fpt.backend.service.impl.contract;
 
+import com.fpt.backend.dto.request.contract.ContractTemplateBlockRequest;
+import com.fpt.backend.dto.request.contract.ContractTemplateLayout;
 import com.fpt.backend.entity.Contracts;
 import com.fpt.backend.exception.BadHttpException;
 import lombok.RequiredArgsConstructor;
@@ -10,40 +12,45 @@ import org.apache.pdfbox.pdmodel.PDPageContentStream;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.font.PDFont;
 import org.apache.pdfbox.pdmodel.font.PDType0Font;
+import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject;
 import org.springframework.stereotype.Component;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.net.URI;
+import java.net.URLConnection;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.regex.Pattern;
+import java.util.regex.Matcher;
 
 @Component
 @RequiredArgsConstructor
 public class ContractPdfGenerator {
     private static final Pattern PAGE_BREAK_PATTERN = Pattern.compile(
             "^<!--\\s*pagebreak\\s*-->$",
-            Pattern.CASE_INSENSITIVE
-    );
+            Pattern.CASE_INSENSITIVE);
     private final ContractTemplateLayoutMapper layoutMapper;
 
     public byte[] generate(
             Contracts contract,
-            ContractDocumentRenderer.RenderedDocument renderedDocument
-    ) {
+            ContractDocumentRenderer.RenderedDocument renderedDocument) {
         if (contract.getContractTemplateVersion() != null
                 && !layoutMapper.isFullDocument(contract.getContractLayoutJson())) {
             throw new BadHttpException(
                     "This contract uses an old clause-only template version. "
-                            + "Create a full-document version before generating a new PDF"
-            );
+                            + "Create a full-document version before generating a new PDF");
         }
 
         try (PDDocument document = new PDDocument();
-             ByteArrayOutputStream output = new ByteArrayOutputStream()) {
+                ByteArrayOutputStream output = new ByteArrayOutputStream()) {
             PDFont regularFont = loadUnicodeFont(document, false);
             PDFont boldFont = loadUnicodeFont(document, true);
             configureDocumentInformation(document, contract);
@@ -51,8 +58,7 @@ public class ContractPdfGenerator {
             try (DocumentWriter writer = new DocumentWriter(
                     document,
                     regularFont,
-                    boldFont
-            )) {
+                    boldFont)) {
                 writer.writeContractContent(renderedDocument.content());
             }
 
@@ -73,8 +79,7 @@ public class ContractPdfGenerator {
         }
 
         throw new IOException(
-                "A Unicode TrueType font is required to export Vietnamese contract PDFs"
-        );
+                "A Unicode TrueType font is required to export Vietnamese contract PDFs");
     }
 
     private List<Path> fontCandidates(boolean bold) {
@@ -101,8 +106,7 @@ public class ContractPdfGenerator {
 
     private void configureDocumentInformation(
             PDDocument document,
-            Contracts contract
-    ) {
+            Contracts contract) {
         PDDocumentInformation information = document.getDocumentInformation();
         information.setTitle(safeValue(contract.getContractTitle()));
         information.setSubject("Contract document");
@@ -132,8 +136,7 @@ public class ContractPdfGenerator {
         private DocumentWriter(
                 PDDocument document,
                 PDFont regularFont,
-                PDFont boldFont
-        ) throws IOException {
+                PDFont boldFont) throws IOException {
             this.document = document;
             this.regularFont = regularFont;
             this.boldFont = boldFont;
@@ -173,8 +176,7 @@ public class ContractPdfGenerator {
                 PDFont font,
                 float fontSize,
                 float leading,
-                float afterSpacing
-        ) throws IOException {
+                float afterSpacing) throws IOException {
             List<String> lines = wrap(text, font, fontSize, BODY_WIDTH);
             ensureSpace((lines.size() * leading) + afterSpacing);
             for (String line : lines) {
@@ -184,8 +186,7 @@ public class ContractPdfGenerator {
                         font,
                         fontSize,
                         Math.max(MARGIN, (PAGE_SIZE.getWidth() - width) / 2f),
-                        cursorY
-                );
+                        cursorY);
                 cursorY -= leading;
             }
             cursorY -= afterSpacing;
@@ -196,8 +197,7 @@ public class ContractPdfGenerator {
                 PDFont font,
                 float fontSize,
                 float leading,
-                float afterSpacing
-        ) throws IOException {
+                float afterSpacing) throws IOException {
             List<String> lines = wrap(text, font, fontSize, BODY_WIDTH);
             for (String line : lines) {
                 ensureSpace(leading + afterSpacing);
@@ -211,8 +211,7 @@ public class ContractPdfGenerator {
                 String text,
                 PDFont font,
                 float fontSize,
-                float maxWidth
-        ) throws IOException {
+                float maxWidth) throws IOException {
             String normalized = safe(text).replace('\t', ' ').trim();
             if (normalized.isEmpty()) {
                 return List.of("");
@@ -268,8 +267,7 @@ public class ContractPdfGenerator {
                 PDFont font,
                 float fontSize,
                 float x,
-                float y
-        ) throws IOException {
+                float y) throws IOException {
             stream.beginText();
             stream.setFont(font, fontSize);
             stream.newLineAtOffset(x, y);

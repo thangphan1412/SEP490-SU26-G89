@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import PageHeader from "../../components/signature/createSignature/PageHeader.jsx";
@@ -6,6 +6,7 @@ import SignatureInformationCard from "../../components/signature/createSignature
 import SignatureCanvasCard from "../../components/signature/createSignature/SignatureCanvasCard.jsx";
 import DocumentAutomationPreview from "../../components/signature/createSignature/DocumentAutomationPreview.jsx";
 import InfoBanner from "../../components/signature/createSignature/InforBanner.jsx";
+import RsaKeyPairCard from "../../components/signature/createSignature/RsaKeyPairCard.jsx";
 
 import electronicSignatureService
     from "../../services/signatureService/electronicSignatureService.js";
@@ -463,7 +464,7 @@ function CreateSignaturePage() {
     };
 
     const handleCancel = () => {
-        navigate("/signatures");
+        navigate("/signature-management/list");
     };
 
     return (
@@ -559,7 +560,7 @@ function CreateSignaturePage() {
                 <DocumentAutomationPreview />
 
                 <InfoBanner
-                    text="Your signature will be available for personal use after saving."
+                    text="The public key is registered with this signature. Keep the downloaded private key secret; it is required when signing contracts."
                 />
 
             </div>

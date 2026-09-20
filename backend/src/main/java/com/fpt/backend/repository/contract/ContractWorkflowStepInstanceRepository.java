@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+>>>>>>> origin
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -14,21 +15,20 @@ import java.util.UUID;
 
 @Repository
 public interface ContractWorkflowStepInstanceRepository
-        extends JpaRepository<ContractWorkflowStepInstance, UUID> {
-    List<ContractWorkflowStepInstance> findByContractIdOrderByStepOrderAsc(
-            UUID contractId
-    );
+                extends JpaRepository<ContractWorkflowStepInstance, UUID> {
+        List<ContractWorkflowStepInstance> findByContractIdOrderByStepOrderAsc(
+                        UUID contractId);
 
-    Optional<ContractWorkflowStepInstance>
-    findFirstByContractIdAndStatusOrderByStepOrderAsc(
-            UUID contractId,
-            ContractWorkflowStepState status
-    );
+        @EntityGraph(attributePaths = { "assignedUser", "stepDefinition" })
+        List<ContractWorkflowStepInstance> findByContractIdInOrderByStepOrderAsc(List<UUID> contractIds);
 
-    boolean existsByContractIdAndAssignedUserId(
-            UUID contractId,
-            UUID assignedUserId
-    );
+        Optional<ContractWorkflowStepInstance> findFirstByContractIdAndStatusOrderByStepOrderAsc(
+                        UUID contractId,
+                        ContractWorkflowStepState status);
+
+        boolean existsByContractIdAndAssignedUserId(
+                        UUID contractId,
+                        UUID assignedUserId);
 
     boolean existsByContractId(UUID contractId);
 
@@ -36,12 +36,11 @@ public interface ContractWorkflowStepInstanceRepository
     @Query("DELETE FROM ContractWorkflowStepInstance step WHERE step.contract.id = :contractId")
     void deleteAllByContractId(@Param("contractId") UUID contractId);
 
-    @Query("""
-        select distinct step.contract.project.id
-        from ContractWorkflowStepInstance step
-        where step.assignedUser.id = :userId
-        """)
-    List<UUID> findDistinctProjectIdsByAssignedUserId(
-            @Param("userId") UUID userId
-    );
+        @Query("""
+                        select distinct step.contract.project.id
+                        from ContractWorkflowStepInstance step
+                        where step.assignedUser.id = :userId
+                        """)
+        List<UUID> findDistinctProjectIdsByAssignedUserId(
+                        @Param("userId") UUID userId);
 }

@@ -17,16 +17,6 @@ axiosClient.interceptors.request.use((config) => {
         (path) => config.url?.startsWith(path)
     );
 
-    console.log(
-        "URL:",
-        config.url,
-        "| isPublicApi:",
-        isPublicApi,
-        "| token attached:",
-        !!(token && !isPublicApi)
-    );
-
-
     if (token && !isPublicApi) {
         config.headers.Authorization = `Bearer ${token}`;
     }

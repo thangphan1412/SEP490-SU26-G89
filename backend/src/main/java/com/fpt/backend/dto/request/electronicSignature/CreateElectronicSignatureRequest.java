@@ -22,6 +22,7 @@ public class CreateElectronicSignatureRequest {
     private boolean isDefault;
     @Enumerated(EnumType.STRING)
     private ElectronicStatus  electronicStatus;
+    private String publicKey;
     private CreateFileStorageRequest createFileStorageRequests;
     private String publicKey;
     private String keyCode;

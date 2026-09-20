@@ -2,6 +2,7 @@ package com.fpt.backend.service.impl.contract;
 
 import com.fpt.backend.dto.request.contract.ContractPositionRequest;
 import com.fpt.backend.dto.request.contract.ContractTemplateLayout;
+import com.fpt.backend.dto.request.contract.ContractTemplateBlockRequest;
 import com.fpt.backend.dto.response.contract.ContractPositionResponse;
 import com.fpt.backend.entity.ContractPositions;
 import com.fpt.backend.entity.ContractTemplateVersions;
@@ -15,420 +16,392 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.regex.Pattern;
 
 @Component
 @RequiredArgsConstructor
 public class ContractTemplateLayoutMapper {
-    private static final int DEFAULT_PAGE_COUNT = 1;
-    private static final int MAX_PAGE_COUNT = 50;
-    private static final String COORDINATE_SYSTEM = "NORMALIZED";
-    public static final String LEGACY_DOCUMENT_MODE = "LEGACY_WRAPPED";
-    public static final String FULL_DOCUMENT_MODE = "FULL_DOCUMENT";
-    private static final Pattern ATTRIBUTE_KEY_PATTERN = Pattern.compile(
-            "^[a-z][a-z0-9_]{1,79}$"
-    );
-    private static final Set<String> FIELD_TYPES = Set.of(
-            "TEXT",
-            "DATE",
-            "SIGNATURE",
-            "CHECKBOX"
-    );
-    private static final Set<String> VALUE_SOURCES = Set.of(
-            "CONTRACT",
-            "CURRENT_SIGNER",
-            "MANUAL"
-    );
-    private static final Set<String> SIGNER_ROLES = Set.of(
-            "DIRECTOR",
-            "PARTNER"
-    );
+        private static final int DEFAULT_PAGE_COUNT = 1;
+        private static final int MAX_PAGE_COUNT = 50;
+        private static final String COORDINATE_SYSTEM = "NORMALIZED";
+        public static final String LEGACY_DOCUMENT_MODE = "LEGACY_WRAPPED";
+        public static final String FULL_DOCUMENT_MODE = "FULL_DOCUMENT";
+        private static final Pattern ATTRIBUTE_KEY_PATTERN = Pattern.compile(
+                        "^[a-z][a-z0-9_]{1,79}$");
+        private static final Set<String> FIELD_TYPES = Set.of(
+                        "TEXT",
+                        "DATE",
+                        "SIGNATURE",
+                        "CHECKBOX");
+        private static final Set<String> VALUE_SOURCES = Set.of(
+                        "CONTRACT",
+                        "CURRENT_SIGNER",
+                        "MANUAL");
+        private static final Set<String> SIGNER_ROLES = Set.of(
+                        "DIRECTOR",
+                        "PARTNER");
+        private static final Set<String> BLOCK_TYPES = Set.of(
+                        "NATIONAL_HEADER",
+                        "CONTRACT_HEADING",
+                        "LEGAL_INTRODUCTION",
+                        "PARTY_A",
+                        "PARTY_B",
+                        "CLAUSE_HEADING",
+                        "CONTENT",
+                        "SIGNATURE_SECTION");
+        private static final int MAX_BLOCK_TEXT_LENGTH = 10_000;
 
-    private final ObjectMapper objectMapper;
+        private final ObjectMapper objectMapper;
 
-    public ContractTemplateLayout normalize(
-            Integer requestedPageCount,
-            List<ContractPositionRequest> requestedPositions,
-            String layoutJson
-    ) {
-        return normalize(
-                requestedPageCount,
-                requestedPositions,
-                layoutJson,
-                null
-        );
-    }
-
-    public ContractTemplateLayout normalize(
-            Integer requestedPageCount,
-            List<ContractPositionRequest> requestedPositions,
-            String layoutJson,
-            String requestedDocumentMode
-    ) {
-        if (requestedPositions != null) {
-            return validateLayout(
-                    requestedPageCount,
-                    requestedPositions,
-                    requestedDocumentMode
-            );
+        public ContractTemplateLayout normalize(
+                        Integer requestedPageCount,
+                        List<ContractPositionRequest> requestedPositions,
+                        String layoutJson) {
+                return normalize(
+                                requestedPageCount,
+                                requestedPositions,
+                                layoutJson,
+                                null);
         }
 
-        if (layoutJson == null || layoutJson.isBlank()) {
-            return validateLayout(
-                    requestedPageCount,
-                    List.of(),
-                    requestedDocumentMode
-            );
+        public ContractTemplateLayout normalize(
+                        Integer requestedPageCount,
+                        List<ContractPositionRequest> requestedPositions,
+                        String layoutJson,
+                        String requestedDocumentMode) {
+                if (requestedPositions != null) {
+                        return validateLayout(
+                                        requestedPageCount,
+                                        requestedPositions,
+                                        requestedDocumentMode);
+                }
+
+                if (layoutJson == null || layoutJson.isBlank()) {
+                        return validateLayout(
+                                        requestedPageCount,
+                                        List.of(),
+                                        requestedDocumentMode);
+                }
+
+                ContractTemplateLayout parsedLayout = parseLayout(layoutJson);
+
+                if (parsedLayout == null) {
+                        throw new BadHttpException("Template layout information is required");
+                }
+
+                Integer pageCount = requestedPageCount != null
+                                ? requestedPageCount
+                                : parsedLayout.pageCount();
+                String documentMode = requestedDocumentMode == null
+                                || requestedDocumentMode.isBlank()
+                                                ? parsedLayout.documentMode()
+                                                : requestedDocumentMode;
+                return validateLayout(pageCount, parsedLayout.fields(), documentMode);
         }
 
-        ContractTemplateLayout parsedLayout = parseLayout(layoutJson);
+        public ContractTemplateLayout fromVersion(ContractTemplateVersions version) {
+                List<ContractPositions> savedPositions = version.getPositions();
+                String documentMode = readDocumentMode(version.getLayoutJson());
+                if (savedPositions != null && !savedPositions.isEmpty()) {
+                        return validateLayout(
+                                        version.getPageCount(),
+                                        savedPositions.stream()
+                                                        .map(this::toRequest)
+                                                        .toList(),
+                                        documentMode);
+                }
 
-        if (parsedLayout == null) {
-            throw new BadHttpException("Template layout information is required");
+                return normalize(
+                                version.getPageCount(),
+                                savedPositions == null || savedPositions.isEmpty()
+                                                ? null
+                                                : savedPositions.stream().map(this::toRequest).toList(),
+                                version.getLayoutJson());
         }
 
-        Integer pageCount = requestedPageCount != null
-                ? requestedPageCount
-                : parsedLayout.pageCount();
-        String documentMode = requestedDocumentMode == null
-                || requestedDocumentMode.isBlank()
-                ? parsedLayout.documentMode()
-                : requestedDocumentMode;
-        return validateLayout(pageCount, parsedLayout.fields(), documentMode);
-    }
+        public void applyToVersion(
+                        ContractTemplateVersions version,
+                        ContractTemplateLayout layout) {
+                ContractTemplateLayout normalized = validateLayout(
+                                layout.pageCount(),
+                                layout.fields(),
+                                layout.documentMode());
+                LocalDateTime now = LocalDateTime.now();
+                List<ContractPositions> positions = new ArrayList<>();
 
-    public ContractTemplateLayout fromVersion(ContractTemplateVersions version) {
-        List<ContractPositions> savedPositions = version.getPositions();
-        String documentMode = readDocumentMode(version.getLayoutJson());
-        if (savedPositions != null && !savedPositions.isEmpty()) {
-            return validateLayout(
-                    version.getPageCount(),
-                    savedPositions.stream()
-                            .map(this::toRequest)
-                            .toList(),
-                    documentMode
-            );
+                for (ContractPositionRequest field : normalized.fields()) {
+                        ContractPositions position = new ContractPositions();
+                        position.setContractTemplateVersion(version);
+                        position.setAttributeKey(field.attributeKey());
+                        position.setFieldLabel(field.fieldLabel());
+                        position.setPageNumber(field.pageNumber());
+                        position.setXPosition(field.xPosition());
+                        position.setYPosition(field.yPosition());
+                        position.setWidth(field.width());
+                        position.setHeight(field.height());
+                        position.setFieldType(field.fieldType());
+                        position.setValueSource(field.valueSource());
+                        position.setSignerRole(field.signerRole());
+                        position.setIsSystemField(field.systemField());
+                        position.setIsRequired(field.required());
+                        position.setCreatedAt(now);
+                        position.setUpdatedAt(now);
+                        positions.add(position);
+                }
+
+                version.setPageCount(normalized.pageCount());
+                version.setLayoutJson(toJson(normalized));
+                version.setPositions(positions);
         }
 
-        return normalize(
-                version.getPageCount(),
-                null,
-                version.getLayoutJson()
-        );
-    }
+        public List<ContractPositionResponse> toResponses(
+                        ContractTemplateVersions version) {
+                List<ContractPositions> positions = version.getPositions();
+                if (positions == null || positions.isEmpty()) {
+                        return List.of();
+                }
 
-    public void applyToVersion(
-            ContractTemplateVersions version,
-            ContractTemplateLayout layout
-    ) {
-        ContractTemplateLayout normalized = validateLayout(
-                layout.pageCount(),
-                layout.fields(),
-                layout.documentMode()
-        );
-        LocalDateTime now = LocalDateTime.now();
-        List<ContractPositions> positions = new ArrayList<>();
-
-        for (ContractPositionRequest field : normalized.fields()) {
-            ContractPositions position = new ContractPositions();
-            position.setContractTemplateVersion(version);
-            position.setAttributeKey(field.attributeKey());
-            position.setFieldLabel(field.fieldLabel());
-            position.setPageNumber(field.pageNumber());
-            position.setXPosition(field.xPosition());
-            position.setYPosition(field.yPosition());
-            position.setWidth(field.width());
-            position.setHeight(field.height());
-            position.setFieldType(field.fieldType());
-            position.setValueSource(field.valueSource());
-            position.setSignerRole(field.signerRole());
-            position.setIsSystemField(field.systemField());
-            position.setIsRequired(field.required());
-            position.setCreatedAt(now);
-            position.setUpdatedAt(now);
-            positions.add(position);
+                return positions.stream()
+                                .map(position -> new ContractPositionResponse(
+                                                position.getId(),
+                                                position.getAttributeKey(),
+                                                position.getFieldLabel(),
+                                                position.getPageNumber(),
+                                                position.getXPosition(),
+                                                position.getYPosition(),
+                                                position.getWidth(),
+                                                position.getHeight(),
+                                                position.getFieldType(),
+                                                position.getValueSource(),
+                                                position.getSignerRole(),
+                                                position.getIsSystemField(),
+                                                position.getIsRequired()))
+                                .toList();
         }
 
-        version.setPageCount(normalized.pageCount());
-        version.setLayoutJson(toJson(normalized));
-        version.setPositions(positions);
-    }
-
-    public List<ContractPositionResponse> toResponses(
-            ContractTemplateVersions version
-    ) {
-        List<ContractPositions> positions = version.getPositions();
-        if (positions == null || positions.isEmpty()) {
-            return List.of();
+        public String toJson(ContractTemplateLayout layout) {
+                try {
+                        return objectMapper.writeValueAsString(layout);
+                } catch (JacksonException exception) {
+                        throw new BadHttpException("Unable to serialize template layout");
+                }
         }
 
-        return positions.stream()
-                .map(position -> new ContractPositionResponse(
-                        position.getId(),
-                        position.getAttributeKey(),
-                        position.getFieldLabel(),
-                        position.getPageNumber(),
-                        position.getXPosition(),
-                        position.getYPosition(),
-                        position.getWidth(),
-                        position.getHeight(),
-                        position.getFieldType(),
-                        position.getValueSource(),
-                        position.getSignerRole(),
-                        position.getIsSystemField(),
-                        position.getIsRequired()
-                ))
-                .toList();
-    }
-
-    public String toJson(ContractTemplateLayout layout) {
-        try {
-            return objectMapper.writeValueAsString(layout);
-        } catch (JacksonException exception) {
-            throw new BadHttpException("Unable to serialize template layout");
-        }
-    }
-
-    public boolean isFullDocument(String layoutJson) {
-        return FULL_DOCUMENT_MODE.equals(readDocumentMode(layoutJson));
-    }
-
-    private ContractTemplateLayout validateLayout(
-            Integer requestedPageCount,
-            List<ContractPositionRequest> requestedPositions,
-            String requestedDocumentMode
-    ) {
-        int pageCount = requestedPageCount == null
-                ? DEFAULT_PAGE_COUNT
-                : requestedPageCount;
-        if (pageCount < 1 || pageCount > MAX_PAGE_COUNT) {
-            throw new BadHttpException(
-                    "Template page count must be between 1 and " + MAX_PAGE_COUNT
-            );
+        public boolean isFullDocument(String layoutJson) {
+                return FULL_DOCUMENT_MODE.equals(readDocumentMode(layoutJson));
         }
 
-        List<ContractPositionRequest> normalizedPositions =
-                requestedPositions == null
-                        ? List.of()
-                        : requestedPositions.stream()
-                        .map(position -> normalizePosition(position, pageCount))
-                        .toList();
+        private ContractTemplateLayout validateLayout(
+                        Integer requestedPageCount,
+                        List<ContractPositionRequest> requestedPositions,
+                        String requestedDocumentMode) {
+                int pageCount = requestedPageCount == null
+                                ? DEFAULT_PAGE_COUNT
+                                : requestedPageCount;
+                if (pageCount < 1 || pageCount > MAX_PAGE_COUNT) {
+                        throw new BadHttpException(
+                                        "Template page count must be between 1 and " + MAX_PAGE_COUNT);
+                }
 
-        return new ContractTemplateLayout(
-                pageCount,
-                COORDINATE_SYSTEM,
-                normalizeDocumentMode(requestedDocumentMode),
-                normalizedPositions
-        );
-    }
+                List<ContractPositionRequest> normalizedPositions = requestedPositions == null
+                                ? List.of()
+                                : requestedPositions.stream()
+                                                .map(position -> normalizePosition(position, pageCount))
+                                                .toList();
 
-    private ContractTemplateLayout parseLayout(String layoutJson) {
-        try {
-            return objectMapper.readValue(
-                    layoutJson,
-                    ContractTemplateLayout.class
-            );
-        } catch (JacksonException exception) {
-            throw new BadHttpException(
-                    "Template layout must be valid JSON with normalized field positions"
-            );
-        }
-    }
-
-    private String readDocumentMode(String layoutJson) {
-        if (layoutJson == null || layoutJson.isBlank()) {
-            return LEGACY_DOCUMENT_MODE;
+                return new ContractTemplateLayout(
+                                pageCount,
+                                COORDINATE_SYSTEM,
+                                normalizeDocumentMode(requestedDocumentMode),
+                                normalizedPositions);
         }
 
-        try {
-            ContractTemplateLayout layout = objectMapper.readValue(
-                    layoutJson,
-                    ContractTemplateLayout.class
-            );
-            return normalizeDocumentMode(
-                    layout == null ? null : layout.documentMode()
-            );
-        } catch (JacksonException | BadHttpException exception) {
-            return LEGACY_DOCUMENT_MODE;
-        }
-    }
-
-    private String normalizeDocumentMode(String value) {
-        if (value == null || value.isBlank()) {
-            return LEGACY_DOCUMENT_MODE;
+        private ContractTemplateLayout parseLayout(String layoutJson) {
+                try {
+                        return objectMapper.readValue(
+                                        layoutJson,
+                                        ContractTemplateLayout.class);
+                } catch (JacksonException exception) {
+                        throw new BadHttpException(
+                                        "Template layout must be valid JSON with normalized field positions");
+                }
         }
 
-        String normalized = value.trim()
-                .toUpperCase(Locale.ROOT)
-                .replace('-', '_')
-                .replace(' ', '_');
-        if (!Set.of(LEGACY_DOCUMENT_MODE, FULL_DOCUMENT_MODE)
-                .contains(normalized)) {
-            throw new BadHttpException(
-                    "Unsupported template document mode: " + normalized
-            );
-        }
-        return normalized;
-    }
+        private String readDocumentMode(String layoutJson) {
+                if (layoutJson == null || layoutJson.isBlank()) {
+                        return LEGACY_DOCUMENT_MODE;
+                }
 
-    private ContractPositionRequest normalizePosition(
-            ContractPositionRequest position,
-            int pageCount
-    ) {
-        if (position == null) {
-            throw new BadHttpException("Template position information is required");
+                try {
+                        ContractTemplateLayout layout = objectMapper.readValue(
+                                        layoutJson,
+                                        ContractTemplateLayout.class);
+                        return normalizeDocumentMode(
+                                        layout == null ? null : layout.documentMode());
+                } catch (JacksonException | BadHttpException exception) {
+                        return LEGACY_DOCUMENT_MODE;
+                }
         }
 
-        String attributeKey = requireText(
-                position.attributeKey(),
-                "Position attribute key is required"
-        ).toLowerCase(Locale.ROOT);
-        if (!ATTRIBUTE_KEY_PATTERN.matcher(attributeKey).matches()) {
-            throw new BadHttpException(
-                    "Position attribute key must use lowercase letters, numbers and underscores"
-            );
+        private String normalizeDocumentMode(String value) {
+                if (value == null || value.isBlank()) {
+                        return LEGACY_DOCUMENT_MODE;
+                }
+
+                String normalized = value.trim()
+                                .toUpperCase(Locale.ROOT)
+                                .replace('-', '_')
+                                .replace(' ', '_');
+                if (!Set.of(LEGACY_DOCUMENT_MODE, FULL_DOCUMENT_MODE)
+                                .contains(normalized)) {
+                        throw new BadHttpException(
+                                        "Unsupported template document mode: " + normalized);
+                }
+                return normalized;
         }
 
-        String fieldLabel = requireText(
-                position.fieldLabel(),
-                "Position field label is required"
-        );
-        int pageNumber = position.pageNumber() == null
-                ? 1
-                : position.pageNumber();
-        if (pageNumber < 1 || pageNumber > pageCount) {
-            throw new BadHttpException(
-                    "Position page number must be inside the template page range"
-            );
+        private ContractPositionRequest normalizePosition(
+                        ContractPositionRequest position,
+                        int pageCount) {
+                if (position == null) {
+                        throw new BadHttpException("Template position information is required");
+                }
+
+                String attributeKey = requireText(
+                                position.attributeKey(),
+                                "Position attribute key is required").toLowerCase(Locale.ROOT);
+                if (!ATTRIBUTE_KEY_PATTERN.matcher(attributeKey).matches()) {
+                        throw new BadHttpException(
+                                        "Position attribute key must use lowercase letters, numbers and underscores");
+                }
+
+                String fieldLabel = requireText(
+                                position.fieldLabel(),
+                                "Position field label is required");
+                int pageNumber = position.pageNumber() == null
+                                ? 1
+                                : position.pageNumber();
+                if (pageNumber < 1 || pageNumber > pageCount) {
+                        throw new BadHttpException(
+                                        "Position page number must be inside the template page range");
+                }
+
+                double x = requireCoordinate(position.xPosition(), "x position");
+                double y = requireCoordinate(position.yPosition(), "y position");
+                double width = requireSize(position.width(), "width");
+                double height = requireSize(position.height(), "height");
+                if (x + width > 1.000001 || y + height > 1.000001) {
+                        throw new BadHttpException(
+                                        "Template position must stay inside the normalized page bounds");
+                }
+
+                String fieldType = normalizeEnum(
+                                position.fieldType(),
+                                FIELD_TYPES,
+                                "Unsupported template field type");
+                String valueSource = normalizeEnum(
+                                position.valueSource(),
+                                VALUE_SOURCES,
+                                "Unsupported template value source");
+                String signerRole = normalizeOptionalEnum(
+                                position.signerRole(),
+                                SIGNER_ROLES,
+                                "Unsupported template signer role");
+
+                if (("SIGNATURE".equals(fieldType)
+                                || "CURRENT_SIGNER".equals(valueSource))
+                                && signerRole == null) {
+                        throw new BadHttpException(
+                                        "Director or Partner role is required for signer fields");
+                }
+
+                if ("SIGNATURE".equals(fieldType)
+                                && !"CURRENT_SIGNER".equals(valueSource)) {
+                        throw new BadHttpException(
+                                        "Signature fields must use the current signer as their value source");
+                }
+
+                return new ContractPositionRequest(
+                                attributeKey,
+                                fieldLabel,
+                                pageNumber,
+                                roundCoordinate(x),
+                                roundCoordinate(y),
+                                roundCoordinate(width),
+                                roundCoordinate(height),
+                                fieldType,
+                                valueSource,
+                                signerRole,
+                                Boolean.TRUE.equals(position.systemField()),
+                                Boolean.TRUE.equals(position.required()));
         }
 
-        double x = requireCoordinate(position.xPosition(), "x position");
-        double y = requireCoordinate(position.yPosition(), "y position");
-        double width = requireSize(position.width(), "width");
-        double height = requireSize(position.height(), "height");
-        if (x + width > 1.000001 || y + height > 1.000001) {
-            throw new BadHttpException(
-                    "Template position must stay inside the normalized page bounds"
-            );
+        private ContractPositionRequest toRequest(ContractPositions position) {
+                return new ContractPositionRequest(
+                                position.getAttributeKey(),
+                                position.getFieldLabel(),
+                                position.getPageNumber(),
+                                position.getXPosition(),
+                                position.getYPosition(),
+                                position.getWidth(),
+                                position.getHeight(),
+                                position.getFieldType(),
+                                position.getValueSource(),
+                                position.getSignerRole(),
+                                position.getIsSystemField(),
+                                position.getIsRequired());
         }
 
-        String fieldType = normalizeEnum(
-                position.fieldType(),
-                FIELD_TYPES,
-                "Unsupported template field type"
-        );
-        String valueSource = normalizeEnum(
-                position.valueSource(),
-                VALUE_SOURCES,
-                "Unsupported template value source"
-        );
-        String signerRole = normalizeOptionalEnum(
-                position.signerRole(),
-                SIGNER_ROLES,
-                "Unsupported template signer role"
-        );
-
-        if (("SIGNATURE".equals(fieldType)
-                || "CURRENT_SIGNER".equals(valueSource))
-                && signerRole == null) {
-            throw new BadHttpException(
-                    "Director or Partner role is required for signer fields"
-            );
+        private double requireCoordinate(Double value, String label) {
+                if (value == null || !Double.isFinite(value) || value < 0 || value > 1) {
+                        throw new BadHttpException(
+                                        "Template " + label + " must be between 0 and 1");
+                }
+                return value;
         }
 
-        if ("SIGNATURE".equals(fieldType)
-                && !"CURRENT_SIGNER".equals(valueSource)) {
-            throw new BadHttpException(
-                    "Signature fields must use the current signer as their value source"
-            );
+        private double requireSize(Double value, String label) {
+                if (value == null || !Double.isFinite(value) || value <= 0 || value > 1) {
+                        throw new BadHttpException(
+                                        "Template " + label + " must be greater than 0 and at most 1");
+                }
+                return value;
         }
 
-        return new ContractPositionRequest(
-                attributeKey,
-                fieldLabel,
-                pageNumber,
-                roundCoordinate(x),
-                roundCoordinate(y),
-                roundCoordinate(width),
-                roundCoordinate(height),
-                fieldType,
-                valueSource,
-                signerRole,
-                Boolean.TRUE.equals(position.systemField()),
-                Boolean.TRUE.equals(position.required())
-        );
-    }
-
-    private ContractPositionRequest toRequest(ContractPositions position) {
-        return new ContractPositionRequest(
-                position.getAttributeKey(),
-                position.getFieldLabel(),
-                position.getPageNumber(),
-                position.getXPosition(),
-                position.getYPosition(),
-                position.getWidth(),
-                position.getHeight(),
-                position.getFieldType(),
-                position.getValueSource(),
-                position.getSignerRole(),
-                position.getIsSystemField(),
-                position.getIsRequired()
-        );
-    }
-
-    private double requireCoordinate(Double value, String label) {
-        if (value == null || !Double.isFinite(value) || value < 0 || value > 1) {
-            throw new BadHttpException(
-                    "Template " + label + " must be between 0 and 1"
-            );
+        private double roundCoordinate(double value) {
+                return Math.round(value * 10000.0) / 10000.0;
         }
-        return value;
-    }
 
-    private double requireSize(Double value, String label) {
-        if (value == null || !Double.isFinite(value) || value <= 0 || value > 1) {
-            throw new BadHttpException(
-                    "Template " + label + " must be greater than 0 and at most 1"
-            );
+        private String normalizeEnum(
+                        String value,
+                        Set<String> allowedValues,
+                        String message) {
+                String normalized = requireText(value, message)
+                                .toUpperCase(Locale.ROOT)
+                                .replace('-', '_')
+                                .replace(' ', '_');
+                if (!allowedValues.contains(normalized)) {
+                        throw new BadHttpException(message + ": " + normalized);
+                }
+                return normalized;
         }
-        return value;
-    }
 
-    private double roundCoordinate(double value) {
-        return Math.round(value * 10000.0) / 10000.0;
-    }
-
-    private String normalizeEnum(
-            String value,
-            Set<String> allowedValues,
-            String message
-    ) {
-        String normalized = requireText(value, message)
-                .toUpperCase(Locale.ROOT)
-                .replace('-', '_')
-                .replace(' ', '_');
-        if (!allowedValues.contains(normalized)) {
-            throw new BadHttpException(message + ": " + normalized);
+        private String normalizeOptionalEnum(
+                        String value,
+                        Set<String> allowedValues,
+                        String message) {
+                if (value == null || value.isBlank() || "NONE".equalsIgnoreCase(value)) {
+                        return null;
+                }
+                return normalizeEnum(value, allowedValues, message);
         }
-        return normalized;
-    }
 
-    private String normalizeOptionalEnum(
-            String value,
-            Set<String> allowedValues,
-            String message
-    ) {
-        if (value == null || value.isBlank() || "NONE".equalsIgnoreCase(value)) {
-            return null;
+        private String requireText(String value, String message) {
+                if (value == null || value.isBlank()) {
+                        throw new BadHttpException(message);
+                }
+                return value.trim();
         }
-        return normalizeEnum(value, allowedValues, message);
-    }
-
-    private String requireText(String value, String message) {
-        if (value == null || value.isBlank()) {
-            throw new BadHttpException(message);
-        }
-        return value.trim();
-    }
 }

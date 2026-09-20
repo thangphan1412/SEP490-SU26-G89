@@ -29,7 +29,14 @@ public class SecurityConfig {
                 .csrf(custom -> custom.disable())
                 .authorizeHttpRequests(
                         authorizeRequests -> authorizeRequests
-                                .anyRequest().permitAll())
+                                .requestMatchers(
+                                        "/api/v1/auth/login",
+                                        "/api/v1/auth/forgot-password",
+                                        "/api/v1/auth/reset-password",
+                                        "/api/register",
+                                        "/error"
+                                ).permitAll()
+                                .anyRequest().authenticated())
                 .logout(logout -> {
                         logout.logoutUrl("/logout");
                         logout.logoutSuccessUrl("/login");

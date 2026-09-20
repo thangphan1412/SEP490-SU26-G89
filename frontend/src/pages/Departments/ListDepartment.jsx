@@ -1,13 +1,21 @@
 import { useEffect, useState } from "react";
-import { Badge, Button, Form, Table } from "react-bootstrap";
-import { IconBuildingSkyscraper, IconPlus, IconRefresh, IconSearch, IconSelector } from "@tabler/icons-react";
+import { Alert, Badge, Button, Form, Spinner, Table } from "react-bootstrap";
+import {
+  IconBuildingSkyscraper,
+  IconEdit,
+  IconEye,
+  IconPlus,
+  IconRefresh,
+  IconSearch,
+  IconSelector,
+} from "@tabler/icons-react";
 import { useNavigate } from "react-router-dom";
 import departmentApi from "../../services/departmentService/departmentApi.js";
+import {
+  formatDepartmentDate,
+  getDepartmentErrorMessage,
+} from "./departmentUtils.js";
 import "../../assets/styles/css/departmentStyles/Departments.css";
-
-const formatDateTime = (value) => value
-  ? new Intl.DateTimeFormat("vi-VN", { dateStyle: "short", timeStyle: "short" }).format(new Date(value))
-  : "-";
 
 function ListDepartment() {
   const navigate = useNavigate();
@@ -19,75 +27,166 @@ function ListDepartment() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    let isMounted = true;
+    const requestController = new AbortController();
     const timer = setTimeout(async () => {
-      setIsLoading(true);
-      setError("");
-
       try {
+        setIsLoading(true);
+        setError("");
         const response = await departmentApi.searchDepartments({
           search: search.trim(),
           status,
-        });
+        }, requestController.signal);
 
-        if (isMounted) {
-          setDepartments(Array.isArray(response.data?.data) ? response.data.data : []);
+        if (requestController.signal.aborted) {
+          return;
         }
+
+        setDepartments(Array.isArray(response.data?.data) ? response.data.data : []);
       } catch (requestError) {
-        if (isMounted) {
-          setDepartments([]);
-          setError(requestError.response?.data?.message || "Unable to load departments.");
+        if (requestController.signal.aborted) {
+          return;
         }
+
+        console.error("Unable to load departments:", requestError);
+        setDepartments([]);
+        setError(getDepartmentErrorMessage(
+          requestError,
+          "Unable to load departments. Please try again later."
+        ));
       } finally {
-        if (isMounted) {
+        if (!requestController.signal.aborted) {
           setIsLoading(false);
         }
       }
     }, 300);
 
     return () => {
-      isMounted = false;
       clearTimeout(timer);
+      requestController.abort();
     };
   }, [search, status, refreshKey]);
+
+  function viewDepartment(id) {
+    navigate(`/department-management/view/${id}`);
+  }
+
+  function editDepartment(event, id) {
+    event.stopPropagation();
+    navigate(`/department-management/update/${id}`);
+  }
 
   return (
     <div className="department-layout">
       <section className="department-content">
         <div className="department-panel">
           <header className="department-panel-header">
-            <div><h1>Departments</h1><p>Manage organizational departments.</p></div>
+            <div>
+              <h1>Departments</h1>
+              <p>Manage organizational departments.</p>
+            </div>
             <div className="department-header-actions">
-              <Button className="department-primary-button" onClick={() => navigate("/department-management/create")}><IconPlus size={20} /> New Department</Button>
+              <Button
+                className="department-primary-button"
+                onClick={() => navigate("/department-management/create")}
+              >
+                <IconPlus size={20} /> New Department
+              </Button>
             </div>
           </header>
 
           <div className="department-list-body">
             <div className="department-toolbar">
-              <div className="department-search"><IconSearch size={22} /><Form.Control value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search departments..." /></div>
-              <label className="department-filter"><span>Status</span><Form.Select value={status} onChange={(event) => setStatus(event.target.value)}><option value="">All</option><option>Active</option><option>Inactive</option></Form.Select></label>
-              <Button variant="light" className="department-icon-button" aria-label="Reload departments" onClick={() => { setSearch(""); setStatus(""); setRefreshKey((current) => current + 1); }}><IconRefresh size={21} /></Button>
+              <div className="department-search">
+                <IconSearch size={22} />
+                <Form.Control
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder="Search departments..."
+                />
+              </div>
+              <label className="department-filter">
+                <span>Status</span>
+                <Form.Select
+                  value={status}
+                  onChange={(event) => setStatus(event.target.value)}
+                >
+                  <option value="">All</option>
+                  <option value="Active">Active</option>
+                  <option value="Inactive">Inactive</option>
+                </Form.Select>
+              </label>
+              <Button
+                variant="light"
+                className="department-icon-button"
+                aria-label="Reload departments"
+                onClick={() => {
+                  setSearch("");
+                  setStatus("");
+                  setRefreshKey((currentKey) => currentKey + 1);
+                }}
+              >
+                <IconRefresh size={21} />
+              </Button>
             </div>
+
+            {error && <Alert variant="danger">{error}</Alert>}
 
             <div className="department-table-wrap">
               <Table responsive hover className="department-table mb-0">
-                <thead><tr>{["Department Name", "Code", "Company ID", "Status", "Created At", "Updated At"].map((label) => <th key={label}>{label} <IconSelector size={13} /></th>)}</tr></thead>
-                <tbody>{isLoading ? (
-                  <tr><td colSpan={6} className="text-center py-5">Loading departments...</td></tr>
-                ) : error ? (
-                  <tr><td colSpan={6} className="text-center text-danger py-5">{error}</td></tr>
-                ) : departments.length === 0 ? (
-                  <tr><td colSpan={6} className="text-center py-5">No departments found.</td></tr>
-                ) : departments.map((item) => (
-                  <tr key={item.id} onClick={() => navigate(`/department-management/view/${item.id}`)}>
-                    <td><span className="department-avatar department-avatar--building"><IconBuildingSkyscraper size={20} /></span><strong>{item.departmentName}</strong></td>
-                    <td>{item.departmentCode}</td>
-                    <td>{item.companyId ?? "-"}</td>
-                    <td><Badge className={`department-status department-status--${item.departmentStatus?.toLowerCase() || "inactive"}`}>{item.departmentStatus || "Inactive"}</Badge></td>
-                    <td>{formatDateTime(item.departmentCreatedAt)}</td>
-                    <td>{formatDateTime(item.updatedAt)}</td>
+                <thead>
+                  <tr>
+                    {["Department Name", "Code", "Company ID", "Status", "Created At", "Updated At", "Actions"].map((label) => (
+                      <th key={label}>{label} {label !== "Actions" && <IconSelector size={13} />}</th>
+                    ))}
                   </tr>
-                ))}</tbody>
+                </thead>
+                <tbody>
+                  {isLoading ? (
+                    <tr>
+                      <td colSpan={7} className="text-center py-5">
+                        <Spinner animation="border" size="sm" /> Loading departments...
+                      </td>
+                    </tr>
+                  ) : error ? (
+                    <tr><td colSpan={7} className="text-center text-danger py-5">Unable to display departments.</td></tr>
+                  ) : departments.length === 0 ? (
+                    <tr><td colSpan={7} className="text-center py-5">No departments found.</td></tr>
+                  ) : departments.map((item) => {
+                    const departmentStatus = item.departmentStatus || "Unknown";
+
+                    return (
+                      <tr key={item.id} onClick={() => viewDepartment(item.id)}>
+                        <td><span className="department-avatar department-avatar--building"><IconBuildingSkyscraper size={20} /></span><strong>{item.departmentName}</strong></td>
+                        <td>{item.departmentCode}</td>
+                        <td>{item.companyId ?? "-"}</td>
+                        <td><Badge className={`department-status department-status--${departmentStatus.toLowerCase()}`}>{departmentStatus}</Badge></td>
+                        <td>{formatDepartmentDate(item.departmentCreatedAt)}</td>
+                        <td>{formatDepartmentDate(item.updatedAt)}</td>
+                        <td>
+                          <div className="department-table-actions">
+                            <Button
+                              className="department-row-action"
+                              aria-label={`View ${item.departmentName}`}
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                viewDepartment(item.id);
+                              }}
+                            >
+                              <IconEye size={17} /> View
+                            </Button>
+                            <Button
+                              className="department-row-action"
+                              aria-label={`Edit ${item.departmentName}`}
+                              onClick={(event) => editDepartment(event, item.id)}
+                            >
+                              <IconEdit size={17} /> Edit
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
               </Table>
             </div>
 

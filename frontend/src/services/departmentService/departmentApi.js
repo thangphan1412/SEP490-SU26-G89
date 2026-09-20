@@ -7,12 +7,12 @@ const departmentApi = {
         return axiosClient.get(DEPARTMENT_ENDPOINT);
     },
 
-    searchDepartments(params = {}) {
-        return axiosClient.get(DEPARTMENT_ENDPOINT + "/list", { params });
+    searchDepartments(params = {}, signal) {
+        return axiosClient.get(DEPARTMENT_ENDPOINT + "/list", { params, signal });
     },
 
-    getDepartmentById(id) {
-        return axiosClient.get(DEPARTMENT_ENDPOINT + "/" + id);
+    getDepartmentById(id, signal) {
+        return axiosClient.get(DEPARTMENT_ENDPOINT + "/" + id, { signal });
     },
 
     createDepartment(data) {

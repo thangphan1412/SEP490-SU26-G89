@@ -20,4 +20,6 @@ public class UpdateElectronicSignatureRequest {
     private boolean isDefault;
     @Enumerated(EnumType.STRING)
     private ElectronicStatus electronicStatus;
+
+    private String publicKey;
 }

@@ -20,6 +20,15 @@ public class UserKeys extends BaseEntity{
     private long keySize;
     @Column(name = "create_at")
     private LocalDateTime createAt;
+<<<<<<< HEAD
+<<<<<<< HEAD
+    @Column(name = "public_key", columnDefinition = "nvarchar(max)")
+    private String publicKey;
+    @Column(name = "key_fingerprint", length = 64)
+    private String keyFingerprint;
+=======
+=======
+>>>>>>> origin
     @Lob
     @Column(name = "public_key", columnDefinition = "nvarchar(max)")
     private String publicKey;
@@ -42,4 +51,6 @@ public class UserKeys extends BaseEntity{
     //signature
     @OneToMany(mappedBy = "userKey")
     private List<Signature> signatures;
+    @OneToMany(mappedBy = "userKey")
+    private List<ElectronicSignatures> electronicSignatures;
 }

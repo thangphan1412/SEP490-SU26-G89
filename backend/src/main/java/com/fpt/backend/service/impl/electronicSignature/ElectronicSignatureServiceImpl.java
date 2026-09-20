@@ -1,52 +1,55 @@
 package com.fpt.backend.service.impl.electronicSignature;
 
-import com.cloudinary.Cloudinary;
-import com.cloudinary.utils.ObjectUtils;
 import com.fpt.backend.dto.request.electronicSignature.CreateElectronicSignatureRequest;
 import com.fpt.backend.dto.request.electronicSignature.UpdateElectronicSignatureRequest;
-import com.fpt.backend.dto.request.fileStorage.CreateFileStorageRequest;
 import com.fpt.backend.dto.response.electronicSignature.ElectronicSignatureDetailResponse;
 import com.fpt.backend.dto.response.electronicSignature.ListElectronicResponse;
 import com.fpt.backend.entity.ElectronicSignatures;
 import com.fpt.backend.entity.FileStorage;
 import com.fpt.backend.entity.UserKeys;
 import com.fpt.backend.entity.Users;
+import com.fpt.backend.enums.KeyAlgorithm;
 import com.fpt.backend.exception.BadHttpException;
-import com.fpt.backend.repository.FileStorageRepository;
 import com.fpt.backend.repository.electronicSignature.ElectronicSignatureRepository;
+import com.fpt.backend.repository.signature.UserKeyRepository;
 import com.fpt.backend.service.impl.CloudinaryService;
 import com.fpt.backend.service.impl.signature.UserKeyServiceImpl;
 import com.fpt.backend.service.impl.user.UserServiceImpl;
 import com.fpt.backend.service.interfaces.electronicSignature.IElectronicSignatureService;
 import com.fpt.backend.util.CurrentUser;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 @Service
+@RequiredArgsConstructor
 public class ElectronicSignatureServiceImpl implements IElectronicSignatureService {
     @Autowired
-    private ElectronicSignatureRepository  electronicSignatureRepository;
+    private ElectronicSignatureRepository electronicSignatureRepository;
     @Autowired
-    private CurrentUser  currentUser;
+    private CurrentUser currentUser;
     @Autowired
-    private Cloudinary  cloudinary;
+    private Cloudinary cloudinary;
     @Autowired
     private CloudinaryService cloudinaryService;
     @Autowired
     private FileStorageRepository fileStorageRepository;
     @Autowired
     private UserKeyServiceImpl userKeyService;
+
     @Override
-    public ElectronicSignatures createElectronicSignature(CreateElectronicSignatureRequest createElectronicSignatureRequest) {
+    @Transactional
+    public ElectronicSignatures createElectronicSignature(
+            CreateElectronicSignatureRequest createElectronicSignatureRequest) {
         Users users = currentUser.getCurrentUser();
-        userKeyService.saveUserKey(users, createElectronicSignatureRequest.getPublicKey(), createElectronicSignatureRequest.getKeyCode(), createElectronicSignatureRequest.getCertificate());
+        userKeyService.saveUserKey(users, createElectronicSignatureRequest.getPublicKey(),
+                createElectronicSignatureRequest.getKeyCode(), createElectronicSignatureRequest.getCertificate());
         MultipartFile img = createElectronicSignatureRequest.getCreateFileStorageRequests().getMultipartFile();
         FileStorage fileStorage = cloudinaryService.uploadAndSave(img, users);
         ElectronicSignatures electronicSignatures = ElectronicSignatures.builder()
@@ -57,6 +60,7 @@ public class ElectronicSignatureServiceImpl implements IElectronicSignatureServi
                 .createdAt(LocalDate.now())
                 .fileStorage(fileStorage)
                 .user(users)
+                .userKey(userKey)
                 .build();
         return electronicSignatureRepository.save(electronicSignatures);
     }
@@ -70,23 +74,24 @@ public class ElectronicSignatureServiceImpl implements IElectronicSignatureServi
     @Override
     public ElectronicSignatureDetailResponse getElectronicSignatureDetail(UUID electronicSignatureId) {
         Users user = currentUser.getCurrentUser();
-        return electronicSignatureRepository.getElectronicSignaturesById(user.getId(),electronicSignatureId);
+        return electronicSignatureRepository.getElectronicSignaturesById(user.getId(), electronicSignatureId);
     }
 
     @Override
+    @Transactional
     public ElectronicSignatures updateElectronicSignature(
             UUID electronicSignatureId,
             UpdateElectronicSignatureRequest request,
-            MultipartFile multipartFile
-    ) {
+            MultipartFile multipartFile) {
 
         Users user = currentUser.getCurrentUser();
         ElectronicSignatures signature = electronicSignatureRepository.findById(electronicSignatureId)
-                        .orElseThrow(() -> new BadHttpException("Electronic signature not found"));
+                .orElseThrow(() -> new BadHttpException("Electronic signature not found"));
 
         if (!signature.getUser().getId().equals(user.getId())) {
             throw new BadHttpException("You do not have permission to update this signature");
         }
+        registerLegacyKeyIfNeeded(signature, request.getPublicKey(), user);
         signature.setElectronicSignatureName(request.getElectronicSignatureName());
         signature.setElectronicSignatureType(request.getElectronicSignatureType());
         signature.setStatus(request.getElectronicStatus());
@@ -97,8 +102,41 @@ public class ElectronicSignatureServiceImpl implements IElectronicSignatureServi
         }
         signature.setUpdatedAt(LocalDate.now());
         return electronicSignatureRepository.save(
-                signature
-        );
+                signature);
+    }
+
+    private void registerLegacyKeyIfNeeded(
+            ElectronicSignatures signature,
+            String requestedPublicKey,
+            Users user) {
+        if (requestedPublicKey == null || requestedPublicKey.isBlank()) {
+            return;
+        }
+        ContractSignatureService.RegisteredPublicKey registeredPublicKey = contractSignatureService
+                .validatePublicKey(requestedPublicKey);
+        UserKeys existingKey = signature.getUserKey();
+        if (existingKey != null) {
+            if (!registeredPublicKey.publicKeyFingerprint().equalsIgnoreCase(
+                    existingKey.getKeyFingerprint())) {
+                throw new BadHttpException(
+                        "The RSA key of an existing signature cannot be replaced");
+            }
+            return;
+        }
+        signature.setUserKey(saveUserKey(registeredPublicKey, user));
+    }
+
+    private UserKeys saveUserKey(
+            ContractSignatureService.RegisteredPublicKey registeredPublicKey,
+            Users user) {
+        return userKeyRepository.save(UserKeys.builder()
+                .keySize(registeredPublicKey.keySize())
+                .createAt(LocalDateTime.now())
+                .publicKey(registeredPublicKey.publicKeyPem())
+                .keyFingerprint(registeredPublicKey.publicKeyFingerprint())
+                .keyAlgorithm(KeyAlgorithm.RSA)
+                .user(user)
+                .build());
     }
 
 }

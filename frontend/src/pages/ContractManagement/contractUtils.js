@@ -7,7 +7,15 @@ export const CONTRACT_STATUS = Object.freeze({
     PENDING_INTERNAL_APPROVAL: "PENDING_INTERNAL_APPROVAL",
     PENDING_DIRECTOR_SIGNATURE: "PENDING_DIRECTOR_SIGNATURE",
     PENDING_PARTNER_SIGNATURE: "PENDING_PARTNER_SIGNATURE",
+<<<<<<< HEAD
+<<<<<<< HEAD
+    PENDING_EFFECTIVE: "PENDING_EFFECTIVE",
+=======
     SIGNED: "SIGNED",
+>>>>>>> 7d6eb51fe9c660b46d1a1bc0200bcbbc73cf5f51
+=======
+    SIGNED: "SIGNED",
+>>>>>>> origin
     ACTIVE: "ACTIVE",
     ENDED: "ENDED",
     CANCELLED: "CANCELLED",
@@ -334,7 +342,19 @@ export function canExportContractPdf(contract) {
     const status = normalizeContractStatus(contract?.contractStatus);
 
     const completed = Boolean(contract?.pdfAvailable)
+<<<<<<< HEAD
+<<<<<<< HEAD
+        || [
+            CONTRACT_STATUS.PENDING_EFFECTIVE,
+            CONTRACT_STATUS.ACTIVE,
+            CONTRACT_STATUS.ENDED,
+        ].includes(status);
+=======
         || [CONTRACT_STATUS.SIGNED, CONTRACT_STATUS.ACTIVE, CONTRACT_STATUS.ENDED].includes(status);
+>>>>>>> 7d6eb51fe9c660b46d1a1bc0200bcbbc73cf5f51
+=======
+        || [CONTRACT_STATUS.ACTIVE, CONTRACT_STATUS.ENDED].includes(status);
+>>>>>>> origin
 
     return completed && canUseContractProjectAction(
         contract,

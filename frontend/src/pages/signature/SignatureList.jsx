@@ -9,6 +9,7 @@ import {useNavigate} from "react-router-dom";
 
 
 function SignatureList() {
+    const navigate = useNavigate();
     const [searchTerm, setSearchTerm] = useState("")
     const [typeFilter, setTypeFilter] = useState("All")
     const [statusFilter, setStatusFilter] = useState("All")
@@ -32,7 +33,22 @@ function SignatureList() {
         }
     };
     useEffect(() => {
-        loadElectronicSignature();
+        let active = true;
+        electronicSignatureService.getAllElectronicSignature()
+            .then((response) => {
+                if (active) {
+                    setElectronicSignature(response.data.data || []);
+                }
+            })
+            .catch((error) => {
+                console.error(error);
+                if (active) {
+                    setElectronicSignature([]);
+                }
+            });
+        return () => {
+            active = false;
+        };
     }, []);
     const filteredSignatures = useMemo(() => {
         return electronicSignature.filter((sig) => {

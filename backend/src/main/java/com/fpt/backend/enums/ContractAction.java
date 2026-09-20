@@ -13,7 +13,6 @@ public enum ContractAction {
         }
 
         return ContractAction.valueOf(
-                value.trim().toUpperCase(Locale.ROOT).replace(' ', '_')
-        );
+                value.trim().toUpperCase(Locale.ROOT).replace(' ', '_'));
     }
 }
