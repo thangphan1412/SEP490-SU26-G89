@@ -42,11 +42,7 @@ public class UserKeyServiceImpl implements IUserKeyService {
                     "User must be saved before generating key"
             );
         }
-
-        CalculateRSA.RSAKeyPair keyPair =
-                calculateRSA.generateKeyPair();
-
-
+        CalculateRSA.RSAKeyPair keyPair = calculateRSA.generateKeyPair();
         String publicKeyCode =
                 changToPingPrivateKey(
                         keyPair.modulus().toString(16)
@@ -60,7 +56,6 @@ public class UserKeyServiceImpl implements IUserKeyService {
         String privateKey;
 
         try {
-
             privateKey = RSAKeyConverter.encodePKCS8(
                     keyPair.modulus(),
                     keyPair.publicExponent(),
@@ -198,7 +193,6 @@ public class UserKeyServiceImpl implements IUserKeyService {
                         .certificate(certificate)
                         .createAt(LocalDateTime.now())
                         .build();
-
         userKeysRepository.save(userKeys);
     }
 
@@ -220,23 +214,18 @@ public class UserKeyServiceImpl implements IUserKeyService {
                             org.bouncycastle.asn1.pkcs.PKCSObjectIdentifiers.rsaEncryption,
                             org.bouncycastle.asn1.DERNull.INSTANCE
                     );
-
             org.bouncycastle.asn1.x509.SubjectPublicKeyInfo publicKeyInfo =
                     new org.bouncycastle.asn1.x509.SubjectPublicKeyInfo(
                             algorithmIdentifier,
                             rsaPublicKey
                     );
-
             return Base64.getEncoder()
                     .encodeToString(
                             publicKeyInfo.getEncoded()
                     );
-
         } catch (Exception e) {
-
             throw new IllegalStateException(
-                    "Unable to encode RSA public key",
-                    e
+                    "Unable to encode RSA public key", e
             );
         }
     }

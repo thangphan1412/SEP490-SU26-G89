@@ -80,45 +80,45 @@ public class SignatureController {
         );
     }
 
-    @PostMapping("/{signatureId}/verify")
-    public ResponseEntity<BaseResponse<SignatureVerificationResponse>> verify(
-            @PathVariable UUID signatureId,
-            @RequestParam("file") MultipartFile file
-    ) throws Exception {
-        Signature signature = signatureRepository.findById(signatureId)
-                .orElseThrow(() -> new IllegalArgumentException("Signature not found"));
-        if (signature.getSignatureValue() == null || signature.getUserKey() == null) {
-            throw new IllegalArgumentException("Signature value or public key is unavailable");
-        }
-        UUID signerId = signature.getUserKey().getUser().getId();
-        boolean valid = verificationService.verify(file.getBytes(), signature.getSignatureValue(), signerId, signature.getUserKey().getKeyCode());
-        SignatureVerificationResponse response = new SignatureVerificationResponse(
-                signature.getId(), signature.getContract().getId(), signerId,
-                signature.getDocumentHash(), valid
-        );
-        return ResponseEntity.ok(new BaseResponse<>(response));
-    }
+//    @PostMapping("/{signatureId}/verify")
+//    public ResponseEntity<BaseResponse<SignatureVerificationResponse>> verify(
+//            @PathVariable UUID signatureId,
+//            @RequestParam("file") MultipartFile file
+//    ) throws Exception {
+//        Signature signature = signatureRepository.findById(signatureId)
+//                .orElseThrow(() -> new IllegalArgumentException("Signature not found"));
+//        if (signature.getSignatureValue() == null || signature.getUserKey() == null) {
+//            throw new IllegalArgumentException("Signature value or public key is unavailable");
+//        }
+//        UUID signerId = signature.getUserKey().getUser().getId();
+//        boolean valid = verificationService.verify(file.getBytes(), signature.getSignatureValue(), signerId, signature.getUserKey().getKeyCode());
+//        SignatureVerificationResponse response = new SignatureVerificationResponse(
+//                signature.getId(), signature.getContract().getId(), signerId,
+//                signature.getDocumentHash(), valid
+//        );
+//        return ResponseEntity.ok(new BaseResponse<>(response));
+//    }
 
-    @GetMapping("/{signatureId}/verify-stored")
-    public ResponseEntity<BaseResponse<SignatureVerificationResponse>> verifyStoredPdf(
-            @PathVariable UUID signatureId
-    ) throws Exception {
-        Signature signature = signatureRepository.findById(signatureId)
-                .orElseThrow(() -> new IllegalArgumentException("Signature not found"));
-        if (signature.getFileStorage() == null
-                || signature.getSignatureValue() == null
-                || signature.getUserKey() == null) {
-            throw new IllegalArgumentException("Stored PDF, signature value or public key is unavailable");
-        }
-        byte[] pdf = cloudinaryService.download(signature.getFileStorage());
-        UUID signerId = signature.getUserKey().getUser().getId();
-        boolean valid = verificationService.verify(pdf, signature.getSignatureValue(), signerId, signature.getUserKey().getKeyCode());
-        SignatureVerificationResponse response = new SignatureVerificationResponse(
-                signature.getId(), signature.getContract().getId(), signerId,
-                signature.getDocumentHash(), valid
-        );
-        return ResponseEntity.ok(new BaseResponse<>(response));
-    }
+//    @GetMapping("/{signatureId}/verify-stored")
+//    public ResponseEntity<BaseResponse<SignatureVerificationResponse>> verifyStoredPdf(
+//            @PathVariable UUID signatureId
+//    ) throws Exception {
+//        Signature signature = signatureRepository.findById(signatureId)
+//                .orElseThrow(() -> new IllegalArgumentException("Signature not found"));
+//        if (signature.getFileStorage() == null
+//                || signature.getSignatureValue() == null
+//                || signature.getUserKey() == null) {
+//            throw new IllegalArgumentException("Stored PDF, signature value or public key is unavailable");
+//        }
+//        byte[] pdf = cloudinaryService.download(signature.getFileStorage());
+//        UUID signerId = signature.getUserKey().getUser().getId();
+//        boolean valid = verificationService.verify(pdf, signature.getSignatureValue(), signerId, signature.getUserKey().getKeyCode());
+//        SignatureVerificationResponse response = new SignatureVerificationResponse(
+//                signature.getId(), signature.getContract().getId(), signerId,
+//                signature.getDocumentHash(), valid
+//        );
+//        return ResponseEntity.ok(new BaseResponse<>(response));
+//    }
     @PostMapping("/{contractId}/verify-signatures")
     public ResponseEntity<?> verifySignatures(
             @PathVariable UUID contractId,
