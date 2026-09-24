@@ -96,7 +96,21 @@ export default function ContractSigningPage() {
     const pageRefs = useRef({});
     const pdfContainerRef = useRef(null);
     const dragStartRef = useRef(null);
+    const viewerRef = useRef(null);
+    const [pdfWidth, setPdfWidth] = useState(750);
 
+    useEffect(() => {
+        const viewer = viewerRef.current;
+        if (!viewer) return;
+
+        const observer = new ResizeObserver(([entry]) => {
+            // contentRect đã loại trừ padding của viewer
+            setPdfWidth(Math.max(1, Math.floor(entry.contentRect.width)));
+        });
+
+        observer.observe(viewer);
+        return () => observer.disconnect();
+    }, [loading, pdfUrl]);
     function handlePdfLoadSuccess({ numPages }) {
         setPdfNumPages(numPages);
 
@@ -1919,47 +1933,45 @@ export default function ContractSigningPage() {
                                 size={20}
                             />
 
-                            <strong>
-                                Generated contract PDF
-                            </strong>
+
                             {pdfNumPages > 0 && (
                                 <div className="signature-position-info">
                                     <strong>
                                         Signing location
                                     </strong>
 
-                                    <div>
-                                        Page: {selectedPage} (last page)
-                                    </div>
+                                    {/*<div>*/}
+                                    {/*    Page: {selectedPage} (last page)*/}
+                                    {/*</div>*/}
 
-                                    <div>
-                                        X: {Math.round(signaturePosition.x)}
-                                    </div>
+                                    {/*<div>*/}
+                                    {/*    X: {Math.round(signaturePosition.x)}*/}
+                                    {/*</div>*/}
 
-                                    <div>
-                                        Y: {Math.round(signaturePosition.y)}
-                                    </div>
+                                    {/*<div>*/}
+                                    {/*    Y: {Math.round(signaturePosition.y)}*/}
+                                    {/*</div>*/}
 
-                                    <div>
-                                        Width: {Math.round(signaturePosition.width)}
-                                    </div>
+                                    {/*<div>*/}
+                                    {/*    Width: {Math.round(signaturePosition.width)}*/}
+                                    {/*</div>*/}
 
-                                    <div>
-                                        Height: {Math.round(signaturePosition.height)}
-                                    </div>
+                                    {/*<div>*/}
+                                    {/*    Height: {Math.round(signaturePosition.height)}*/}
+                                    {/*</div>*/}
 
-                                    <small>
-                                        Selecting a signature automatically
-                                        moves the PDF to the last page and
-                                        places the signature there.
-                                    </small>
+                                    {/*<small>*/}
+                                    {/*    Selecting a signature automatically*/}
+                                    {/*    moves the PDF to the last page and*/}
+                                    {/*    places the signature there.*/}
+                                    {/*</small>*/}
                                 </div>
                             )}
                         </div>
 
                         {pdfUrl ? (
 
-                            <div className="pdf-signing-viewer">
+                            <div className="pdf-signing-viewer" ref={viewerRef}>
 
                                 <Document
                                     file={pdfUrl}
@@ -2015,7 +2027,7 @@ export default function ContractSigningPage() {
                                                         pageNumber={
                                                             pageNumber
                                                         }
-                                                        width={750}
+                                                        width={pdfWidth}
                                                         renderTextLayer={false}
                                                         renderAnnotationLayer={false}
                                                     />

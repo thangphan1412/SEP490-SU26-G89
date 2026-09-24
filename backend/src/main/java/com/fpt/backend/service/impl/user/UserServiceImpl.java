@@ -24,6 +24,7 @@ import com.fpt.backend.service.interfaces.user.IUserService;
 import com.fpt.backend.util.CurrentUser;
 import com.fpt.backend.util.OTPGenerator;
 import com.fpt.backend.util.ValidateEmail;
+import com.fpt.backend.util.userDate.UserDateFormat;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -198,8 +199,8 @@ public class UserServiceImpl implements IUserService {
                 .firstName(request.getFirstName())
                 .lastName(request.getLastName())
                 .numberPhone(request.getNumberPhone())
-                .dob(request.getDob())
-                .startDate(request.getStartDate())
+                .dob(UserDateFormat.parse(request.getDob()).toString())
+                .startDate(UserDateFormat.parse(request.getStartDate()).toString())
                 .status(request.getStatus())
                 .build();
 

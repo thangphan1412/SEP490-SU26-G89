@@ -15,6 +15,7 @@ import { createUser } from "../../services/userService/userApi.js";
 import departmentApi from "../../services/departmentService/departmentApi";
 import roleApi from "../../services/roleService/roleApi";
 import { getCompanyProfile } from "../../services/companyService/companyApi";
+import { isValidUserDate } from "../../utils/userDate.js";
 
 function CreateUser() {
     const navigate = useNavigate();
@@ -106,6 +107,10 @@ function CreateUser() {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (!isValidUserDate(user.dob) || !isValidUserDate(user.startDate)) {
+            alert("Ngày sinh và ngày bắt đầu làm việc phải là ngày hợp lệ theo định dạng dd/MM/yyyy.");
+            return;
+        }
         if (user.initialPassword !== user.confirmPassword) {
             alert("Mật khẩu xác nhận không khớp!");
             return;
@@ -297,7 +302,11 @@ function CreateUser() {
                                 <Form.Group>
                                     <Form.Label className="small fw-bold">Date of Birth <span className="text-danger">*</span></Form.Label>
                                     <Form.Control
-                                        type="date"
+                                        type="text"
+                                        placeholder="dd/MM/yyyy"
+                                        maxLength={10}
+                                        pattern="[0-9]{2}/[0-9]{2}/[0-9]{4}"
+                                        title="Nhập ngày/tháng/năm, ví dụ 24/09/2026"
                                         name="dob"
                                         value={user.dob}
                                         onChange={handleChange}
@@ -326,7 +335,10 @@ function CreateUser() {
                                     <Form.Label className="small fw-bold">Start Date <span
                                         className="text-danger">*</span>
                                     </Form.Label>
-                                    <Form.Control type="date" name="startDate" value={user.startDate}
+                                    <Form.Control type="text" name="startDate" value={user.startDate}
+                                                  placeholder="dd/MM/yyyy" maxLength={10}
+                                                  pattern="[0-9]{2}/[0-9]{2}/[0-9]{4}"
+                                                  title="Nhập ngày/tháng/năm, ví dụ 24/09/2026"
                                                   onChange={handleChange} required
                                                   disabled={isSubmitting}/>
                                 </Form.Group>

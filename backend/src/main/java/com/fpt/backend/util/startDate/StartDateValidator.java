@@ -1,5 +1,7 @@
 package com.fpt.backend.util.startDate;
 
+import com.fpt.backend.util.userDate.UserDateFormat;
+
 import jakarta.validation.ConstraintValidator;
 import jakarta.validation.ConstraintValidatorContext;
 import java.time.LocalDate;
@@ -13,7 +15,7 @@ public class StartDateValidator implements ConstraintValidator<ValidStartDate, S
             return true;
         }
         try {
-            LocalDate startDate = LocalDate.parse(dateString);
+            LocalDate startDate = UserDateFormat.parse(dateString);
             LocalDate today = LocalDate.now();
 
             // Hợp lệ nếu ngày bắt đầu >= hôm nay

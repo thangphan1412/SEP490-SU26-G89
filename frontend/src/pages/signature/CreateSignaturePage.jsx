@@ -436,7 +436,7 @@ function CreateSignaturePage() {
             );
 
             setTimeout(() => {
-                navigate("/signatures");
+                navigate("/signature-management/list");
             }, 1000);
 
         } catch (error) {
@@ -463,7 +463,7 @@ function CreateSignaturePage() {
     };
 
     const handleCancel = () => {
-        navigate("/signatures");
+        navigate("/signature-management/list");
     };
 
     return (

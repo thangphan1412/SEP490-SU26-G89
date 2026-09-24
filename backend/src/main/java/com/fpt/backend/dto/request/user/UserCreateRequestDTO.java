@@ -2,6 +2,7 @@ package com.fpt.backend.dto.request.user;
 
 import com.fpt.backend.enums.UserStatus;
 import com.fpt.backend.util.startDate.ValidStartDate;
+import com.fpt.backend.util.userDate.ValidUserDate;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -54,11 +55,11 @@ public class UserCreateRequestDTO {
     private String departmentName;
 
     @NotBlank(message = "Ngày sinh không được để trống")
-    @Pattern(regexp = "^\\d{4}-\\d{2}-\\d{2}$", message = "Ngày sinh phải theo định dạng YYYY-MM-DD")
+    @ValidUserDate(message = "Ngày sinh phải hợp lệ và theo định dạng dd/MM/yyyy")
     private String dob;
 
     @NotBlank(message = "Ngày bắt đầu làm việc không được để trống")
-    @Pattern(regexp = "^\\d{4}-\\d{2}-\\d{2}$", message = "Ngày bắt đầu làm việc phải theo định dạng YYYY-MM-DD")
+    @ValidUserDate(message = "Ngày bắt đầu làm việc phải hợp lệ và theo định dạng dd/MM/yyyy")
     @ValidStartDate
     private String startDate;
 
