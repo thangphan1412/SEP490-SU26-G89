@@ -344,6 +344,39 @@ const FIELD_BY_KEY = new Map(
 );
 const PLACEHOLDER_PATTERN = /\{\{\s*([a-z][a-z0-9_]*)\s*}}/gi;
 
+function previewLineClass(line) {
+    const normalized = String(line || "").trim().toUpperCase();
+
+    if (normalized === "CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM") {
+        return "template-preview-line national-header";
+    }
+    if (normalized === "ĐỘC LẬP - TỰ DO - HẠNH PHÚC") {
+        return "template-preview-line national-motto";
+    }
+    if (normalized.startsWith("HỢP ĐỒNG")) {
+        return "template-preview-line document-title";
+    }
+    if (
+        normalized.startsWith("SỐ:")
+        || normalized.startsWith("SỐ HỢP ĐỒNG:")
+        || normalized.startsWith("TÊN HỢP ĐỒNG:")
+    ) {
+        return "template-preview-line document-reference";
+    }
+    if (
+        normalized.startsWith("ĐIỀU ")
+        || normalized === "BÊN A"
+        || normalized === "BÊN A:"
+        || normalized === "BÊN B"
+        || normalized === "BÊN B:"
+        || normalized === "CÁC ĐIỀU KHOẢN HỢP ĐỒNG"
+    ) {
+        return "template-preview-line document-heading";
+    }
+
+    return "template-preview-line";
+}
+
 function TemplatePositionDesigner({
     content = "",
     pageCount = 1,
@@ -731,7 +764,31 @@ function TemplatePositionDesigner({
                             <small>Sample values only</small>
                         </div>
                         <div className="template-content-preview">
-                            {previewContent || (
+                            {previewContent ? (
+                                previewContent.replace(/\r/g, "").split("\n")
+                                    .map((line, index) => {
+                                        const columns = line.split(/\t+/);
+                                        if (columns.length === 2) {
+                                            return (
+                                                <div
+                                                    className="template-two-column-line"
+                                                    key={index}
+                                                >
+                                                    <span>{columns[0]}</span>
+                                                    <span>{columns[1]}</span>
+                                                </div>
+                                            );
+                                        }
+                                        return (
+                                            <div
+                                                className={previewLineClass(line)}
+                                                key={index}
+                                            >
+                                                {line.trim() || "\u00a0"}
+                                            </div>
+                                        );
+                                    })
+                            ) : (
                                 <span className="template-preview-empty">
                                     Start writing to preview Page {activePage}.
                                 </span>
