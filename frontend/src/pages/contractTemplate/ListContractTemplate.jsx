@@ -26,51 +26,7 @@ import "../../assets/styles/css/layoutStyles/ContractWorkspace.css";
 
 const FULL_DOCUMENT_MODE = "FULL_DOCUMENT";
 const DEFAULT_CLAUSE_CONTENT = `
-ĐIỀU 1: NỘI DUNG HỢP ĐỒNG THỬ VIỆC
-1.1. Bên A và Bên B cộng tác các hạng mục:   Bên A cung cấp sản phẩm mẫu và các thông tin cần livestream về sản phẩm cần quảng cáo cho Bên B trên nền tảng Tiktok.   Bên B chịu trách nhiệm thực hiện buổi livestream về sản phẩm cùng các hoạt động quay chụp thêm phát sinh sau khi hai bên thống nhất.
-1.2. Nội dung buổi livestream: Kịch bản, nội dung buổi livestream sẽ do bên A quyết định và nội dung không vi phạm pháp luật, không xâm phạm quyền và lợi ích của cá nhân, cơ quan, tổ chức khác.
-1.3. Địa điểm và thời gian làm việc: Bên A sẽ lựa chọn và chịu trách nhiệm về địa điểm và thời gian thực hiện bắt đầu từ 19:00 tới 22:00 hàng ngày.
-1.4. Thời gian thử việc:   Thời gian thử việc: 1 tháng   Bắt đầu từ ngày: 06/05/2026   Đến hết ngày: 06/06/2026
-
-ĐIỀU 2: TRANG THIẾT BỊ, DỤNG CỤ VÀ CHÍNH SÁCH HỖ TRỢ ĐỂ THỰC HIỆN HẠNG MỤC CỘNG TÁC
-2.1. Bên A cung cấp miễn phí sản phẩm mẫu cho bên B để phục vụ việc thực hiện hạng mục cộng tác. Số lượng, chủng loại sản phẩm mẫu hai bên sẽ thỏa thuận thông qua ban kiểm duyệt quy định tại Hợp đồng này.
-2.2. Bên A tự chịu trách nhiệm chuẩn bị đầy đủ trang thiết bị, dụng cụ để phục vụ cho việc thực hiện hạng mục công tác đầy đủ, kịp thời theo đúng yêu cầu về chất lượng của Bên A nếu có.
-
-ĐIỀU 3: THÙ LAO VÀ QUYỀN LỢI CỦA NGƯỜI LAO ĐỘNG
-3.1. Tổng mức thù lao bao gồm phí dịch vụ   Giá trị hợp đồng được tính với giá 150,000 đồng 1 giờ. Một ngày sẽ thực hiện quay livestream 3 tiếng từ 19:00 – 22:00 hàng ngày. Tiền lương của người lao động sẽ bằng 85% số ngày công thực tế làm việc trong 1 tháng.   Trong vòng 1 tháng sẽ có 4 buổi nghỉ phép bất kì không trùng chủ nhật.   Số lương thực nhận của bên B sẽ được tính sau khi đã trừ các chi phí khác nếu có và ngày nghỉ thực tế sẽ được ghi nhận trong phụ lục 1 của hợp đồng này.
-3.2. Hình thức thanh toán   Hình thức thanh toán: Chuyển khoản.   Thời gian thanh toán: Bên A sẽ thanh toán phí dịch vụ cho Bên B trong thời gian mười lăm (15) ngày kể từ khi Bên B hoàn thành công việc tháng trước đó và sau khi hai (02) Bên ký Biên bản phụ lục nếu có. (Ghi chú: Bản gốc ghi "mười năm (15) ngày", có thể là lỗi chính tả của từ "mười lăm").   Tài khoản thanh toán: 5110792125 Ngân hàng: BIDV - CN   Trường hợp có thay đổi về thông tin thanh toán, Bên B gửi thông báo bằng văn bản tới Bên A trước thời điểm thanh toán ít nhất 03 ngày làm việc.
-
-ĐIỀU 4: CHẾ TÀI VI PHẠM
-4.1. Phạt vi phạm hợp đồng và bồi thường thiệt hại
-Nếu Bên A vi phạm nghĩa vụ thanh toán, Bên A sẽ phải thanh toán thêm khoản tiền lãi chậm thanh toán với mức lãi suất là 0,01%/ngày vi phạm. Nếu Bên B vi phạm Hợp đồng, Bên B sẽ phải thanh toán cho Bên A một khoản tiền phạt tương đương 8% giá trị nghĩa vụ Hợp đồng bị vi phạm. Ngoài khoản phạt, bên vi phạm Hợp đồng phải bồi thường toàn bộ thiệt hại phát sinh.
-
-ĐIỀU 5 (Đánh số theo bản gốc): QUYỀN VÀ NGHĨA VỤ CỦA BÊN A
-5.1. Cung cấp thông tin trung thực, chính xác về thông tin của sản bộ sưu tập và chịu trách nhiệm về các thông tin do mình cung cấp cho bên B.
-5.2. Cung cấp chính xác và đầy đủ sản phẩm mẫu để bên B thực hiện các hạng mục cộng tác.
-5.3 Nếu có tranh chấp về nhãn hiệu, bản quyền... sản phẩm của bên A thì bên A phải hoàn toàn tự chịu trách nhiệm.
-5.4. Có quyền yêu cầu Bên B bồi thường thiệt hại nếu bên B vi phạm thỏa thuận của hợp đồng.
-5.5. Bên A có toàn quyền sử dụng và quyền sở hữu đối với hình ảnh bộ sưu tập sau khi hoàn thành.
-
-ĐIỀU 6: QUYỀN VÀ TRÁCH NHIỆM CỦA BÊN B
-6.1. Không sử dụng sản phẩm mẫu thuộc quyền sở hữu của Bên A vào mục đích cá nhân hoặc thương mại ngoài mục đích thực hiện hạng mục cộng tác quy định trong hợp đồng này khi chưa được Bên A đồng ý bằng văn bản.
-6.2. Báo cáo cho bên A tiến độ công việc mà bên B đang thực hiện.
-6.3. Tất cả các nội dung và hình ảnh về bộ sưu tập sau khi hoàn thành sẽ thuộc sở hữu bản quyền của bên A. Bên A có thể sử dụng các hạng trên phục vụ mục kinh doanh trên các kênh thương mại.
-
-ĐIỀU 7: CÁC TRƯỜNG HỢP CHẤM DỨT HỢP ĐỒNG
-Hợp đồng này sẽ chấm dứt trong các trường hợp sau:
-7.1. Khi Hợp Đồng hết thời hạn mà Các Bên không ký kết thỏa thuận gia hạn bằng văn bản
-7.2. Theo thỏa thuận của các Bên;
-7.3. Đơn phương chấm dứt Hợp đồng trong trường hợp một (01) trong hai (02) Bên vi phạm nghiêm trọng nghĩa vụ Hợp đồng và không thể thỏa thuận được.
-7.4. Các Bên đã hoàn thành toàn bộ nghĩa vụ theo quy định tại Hợp đồng. Theo thỏa thuận bằng văn bản giữa các Bên. Một trong các Bên phá sản, giải thể, ngừng hoạt động kinh doanh hoặc chấm dứt hoạt động theo quy định của pháp luật mà quyền và nghĩa vụ không được kế thừa hoặc không được chuyển giao cho người khác. Hợp đồng bị đơn phương chấm dứt thực hiện. Các trường hợp khác theo quy định của pháp luật và của Hợp đồng.
-7.5. Hợp đồng được tự động thanh lý khi Các Bên đã hoàn thành mọi quyền và nghĩa vụ đối với nhau theo Hợp đồng này.
-
-ĐIỀU 8: ĐIỀU KHOẢN CUỐI CÙNG
-8.1. Hai Bên cam kết bảo mật toàn bộ các thông tin liên quan bao gồm nhưng không giới hạn ở các điều khoản và điều kiện của Hợp Đồng này, và các thông tin liên quan được một trong Hai Bên trao đổi dưới bất cứ hình thức nào, không tiết lộ, sử dụng hay cho phép bất kỳ một bên thứ ba nào sử dụng những thông tin này, trừ trường hợp được sự đồng ý trước bằng văn bản của bên còn lại hoặc cung cấp thông tin theo yêu cầu của cơ quan nhà nước có thẩm quyền.
-8.2. Trong trường hợp một hoặc nhiều điều, khoản, điểm trong Hợp Đồng này bị cơ quan nhà nước có thẩm quyền tuyên là vô hiệu, không có giá trị pháp lý hoặc không thể thi hành theo quy định hiện hành của pháp luật thì các điều, khoản, điểm khác của Hợp Đồng này vẫn có hiệu lực thi hành đối với Hai Bên. Hai Bên sẽ thống nhất sửa đổi các điều, khoản, điểm bị vô hiệu hoặc không có giá trị pháp lý hoặc không thể thi hành theo quy định của pháp luật và phù hợp với ý chí của Hai Bên.
-8.3. Hợp đồng này có hiệu lực kể từ thời điểm các bên ký kết. Mọi sửa đổi bổ sung phải được cả hai bên lập thành văn bản;
-8.4. Hợp Đồng này được áp dụng và giải thích theo pháp luật của nước Cộng Hòa Xã Hội Chủ Nghĩa Việt Nam. Trong quá trình thực hiện Hợp Đồng này, bất kỳ tranh chấp nào xảy ra liên quan đến Hợp Đồng này sẽ được giải quyết thông qua thương lượng giữa hai bên, dựa trên nguyên tắc cộng tác đảm bảo lợi ích của nhau và được thể hiện bằng văn bản. Trường hợp hai bên không thể giải quyết thông qua thương lượng được, tranh chấp sẽ được đưa ra Tòa án có thẩm quyền để giải quyết, và quyết định của Tòa án là quyết định cuối cùng mà các bên phải thực hiện.
-8.5 Hai bên đều đã tự đọc lại toàn bộ nội dung của Hợp đồng này, đã hiểu và đồng ý với toàn bộ nội dung ghi trong Hợp đồng, không có điều gì vướng mắc. Bên A, bên B đã tự nguyện ký tên/đóng dấu/điểm chỉ vào Hợp đồng này.
-Hợp đồng được lập thành hai (02) bản gốc có giá trị pháp lý như nhau, mỗi bên giữ 01 bản làm bằng chứng.`;
+`;
 
 function buildFullDocumentContent(clauseContent = DEFAULT_CLAUSE_CONTENT) {
     const clauses = clauseContent?.trim() || DEFAULT_CLAUSE_CONTENT;
@@ -79,7 +35,6 @@ function buildFullDocumentContent(clauseContent = DEFAULT_CLAUSE_CONTENT) {
 Độc lập - Tự do - Hạnh phúc
 
 HỢP ĐỒNG
-Tên hợp đồng: {{contract_title}}
 Số hợp đồng: {{contract_number}}
 
 - Căn cứ Bộ Luật dân sự số: 91/2015/QH13 được Quốc hội nước Cộng hòa xã hội chủ nghĩa Việt Nam khóa XIII, kỳ họp thứ 10 thông qua ngày 24 tháng 11 năm 2015 và có hiệu lực từ ngày 01/01/2017;
@@ -95,7 +50,6 @@ Chức vụ/Vai trò: {{party_a_role}}
 Email: {{party_a_email}}
 Số điện thoại: {{party_a_phone}}
 Ngày sinh: {{party_a_date_of_birth}}
-Phòng ban: {{party_a_department}}
 Đơn vị: {{party_a_company}}
 
 BÊN B
@@ -104,18 +58,14 @@ Chức vụ/Vai trò: {{party_b_role}}
 Email: {{party_b_email}}
 Số điện thoại: {{party_b_phone}}
 Ngày sinh: {{party_b_date_of_birth}}
-Phòng ban: {{party_b_department}}
 Đơn vị: {{party_b_company}}
 
 CÁC ĐIỀU KHOẢN HỢP ĐỒNG
 
 ${clauses}
 
-ĐẠI DIỆN BÊN A
-{{director_signature}}
-
-ĐẠI DIỆN BÊN B
-{{partner_signature}}`;
+ĐẠI DIỆN BÊN A\tĐẠI DIỆN BÊN B
+`;
 }
 
 function createEmptyTemplateForm() {
