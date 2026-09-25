@@ -15,9 +15,9 @@ function SignatureToolbar({ searchTerm, onSearchChange, typeFilter, onTypeChange
 
             <select className="filter-select" value={typeFilter} onChange={(e) => onTypeChange(e.target.value)}>
                 <option value="All">Type: All</option>
-                <option value="Drawn">Drawn</option>
+                <option value="Draw">Drawn</option>
                 <option value="Uploaded">Uploaded</option>
-                <option value="Typed">Typed</option>
+
             </select>
 
             <select className="filter-select" value={statusFilter} onChange={(e) => onStatusChange(e.target.value)}>

@@ -38,7 +38,7 @@ function SignatureRow({ signature }) {
             </td>
 
             <td>
-                {signature.default ? "Yes" : "No"}
+                {(signature.default ?? signature.isDefault) ? "Yes" : "No"}
             </td>
 
             <td>

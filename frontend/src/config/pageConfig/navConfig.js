@@ -9,7 +9,7 @@ export const navConfig = [
             { label: "Signature List", path: "/signature-management/list" },
             { label: "Create Signature", path: "/signature-management/create-signature" },
             { label: "View Signature", path: "/signature-management/detail/:id" },
-            { label: "Update Signature", path: "/signature-management/update/:id" },
+            { label: "Update Signature", path: "/signature-management/:id/edit" },
         ],
     },
 

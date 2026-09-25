@@ -11,6 +11,8 @@ import com.fpt.backend.entity.ElectronicSignatures;
 import com.fpt.backend.entity.FileStorage;
 import com.fpt.backend.entity.UserKeys;
 import com.fpt.backend.entity.Users;
+import com.fpt.backend.enums.ElectronicSignatureType;
+import com.fpt.backend.enums.ElectronicStatus;
 import com.fpt.backend.exception.BadHttpException;
 import com.fpt.backend.repository.FileStorageRepository;
 import com.fpt.backend.repository.electronicSignature.ElectronicSignatureRepository;
@@ -43,9 +45,16 @@ public class ElectronicSignatureServiceImpl implements IElectronicSignatureServi
     private FileStorageRepository fileStorageRepository;
     @Autowired
     private UserKeyServiceImpl userKeyService;
+    @Autowired
+    private SignatureUpdateVerificationService updateVerificationService;
+    @Autowired
+    private com.fpt.backend.repository.user.UserRepository userRepository;
     @Override
+    @org.springframework.transaction.annotation.Transactional
     public ElectronicSignatures createElectronicSignature(CreateElectronicSignatureRequest createElectronicSignatureRequest) {
         Users users = currentUser.getCurrentUser();
+        userRepository.lockSignatureOwner(users.getId()).orElseThrow();
+        if (createElectronicSignatureRequest.isDefault()) clearOtherDefaults(users.getId(), null);
         userKeyService.saveUserKey(users, createElectronicSignatureRequest.getPublicKey(), createElectronicSignatureRequest.getKeyCode(), createElectronicSignatureRequest.getCertificate());
         MultipartFile img = createElectronicSignatureRequest.getCreateFileStorageRequests().getMultipartFile();
         FileStorage fileStorage = cloudinaryService.uploadAndSave(img, users);
@@ -62,9 +71,45 @@ public class ElectronicSignatureServiceImpl implements IElectronicSignatureServi
     }
 
     @Override
-    public List<ListElectronicResponse> getAllElectronicSignatures() {
+    public List<ListElectronicResponse> getAllElectronicSignatures(
+            String search,
+            String type,
+            String status
+    ) {
         Users users = currentUser.getCurrentUser();
-        return electronicSignatureRepository.getAllElectronicSignaturesById(users.getId());
+
+        ElectronicSignatureType signatureType = null;
+        ElectronicStatus signatureStatus = null;
+
+        if (type != null
+                && !type.isBlank()
+                && !type.equalsIgnoreCase("All")) {
+
+            signatureType = ElectronicSignatureType.valueOf(
+                    type.toUpperCase()
+            );
+        }
+
+        if (status != null
+                && !status.isBlank()
+                && !status.equalsIgnoreCase("All")) {
+
+            signatureStatus = ElectronicStatus.valueOf(
+                    status.toUpperCase()
+            );
+        }
+
+        String keyword =
+                search == null || search.isBlank()
+                        ? null
+                        : search.trim();
+
+        return electronicSignatureRepository.getAllElectronicSignaturesById(
+                users.getId(),
+                keyword,
+                signatureType,
+                signatureStatus
+        );
     }
 
     @Override
@@ -74,6 +119,7 @@ public class ElectronicSignatureServiceImpl implements IElectronicSignatureServi
     }
 
     @Override
+    @org.springframework.transaction.annotation.Transactional
     public ElectronicSignatures updateElectronicSignature(
             UUID electronicSignatureId,
             UpdateElectronicSignatureRequest request,
@@ -81,12 +127,16 @@ public class ElectronicSignatureServiceImpl implements IElectronicSignatureServi
     ) {
 
         Users user = currentUser.getCurrentUser();
+        userRepository.lockSignatureOwner(user.getId()).orElseThrow();
         ElectronicSignatures signature = electronicSignatureRepository.findById(electronicSignatureId)
                         .orElseThrow(() -> new BadHttpException("Electronic signature not found"));
 
         if (!signature.getUser().getId().equals(user.getId())) {
             throw new BadHttpException("You do not have permission to update this signature");
         }
+        updateVerificationService.verify(electronicSignatureId,
+                request.getVerificationChallengeId(), request.getVerificationSignature());
+        if (request.isDefault()) clearOtherDefaults(user.getId(), signature.getId());
         signature.setElectronicSignatureName(request.getElectronicSignatureName());
         signature.setElectronicSignatureType(request.getElectronicSignatureType());
         signature.setStatus(request.getElectronicStatus());
@@ -99,6 +149,15 @@ public class ElectronicSignatureServiceImpl implements IElectronicSignatureServi
         return electronicSignatureRepository.save(
                 signature
         );
+    }
+
+    private void clearOtherDefaults(UUID userId, UUID selectedId) {
+        for (ElectronicSignatures existing : electronicSignatureRepository.findDefaultsByUserId(userId)) {
+            if (!existing.getId().equals(selectedId)) {
+                existing.setDefault(false);
+                electronicSignatureRepository.save(existing);
+            }
+        }
     }
 
 }

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import PageHeader from "../../components/signature/createSignature/PageHeader.jsx";
@@ -11,6 +11,7 @@ import electronicSignatureService
     from "../../services/signatureService/electronicSignatureService.js";
 import SigningKeyCard from "../../components/signature/SigningKeyCard.jsx";
 import digitalSignatureService from "../../services/signatureService/digitalSignatureService.js";
+import "../../assets/styles/css/signature/SignatureKeyFields.css";
 
 function CreateSignaturePage() {
 
@@ -75,10 +76,6 @@ function CreateSignaturePage() {
             const response =
                 await digitalSignatureService.generateKey();
 
-            console.log(
-                "Generate key response:",
-                response
-            );
 
             const keyData =
                 response?.data?.data;
@@ -304,6 +301,7 @@ function CreateSignaturePage() {
 
 
     const handleSave = async () => {
+        if (loading || keyLoading) return;
         try {
             setLoading(true);
             setError("");
@@ -380,7 +378,7 @@ function CreateSignaturePage() {
             );
 
             formData.append(
-                "isDefault",
+                "default",
                 String(form.isDefault)
             );
 
@@ -485,7 +483,7 @@ function CreateSignaturePage() {
                 <PageHeader
                     onCancel={handleCancel}
                     onSave={handleSave}
-                    loading={loading}
+                    loading={loading || keyLoading}
                 />
 
 
@@ -517,11 +515,17 @@ function CreateSignaturePage() {
                         setSignatureFile(null);
                     }}
                 />
-                <div>
-                    <label>PIN for Private Key</label>
+                <section className="signature-key-fields">
+                    <h2>Protect your private key</h2>
+                    <p>Create a 6-digit PIN to encrypt your private key and its backup.</p>
+                    <div className="signature-key-grid">
+                    <label className="signature-key-field">PIN for Private Key
 
                     <input
                         type="password"
+                        className="form-control"
+                        autoComplete="new-password"
+                        disabled={keyLoading || keyStatus === "ACTIVE"}
                         inputMode="numeric"
                         maxLength={6}
                         value={pin}
@@ -531,13 +535,15 @@ function CreateSignaturePage() {
                         }}
                         placeholder="Enter 6-digit PIN"
                     />
-                </div>
+                    </label>
 
-                <div>
-                    <label>Confirm PIN</label>
+                    <label className="signature-key-field">Confirm PIN
 
                     <input
                         type="password"
+                        className="form-control"
+                        autoComplete="new-password"
+                        disabled={keyLoading || keyStatus === "ACTIVE"}
                         inputMode="numeric"
                         maxLength={6}
                         value={confirmPin}
@@ -547,7 +553,9 @@ function CreateSignaturePage() {
                         }}
                         placeholder="Confirm 6-digit PIN"
                     />
-                </div>
+                    </label>
+                    </div>
+                </section>
                 <SigningKeyCard
                     keyStatus={keyStatus}
                     keyCode={keyCode}

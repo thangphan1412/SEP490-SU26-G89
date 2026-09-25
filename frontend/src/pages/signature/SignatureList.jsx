@@ -1,89 +1,58 @@
-import {useState, useMemo, useEffect} from "react"
+import { useState, useEffect } from "react";
 
-import "../../assets/styles/css/signatureStyles/SignaturePage.css"
+import "../../assets/styles/css/signatureStyles/SignaturePage.css";
 import SignatureToolbar from "../../components/signature/SignatureToolbar.jsx";
 import SignatureTable from "../../components/signature/SignatureTable.jsx";
-import SignaturePagination from "../../components/signature/SignaturePagination.jsx";
-import electronicSignatureService from "../../services/signatureService/electronicSignatureService.js"
-import {useNavigate} from "react-router-dom";
-
+import electronicSignatureService from "../../services/signatureService/electronicSignatureService.js";
+import { useNavigate } from "react-router-dom";
 
 function SignatureList() {
-    const [searchTerm, setSearchTerm] = useState("")
-    const [typeFilter, setTypeFilter] = useState("All")
-    const [statusFilter, setStatusFilter] = useState("All")
-    const [currentPage, setCurrentPage] = useState(1)
-    const [pageSize, setPageSize] = useState(10)
-    const navigate = useNavigate()
+    const [searchTerm, setSearchTerm] = useState("");
+    const [typeFilter, setTypeFilter] = useState("All");
+    const [statusFilter, setStatusFilter] = useState("All");
     const [electronicSignature, setElectronicSignature] = useState([]);
+
+    const navigate = useNavigate();
+
     const loadElectronicSignature = async () => {
         try {
             const response =
-                await electronicSignatureService
-                    .getAllElectronicSignature();
+                await electronicSignatureService.getAllElectronicSignature(
+                    searchTerm,
+                    typeFilter,
+                    statusFilter
+                );
 
             console.log("SIGNATURE DATA:", response.data.data);
 
-            setElectronicSignature(response.data.data);
-
+            setElectronicSignature(response.data.data || []);
         } catch (error) {
-            console.error(error);
+            console.error("LOAD SIGNATURE ERROR:", error);
             setElectronicSignature([]);
         }
     };
+
     useEffect(() => {
         loadElectronicSignature();
-    }, []);
-    const filteredSignatures = useMemo(() => {
-        return electronicSignature.filter((sig) => {
-
-            const name = sig.electronicSignatureName || "";
-            const type = sig.electronicSignatureType || "";
-            const status = sig.electronicStatus || "";
-
-            const matchesSearch =
-                name
-                    .toLowerCase()
-                    .includes(
-                        searchTerm.toLowerCase()
-                    );
-
-            const matchesType =
-                typeFilter === "All" ||
-                type === typeFilter;
-
-            const matchesStatus =
-                statusFilter === "All" ||
-                status === statusFilter;
-
-
-            return (
-                matchesSearch &&
-                matchesType &&
-                matchesStatus
-            );
-        });
-    }, [electronicSignature,
-        searchTerm,
-        typeFilter,
-        statusFilter]);
-
-    const totalPages = Math.max(1, Math.ceil(filteredSignatures.length / pageSize))
+    }, [searchTerm, typeFilter, statusFilter]);
 
     const handleCreateNew = () => {
-       navigate("/signature-management/create-signature")
-    }
+        navigate("/signature-management/create-signature");
+    };
 
     const handleRefresh = () => {
         loadElectronicSignature();
-    }
+    };
 
     return (
         <div className="signatures-page">
             <div className="page-header">
                 <div>
                     <h2>Signatures</h2>
-                    <p className="page-subtitle">Manage your personal electronic signatures for approvals, contracts, and internal documents.</p>
+                    <p className="page-subtitle">
+                        Manage your personal electronic signatures
+                        for approvals, contracts, and internal documents.
+                    </p>
                 </div>
             </div>
 
@@ -99,19 +68,12 @@ function SignatureList() {
             />
 
             <div className="signature-table-wrapper">
-                <SignatureTable electronicSignatures={filteredSignatures} />
+                <SignatureTable
+                    electronicSignatures={electronicSignature}
+                />
             </div>
-
-            <SignaturePagination
-                currentPage={currentPage}
-                totalPages={totalPages}
-                totalResults={filteredSignatures.length}
-                pageSize={pageSize}
-                onPageChange={setCurrentPage}
-                onPageSizeChange={setPageSize}
-            />
         </div>
-    )
+    );
 }
 
-export default SignatureList
+export default SignatureList;
