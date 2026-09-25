@@ -96,8 +96,6 @@ class ContractTypeServiceImplTest {
                 "LEGAL_SERVICE",
                 "Legal service contract",
                 null,
-                365,
-                "Legal",
                 "Active",
                 "tester@example.com",
                 "Legal approval workflow",

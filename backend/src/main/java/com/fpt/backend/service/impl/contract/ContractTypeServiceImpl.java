@@ -183,10 +183,6 @@ public class ContractTypeServiceImpl implements ContractTypeService {
 
         requireText(request.contractTypeCode(), "Contract type code is required");
         requireText(request.contractTypeName(), "Contract type name is required");
-
-        if (request.validityDays() != null && request.validityDays() <= 0) {
-            throw new BadHttpException("Default validity must be greater than zero");
-        }
     }
 
     private void applyRequest(ContractTypes contractType, ContractTypeRequest request) {
@@ -197,8 +193,6 @@ public class ContractTypeServiceImpl implements ContractTypeService {
                 requireText(request.contractTypeName(), "Contract type name is required")
         );
         contractType.setDescription(normalizeToNull(request.description()));
-        contractType.setValidityDays(request.validityDays());
-        contractType.setCategory(normalizeToNull(request.category()));
         contractType.setStatus(
                 isBlank(request.status()) ? DEFAULT_STATUS : request.status().trim()
         );
@@ -225,8 +219,6 @@ public class ContractTypeServiceImpl implements ContractTypeService {
                 contractType.getContractTypeCode(),
                 contractType.getContractTypeName(),
                 contractType.getDescription(),
-                contractType.getValidityDays(),
-                contractType.getCategory(),
                 contractType.getStatus(),
                 contractType.getCreatedBy(),
                 contractType.getCreatedAt(),

@@ -23,8 +23,6 @@ const EMPTY_FORM = {
     contractTypeCode: "",
     contractTypeName: "",
     description: "",
-    validityDays: "",
-    category: "Legal",
     status: "Active",
     createdBy: "",
     workflowName: "Contract approval workflow",
@@ -161,7 +159,6 @@ function ListContractType() {
                 item.contractTypeCode,
                 item.contractTypeName,
                 item.description,
-                item.category,
                 item.status,
             ]
                 .filter(Boolean)
@@ -190,8 +187,6 @@ function ListContractType() {
             contractTypeCode: contractType.contractTypeCode || "",
             contractTypeName: contractType.contractTypeName || "",
             description: contractType.description || "",
-            validityDays: contractType.validityDays || "",
-            category: contractType.category || "Legal",
             status: contractType.status || "Active",
             createdBy:
                 contractType.createdBy ||
@@ -309,11 +304,6 @@ function ListContractType() {
             return;
         }
 
-        if (form.validityDays && Number(form.validityDays) <= 0) {
-            setModalError("Default validity must be greater than zero.");
-            return;
-        }
-
         if (!form.workflowName.trim() || form.workflowSteps.length < 2) {
             setModalError(
                 "Workflow name and at least two workflow steps are required."
@@ -340,10 +330,6 @@ function ListContractType() {
             contractTypeCode: form.contractTypeCode.trim(),
             contractTypeName: form.contractTypeName.trim(),
             description: form.description.trim() || null,
-            validityDays: form.validityDays
-                ? Number(form.validityDays)
-                : null,
-            category: form.category.trim() || null,
             status: form.status,
             createdBy: form.createdBy.trim() || null,
             workflowName: form.workflowName.trim(),
@@ -436,7 +422,7 @@ function ListContractType() {
                         <IconSearch size={20} />
                         <input
                             aria-label="Search contract types"
-                            placeholder="Search code, name, category or description..."
+                            placeholder="Search code, name or description..."
                             value={search}
                             onChange={(event) => setSearch(event.target.value)}
                         />
@@ -465,8 +451,6 @@ function ListContractType() {
                             <tr>
                                 <th>Type Code</th>
                                 <th>Type Name</th>
-                                <th>Category</th>
-                                <th>Default Validity</th>
                                 <th>Templates</th>
                                 <th>Contracts</th>
                                 <th>Status</th>
@@ -475,12 +459,12 @@ function ListContractType() {
                         </thead>
                         <tbody>
                             {loading ? (
-                                <StateRow colSpan={8}>
+                                <StateRow colSpan={6}>
                                     <Spinner animation="border" size="sm" />
                                     Loading contract types...
                                 </StateRow>
                             ) : filteredTypes.length === 0 ? (
-                                <StateRow colSpan={8}>
+                                <StateRow colSpan={6}>
                                     No contract types found.
                                 </StateRow>
                             ) : (
@@ -491,12 +475,6 @@ function ListContractType() {
                                         </td>
                                         <td>
                                             {contractType.contractTypeName}
-                                        </td>
-                                        <td>{contractType.category || "-"}</td>
-                                        <td>
-                                            {contractType.validityDays
-                                                ? `${contractType.validityDays} days`
-                                                : "-"}
                                         </td>
                                         <td>{contractType.templateCount || 0}</td>
                                         <td>{contractType.contractCount || 0}</td>
@@ -622,18 +600,6 @@ function ContractTypeModal({
                                 value={contractType?.contractTypeName}
                             />
                             <DetailItem
-                                label="Category"
-                                value={contractType?.category}
-                            />
-                            <DetailItem
-                                label="Default Validity"
-                                value={
-                                    contractType?.validityDays
-                                        ? `${contractType.validityDays} days`
-                                        : "-"
-                                }
-                            />
-                            <DetailItem
                                 label="Status"
                                 value={
                                     <StatusBadge
@@ -714,35 +680,6 @@ function ContractTypeModal({
                                 placeholder="e.g. Non-disclosure Agreement"
                                 required
                             />
-                            <FormField
-                                label="Default Validity (days)"
-                                name="validityDays"
-                                type="number"
-                                min="1"
-                                value={form.validityDays}
-                                onChange={onChange}
-                            />
-                            <div>
-                                <label
-                                    htmlFor="category"
-                                    className="contract-form-label"
-                                >
-                                    Category
-                                </label>
-                                <select
-                                    id="category"
-                                    name="category"
-                                    className="form-select"
-                                    value={form.category}
-                                    onChange={onChange}
-                                >
-                                    <option>Legal</option>
-                                    <option>Commercial</option>
-                                    <option>Human Resources</option>
-                                    <option>Procurement</option>
-                                    <option>Other</option>
-                                </select>
-                            </div>
                             <div>
                                 <label
                                     htmlFor="status"

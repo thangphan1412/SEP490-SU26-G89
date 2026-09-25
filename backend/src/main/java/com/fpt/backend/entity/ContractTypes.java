@@ -25,12 +25,6 @@ public class ContractTypes extends BaseEntity {
     @Column(name = "description", columnDefinition = "nvarchar(1000)")
     private String description;
 
-    @Column(name = "validity_days")
-    private Integer validityDays;
-
-    @Column(name = "category", columnDefinition = "nvarchar(100)")
-    private String category;
-
     @Column(name = "status", columnDefinition = "nvarchar(30)")
     private String status;
 

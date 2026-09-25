@@ -8,8 +8,6 @@ public record ContractTypeResponse(
         String contractTypeCode,
         String contractTypeName,
         String description,
-        Integer validityDays,
-        String category,
         String status,
         String createdBy,
         LocalDateTime createdAt,

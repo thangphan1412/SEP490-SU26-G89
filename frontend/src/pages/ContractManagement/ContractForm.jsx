@@ -118,6 +118,10 @@ function ContractForm({
                     value={contract.projectId}
                     onChange={onChange}
                     disabled={loadingProjects}
+                    hint={!loadingProjects && projects.length === 0
+                        ? "No project available. A project is listed only when you are its member "
+                            + "with the CREATE_CONTRACTS permission and it has been approved (not On Hold)."
+                        : ""}
                 >
                     <option value="">
                         {loadingProjects
@@ -534,6 +538,7 @@ function SelectField({
     children,
     disabled = false,
     required = false,
+    hint = "",
 }) {
     return (
         <div>
@@ -550,6 +555,9 @@ function SelectField({
             >
                 {children}
             </select>
+            {hint && (
+                <small className="form-text text-muted d-block mt-1">{hint}</small>
+            )}
         </div>
     );
 }
