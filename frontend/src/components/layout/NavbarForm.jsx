@@ -15,7 +15,7 @@ function NavbarForm() {
     return (
         <div className="sidebar-container">
             {activeSection.children
-                // Lọc những trang được phép vào theo Role (nếu có config allowedRoles)
+
                 .filter(item => !item.allowedRoles || item.allowedRoles.includes(currentUserRole))
                 .map((item) => (
                 <NavLink

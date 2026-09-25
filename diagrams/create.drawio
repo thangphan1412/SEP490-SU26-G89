@@ -1,0 +1,104 @@
+<?xml version='1.0' encoding='utf-8'?>
+<mxfile host="app.diagrams.net" type="device">
+  <diagram name="Create" id="create">
+    <mxGraphModel dx="1400" dy="900" grid="1" gridSize="10" page="1" pageWidth="1700" pageHeight="1100">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="2" value="&lt;div style=&quot;text-align:center&quot;&gt;&lt;b&gt;CreateSignaturePage&lt;/b&gt;&lt;br&gt;&lt;i&gt;&amp;lt;&amp;lt;React page&amp;gt;&amp;gt;&lt;/i&gt;&lt;/div&gt;&lt;hr&gt;&lt;div&gt;&amp;nbsp;&lt;/div&gt;&lt;hr&gt;&lt;div&gt;+ generateKey()&lt;/div&gt;&lt;div&gt;+ createSignature(formData)&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=10;fillColor=#f5f3ff;strokeColor=#8b5cf6;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="30" y="60" width="270" height="108" />
+        </mxCell>
+        <mxCell id="3" value="&lt;div style=&quot;text-align:center&quot;&gt;&lt;b&gt;electronicSignatureService&lt;/b&gt;&lt;br&gt;&lt;i&gt;&amp;lt;&amp;lt;frontend service&amp;gt;&amp;gt;&lt;/i&gt;&lt;/div&gt;&lt;hr&gt;&lt;div&gt;&amp;nbsp;&lt;/div&gt;&lt;hr&gt;&lt;div&gt;+ createElectronicSignature(data)&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=10;fillColor=#f5f3ff;strokeColor=#8b5cf6;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="30" y="310" width="310" height="95" />
+        </mxCell>
+        <mxCell id="4" value="&lt;div style=&quot;text-align:center&quot;&gt;&lt;b&gt;digitalSignatureService&lt;/b&gt;&lt;br&gt;&lt;i&gt;&amp;lt;&amp;lt;frontend service&amp;gt;&amp;gt;&lt;/i&gt;&lt;/div&gt;&lt;hr&gt;&lt;div&gt;&amp;nbsp;&lt;/div&gt;&lt;hr&gt;&lt;div&gt;+ generateKey()&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=10;fillColor=#f5f3ff;strokeColor=#8b5cf6;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="30" y="560" width="310" height="95" />
+        </mxCell>
+        <mxCell id="5" value="&lt;div style=&quot;text-align:center&quot;&gt;&lt;b&gt;SignatureController&lt;/b&gt;&lt;br&gt;&lt;i&gt;&amp;lt;&amp;lt;REST controller&amp;gt;&amp;gt;&lt;/i&gt;&lt;/div&gt;&lt;hr&gt;&lt;div&gt;&amp;nbsp;&lt;/div&gt;&lt;hr&gt;&lt;div&gt;+ generateKey()&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=10;fillColor=#f5f3ff;strokeColor=#8b5cf6;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="400" y="650" width="280" height="95" />
+        </mxCell>
+        <mxCell id="6" value="&lt;div style=&quot;text-align:center&quot;&gt;&lt;b&gt;ElectronicSignatureController&lt;/b&gt;&lt;br&gt;&lt;i&gt;&amp;lt;&amp;lt;REST controller&amp;gt;&amp;gt;&lt;/i&gt;&lt;/div&gt;&lt;hr&gt;&lt;div&gt;&amp;nbsp;&lt;/div&gt;&lt;hr&gt;&lt;div&gt;+ createElectronic(request, multipartFile)&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=10;fillColor=#f5f3ff;strokeColor=#8b5cf6;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="410" y="200" width="290" height="95" />
+        </mxCell>
+        <mxCell id="7" value="&lt;div style=&quot;text-align:center&quot;&gt;&lt;b&gt;ElectronicSignatureServiceImpl&lt;/b&gt;&lt;br&gt;&lt;i&gt;&amp;lt;&amp;lt;service&amp;gt;&amp;gt;&lt;/i&gt;&lt;/div&gt;&lt;hr&gt;&lt;div&gt;&amp;nbsp;&lt;/div&gt;&lt;hr&gt;&lt;div&gt;+ createElectronicSignature(request): ElectronicSignatures&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=10;fillColor=#f5f3ff;strokeColor=#8b5cf6;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="780" y="200" width="315" height="95" />
+        </mxCell>
+        <mxCell id="8" value="&lt;div style=&quot;text-align:center&quot;&gt;&lt;b&gt;ElectronicSignatureRepository&lt;/b&gt;&lt;br&gt;&lt;i&gt;&amp;lt;&amp;lt;repository&amp;gt;&amp;gt;&lt;/i&gt;&lt;/div&gt;&lt;hr&gt;&lt;div&gt;&amp;nbsp;&lt;/div&gt;&lt;hr&gt;&lt;div&gt;+ save(signature): ElectronicSignatures&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=10;fillColor=#f5f3ff;strokeColor=#8b5cf6;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="1180" y="200" width="300" height="95" />
+        </mxCell>
+        <mxCell id="9" value="&lt;div style=&quot;text-align:center&quot;&gt;&lt;b&gt;CurrentUser&lt;/b&gt;&lt;br&gt;&lt;i&gt;&amp;lt;&amp;lt;security utility&amp;gt;&amp;gt;&lt;/i&gt;&lt;/div&gt;&lt;hr&gt;&lt;div&gt;&amp;nbsp;&lt;/div&gt;&lt;hr&gt;&lt;div&gt;+ getCurrentUser(): Users&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=10;fillColor=#f5f3ff;strokeColor=#8b5cf6;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="800" y="520" width="270" height="95" />
+        </mxCell>
+        <mxCell id="10" value="&lt;div style=&quot;text-align:center&quot;&gt;&lt;b&gt;ElectronicSignatures&lt;/b&gt;&lt;br&gt;&lt;i&gt;&amp;lt;&amp;lt;entity&amp;gt;&amp;gt;&lt;/i&gt;&lt;/div&gt;&lt;hr&gt;&lt;div&gt;&lt;font color=&quot;#d62828&quot;&gt;- UUID id&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;font color=&quot;#d62828&quot;&gt;- String electronicSignatureName&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;font color=&quot;#d62828&quot;&gt;- ElectronicSignatureType electronicSignatureType&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;font color=&quot;#d62828&quot;&gt;- ElectronicStatus status&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;font color=&quot;#d62828&quot;&gt;- boolean isDefault&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;font color=&quot;#d62828&quot;&gt;- LocalDate createdAt&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;font color=&quot;#d62828&quot;&gt;- LocalDate updatedAt&lt;/font&gt;&lt;/div&gt;&lt;hr&gt;&lt;div&gt;&amp;nbsp;&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=10;fillColor=#f5f3ff;strokeColor=#8b5cf6;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="1170" y="520" width="340" height="223" />
+        </mxCell>
+        <mxCell id="11" value="&lt;div style=&quot;text-align:center&quot;&gt;&lt;b&gt;CreateElectronicSignatureRequest&lt;/b&gt;&lt;br&gt;&lt;i&gt;&amp;lt;&amp;lt;DTO&amp;gt;&amp;gt;&lt;/i&gt;&lt;/div&gt;&lt;hr&gt;&lt;div&gt;&lt;font color=&quot;#d62828&quot;&gt;- String electronicSignatureName&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;font color=&quot;#d62828&quot;&gt;- ElectronicSignatureType electronicSignatureType&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;font color=&quot;#d62828&quot;&gt;- ElectronicStatus electronicStatus&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;font color=&quot;#d62828&quot;&gt;- boolean isDefault&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;font color=&quot;#d62828&quot;&gt;- String publicKey&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;font color=&quot;#d62828&quot;&gt;- String keyCode&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;font color=&quot;#d62828&quot;&gt;- String certificate&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;font color=&quot;#d62828&quot;&gt;- CreateFileStorageRequest createFileStorageRequests&lt;/font&gt;&lt;/div&gt;&lt;hr&gt;&lt;div&gt;&amp;nbsp;&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=10;fillColor=#f5f3ff;strokeColor=#8b5cf6;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="390" y="520" width="350" height="246" />
+        </mxCell>
+        <mxCell id="12" value="&lt;div style=&quot;text-align:center&quot;&gt;&lt;b&gt;UserKeyServiceImpl&lt;/b&gt;&lt;br&gt;&lt;i&gt;&amp;lt;&amp;lt;service&amp;gt;&amp;gt;&lt;/i&gt;&lt;/div&gt;&lt;hr&gt;&lt;div&gt;&amp;nbsp;&lt;/div&gt;&lt;hr&gt;&lt;div&gt;+ generateUserKey(user)&lt;/div&gt;&lt;div&gt;+ saveUserKey(user, publicKey, keyCode, certificate)&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=10;fillColor=#f5f3ff;strokeColor=#8b5cf6;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="770" y="690" width="330" height="108" />
+        </mxCell>
+        <mxCell id="13" value="&lt;div style=&quot;text-align:center&quot;&gt;&lt;b&gt;UserKeysRepository&lt;/b&gt;&lt;br&gt;&lt;i&gt;&amp;lt;&amp;lt;repository&amp;gt;&amp;gt;&lt;/i&gt;&lt;/div&gt;&lt;hr&gt;&lt;div&gt;&amp;nbsp;&lt;/div&gt;&lt;hr&gt;&lt;div&gt;+ save(userKey): UserKeys&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=10;fillColor=#f5f3ff;strokeColor=#8b5cf6;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="1170" y="880" width="300" height="95" />
+        </mxCell>
+        <mxCell id="14" value="&lt;div style=&quot;text-align:center&quot;&gt;&lt;b&gt;UserKeys&lt;/b&gt;&lt;br&gt;&lt;i&gt;&amp;lt;&amp;lt;entity&amp;gt;&amp;gt;&lt;/i&gt;&lt;/div&gt;&lt;hr&gt;&lt;div&gt;&lt;font color=&quot;#d62828&quot;&gt;- String publicKey&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;font color=&quot;#d62828&quot;&gt;- String keyCode&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;font color=&quot;#d62828&quot;&gt;- String certificate&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;font color=&quot;#d62828&quot;&gt;- long keySize&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;font color=&quot;#d62828&quot;&gt;- KeyAlgorithm keyAlgorithm&lt;/font&gt;&lt;/div&gt;&lt;hr&gt;&lt;div&gt;&amp;nbsp;&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=10;fillColor=#f5f3ff;strokeColor=#8b5cf6;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="770" y="920" width="320" height="177" />
+        </mxCell>
+        <mxCell id="15" value="&lt;div style=&quot;text-align:center&quot;&gt;&lt;b&gt;CloudinaryService&lt;/b&gt;&lt;br&gt;&lt;i&gt;&amp;lt;&amp;lt;service&amp;gt;&amp;gt;&lt;/i&gt;&lt;/div&gt;&lt;hr&gt;&lt;div&gt;&amp;nbsp;&lt;/div&gt;&lt;hr&gt;&lt;div&gt;+ uploadAndSave(file, user): FileStorage&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=10;fillColor=#f5f3ff;strokeColor=#8b5cf6;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="780" y="940" width="310" height="95" />
+        </mxCell>
+        <mxCell id="16" value="&lt;div style=&quot;text-align:center&quot;&gt;&lt;b&gt;FileStorage&lt;/b&gt;&lt;br&gt;&lt;i&gt;&amp;lt;&amp;lt;entity&amp;gt;&amp;gt;&lt;/i&gt;&lt;/div&gt;&lt;hr&gt;&lt;div&gt;&lt;font color=&quot;#d62828&quot;&gt;- String filePath&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;font color=&quot;#d62828&quot;&gt;- String originalName&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;font color=&quot;#d62828&quot;&gt;- String mimeType&lt;/font&gt;&lt;/div&gt;&lt;hr&gt;&lt;div&gt;&amp;nbsp;&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=10;fillColor=#f5f3ff;strokeColor=#8b5cf6;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="390" y="950" width="310" height="131" />
+        </mxCell>
+        <mxCell id="17" value="create" style="endArrow=open;dashed=1;html=1;strokeColor=#555555;" edge="1" parent="1" source="2" target="3">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="18" value="generate RSA key" style="endArrow=open;dashed=1;html=1;strokeColor=#555555;" edge="1" parent="1" source="2" target="4">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="19" value="POST /signature/keys/generate" style="endArrow=open;dashed=1;html=1;strokeColor=#555555;" edge="1" parent="1" source="4" target="5">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="20" value="generate key" style="endArrow=open;dashed=1;html=1;strokeColor=#555555;" edge="1" parent="1" source="5" target="12">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="21" value="POST /create/electronic-signatures" style="endArrow=open;dashed=1;html=1;strokeColor=#555555;" edge="1" parent="1" source="3" target="6">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="22" value="model attribute" style="endArrow=open;dashed=1;html=1;strokeColor=#555555;" edge="1" parent="1" source="6" target="11">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="23" value="delegates" style="endArrow=open;dashed=1;html=1;strokeColor=#555555;" edge="1" parent="1" source="6" target="7">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="24" value="authenticated user" style="endArrow=open;dashed=1;html=1;strokeColor=#555555;" edge="1" parent="1" source="7" target="9">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="25" value="save public key" style="endArrow=open;dashed=1;html=1;strokeColor=#555555;" edge="1" parent="1" source="7" target="12">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="26" value="save" style="endArrow=open;dashed=1;html=1;strokeColor=#555555;" edge="1" parent="1" source="12" target="13">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="27" value="persists" style="endArrow=open;dashed=1;html=1;strokeColor=#555555;" edge="1" parent="1" source="13" target="14">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="28" value="upload image" style="endArrow=open;dashed=1;html=1;strokeColor=#555555;" edge="1" parent="1" source="7" target="15">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="29" value="creates" style="endArrow=open;dashed=1;html=1;strokeColor=#555555;" edge="1" parent="1" source="15" target="16">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="30" value="save signature" style="endArrow=open;dashed=1;html=1;strokeColor=#555555;" edge="1" parent="1" source="7" target="8">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="31" value="persists" style="endArrow=open;dashed=1;html=1;strokeColor=#555555;" edge="1" parent="1" source="8" target="10">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="32" value="image" style="endArrow=open;html=1;rounded=0;strokeColor=#555555;fontSize=12;" edge="1" parent="1" source="10" target="16">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

@@ -24,6 +24,16 @@ import java.util.UUID;
 public class ElectronicSignatureController {
     @Autowired
     private ElectronicSignatureServiceImpl electronicSignatureService;
+    @Autowired
+    private com.fpt.backend.service.impl.electronicSignature.SignatureUpdateVerificationService updateVerificationService;
+
+    @PostMapping("/electronic-signatures/{id}/update-challenge")
+    public ResponseEntity<BaseResponse<?>> createUpdateChallenge(@PathVariable UUID id,
+            @RequestBody UpdateChallengeRequest request) {
+        return ResponseEntity.ok(new BaseResponse<>(updateVerificationService.create(id, request.keyCode())));
+    }
+
+    public record UpdateChallengeRequest(String keyCode) {}
 
     @PostMapping(ApiConstant.Signatures.ELECTRONICSIGNATURES)
     public ResponseEntity<BaseResponse<?>> createElectronic(
@@ -45,8 +55,20 @@ public class ElectronicSignatureController {
                 .body(new BaseResponse<>());
     }
     @GetMapping(ApiConstant.Signatures.SIGNATURES)
-    public ResponseEntity<BaseResponse<List<ListElectronicResponse>>> getAll() {
-        return ResponseEntity.ok(new BaseResponse<>(electronicSignatureService.getAllElectronicSignatures()));
+    public ResponseEntity<BaseResponse<List<ListElectronicResponse>>> getAll(
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String type,
+            @RequestParam(required = false) String status
+    ) {
+        return ResponseEntity.ok(
+                new BaseResponse<>(
+                        electronicSignatureService.getAllElectronicSignatures(
+                                search,
+                                type,
+                                status
+                        )
+                )
+        );
     }
 
     @GetMapping(ApiConstant.Signatures.ELECTRONICBYID)

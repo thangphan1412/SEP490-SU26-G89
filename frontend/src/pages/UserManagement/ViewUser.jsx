@@ -103,7 +103,7 @@ function ViewUser() {
                 });
             } catch (error) {
                 console.error("Lỗi khi lấy dữ liệu người dùng:", error);
-                alert("Không thể tải thông tin người dùng!");
+                alert("Unable to load user information.");
                 // Giữ nguyên viewType khi có lỗi trả về trang list
                 navigate(`/user-management/list?type=${viewType}`);
             } finally {
@@ -134,7 +134,7 @@ function ViewUser() {
                         <svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0"></path><path d="M9 12l2 2l4 -4"></path></svg>
                     </div>
                     <h2 className="fw-bold mb-3 text-dark">Access Denied</h2>
-                    <h5 className="text-secondary mb-4">Bạn không có quyền truy cập vào chức năng này!</h5>
+                    <h5 className="text-secondary mb-4">You do not have permission to access this feature.</h5>
                     <Button variant="primary" className="fw-bold px-4" onClick={() => navigate("/home_page")}>
                         Quay lại Trang chủ
                     </Button>

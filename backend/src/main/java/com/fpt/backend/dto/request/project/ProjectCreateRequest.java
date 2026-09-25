@@ -17,7 +17,7 @@ public record ProjectCreateRequest(
         @NotBlank(message = "Project code is required")
         @Pattern(
                 regexp = "^PRJ-\\d{4}-[\\p{L}\\p{N}](?:[^\\r\\n]*[\\p{L}\\p{N}])?$",
-                message = "Project code must follow format PRJ-yyyy-Project Name (e.g. PRJ-2026-Thời trang mùa đông)"
+                message = "Project code must use the format PRJ-yyyy-Project Name (e.g. PRJ-2026-Winter Fashion)."
         )
         @Size(max = 50, message = "Project code must not exceed 50 characters")
         String projectCode,

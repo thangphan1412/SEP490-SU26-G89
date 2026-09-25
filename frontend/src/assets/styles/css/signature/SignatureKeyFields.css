@@ -1,0 +1,21 @@
+.signature-key-fields {
+    margin: 24px 0;
+    padding: 24px;
+    border: 1px solid #dfe5ef;
+    border-radius: 12px;
+    background: #fff;
+    box-shadow: 0 2px 8px rgb(15 23 42 / 4%);
+}
+.signature-key-fields h2 { margin: 0 0 8px; font-size: 18px; color: #243452; }
+.signature-key-fields p, .signature-key-fields small { color: #64748b; font-size: 13px; }
+.signature-key-fields fieldset { min-width: 0; }
+.signature-key-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+.signature-key-field { display: flex; flex-direction: column; gap: 8px; min-width: 0; font-size: 14px; font-weight: 600; color: #334155; }
+.signature-key-field .form-control { min-height: 44px; width: 100%; font-weight: 400; }
+.signature-key-field textarea { resize: vertical; overflow-wrap: anywhere; }
+.signature-key-field small { font-weight: 400; }
+.signature-key-field-wide { grid-column: 1 / -1; }
+@media (max-width: 640px) {
+    .signature-key-fields { padding: 16px; }
+    .signature-key-grid { grid-template-columns: 1fr; gap: 16px; }
+}

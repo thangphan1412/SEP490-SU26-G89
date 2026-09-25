@@ -16,6 +16,17 @@ import java.util.UUID;
 
 @Repository
 public interface ContractRepository extends JpaRepository<Contracts, UUID> {
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("select contract from Contracts contract where contract.id = :id")
+    java.util.Optional<Contracts> findForSigningById(@Param("id") UUID id);
+
+    boolean existsByContractNumberIgnoreCase(String contractNumber);
+
+    boolean existsByContractNumberIgnoreCaseAndIdNot(
+            String contractNumber,
+            UUID id
+    );
+
     long countByContractTypeId(UUID contractTypeId);
 
     long countByContractTemplateId(UUID contractTemplateId);
@@ -62,6 +73,15 @@ public interface ContractRepository extends JpaRepository<Contracts, UUID> {
                                 = :currentUserName
                         )
                     )
+                )
+            )
+            AND (
+                UPPER(TRIM(COALESCE(contract.contractStatus, ''))) NOT IN ('NEW', 'DRAFT')
+                OR creator.id = :currentUserId
+                OR (
+                    contract.contractCreatedByUser IS NULL
+                    AND LOWER(TRIM(COALESCE(contract.contractCreateBy, '')))
+                        = :currentUserName
                 )
             )
             AND (

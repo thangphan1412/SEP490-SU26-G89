@@ -207,6 +207,9 @@ class ContractServiceImplUpdateTest {
                 new ContractDocumentRenderer.RenderedDocument(
                         "Updated terms", null, null, null, null
                 );
+        when(documentRenderer.renderForSigning(
+                any(Contracts.class), anyList(), anyMap()
+        )).thenReturn(renderedDocument);
         when(documentRenderer.render(
                 any(Contracts.class), anyList(), anyMap()
         )).thenReturn(renderedDocument);
@@ -271,6 +274,110 @@ class ContractServiceImplUpdateTest {
 
         verify(contractTypeRepository, never()).findById(any());
         verify(workflowStepRepository, never()).deleteAllByContractId(any());
+    }
+
+    @Test
+    void createContractRejectsDuplicateContractNumber() {
+        Users creator = user("Employee", "Test", "EMPLOYEE");
+        ContractRequest request = projectRequest(
+                UUID.randomUUID(),
+                null,
+                null,
+                null,
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                null
+        );
+
+        when(currentUser.getCurrentUser()).thenReturn(creator);
+        when(contractRepository.existsByContractNumberIgnoreCase("CON-EDIT-001"))
+                .thenReturn(true);
+
+        assertThatThrownBy(() -> contractService.createContract(request))
+                .isInstanceOf(BadHttpException.class)
+                .hasMessage("Contract number already exists");
+
+        verify(contractRepository, never()).save(any());
+        verify(contractTypeRepository, never()).findById(any());
+    }
+
+    @Test
+    void updateContractRejectsDuplicateNumberFromAnotherContract() {
+        Users creator = user("Employee", "Test", "EMPLOYEE");
+        ContractTypes type = contractType("TYPE", "Contract type");
+        Contracts contract = draftContract(creator, type);
+
+        when(currentUser.getCurrentUser()).thenReturn(creator);
+        when(contractRepository.findById(contract.getId()))
+                .thenReturn(Optional.of(contract));
+        when(contractRepository.existsByContractNumberIgnoreCaseAndIdNot(
+                "CON-EDIT-001", contract.getId()
+        )).thenReturn(true);
+
+        assertThatThrownBy(() -> contractService.updateContract(
+                contract.getId(), request(type.getId(), null)
+        )).isInstanceOf(BadHttpException.class)
+                .hasMessage("Contract number already exists");
+
+        verify(contractRepository, never()).save(any());
+        verify(contractTypeRepository, never()).findById(any());
+    }
+
+    @Test
+    void updateContractRejectsNumberMatchingTitleIgnoringCaseAndWhitespace() {
+        Users creator = user("Employee", "Test", "EMPLOYEE");
+        ContractTypes type = contractType("TYPE", "Contract type");
+        Contracts contract = draftContract(creator, type);
+        ContractRequest matchingRequest = withContractIdentity(
+                request(type.getId(), null),
+                "  same value  ",
+                "SAME VALUE"
+        );
+
+        when(currentUser.getCurrentUser()).thenReturn(creator);
+        when(contractRepository.findById(contract.getId()))
+                .thenReturn(Optional.of(contract));
+
+        assertThatThrownBy(() -> contractService.updateContract(
+                contract.getId(), matchingRequest
+        )).isInstanceOf(BadHttpException.class)
+                .hasMessage("Contract number must be different from contract title");
+
+        verify(contractRepository, never()).save(any());
+        verify(contractRepository, never())
+                .existsByContractNumberIgnoreCaseAndIdNot(anyString(), any());
+    }
+
+    private ContractRequest withContractIdentity(
+            ContractRequest request,
+            String contractNumber,
+            String contractTitle
+    ) {
+        return new ContractRequest(
+                request.projectId(),
+                request.phaseId(),
+                request.taskId(),
+                request.contractTypeId(),
+                request.contractTemplateId(),
+                request.contractTemplateVersionId(),
+                contractNumber,
+                contractTitle,
+                request.contractStatus(),
+                request.effectiveDate(),
+                request.expirationDate(),
+                request.contractCreatedBy(),
+                request.contractCreatedAt(),
+                request.contractContent(),
+                request.contractLayoutJson(),
+                request.saveAsTemplateVersion(),
+                request.templateVersionName(),
+                request.templateVersionNote(),
+                request.previousContractId(),
+                request.actorName(),
+                request.actorRole(),
+                request.attributeValues(),
+                request.workflowAssignees()
+        );
     }
 
     private ContractRequest request(

@@ -64,11 +64,13 @@ public class ContractPdfGenerator {
         }
     }
 
-    private PDFont loadUnicodeFont(PDDocument document, boolean bold)
+    public static PDFont loadUnicodeFont(PDDocument document, boolean bold)
             throws IOException {
         for (Path path : fontCandidates(bold)) {
             if (Files.isRegularFile(path)) {
-                return PDType0Font.load(document, path.toFile());
+                try (var input = Files.newInputStream(path)) {
+                    return PDType0Font.load(document, input, false);
+                }
             }
         }
 
@@ -77,7 +79,7 @@ public class ContractPdfGenerator {
         );
     }
 
-    private List<Path> fontCandidates(boolean bold) {
+    private static List<Path> fontCandidates(boolean bold) {
         String windowsTimesFont = bold ? "timesbd.ttf" : "times.ttf";
         String windowsArialFont = bold ? "arialbd.ttf" : "arial.ttf";
         String liberationFont = bold
@@ -87,7 +89,7 @@ public class ContractPdfGenerator {
         List<Path> paths = new ArrayList<>();
         String windowsDirectory = System.getenv("WINDIR");
 
-        if (hasText(windowsDirectory)) {
+        if (windowsDirectory != null && !windowsDirectory.isBlank()) {
             paths.add(Path.of(windowsDirectory, "Fonts", windowsTimesFont));
             paths.add(Path.of(windowsDirectory, "Fonts", windowsArialFont));
         }
@@ -158,14 +160,38 @@ public class ContractPdfGenerator {
                     continue;
                 }
 
-                if (isDocumentTitle(line)) {
+                if (line.contains("\t")) {
+                    writeTwoColumnHeading(line);
+                    continue;
+                }
+
+                if (isNationalHeader(line)) {
+                    writeCenteredText(line, boldFont, 12f, 17f, 1f);
+                } else if (isNationalMotto(line)) {
+                    writeCenteredText(line, boldFont, 11f, 16f, 8f);
+                } else if (isDocumentTitle(line)) {
                     writeCenteredText(line, boldFont, 14f, 20f, 8f);
+                } else if (isDocumentReference(line)) {
+                    writeCenteredText(line, regularFont, 11f, 16f, 2f);
+                } else if (isSignatureHeading(line)) {
+                    writeCenteredText(line, boldFont, 11.5f, 17f, 5f);
                 } else if (isHeading(line)) {
                     writeWrappedText(line, boldFont, 11.5f, 17f, 5f);
                 } else {
                     writeWrappedText(line, regularFont, 11f, 16f, 2f);
                 }
             }
+        }
+
+        private void writeTwoColumnHeading(String text) throws IOException {
+            String[] columns = text.split("\\t+", 2);
+            float fontSize = 11.5f;
+            ensureSpace(34f);
+            drawText(columns[0], boldFont, fontSize, MARGIN, cursorY);
+            float rightX = PAGE_SIZE.getWidth() - MARGIN
+                    - textWidth(columns[1], boldFont, fontSize);
+            drawText(columns[1], boldFont, fontSize, rightX, cursorY);
+            cursorY -= 34f;
         }
 
         private void writeCenteredText(
@@ -282,13 +308,37 @@ public class ContractPdfGenerator {
             return normalized.startsWith("ĐIỀU ")
                     || normalized.startsWith("BÊN A:")
                     || normalized.startsWith("BÊN B:")
-                    || normalized.startsWith("ĐẠI DIỆN");
+                    || normalized.equals("BÊN A")
+                    || normalized.equals("BÊN B")
+                    || normalized.equals("CÁC ĐIỀU KHOẢN HỢP ĐỒNG");
         }
 
         private boolean isDocumentTitle(String line) {
             String normalized = line.toUpperCase(Locale.forLanguageTag("vi-VN"));
             return normalized.startsWith("HỢP ĐỒNG")
                     && line.equals(normalized);
+        }
+
+        private boolean isNationalHeader(String line) {
+            return "CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM".equalsIgnoreCase(line);
+        }
+
+        private boolean isNationalMotto(String line) {
+            return "ĐỘC LẬP - TỰ DO - HẠNH PHÚC".equals(
+                    line.toUpperCase(Locale.forLanguageTag("vi-VN"))
+            );
+        }
+
+        private boolean isDocumentReference(String line) {
+            String normalized = line.toUpperCase(Locale.forLanguageTag("vi-VN"));
+            return normalized.startsWith("SỐ:")
+                    || normalized.startsWith("SỐ HỢP ĐỒNG:")
+                    || normalized.startsWith("TÊN HỢP ĐỒNG:");
+        }
+
+        private boolean isSignatureHeading(String line) {
+            return line.toUpperCase(Locale.forLanguageTag("vi-VN"))
+                    .startsWith("ĐẠI DIỆN");
         }
 
         private String safe(String value) {

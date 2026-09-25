@@ -1,9 +1,18 @@
-.contract-signing-page { padding: 24px; min-height: calc(100vh - 72px); background: #f5f7fb; }
+.contract-signing-page {
+    padding: 12px;
+    min-height: calc(100vh - 72px);
+    background: #f5f7fb;
+}
 .contract-signing-header { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 20px; margin-bottom: 20px; }
 .contract-signing-header h1 { margin: 0; font-size: 24px; color: #17233d; }
 .contract-signing-header p { margin: 5px 0 0; color: #65718a; }
 .contract-signing-header .btn { display: inline-flex; align-items: center; gap: 7px; }
-.contract-signing-workspace { display: grid; grid-template-columns: minmax(270px, 340px) minmax(0, 1fr); gap: 18px; min-height: 720px; }
+.contract-signing-workspace {
+    display: grid;
+    grid-template-columns: 280px minmax(0, 1fr);
+    gap: 12px;
+    min-height: 720px;
+}
 .contract-signature-panel, .contract-pdf-panel { background: #fff; border: 1px solid #dfe5ef; border-radius: 12px; box-shadow: 0 5px 20px rgba(27, 42, 72, .06); }
 .contract-signature-panel { padding: 18px; overflow-y: auto; }
 .contract-signing-key-info { display: grid; gap: 6px; padding: 12px; margin-bottom: 14px; border: 1px solid #dbe4ff; border-radius: 10px; background: #f7f9ff; color: #25304a; }
@@ -29,11 +38,14 @@
 @media (max-width: 900px) { .contract-signing-workspace { grid-template-columns: 1fr; } .contract-signing-header { grid-template-columns: auto 1fr; } .contract-signing-header > .btn:last-child { grid-column: 1 / -1; } }
 .pdf-signing-viewer {
     width: 100%;
+    min-width: 0;
     overflow: auto;
-    padding: 24px;
+    padding: 0;
     background: #f3f4f6;
 }
-
+.pdf-signing-viewer .react-pdf__Document {
+    width: 100%;
+}
 .pdf-page-wrapper {
     position: relative;
     background: white;

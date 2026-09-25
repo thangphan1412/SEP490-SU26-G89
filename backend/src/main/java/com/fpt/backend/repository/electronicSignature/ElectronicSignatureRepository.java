@@ -3,6 +3,8 @@ package com.fpt.backend.repository.electronicSignature;
 import com.fpt.backend.dto.response.electronicSignature.ElectronicSignatureDetailResponse;
 import com.fpt.backend.dto.response.electronicSignature.ListElectronicResponse;
 import com.fpt.backend.entity.ElectronicSignatures;
+import com.fpt.backend.enums.ElectronicSignatureType;
+import com.fpt.backend.enums.ElectronicStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -13,20 +15,46 @@ import java.util.UUID;
 
 @Repository
 public interface ElectronicSignatureRepository extends JpaRepository<ElectronicSignatures, UUID> {
-@Query("""
+    @Query("select es from ElectronicSignatures es where es.user.id = :userId and es.isDefault = true")
+    List<ElectronicSignatures> findDefaultsByUserId(@Param("userId") UUID userId);
+    @Query("""
     select new com.fpt.backend.dto.response.electronicSignature.ListElectronicResponse(
         es.id,
-            es.electronicSignatureName,
+        es.electronicSignatureName,
         es.electronicSignatureType,
         es.status,
         es.isDefault,
         es.createdAt,
-        es.fileStorage.filePath
+        es.fileStorage.filePath,
+        concat(
+            coalesce(es.user.firstName, ''),
+            ' ',
+            coalesce(es.user.lastName, '')
+        ),
+        es.user.email
     )
-    from ElectronicSignatures  es
+    from ElectronicSignatures es
     where es.fileStorage.user.id = :userId
+      and (
+          :search is null
+          or lower(es.electronicSignatureName)
+             like lower(concat('%', :search, '%'))
+      )
+      and (
+          :type is null
+          or es.electronicSignatureType = :type
+      )
+      and (
+          :status is null
+          or es.status = :status
+      )
     """)
-        List<ListElectronicResponse> getAllElectronicSignaturesById(@Param("userId") UUID userId);
+    List<ListElectronicResponse> getAllElectronicSignaturesById(
+            @Param("userId") UUID userId,
+            @Param("search") String search,
+            @Param("type") ElectronicSignatureType type,
+            @Param("status") ElectronicStatus status
+    );
 
 
     @Query("""

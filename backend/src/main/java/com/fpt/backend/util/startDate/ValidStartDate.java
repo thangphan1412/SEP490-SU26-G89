@@ -9,7 +9,7 @@ import java.lang.annotation.*;
 @Target({ElementType.FIELD})
 @Retention(RetentionPolicy.RUNTIME)
 public @interface ValidStartDate {
-    String message() default "Ngày bắt đầu làm việc không được nằm trong quá khứ";
+    String message() default "The start date cannot be in the past.";
     Class<?>[] groups() default {};
     Class<? extends Payload>[] payload() default {};
 }

@@ -187,8 +187,8 @@ function ListProject() {
         if (project.canView === false) {
             const isPendingApproval = String(project.projectStatus || "").toLowerCase() === "on hold";
             window.alert(isPendingApproval
-                ? "Dự án đang chờ duyệt. Chỉ CEO và trưởng phòng Administrative được xem thông tin."
-                : "Bạn không được quyền xem project này!");
+                ? "This project is pending approval. Only the CEO and the Head of the Administrative Department can view it."
+                : "You do not have permission to view this project.");
             return;
         }
 

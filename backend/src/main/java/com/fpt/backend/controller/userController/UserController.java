@@ -46,7 +46,7 @@ public class UserController {
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(BaseResponse.<Page<UserResponseDTO>>builder()
                     .status(HttpStatus.BAD_REQUEST.value())
-                    .message("Lỗi xử lý: " + e.getMessage())
+                    .message("Unable to process the request: " + e.getMessage())
                     .build()
             );
         }

@@ -247,6 +247,14 @@ export function validateContract(contract, isCreating = true) {
     }
 
     if (isCreating) {
+        if (!contract.contractTemplateId) {
+            return "Please select a contract template.";
+        }
+
+        if (!contract.contractTemplateVersionId) {
+            return "Please select a template version.";
+        }
+
         const workflowSteps = contract.workflowDefinition?.steps;
         if (!Array.isArray(workflowSteps) || workflowSteps.length < 2) {
             return "The selected contract type does not have an active workflow.";
@@ -268,6 +276,13 @@ export function validateContract(contract, isCreating = true) {
 
     if (!contract.contractNumber.trim() || !contract.contractTitle.trim()) {
         return "Contract number and title are required.";
+    }
+
+    if (
+        contract.contractNumber.trim().toLowerCase()
+        === contract.contractTitle.trim().toLowerCase()
+    ) {
+        return "Contract number must be different from contract title.";
     }
 
     if (!contract.contractCreatedBy.trim()) {

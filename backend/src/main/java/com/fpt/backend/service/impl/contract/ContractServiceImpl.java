@@ -300,6 +300,7 @@ public class ContractServiceImpl implements ContractService {
         if (request == null) {
             throw new BadHttpException("Contract information is required");
         }
+        validateCreateTemplateSelection(request);
 
         Users actor = currentUser.getCurrentUser();
         if (request.projectId() != null) {
@@ -523,7 +524,7 @@ public class ContractServiceImpl implements ContractService {
         Map<String, String> attributes = readAttributeValues(contract.getId());
         byte[] pdf = pdfGenerator.generate(
                 contract,
-                documentRenderer.render(contract, history, attributes)
+                documentRenderer.renderForSigning(contract, history, attributes)
         );
         FileStorage previousFile = contract.getDocumentFile();
         FileStorage uploaded = cloudinaryService.uploadPdfAndSave(
@@ -600,16 +601,21 @@ public class ContractServiceImpl implements ContractService {
                 actor
         );
 
-        List<ContractStatusHistory> history = loadHistory(contract.getId());
-        Map<String, String> attributeValues = readAttributeValues(contract.getId());
-        ContractDocumentRenderer.RenderedDocument renderedDocument =
-                documentRenderer.render(contract, history, attributeValues);
-
+        byte[] pdf = loadAndValidateCanonicalDocument(contract, actor);
+        // Upgrade old unsigned PDFs only. Never regenerate a PDF containing a digital signature.
+        if (!signatureRepository.existsByContractId(id)) {
+            try (var document = org.apache.pdfbox.Loader.loadPDF(pdf)) {
+                if (document.getSignatureDictionaries().isEmpty()
+                        && new org.apache.pdfbox.text.PDFTextStripper().getText(document).contains("Chưa ký")) {
+                    pdf = replaceCanonicalDocument(contract, actor);
+                }
+            } catch (java.io.IOException exception) {
+                throw new BadHttpException("Unable to read the stored contract PDF");
+            }
+        }
         return new ContractPdfResponse(
                 createPdfFileName(contract),
-                contract.getDocumentFile() == null
-                        ? pdfGenerator.generate(contract, renderedDocument)
-                        : loadAndValidateCanonicalDocument(contract, actor)
+                pdf
         );
     }
 
@@ -669,6 +675,13 @@ public class ContractServiceImpl implements ContractService {
             String actionCode,
             Users user
     ) {
+        if (readStatus(contract) == ContractStatus.NEW
+                && !isContractOwner(contract, user)) {
+            throw forbidden(
+                    "Only the contract creator can access a NEW contract before it is submitted"
+            );
+        }
+
         if (contract.getProject() == null
                 || contract.getProject().getId() == null) {
             boolean owner = isContractOwner(contract, user);
@@ -1202,7 +1215,7 @@ public class ContractServiceImpl implements ContractService {
             ContractRequest request,
             boolean creating
     ) {
-        validateRequest(request);
+        validateRequest(request, contract.getId());
 
         Projects project = resolveProject(request.projectId());
         Timeline phase = resolvePhase(request.phaseId(), project);
@@ -1780,7 +1793,7 @@ public class ContractServiceImpl implements ContractService {
         return key == null ? "" : key.trim().toLowerCase(Locale.ROOT);
     }
 
-    private void validateRequest(ContractRequest request) {
+    private void validateRequest(ContractRequest request, UUID contractId) {
         if (request == null) {
             throw new BadHttpException("Contract information is required");
         }
@@ -1791,6 +1804,24 @@ public class ContractServiceImpl implements ContractService {
 
         if (isBlank(request.contractTitle())) {
             throw new BadHttpException("Contract title is required");
+        }
+
+        String contractNumber = request.contractNumber().trim();
+        String contractTitle = request.contractTitle().trim();
+        if (contractNumber.equalsIgnoreCase(contractTitle)) {
+            throw new BadHttpException(
+                    "Contract number must be different from contract title"
+            );
+        }
+
+        boolean duplicateContractNumber = contractId == null
+                ? contractRepository.existsByContractNumberIgnoreCase(contractNumber)
+                : contractRepository.existsByContractNumberIgnoreCaseAndIdNot(
+                        contractNumber,
+                        contractId
+                );
+        if (duplicateContractNumber) {
+            throw new BadHttpException("Contract number already exists");
         }
 
         if (request.effectiveDate() == null) {
@@ -1805,6 +1836,16 @@ public class ContractServiceImpl implements ContractService {
             throw new BadHttpException(
                     "Expiration date must be on or after the effective date"
             );
+        }
+    }
+
+    private void validateCreateTemplateSelection(ContractRequest request) {
+        if (request.contractTemplateId() == null) {
+            throw new BadHttpException("Contract template is required");
+        }
+
+        if (request.contractTemplateVersionId() == null) {
+            throw new BadHttpException("Contract template version is required");
         }
     }
 

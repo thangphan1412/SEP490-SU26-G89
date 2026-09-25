@@ -15,6 +15,7 @@ import { createUser } from "../../services/userService/userApi.js";
 import departmentApi from "../../services/departmentService/departmentApi";
 import roleApi from "../../services/roleService/roleApi";
 import { getCompanyProfile } from "../../services/companyService/companyApi";
+import { isValidUserDate } from "../../utils/userDate.js";
 
 function CreateUser() {
     const navigate = useNavigate();
@@ -106,8 +107,12 @@ function CreateUser() {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (!isValidUserDate(user.dob) || !isValidUserDate(user.startDate)) {
+            alert("Date of birth and start date must be valid dates in dd/MM/yyyy format.");
+            return;
+        }
         if (user.initialPassword !== user.confirmPassword) {
-            alert("Mật khẩu xác nhận không khớp!");
+            alert("The password confirmation does not match.");
             return;
         }
 
@@ -136,7 +141,7 @@ function CreateUser() {
             // Gọi API từ thư mục config/api/userApi.js
             await createUser(payload);
 
-            alert("Tạo tài khoản thành công!");
+            alert("Account created successfully.");
             navigate("/user-management/list");
 
         } catch (error) {
@@ -144,17 +149,17 @@ function CreateUser() {
             const responseData = error.response?.data;
 
             // 1. Lấy thông báo chung
-            let alertMessage = responseData?.message || "Vui lòng thử lại!";
+            let alertMessage = responseData?.message || "Please try again.";
 
             // 2. Móc lỗi chi tiết (Nếu Backend có gửi kèm trong biến data)
             if (responseData?.data && typeof responseData.data === 'object') {
                 // Lấy tất cả các câu của Backend ghép thành nhiều dòng
                 const detailedErrors = Object.values(responseData.data).join('\n- ');
-                alertMessage += "\n\nChi tiết lỗi:\n- " + detailedErrors;
+                alertMessage += "\n\nError details:\n- " + detailedErrors;
             }
 
             // 3. Hiển thị lên màn hình
-            alert("Có lỗi xảy ra: " + alertMessage);
+            alert("An error occurred: " + alertMessage);
         } finally {
             setIsSubmitting(false);
         }
@@ -175,7 +180,7 @@ function CreateUser() {
                         <svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0"></path><path d="M9 12l2 2l4 -4"></path></svg>
                     </div>
                     <h2 className="fw-bold mb-3 text-dark">Access Denied</h2>
-                    <h5 className="text-secondary mb-4">Bạn không có quyền truy cập vào chức năng này!</h5>
+                    <h5 className="text-secondary mb-4">You do not have permission to access this feature.</h5>
                     <Button variant="primary" className="fw-bold px-4" onClick={() => navigate("/home_page")}>
                         Quay lại Trang chủ
                     </Button>
@@ -297,7 +302,11 @@ function CreateUser() {
                                 <Form.Group>
                                     <Form.Label className="small fw-bold">Date of Birth <span className="text-danger">*</span></Form.Label>
                                     <Form.Control
-                                        type="date"
+                                        type="text"
+                                        placeholder="dd/MM/yyyy"
+                                        maxLength={10}
+                                        pattern="[0-9]{2}/[0-9]{2}/[0-9]{4}"
+                                        title="Enter a date in dd/MM/yyyy format, for example 24/09/2026."
                                         name="dob"
                                         value={user.dob}
                                         onChange={handleChange}
@@ -326,7 +335,10 @@ function CreateUser() {
                                     <Form.Label className="small fw-bold">Start Date <span
                                         className="text-danger">*</span>
                                     </Form.Label>
-                                    <Form.Control type="date" name="startDate" value={user.startDate}
+                                    <Form.Control type="text" name="startDate" value={user.startDate}
+                                                  placeholder="dd/MM/yyyy" maxLength={10}
+                                                  pattern="[0-9]{2}/[0-9]{2}/[0-9]{4}"
+                                                  title="Enter a date in dd/MM/yyyy format, for example 24/09/2026."
                                                   onChange={handleChange} required
                                                   disabled={isSubmitting}/>
                                 </Form.Group>

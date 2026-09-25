@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import PageHeader from "../../components/signature/createSignature/PageHeader.jsx";
@@ -10,8 +10,9 @@ import InfoBanner from "../../components/signature/createSignature/InforBanner.j
 import electronicSignatureService
     from "../../services/signatureService/electronicSignatureService.js";
 import PropTypes from "prop-types";
+import SignatureKeyVerification from "../../components/signature/SignatureKeyVerification.jsx";
 
-function SignatureCanvas({ mode, signatureUrl }) {
+function SignatureCanvas({ signatureUrl }) {
     if (!signatureUrl) return null;
 
     return (
@@ -56,6 +57,8 @@ function UpdateSignature() {
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState("");
     const [success, setSuccess] = useState("");
+    const [keyProof, setKeyProof] = useState(null);
+    const [verificationAttempt, setVerificationAttempt] = useState(0);
 
 
 
@@ -86,11 +89,12 @@ function UpdateSignature() {
                         data.electronicSignatureType || "DRAW",
 
                     electronicStatus:
-                        data.electronicStatus || "ACTIVE",
+                        data.electronicSignatureStatus || data.electronicStatus || "ACTIVE",
 
                     isDefault:
-                        data.isDefault ?? false,
+                        data.default ?? data.isDefault ?? false,
                 });
+                setActiveTab(data.electronicSignatureType === "UPLOADED" ? "upload" : "draw");
 
             } catch (error) {
 
@@ -117,6 +121,11 @@ function UpdateSignature() {
 
 
     const handleSave = async () => {
+        if (saving) return;
+        if (!keyProof || keyProof.signatureId !== id || Date.parse(keyProof.expiresAt) <= Date.now()) {
+            setError("Verify your public and private keys before saving changes.");
+            return;
+        }
 
         if (
             !form.electronicSignatureName ||
@@ -133,6 +142,8 @@ function UpdateSignature() {
             setSuccess("");
 
             const formData = new FormData();
+            formData.append("verificationChallengeId", keyProof.challengeId);
+            formData.append("verificationSignature", keyProof.signature);
 
             formData.append(
                 "electronicSignatureName",
@@ -172,6 +183,7 @@ function UpdateSignature() {
             setSuccess(
                 "Signature updated successfully!"
             );
+            navigate(`/signature-management/detail/${id}`, { replace: true });
 
         } catch (error) {
 
@@ -186,6 +198,8 @@ function UpdateSignature() {
             );
 
         } finally {
+            setKeyProof(null);
+            setVerificationAttempt((attempt) => attempt + 1);
 
             setSaving(false);
 
@@ -219,8 +233,10 @@ function UpdateSignature() {
             >
 
                 <PageHeader
+                    title="Update Signature"
+                    description="Update your signature after verifying ownership of your signing keys."
                     onCancel={() =>
-                        navigate("/signatures")
+                        navigate("/signature-management/list")
                     }
                     onSave={handleSave}
                     loading={saving}
@@ -244,6 +260,11 @@ function UpdateSignature() {
                 <SignatureInformationCard
                     form={form}
                     setForm={setForm}
+                    onTypeChange={(type) => {
+                        setForm((current) => ({ ...current, electronicSignatureType: type }));
+                        setActiveTab(type === "DRAW" ? "draw" : "upload");
+                        setSignatureFile(null);
+                    }}
                 />
 
 
@@ -252,10 +273,14 @@ function UpdateSignature() {
                     signatureUrl={electronicSignature?.signatureUrl}
                 />
                 <SignatureCanvasCard
+                    signatureType={form.electronicSignatureType}
                     activeTab={activeTab}
                     setActiveTab={setActiveTab}
                     onFileChange={setSignatureFile}
                 />
+
+                <SignatureKeyVerification key={`${id}:${verificationAttempt}`} signatureId={id}
+                    onVerified={setKeyProof} saving={saving} />
 
 
                 <DocumentAutomationPreview />

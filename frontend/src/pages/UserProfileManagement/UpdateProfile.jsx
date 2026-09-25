@@ -52,7 +52,7 @@ function UpdateProfile({ onSaveProfile }) {
                 });
             } catch (error) {
                 console.error("Lỗi tải thông tin:", error);
-                alert("Không thể tải thông tin profile của bạn!");
+                alert("Unable to load your profile.");
                 navigate("/user-profile/view");
             } finally {
                 setIsLoadingData(false);
@@ -93,11 +93,11 @@ function UpdateProfile({ onSaveProfile }) {
 
             await updateMyProfile(payload);
             if (onSaveProfile) onSaveProfile(userProfile);
-            alert("Cập nhật thông tin cá nhân thành công!");
+            alert("Your profile has been updated successfully.");
             navigate("/user-profile/view");
 
         } catch (error) {
-            alert("Có lỗi xảy ra: " + (error.response?.data?.message || "Vui lòng thử lại!"));
+            alert("An error occurred: " + (error.response?.data?.message || "Please try again."));
         } finally {
             setIsSubmittingProfile(false);
         }
@@ -119,9 +119,9 @@ function UpdateProfile({ onSaveProfile }) {
             // KÍCH HOẠT ĐẾM NGƯỢC 60 GIÂY SAU KHI GỬI THÀNH CÔNG
             setCountdown(60);
 
-            alert("Mã OTP đã được gửi đến email: " + userProfile.email);
+            alert("An OTP has been sent to: " + userProfile.email);
         } catch (error) {
-            alert("Lỗi gửi OTP: " + (error.response?.data?.message || "Vui lòng thử lại"));
+            alert("Unable to send the OTP: " + (error.response?.data?.message || "Please try again."));
         } finally {
             setIsSubmittingPwd(false);
         }
@@ -131,7 +131,7 @@ function UpdateProfile({ onSaveProfile }) {
     const handleSubmitPassword = async (event) => {
         event.preventDefault();
         if (pwdData.newPassword !== pwdData.confirmPassword) {
-            alert("Mật khẩu xác nhận không khớp!");
+            alert("The password confirmation does not match.");
             return;
         }
 
@@ -150,7 +150,7 @@ function UpdateProfile({ onSaveProfile }) {
                     newPasswordConfirm: pwdData.confirmPassword
                 });
             }
-            alert("Đổi mật khẩu thành công! Vui lòng sử dụng mật khẩu mới cho lần đăng nhập sau.");
+            alert("Your password has been changed successfully. Use your new password the next time you sign in.");
             setPwdData({ oldPassword: "", newPassword: "", confirmPassword: "", otp: "" });
             setOtpSent(false);
             setCountdown(0); // Reset bộ đếm nếu đổi xong
@@ -159,17 +159,17 @@ function UpdateProfile({ onSaveProfile }) {
             const responseData = error.response?.data;
 
             // 1. Lấy thông báo chung
-            let alertMessage = responseData?.message || "Vui lòng thử lại!";
+            let alertMessage = responseData?.message || "Please try again.";
 
             // 2. Móc lỗi chi tiết (Nếu Backend có gửi kèm trong biến data)
             if (responseData?.data && typeof responseData.data === 'object') {
                 // Lấy tất cả các câu chửi của Backend ghép thành nhiều dòng
                 const detailedErrors = Object.values(responseData.data).join('\n- ');
-                alertMessage += "\n\nChi tiết lỗi:\n- " + detailedErrors;
+                alertMessage += "\n\nError details:\n- " + detailedErrors;
             }
 
             // 3. Hiển thị lên màn hình
-            alert("Có lỗi xảy ra: " + alertMessage);
+            alert("An error occurred: " + alertMessage);
         } finally {
             setIsSubmittingPwd(false);
         }
@@ -329,7 +329,7 @@ function UpdateProfile({ onSaveProfile }) {
                                                         <Form.Group>
                                                             <Form.Label className="small fw-bold text-secondary">Mã xác thực OTP <span className="text-danger">*</span></Form.Label>
                                                             <Form.Control name="otp" type="text" value={pwdData.otp} onChange={handlePwdChange} required={pwdMethod === "otp"} disabled={!otpSent || isSubmittingPwd} className="py-2" placeholder="Nhập mã 6 số từ email" />
-                                                            {!otpSent && <Form.Text className="text-danger">Vui lòng bấm nút Gửi mã OTP trước!</Form.Text>}
+                                                            {!otpSent && <Form.Text className="text-danger">Please request an OTP first.</Form.Text>}
                                                         </Form.Group>
                                                     </Col>
                                                 )}

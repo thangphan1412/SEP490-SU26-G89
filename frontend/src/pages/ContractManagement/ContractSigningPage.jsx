@@ -78,6 +78,9 @@ export default function ContractSigningPage() {
     const [pdfNumPages, setPdfNumPages] = useState(0);
     const [selectedPage, setSelectedPage] = useState(1);
 
+    // The signing rule for this page is:
+    // the selected electronic signature is placed on the LAST page.
+    // The user can still drag it to another position on that page.
     const [signaturePosition, setSignaturePosition] = useState({
         x: 50,
         y: 50,
@@ -87,15 +90,96 @@ export default function ContractSigningPage() {
 
     const [draggingSignature, setDraggingSignature] = useState(false);
 
+    // Keep a reference to every rendered PDF page so that when the user
+    // selects a signature, the viewer can automatically jump to the
+    // correct page.
+    const pageRefs = useRef({});
     const pdfContainerRef = useRef(null);
     const dragStartRef = useRef(null);
+    const viewerRef = useRef(null);
+    const [pdfWidth, setPdfWidth] = useState(750);
+
+    useEffect(() => {
+        const viewer = viewerRef.current;
+        if (!viewer) return;
+
+        const observer = new ResizeObserver(([entry]) => {
+            // contentRect đã loại trừ padding của viewer
+            setPdfWidth(Math.max(1, Math.floor(entry.contentRect.width)));
+        });
+
+        observer.observe(viewer);
+        return () => observer.disconnect();
+    }, [loading, pdfUrl]);
     function handlePdfLoadSuccess({ numPages }) {
         setPdfNumPages(numPages);
 
-        if (selectedPage > numPages) {
-            setSelectedPage(1);
-        }
+        // Always use the last page as the default signing page.
+        setSelectedPage(numPages);
     }
+
+    // =========================================================
+    // AUTO SELECT LAST PAGE WHEN A SIGNATURE IS SELECTED
+    // =========================================================
+
+    useEffect(() => {
+        if (!selectedId || !pdfNumPages) {
+            return;
+        }
+
+        // No page selector is required from the user.
+        // Selecting a signature automatically means signing on
+        // the last page of the current PDF.
+        setSelectedPage(pdfNumPages);
+
+        // Put the signature near the bottom-right of the selected
+        // page. The exact position is calculated from the rendered
+        // page size, so it works for different PDF page heights.
+        const pageElement = pageRefs.current[pdfNumPages];
+
+        if (pageElement) {
+            const pageWidth = pageElement.getBoundingClientRect().width;
+            const pageHeight = pageElement.getBoundingClientRect().height;
+
+            const width = 180;
+            const height = 70;
+            const margin = 40;
+
+            setSignaturePosition({
+                x: Math.max(0, pageWidth - width - margin),
+                y: Math.max(0, pageHeight - height - margin),
+                width,
+                height,
+            });
+        }
+    }, [selectedId, pdfNumPages]);
+
+    // =========================================================
+    // SCROLL TO THE SIGNING PAGE
+    // =========================================================
+
+    useEffect(() => {
+        if (!selectedPage) {
+            return;
+        }
+
+        const pageElement = pageRefs.current[selectedPage];
+
+        if (!pageElement) {
+            return;
+        }
+
+        // Keep the drag boundary ref synchronized with the page
+        // that currently contains the signature overlay.
+        pdfContainerRef.current = pageElement;
+
+        // Move the selected page into view automatically.
+        pageElement.scrollIntoView({
+            behavior: "smooth",
+            block: "center",
+            inline: "center",
+        });
+    }, [selectedPage, pdfNumPages]);
     function handleSignatureMouseDown(event) {
         event.preventDefault();
 
@@ -1125,6 +1209,8 @@ export default function ContractSigningPage() {
             // STEP 1: PREPARE PADES
             console.log("========== PADES PREPARE ==========");
 
+            const renderedWidth = pageRefs.current[selectedPage]?.getBoundingClientRect().width || pdfWidth;
+            const coordinateScale = 750 / renderedWidth;
             const prepareResponse =
                 await contractApi.preparePadesSigning(
                     id,
@@ -1132,10 +1218,10 @@ export default function ContractSigningPage() {
                     publicKeyCode,
                     pdfBlob,
                     selectedPage,
-                    signaturePosition.x,
-                    signaturePosition.y,
-                    signaturePosition.width,
-                    signaturePosition.height
+                    signaturePosition.x * coordinateScale,
+                    signaturePosition.y * coordinateScale,
+                    signaturePosition.width * coordinateScale,
+                    signaturePosition.height * coordinateScale
                 );
 
             const prepareData = unwrapApiResponse(prepareResponse);
@@ -1223,19 +1309,7 @@ export default function ContractSigningPage() {
             setPin("");
             setShowPrivateKey(false);
 
-            // SUCCESS
-            setSuccess("Contract signed successfully.");
-
-            // STEP 8: NAVIGATE
-            // STEP 8: SAVE BUSINESS SIGNATURE
-            await contractApi.signContract(
-                id,
-                selectedId,
-                signatureValue,
-                publicKeyCode
-            );
-
-        // SUCCESS
+            // The completion endpoint also saves the signature record and workflow status.
             setSuccess("Contract signed successfully.");
 
             // STEP 9: NAVIGATE
@@ -1511,6 +1585,11 @@ export default function ContractSigningPage() {
 
                                         <small>
 
+                                            {signature.signerName?.trim() || signature.signerEmail}
+                                            <br />
+                                            {signature.signerEmail}
+                                            <br />
+
                                             {
                                                 signature.type
                                             }
@@ -1540,6 +1619,7 @@ export default function ContractSigningPage() {
                                 {
                                     selectedSignature.signatureName
                                 }
+                                {" · "}{selectedSignature.signerName?.trim() || selectedSignature.signerEmail}
 
                             </div>
 
@@ -1849,78 +1929,45 @@ export default function ContractSigningPage() {
                                 size={20}
                             />
 
-                            <strong>
-                                Generated contract PDF
-                            </strong>
+
                             {pdfNumPages > 0 && (
-                                <>
-                                    <div className="pdf-page-selector">
-                                        <Form.Label>
-                                            Signature page
-                                        </Form.Label>
+                                <div className="signature-position-info">
+                                    <strong>
+                                        Signing location
+                                    </strong>
 
-                                        <Form.Select
-                                            value={selectedPage}
-                                            onChange={(event) => {
-                                                setSelectedPage(
-                                                    Number(event.target.value)
-                                                );
+                                    {/*<div>*/}
+                                    {/*    Page: {selectedPage} (last page)*/}
+                                    {/*</div>*/}
 
-                                                setSignaturePosition({
-                                                    x: 50,
-                                                    y: 50,
-                                                    width: 180,
-                                                    height: 70,
-                                                });
-                                            }}
-                                            disabled={signing}
-                                        >
-                                            {Array.from(
-                                                { length: pdfNumPages },
-                                                (_, index) => (
-                                                    <option
-                                                        key={index + 1}
-                                                        value={index + 1}
-                                                    >
-                                                        Page {index + 1}
-                                                    </option>
-                                                )
-                                            )}
-                                        </Form.Select>
-                                    </div>
+                                    {/*<div>*/}
+                                    {/*    X: {Math.round(signaturePosition.x)}*/}
+                                    {/*</div>*/}
 
-                                    <div className="signature-position-info">
-                                        <strong>
-                                            Signature position
-                                        </strong>
+                                    {/*<div>*/}
+                                    {/*    Y: {Math.round(signaturePosition.y)}*/}
+                                    {/*</div>*/}
 
-                                        <div>
-                                            Page: {selectedPage}
-                                        </div>
+                                    {/*<div>*/}
+                                    {/*    Width: {Math.round(signaturePosition.width)}*/}
+                                    {/*</div>*/}
 
-                                        <div>
-                                            X: {Math.round(signaturePosition.x)}
-                                        </div>
+                                    {/*<div>*/}
+                                    {/*    Height: {Math.round(signaturePosition.height)}*/}
+                                    {/*</div>*/}
 
-                                        <div>
-                                            Y: {Math.round(signaturePosition.y)}
-                                        </div>
-
-                                        <div>
-                                            Width: {Math.round(signaturePosition.width)}
-                                        </div>
-
-                                        <div>
-                                            Height: {Math.round(signaturePosition.height)}
-                                        </div>
-                                    </div>
-                                </>
+                                    {/*<small>*/}
+                                    {/*    Selecting a signature automatically*/}
+                                    {/*    moves the PDF to the last page and*/}
+                                    {/*    places the signature there.*/}
+                                    {/*</small>*/}
+                                </div>
                             )}
                         </div>
 
                         {pdfUrl ? (
 
-                            <div className="pdf-signing-viewer">
+                            <div className="pdf-signing-viewer" ref={viewerRef}>
 
                                 <Document
                                     file={pdfUrl}
@@ -1952,11 +1999,18 @@ export default function ContractSigningPage() {
                                             return (
                                                 <div
                                                     key={pageNumber}
-                                                    ref={
-                                                        pageNumber === selectedPage
-                                                            ? pdfContainerRef
-                                                            : null
-                                                    }
+                                                    ref={(element) => {
+                                                        pageRefs.current[pageNumber] =
+                                                            element;
+
+                                                        if (
+                                                            pageNumber ===
+                                                            selectedPage
+                                                        ) {
+                                                            pdfContainerRef.current =
+                                                                element;
+                                                        }
+                                                    }}
                                                     className="pdf-page-wrapper"
                                                     style={{
                                                         position: "relative",
@@ -1969,7 +2023,7 @@ export default function ContractSigningPage() {
                                                         pageNumber={
                                                             pageNumber
                                                         }
-                                                        width={750}
+                                                        width={pdfWidth}
                                                         renderTextLayer={false}
                                                         renderAnnotationLayer={false}
                                                     />
@@ -2029,7 +2083,9 @@ export default function ContractSigningPage() {
                                                                 )}
 
                                                                 <span className="signature-overlay-label">
-                                            Drag to position
+                                                                    {selectedSignature?.signerName?.trim() || selectedSignature?.signerEmail}
+                                                                    <br />
+                                                                    Drag to position
                                         </span>
 
                                                             </div>

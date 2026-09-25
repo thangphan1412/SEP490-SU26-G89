@@ -25,28 +25,8 @@ import {
 import "../../assets/styles/css/layoutStyles/ContractWorkspace.css";
 
 const FULL_DOCUMENT_MODE = "FULL_DOCUMENT";
-const DEFAULT_CLAUSE_CONTENT = `ĐIỀU 1. NỘI DUNG VÀ PHẠM VI HỢP ĐỒNG
-Hai bên thống nhất thực hiện {{contract_title}} thuộc dự án {{project_name}} theo nội dung, phạm vi và yêu cầu được quy định trong hợp đồng này.
-
-ĐIỀU 2. THỜI HẠN VÀ HIỆU LỰC
-Hợp đồng có hiệu lực từ ngày {{effective_date}} đến hết ngày {{expiration_date}}.
-Mọi thay đổi về thời hạn phải được các bên thống nhất bằng văn bản.
-
-ĐIỀU 3. GIÁ TRỊ VÀ THANH TOÁN
-Giá trị hợp đồng: {{contract_value}}.
-Thời hạn, phương thức và tiến độ thanh toán do các bên thỏa thuận và thực hiện theo hợp đồng.
-
-ĐIỀU 4. QUYỀN VÀ NGHĨA VỤ CỦA CÁC BÊN
-Các bên có trách nhiệm cung cấp đầy đủ thông tin, phối hợp thực hiện công việc và hoàn thành đúng các nghĩa vụ đã thỏa thuận.
-
-ĐIỀU 5. BẢO MẬT THÔNG TIN
-Các bên không được tiết lộ thông tin của hợp đồng cho bên thứ ba khi chưa có sự đồng ý của bên còn lại, trừ trường hợp pháp luật có quy định khác.
-
-ĐIỀU 6. GIẢI QUYẾT TRANH CHẤP
-Mọi tranh chấp phát sinh được ưu tiên giải quyết thông qua thương lượng. Trường hợp không thể thương lượng, tranh chấp được giải quyết theo quy định của pháp luật.
-
-ĐIỀU 7. ĐIỀU KHOẢN CHUNG
-Các bên cam kết thực hiện đúng các nội dung đã thỏa thuận. Hợp đồng là căn cứ ràng buộc quyền và nghĩa vụ của các bên trong suốt thời gian có hiệu lực.`;
+const DEFAULT_CLAUSE_CONTENT = `
+`;
 
 function buildFullDocumentContent(clauseContent = DEFAULT_CLAUSE_CONTENT) {
     const clauses = clauseContent?.trim() || DEFAULT_CLAUSE_CONTENT;
@@ -55,13 +35,12 @@ function buildFullDocumentContent(clauseContent = DEFAULT_CLAUSE_CONTENT) {
 Độc lập - Tự do - Hạnh phúc
 
 HỢP ĐỒNG
-Tên hợp đồng: {{contract_title}}
 Số hợp đồng: {{contract_number}}
-Loại hợp đồng: {{contract_type_code}} - {{contract_type_name}}
-Ngày lập: {{contract_date}}
 
-- Căn cứ các quy định pháp luật hiện hành;
-- Căn cứ nhu cầu và sự thỏa thuận của các bên.
+- Căn cứ Bộ Luật dân sự số: 91/2015/QH13 được Quốc hội nước Cộng hòa xã hội chủ nghĩa Việt Nam khóa XIII, kỳ họp thứ 10 thông qua ngày 24 tháng 11 năm 2015 và có hiệu lực từ ngày 01/01/2017;
+- Căn cứ Luật thương mại số: 36/2005/QH11 do Quốc hội nước Cộng hoà xã hội chủ nghĩa Việt Nam ban hành ngày 14/06/2005 và có hiệu lực từ ngày 01/01/2006;
+- Căn cứ Luật Quảng cáo số: 16/2012/QH13 do Quốc hội nước Cộng hòa xã hội chủ nghĩa Việt Nam ban hành ngày 21/06/2012 và có hiệu lực từ ngày 01/01/2013;
+- Căn cứ nhu cầu và khả năng của hai bên;
 
 Hôm nay, ngày {{contract_date}}, các bên gồm:
 
@@ -71,7 +50,6 @@ Chức vụ/Vai trò: {{party_a_role}}
 Email: {{party_a_email}}
 Số điện thoại: {{party_a_phone}}
 Ngày sinh: {{party_a_date_of_birth}}
-Phòng ban: {{party_a_department}}
 Đơn vị: {{party_a_company}}
 
 BÊN B
@@ -80,18 +58,14 @@ Chức vụ/Vai trò: {{party_b_role}}
 Email: {{party_b_email}}
 Số điện thoại: {{party_b_phone}}
 Ngày sinh: {{party_b_date_of_birth}}
-Phòng ban: {{party_b_department}}
 Đơn vị: {{party_b_company}}
 
 CÁC ĐIỀU KHOẢN HỢP ĐỒNG
 
 ${clauses}
 
-ĐẠI DIỆN BÊN A
-{{director_signature}}
-
-ĐẠI DIỆN BÊN B
-{{partner_signature}}`;
+ĐẠI DIỆN BÊN A\tĐẠI DIỆN BÊN B
+`;
 }
 
 function createEmptyTemplateForm() {

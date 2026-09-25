@@ -14,6 +14,7 @@ function ContractForm({
     loadingProjectContext = false,
     loadingContractOptions = false,
     creatorReadOnly = false,
+    templateSelectionRequired = false,
 }) {
     const containsCurrentProject = projects.some(
         (project) => project.id === contract.projectId
@@ -184,8 +185,13 @@ function ContractForm({
                     value={contract.contractTemplateId}
                     onChange={onChange}
                     disabled={!contract.contractTypeId || loadingContractOptions}
+                    required={templateSelectionRequired}
                 >
-                    <option value="">Start without a template</option>
+                    <option value="">
+                        {templateSelectionRequired
+                            ? "Select contract template"
+                            : "Start without a template"}
+                    </option>
 
                     {filteredTemplates.map((template) => (
                         <option key={template.id} value={template.id}>
@@ -200,11 +206,14 @@ function ContractForm({
                     value={contract.contractTemplateVersionId}
                     onChange={onChange}
                     disabled={!contract.contractTemplateId || versions.length === 0}
+                    required={templateSelectionRequired}
                 >
                     <option value="">
                         {versions.length === 0
                             ? "No saved versions"
-                            : "Do not link a saved version"}
+                            : templateSelectionRequired
+                              ? "Select template version"
+                              : "Do not link a saved version"}
                     </option>
 
                     {versions.map((version) => (

@@ -37,8 +37,8 @@
 #  "status": "ACTIVE",
 #  "sendWelcomeEmail": false,
 #  "departmentName": "Engineering",
-#  "dob": "1998-02-03",
-#  "startDate": "2024-04-01"
+#  "dob": "03/02/1998",
+#  "startDate": "01/04/2099"
 #}
 #
 #### UM-06: Create user with duplicate email - expected 400
@@ -56,8 +56,8 @@
 #  "status": "ACTIVE",
 #  "sendWelcomeEmail": false,
 #  "departmentName": "Engineering",
-#  "dob": "1998-02-03",
-#  "startDate": "2024-04-01"
+#  "dob": "03/02/1998",
+#  "startDate": "01/04/2099"
 #}
 #
 #### UM-07: Create user with invalid phone - expected validation error
@@ -74,8 +74,8 @@
 #  "role": "Employee",
 #  "status": "ACTIVE",
 #  "departmentName": "Engineering",
-#  "dob": "1998-02-03",
-#  "startDate": "2024-04-01"
+#  "dob": "03/02/1998",
+#  "startDate": "01/04/2099"
 #}
 #
 #### UM-08: Update an employee

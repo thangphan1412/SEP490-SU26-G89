@@ -59,7 +59,7 @@ function SignatureDetail() {
     }, [id]);
 
     const handleEdit = () => {
-        navigate(`/signature-management/update/${id}`);
+        navigate(`/signature-management/${id}/edit`);
     };
 
     if (loading) {
@@ -113,7 +113,7 @@ function SignatureDetail() {
                         />
                         <Field
                             label="Default Signature"
-                            value={electronicSignature.default ? "Yes" : "No"}
+                            value={(electronicSignature.default ?? electronicSignature.isDefault) ? "Yes" : "No"}
                             mode="view"
                         />
                         <Field

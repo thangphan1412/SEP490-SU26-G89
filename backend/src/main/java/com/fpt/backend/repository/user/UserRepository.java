@@ -18,6 +18,9 @@ import java.util.UUID;
 
 @Repository
 public interface UserRepository extends JpaRepository<Users, UUID> {
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("select owner from Users owner where owner.id = :id")
+    Optional<Users> lockSignatureOwner(@Param("id") UUID id);
 
     @EntityGraph(attributePaths = {
             "userRoles",

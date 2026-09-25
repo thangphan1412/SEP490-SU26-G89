@@ -12,7 +12,9 @@ import java.util.UUID;
 
 public interface IElectronicSignatureService {
     ElectronicSignatures createElectronicSignature(CreateElectronicSignatureRequest createElectronicSignatureRequest);
-    List<ListElectronicResponse> getAllElectronicSignatures();
+    List<ListElectronicResponse> getAllElectronicSignatures( String search,
+                                                             String type,
+                                                             String status);
     ElectronicSignatureDetailResponse getElectronicSignatureDetail(UUID electronicSignatureId);
     ElectronicSignatures updateElectronicSignature(UUID electronicSignatureId, UpdateElectronicSignatureRequest request, MultipartFile multipartFile);
 }
