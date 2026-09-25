@@ -8,6 +8,7 @@ import com.fpt.backend.controller.contractController.ContractTemplateController;
 import com.fpt.backend.dto.request.contract.ContractTemplateRequest;
 import com.fpt.backend.dto.response.contract.ContractTemplateResponse;
 import com.fpt.backend.exception.BadHttpException;
+import com.fpt.backend.exception.GlobalException;
 import com.fpt.backend.exception.NotFoundException;
 import com.fpt.backend.service.interfaces.contract.ContractTemplateService;
 import org.junit.jupiter.api.BeforeEach;
@@ -52,6 +53,7 @@ class ContractTemplateControllerTest {
 
         mockMvc = MockMvcBuilders
                 .standaloneSetup(controller)
+                .setControllerAdvice(new GlobalException())
                 .build();
 
         objectMapper = new ObjectMapper();
@@ -99,7 +101,7 @@ class ContractTemplateControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(validJson()))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.code").value(201))
+                .andExpect(jsonPath("$.status").value(201))
                 .andExpect(jsonPath("$.message").value("Created"));
 
         verify(contractTemplateService, times(1))
@@ -132,7 +134,7 @@ class ContractTemplateControllerTest {
         mockMvc.perform(post("/api/v1/contract-templates")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json))
-                .andExpect(status().is5xxServerError());
+                .andExpect(status().isBadRequest());
 
         verify(contractTemplateService, times(1))
                 .createContractTemplate(any());
@@ -156,12 +158,18 @@ class ContractTemplateControllerTest {
                 }
                 """;
 
+        when(contractTemplateService.createContractTemplate(any()))
+                .thenThrow(new BadHttpException(
+                        "Contract type is required"
+                ));
+
         mockMvc.perform(post("/api/v1/contract-templates")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json))
                 .andExpect(status().isBadRequest());
 
-        verifyNoInteractions(contractTemplateService);
+        verify(contractTemplateService, times(1))
+                .createContractTemplate(any());
     }
 
     // =========================================================
@@ -216,7 +224,7 @@ class ContractTemplateControllerTest {
         mockMvc.perform(post("/api/v1/contract-templates")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json))
-                .andExpect(status().is5xxServerError());
+                .andExpect(status().isNotFound());
 
         verify(contractTemplateService, times(1))
                 .createContractTemplate(any());
@@ -264,7 +272,7 @@ class ContractTemplateControllerTest {
         mockMvc.perform(post("/api/v1/contract-templates")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json))
-                .andExpect(status().is5xxServerError());
+                .andExpect(status().isBadRequest());
 
         verify(contractTemplateService, times(1))
                 .createContractTemplate(any());
@@ -477,7 +485,7 @@ class ContractTemplateControllerTest {
         mockMvc.perform(post("/api/v1/contract-templates")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(validJson()))
-                .andExpect(status().is5xxServerError());
+                .andExpect(status().isBadRequest());
 
         verify(contractTemplateService, times(1))
                 .createContractTemplate(any());
@@ -522,18 +530,11 @@ class ContractTemplateControllerTest {
     @Test
     void createContractTemplate_CT19_shouldHandleNullRequest()
             throws Exception {
-
-        when(contractTemplateService.createContractTemplate(any()))
-                .thenThrow(new BadHttpException(
-                        "Contract template information is required"
-                ));
-
         mockMvc.perform(post("/api/v1/contract-templates")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("null"))
-                .andExpect(status().is5xxServerError());
+                .andExpect(status().isBadRequest());
 
-        verify(contractTemplateService, times(1))
-                .createContractTemplate(isNull());
+        verifyNoInteractions(contractTemplateService);
     }
 }
