@@ -2,6 +2,7 @@ export const PROJECT_STATUS_OPTIONS = [
   "Planning",
   "Active",
   "On Hold",
+  "OVER_DUE",
   "Completed",
   "Cancelled",
 ];
