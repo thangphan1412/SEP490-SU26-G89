@@ -52,6 +52,19 @@ public class ContractDocumentRenderer {
             List<ContractStatusHistory> history,
             Map<String, String> attributeValues
     ) {
+        return render(contract, history, attributeValues, false);
+    }
+
+    public RenderedDocument renderForSigning(
+            Contracts contract, List<ContractStatusHistory> history, Map<String, String> attributeValues
+    ) {
+        return render(contract, history, attributeValues, true);
+    }
+
+    private RenderedDocument render(
+            Contracts contract, List<ContractStatusHistory> history,
+            Map<String, String> attributeValues, boolean signingPdf
+    ) {
         SignatureInformation director = findSignature(history, "SIGN_DIRECTOR");
         SignatureInformation partner = findSignature(history, "SIGN_PARTNER");
         List<SignatureInformation> workflowSignatures = findWorkflowSignatures(
@@ -70,6 +83,17 @@ public class ContractDocumentRenderer {
                 director,
                 partner
         );
+        // A PDF is frozen before signing. Do not bake a stale "unsigned" status into it.
+        if (signingPdf) {
+            if (director == null) {
+                values.put("director_name", values.get("party_a_name"));
+                values.put("director_signature", "(Vị trí chữ ký điện tử)");
+            }
+            if (partner == null) {
+                values.put("partner_name", values.get("party_b_name"));
+                values.put("partner_signature", "(Vị trí chữ ký điện tử)");
+            }
+        }
 
         return new RenderedDocument(
                 replacePlaceholders(contract.getContractContent(), values),

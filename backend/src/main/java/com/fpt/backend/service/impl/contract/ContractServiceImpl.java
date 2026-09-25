@@ -524,7 +524,7 @@ public class ContractServiceImpl implements ContractService {
         Map<String, String> attributes = readAttributeValues(contract.getId());
         byte[] pdf = pdfGenerator.generate(
                 contract,
-                documentRenderer.render(contract, history, attributes)
+                documentRenderer.renderForSigning(contract, history, attributes)
         );
         FileStorage previousFile = contract.getDocumentFile();
         FileStorage uploaded = cloudinaryService.uploadPdfAndSave(
@@ -601,16 +601,21 @@ public class ContractServiceImpl implements ContractService {
                 actor
         );
 
-        List<ContractStatusHistory> history = loadHistory(contract.getId());
-        Map<String, String> attributeValues = readAttributeValues(contract.getId());
-        ContractDocumentRenderer.RenderedDocument renderedDocument =
-                documentRenderer.render(contract, history, attributeValues);
-
+        byte[] pdf = loadAndValidateCanonicalDocument(contract, actor);
+        // Upgrade old unsigned PDFs only. Never regenerate a PDF containing a digital signature.
+        if (!signatureRepository.existsByContractId(id)) {
+            try (var document = org.apache.pdfbox.Loader.loadPDF(pdf)) {
+                if (document.getSignatureDictionaries().isEmpty()
+                        && new org.apache.pdfbox.text.PDFTextStripper().getText(document).contains("Chưa ký")) {
+                    pdf = replaceCanonicalDocument(contract, actor);
+                }
+            } catch (java.io.IOException exception) {
+                throw new BadHttpException("Unable to read the stored contract PDF");
+            }
+        }
         return new ContractPdfResponse(
                 createPdfFileName(contract),
-                contract.getDocumentFile() == null
-                        ? pdfGenerator.generate(contract, renderedDocument)
-                        : loadAndValidateCanonicalDocument(contract, actor)
+                pdf
         );
     }
 

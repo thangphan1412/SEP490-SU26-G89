@@ -43,7 +43,6 @@ public class AuthenticateController {
                     authenticateRequest.getEmail(),
                     authenticateRequest.getPassword()
             ));
-            System.out.println("password:"+ authenticateRequest.getPassword());
             MyUserDetail myUsersDetail = (MyUserDetail) authenticate.getPrincipal();
             Users users =  myUsersDetail.getUsers();
 
@@ -72,7 +71,6 @@ public class AuthenticateController {
 
             var token  = jwtService.generateToken(myUsersDetail);
             System.out.println(">>> Login controller called");
-            System.out.println(token);
             AuthenticateResponse authenticateResponse = new AuthenticateResponse();
             authenticateResponse.setToken(token);
             authenticateResponse.setRole(users.getUserRoles().stream().findFirst().get().getRole().getRoleName());
@@ -93,6 +91,9 @@ public class AuthenticateController {
                     authenticateResponse
             );
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        } catch (org.springframework.security.core.AuthenticationException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new BaseResponse<>(
+                    HttpStatus.UNAUTHORIZED.value(), "Email hoặc mật khẩu không chính xác.", null));
         } catch (Exception e) {
             throw new RuntimeException(e);
         }

@@ -16,6 +16,10 @@ import java.util.UUID;
 
 @Repository
 public interface ContractRepository extends JpaRepository<Contracts, UUID> {
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("select contract from Contracts contract where contract.id = :id")
+    java.util.Optional<Contracts> findForSigningById(@Param("id") UUID id);
+
     long countByContractTypeId(UUID contractTypeId);
 
     long countByContractTemplateId(UUID contractTemplateId);

@@ -1209,6 +1209,8 @@ export default function ContractSigningPage() {
             // STEP 1: PREPARE PADES
             console.log("========== PADES PREPARE ==========");
 
+            const renderedWidth = pageRefs.current[selectedPage]?.getBoundingClientRect().width || pdfWidth;
+            const coordinateScale = 750 / renderedWidth;
             const prepareResponse =
                 await contractApi.preparePadesSigning(
                     id,
@@ -1216,10 +1218,10 @@ export default function ContractSigningPage() {
                     publicKeyCode,
                     pdfBlob,
                     selectedPage,
-                    signaturePosition.x,
-                    signaturePosition.y,
-                    signaturePosition.width,
-                    signaturePosition.height
+                    signaturePosition.x * coordinateScale,
+                    signaturePosition.y * coordinateScale,
+                    signaturePosition.width * coordinateScale,
+                    signaturePosition.height * coordinateScale
                 );
 
             const prepareData = unwrapApiResponse(prepareResponse);
@@ -1307,19 +1309,7 @@ export default function ContractSigningPage() {
             setPin("");
             setShowPrivateKey(false);
 
-            // SUCCESS
-            setSuccess("Contract signed successfully.");
-
-            // STEP 8: NAVIGATE
-            // STEP 8: SAVE BUSINESS SIGNATURE
-            await contractApi.signContract(
-                id,
-                selectedId,
-                signatureValue,
-                publicKeyCode
-            );
-
-            // SUCCESS
+            // The completion endpoint also saves the signature record and workflow status.
             setSuccess("Contract signed successfully.");
 
             // STEP 9: NAVIGATE
@@ -1595,6 +1585,11 @@ export default function ContractSigningPage() {
 
                                         <small>
 
+                                            {signature.signerName?.trim() || signature.signerEmail}
+                                            <br />
+                                            {signature.signerEmail}
+                                            <br />
+
                                             {
                                                 signature.type
                                             }
@@ -1624,6 +1619,7 @@ export default function ContractSigningPage() {
                                 {
                                     selectedSignature.signatureName
                                 }
+                                {" · "}{selectedSignature.signerName?.trim() || selectedSignature.signerEmail}
 
                             </div>
 
@@ -2087,7 +2083,9 @@ export default function ContractSigningPage() {
                                                                 )}
 
                                                                 <span className="signature-overlay-label">
-                                            Drag to position
+                                                                    {selectedSignature?.signerName?.trim() || selectedSignature?.signerEmail}
+                                                                    <br />
+                                                                    Drag to position
                                         </span>
 
                                                             </div>

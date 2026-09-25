@@ -25,4 +25,6 @@ public class ListElectronicResponse {
     private boolean isDefault;
     private LocalDate uploadAt;
     private String fileUrl;
+    private String signerName;
+    private String signerEmail;
 }

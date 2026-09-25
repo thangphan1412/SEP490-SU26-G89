@@ -50,6 +50,7 @@ public class PadesSigningService {
     private final CurrentUser currentUser;
     private final PadesVerificationService padesVerificationService;
     private final ElectronicSignatureRepository electronicSignatureRepository;
+    private final com.fpt.backend.service.interfaces.contract.ContractService contractService;
 
     private final Map<UUID, PadesSigningSession> sessions = new ConcurrentHashMap<>();
 
@@ -78,12 +79,30 @@ public class PadesSigningService {
                 signatureHeight,
                 pdfBytes
         );
+        Users signer = currentUser.getCurrentUser();
+        var detail = contractService.getContractById(contractId);
+        var workflow = detail.workflowRuntime();
+        if (workflow == null || !signer.getId().equals(userId)
+                || !userId.equals(workflow.currentAssignedUserId())
+                || !java.util.List.of("SIGN", "APPROVE_AND_SIGN").contains(workflow.currentStepActionType())
+                || !workflow.availableActions().contains("COMPLETE_STEP")) {
+            throw new IllegalArgumentException("You are not assigned to the current signing step");
+        }
+        if (signer.getDob() == null || java.time.Period.between(
+                java.time.LocalDate.parse(signer.getDob()), java.time.LocalDate.now()).getYears() < 18) {
+            throw new IllegalArgumentException("A valid date of birth and minimum age of 18 are required to sign");
+        }
+        var sourceContract = contractRepository.findById(contractId).orElseThrow();
+        String sourceHash = Base64.getEncoder().encodeToString(MessageDigest.getInstance("SHA-256").digest(pdfBytes));
+        if (!sourceHash.equals(sourceContract.getDocumentHash())) {
+            throw new IllegalArgumentException("The PDF has changed. Reload the contract before signing");
+        }
         try (PDDocument document = Loader.loadPDF(pdfBytes)) {
 
             PDSignature signature = new PDSignature();
             signature.setFilter(PDSignature.FILTER_ADOBE_PPKLITE);
             signature.setSubFilter(PDSignature.SUBFILTER_ADBE_PKCS7_DETACHED);
-            signature.setName("Electronic Signature");
+            signature.setName(signerDisplayName(signer));
             signature.setReason("Contract signing");
             signature.setSignDate(Calendar.getInstance());
             drawSignatureImage(
@@ -144,6 +163,7 @@ public class PadesSigningService {
         }
     }
 
+    @org.springframework.transaction.annotation.Transactional(rollbackFor = Exception.class)
     public byte[] complete(
             UUID sessionId,
             String signatureValue
@@ -276,13 +296,18 @@ public class PadesSigningService {
         );
 
         Contracts contract = contractRepository
-                        .findById(session.getContractId())
+                        .findForSigningById(session.getContractId())
                         .orElseThrow(() ->
                                 new IllegalArgumentException("Contract not found: " + session.getContractId())
                         );
         Users user = currentUser.getCurrentUser();
         if (user == null || !user.getId().equals(session.getUserId())) {
             throw new IllegalArgumentException("Current user does not match signing session");
+        }
+        String originalHash = Base64.getEncoder().encodeToString(
+                MessageDigest.getInstance("SHA-256").digest(session.getOriginalPdf()));
+        if (!originalHash.equals(contract.getDocumentHash())) {
+            throw new IllegalArgumentException("The contract changed during signing. Reload it and try again");
         }
 
         String originalName = contract.getDocumentFile() != null
@@ -304,6 +329,14 @@ public class PadesSigningService {
                 )
         );
         contractRepository.save(contract);
+        // Persist the signature record, workflow step and history in this same transaction.
+        var updated = contractService.transitionContract(contract.getId(),
+                new com.fpt.backend.dto.request.contract.ContractTransitionRequest(
+                        "COMPLETE_STEP", null, null, null, signatureValue,
+                        session.getElectronicSignatureId(), session.getKeyCode()));
+        if ("CANCELLED".equals(updated.contractStatus())) {
+            throw new IllegalArgumentException("Signing requirements were not met; the signature was not saved");
+        }
         sessions.remove(sessionId);
         System.out.println("========== PADES COMPLETE SUCCESS ==========");
         System.out.println("Contract ID      = " + contract.getId());
@@ -569,7 +602,7 @@ public class PadesSigningService {
         // ==========================================
 
         ElectronicSignatures electronicSignature =
-                electronicSignatureRepository.findById(electronicSignatureId)
+                electronicSignatureRepository.findOwnedById(electronicSignatureId, currentUser.getCurrentUser().getId())
                         .orElseThrow(() ->
                                 new IllegalArgumentException(
                                         "Electronic signature not found: "
@@ -577,6 +610,9 @@ public class PadesSigningService {
                                 )
                         );
 
+        if (electronicSignature.getStatus() != com.fpt.backend.enums.ElectronicStatus.ACTIVE) {
+            throw new IllegalArgumentException("Only an active electronic signature can be used");
+        }
         FileStorage fileStorage =
                 electronicSignature.getFileStorage();
 
@@ -756,17 +792,46 @@ public class PadesSigningService {
                              true
                      )) {
 
+            float labelHeight = Math.min(30f, pdfHeight * 0.55f);
+            float imageScale = Math.min(pdfWidth / image.getWidth(), (pdfHeight - labelHeight) / image.getHeight());
+            float imageWidth = image.getWidth() * imageScale;
+            float imageHeight = image.getHeight() * imageScale;
             contentStream.drawImage(
                     image,
-                    pdfX,
-                    pdfY,
-                    pdfWidth,
-                    pdfHeight
+                    pdfX + (pdfWidth - imageWidth) / 2,
+                    pdfY + labelHeight,
+                    imageWidth,
+                    imageHeight
             );
+            var font = com.fpt.backend.service.impl.contract.ContractPdfGenerator.loadUnicodeFont(document, false);
+            String[] lines = {
+                    "Đã ký: " + signerDisplayName(electronicSignature.getUser()),
+                    electronicSignature.getUser().getEmail(),
+                    java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))
+            };
+            for (int i = 0; i < lines.length; i++) {
+                String line = lines[i] == null ? "" : lines[i].replaceAll("[\\r\\n\\t]", " ");
+                float textWidth = font.getStringWidth(line) / 1000f;
+                float lineHeight = labelHeight / lines.length;
+                float fontSize = Math.min(lineHeight * 0.8f, pdfWidth / Math.max(1f, textWidth));
+                contentStream.beginText();
+                contentStream.setFont(font, fontSize);
+                contentStream.newLineAtOffset(pdfX, pdfY + labelHeight - lineHeight * (i + 0.8f));
+                contentStream.showText(line);
+                contentStream.endText();
+            }
         }
+        page.getCOSObject().setNeedToBeUpdated(true);
+        document.getPages().getCOSObject().setNeedToBeUpdated(true);
 
         System.out.println(
                 "========== SIGNATURE IMAGE DRAWN =========="
         );
+    }
+
+    private String signerDisplayName(Users user) {
+        String name = ((user.getFirstName() == null ? "" : user.getFirstName()) + " "
+                + (user.getLastName() == null ? "" : user.getLastName())).trim();
+        return name.isBlank() ? user.getEmail() : name;
     }
 }

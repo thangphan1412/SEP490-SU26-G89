@@ -68,7 +68,7 @@ public class ContractSigningService {
                                 .digest(document)
                 );
         Signature signature = Signature.builder()
-                        .signatureName("Digital Signature")
+                        .signatureName(electronicSignature.getElectronicSignatureName())
                         .signatureType(SignatureType.INTERNAL_RSA)
                         .documentHash(documentHash)
                         .signatureValue(signatureValue)

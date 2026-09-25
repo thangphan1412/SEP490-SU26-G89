@@ -21,7 +21,9 @@ public interface ElectronicSignatureRepository extends JpaRepository<ElectronicS
         es.status,
         es.isDefault,
         es.createdAt,
-        es.fileStorage.filePath
+        es.fileStorage.filePath,
+        concat(coalesce(es.user.firstName, ''), ' ', coalesce(es.user.lastName, '')),
+        es.user.email
     )
     from ElectronicSignatures  es
     where es.fileStorage.user.id = :userId

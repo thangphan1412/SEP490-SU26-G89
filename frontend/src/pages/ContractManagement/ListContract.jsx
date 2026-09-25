@@ -15,6 +15,7 @@ import contractApi from "../../services/contractService/contractApi.js";
 import contractTypeApi from "../../services/contractTypeService/contractTypeApi.js";
 import contractTemplateApi from "../../services/contractTemplateService/contractTemplateApi.js";
 import ContractForm from "./ContractForm.jsx";
+import SignatureVerificationPanel from "./SignatureVerificationPanel.jsx";
 import { splitContractPages } from "./contractPageUtils.js";
 import {
     CONTRACT_STATUS,
@@ -1366,6 +1367,7 @@ function ContractDetails({
                     ))}
                 </section>
             )}
+            <SignatureVerificationPanel key={contract.id} contractId={contract.id} />
             <div className="contract-content-preview">
                 <h3>Completed Contract Content</h3>
                 <div className="contract-document-pages">

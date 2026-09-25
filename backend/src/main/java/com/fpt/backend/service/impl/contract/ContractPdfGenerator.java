@@ -64,11 +64,13 @@ public class ContractPdfGenerator {
         }
     }
 
-    private PDFont loadUnicodeFont(PDDocument document, boolean bold)
+    public static PDFont loadUnicodeFont(PDDocument document, boolean bold)
             throws IOException {
         for (Path path : fontCandidates(bold)) {
             if (Files.isRegularFile(path)) {
-                return PDType0Font.load(document, path.toFile());
+                try (var input = Files.newInputStream(path)) {
+                    return PDType0Font.load(document, input, false);
+                }
             }
         }
 
@@ -77,7 +79,7 @@ public class ContractPdfGenerator {
         );
     }
 
-    private List<Path> fontCandidates(boolean bold) {
+    private static List<Path> fontCandidates(boolean bold) {
         String windowsTimesFont = bold ? "timesbd.ttf" : "times.ttf";
         String windowsArialFont = bold ? "arialbd.ttf" : "arial.ttf";
         String liberationFont = bold
@@ -87,7 +89,7 @@ public class ContractPdfGenerator {
         List<Path> paths = new ArrayList<>();
         String windowsDirectory = System.getenv("WINDIR");
 
-        if (hasText(windowsDirectory)) {
+        if (windowsDirectory != null && !windowsDirectory.isBlank()) {
             paths.add(Path.of(windowsDirectory, "Fonts", windowsTimesFont));
             paths.add(Path.of(windowsDirectory, "Fonts", windowsArialFont));
         }
