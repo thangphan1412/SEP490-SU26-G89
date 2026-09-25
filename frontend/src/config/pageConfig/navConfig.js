@@ -1,4 +1,4 @@
-import CreateSignaturePage from "../../pages/signature/CreateSignaturePage.jsx";
+import { DEPARTMENT_MANAGER_ROLES } from "../accessControl.js";
 
 export const navConfig = [
     {
@@ -54,8 +54,8 @@ export const navConfig = [
         headerLabel: "Department Management",
         matchPaths: ["/department-management"],
         children: [
-            { label: "List Department", path: "/department-management/list" },
-            { label: "Create Department", path: "/department-management/create" },
+            { label: "List Department", path: "/department-management/list", allowedRoles: DEPARTMENT_MANAGER_ROLES },
+            { label: "Create Department", path: "/department-management/create", allowedRoles: DEPARTMENT_MANAGER_ROLES },
             // { label: "View Department", path: "/department-management/view/:id" },
             // { label: "Update Department", path: "/department-management/update/:id" },
         ],

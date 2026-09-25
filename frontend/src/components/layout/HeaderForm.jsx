@@ -3,6 +3,7 @@ import Nav from 'react-bootstrap/Nav';
 import Navbar from 'react-bootstrap/Navbar';
 import NavDropdown from 'react-bootstrap/NavDropdown';
 import "../../assets/styles/css/layoutStyles/Header.css"
+import { DEPARTMENT_MANAGER_ROLES } from "../../config/accessControl.js";
 
 import {    IconContract,
             IconLayoutDashboard,
@@ -43,7 +44,9 @@ function HeaderForm(){
                         ><IconContract stroke={2}/>Contract Management</Nav.Link>
                         <Nav.Link as={NavLink} to="/project-management/list" className="nav-item"><IconCreditCard stroke={2} />Project Management</Nav.Link>
                         <Nav.Link as={NavLink} to="/permission/list" className="nav-item"><IconShieldCheck stroke={2} />Permission Management</Nav.Link>
-                        <Nav.Link as={NavLink} to="/department-management/list" className="nav-item"><IconBuildingSkyscraper stroke={2} />Department Management</Nav.Link>
+                        {DEPARTMENT_MANAGER_ROLES.includes(role) && (
+                            <Nav.Link as={NavLink} to="/department-management/list" className="nav-item"><IconBuildingSkyscraper stroke={2} />Department Management</Nav.Link>
+                        )}
 
                         {['CEO', 'Admin'].includes(role) && (
                             <Nav.Link as={NavLink} to="/role-management/list" className="nav-item">

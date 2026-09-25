@@ -43,6 +43,7 @@ import CreateSignaturePage from "./pages/signature/CreateSignaturePage.jsx";
 import SignatureDetail from "./pages/signature/SignatureDetail.jsx";
 import UpdateSignature from "./pages/signature/UpdateSignature.jsx";
 import ContractSigningPage from "./pages/ContractManagement/ContractSigningPage.jsx";
+import { DEPARTMENT_MANAGER_ROLES } from "./config/accessControl.js";
 
 function AppRouter() {
     return (
@@ -187,19 +188,19 @@ function AppRouter() {
                 />
                 <Route
                     path="/department-management/list"
-                    element={<ListDepartment />}
+                    element={<ProtectedRoute allowedRoles={DEPARTMENT_MANAGER_ROLES}><ListDepartment /></ProtectedRoute>}
                 />
                 <Route
                     path="/department-management/create"
-                    element={<CreateDepartment />}
+                    element={<ProtectedRoute allowedRoles={DEPARTMENT_MANAGER_ROLES}><CreateDepartment /></ProtectedRoute>}
                 />
                 <Route
                     path="/department-management/view/:id"
-                    element={<ViewDepartment />}
+                    element={<ProtectedRoute allowedRoles={DEPARTMENT_MANAGER_ROLES}><ViewDepartment /></ProtectedRoute>}
                 />
                 <Route
                     path="/department-management/update/:id"
-                    element={<UpdateDepartment />}
+                    element={<ProtectedRoute allowedRoles={DEPARTMENT_MANAGER_ROLES}><UpdateDepartment /></ProtectedRoute>}
                 />
                 <Route
                     path="/role-management/list"
