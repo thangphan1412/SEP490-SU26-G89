@@ -39,23 +39,49 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return;
         }
         jwtToken = header.substring(7);
-        email = jwtService.extractUsername(jwtToken);
-        System.out.println(header);
-        if(email != null && SecurityContextHolder.getContext().getAuthentication() == null){
-            MyUserDetail userDetails = (MyUserDetail) userDetailsService.loadUserByUsername(email);
-            if (jwtService.isTokenValid(jwtToken, userDetails)){
-                UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
-                        userDetails,
-                        null,
-                        userDetails.getAuthorities()
-                );
-                authToken.setDetails(
-                        new WebAuthenticationDetailsSource().buildDetails(request)
-                );
-                SecurityContextHolder.getContext().setAuthentication(authToken);
+        try {
+            email = jwtService.extractUsername(jwtToken);
+            if (email == null || email.isBlank()) {
+                unauthorized(response, false);
+                return;
             }
+            if(email != null && SecurityContextHolder.getContext().getAuthentication() == null){
+                MyUserDetail userDetails = (MyUserDetail) userDetailsService.loadUserByUsername(email);
+                if (jwtService.isTokenValid(jwtToken, userDetails)){
+                    UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
+                            userDetails,
+                            null,
+                            userDetails.getAuthorities()
+                    );
+                    authToken.setDetails(
+                            new WebAuthenticationDetailsSource().buildDetails(request)
+                    );
+                    SecurityContextHolder.getContext().setAuthentication(authToken);
+                } else {
+                    unauthorized(response, false);
+                    return;
+                }
+            }
+        } catch (io.jsonwebtoken.ExpiredJwtException expired) {
+            unauthorized(response, true);
+            return;
+        } catch (io.jsonwebtoken.JwtException | IllegalArgumentException
+                 | org.springframework.security.core.userdetails.UsernameNotFoundException invalid) {
+            unauthorized(response, false);
+            return;
         }
         filterChain.doFilter(request, response);
+    }
+
+    private void unauthorized(HttpServletResponse response, boolean expired) throws IOException {
+        SecurityContextHolder.clearContext();
+        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        response.setContentType("application/json");
+        response.setCharacterEncoding("UTF-8");
+        response.setHeader("Cache-Control", "no-store");
+        response.getWriter().write(expired
+                ? "{\"status\":401,\"code\":\"TOKEN_EXPIRED\",\"message\":\"Your session has expired. Please sign in again.\"}"
+                : "{\"status\":401,\"code\":\"INVALID_TOKEN\",\"message\":\"Your session is invalid. Please sign in again.\"}");
     }
 
     @Override

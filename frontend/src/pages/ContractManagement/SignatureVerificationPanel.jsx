@@ -45,8 +45,9 @@ export default function SignatureVerificationPanel({ contractId }) {
         <section className="contract-content-preview">
             <h3>Signature verification</h3>
             <p>
-                Enter the public key code shared by the other signer to verify their signature
-                and the stored PDF's integrity. No private key is needed.
+                Partners must enter the issuing CEO's public key code.
+                The issuing CEO can enter any partner's signing key code.
+                No private key is needed.
             </p>
             <Form.Group controlId="verification-public-key-code" className="mb-3">
                 <Form.Label>Other signer's public key code</Form.Label>
@@ -62,7 +63,7 @@ export default function SignatureVerificationPanel({ contractId }) {
                         setError("");
                     }}
                 />
-                <Form.Text>Ask the other signer to share the public key code used to sign this contract.</Form.Text>
+                <Form.Text>Use the code of the key that signed this contract. Partners cannot use another partner's code.</Form.Text>
             </Form.Group>
             <Button onClick={verify} disabled={verifying || !publicKeyCode.trim()}>
                 {verifying && <Spinner animation="border" size="sm" className="me-2" />}
@@ -72,10 +73,23 @@ export default function SignatureVerificationPanel({ contractId }) {
                 {error && <Alert variant="danger">{error}</Alert>}
                 {report && (
                     <>
+                        {report.selectedSignature && (
+                            <Alert variant={report.selectedSignature.valid ? "success" : "danger"}>
+                                Selected signer: {report.selectedSignature.signerName}.
+                                {" "}{report.selectedSignature.valid ? "Signature valid." : "Signature invalid."}
+                            </Alert>
+                        )}
                         <Alert variant={report.verified ? "success" : "warning"}>
-                            <strong>{report.verified ? "Verified. " : "Not verified. "}</strong>
+                            <strong>PDF hash and signatures: {report.verified ? "Verified. " : "Not verified. "}</strong>
                             {report.message}
                         </Alert>
+                        {report.revisionContentReviewRequired && (
+                            <Alert variant="warning">
+                                Content changes between signing revisions have not been verified.
+                                Valid signatures do not by themselves confirm that the current content
+                                is unchanged from the CEO's signed revision.
+                            </Alert>
+                        )}
                         {report.signatures.map((signature) => (
                             <article key={signature.signatureId} className="border-top py-3">
                                 <strong>

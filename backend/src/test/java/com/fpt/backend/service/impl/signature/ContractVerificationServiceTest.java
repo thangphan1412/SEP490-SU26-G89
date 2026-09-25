@@ -44,6 +44,48 @@ class ContractVerificationServiceTest {
             contracts, repository, signatures, files, currentUser);
 
     @Test
+    void rejectsChangedContractAmountAfterSigning() throws Exception {
+        byte[] source;
+        try (var document = new PDDocument(); var output = new ByteArrayOutputStream()) {
+            var page = new PDPage();
+            document.addPage(page);
+            try (var content = new org.apache.pdfbox.pdmodel.PDPageContentStream(
+                    document, page, org.apache.pdfbox.pdmodel.PDPageContentStream.AppendMode.OVERWRITE, false)) {
+                content.beginText();
+                content.setFont(new org.apache.pdfbox.pdmodel.font.PDType1Font(
+                        org.apache.pdfbox.pdmodel.font.Standard14Fonts.FontName.HELVETICA), 12);
+                content.newLineAtOffset(50, 700);
+                content.showText("Contract amount: 100000 VND");
+                content.endText();
+            }
+            document.save(output);
+            source = output.toByteArray();
+        }
+        var signed = sign(source);
+        String originalHash = hash(signed.pdf());
+        assertTrue(service.verifyDocument(signed.pdf(), originalHash,
+                List.of(signed.record()), UUID.randomUUID()).verified());
+        String raw = new String(signed.pdf(), StandardCharsets.ISO_8859_1);
+        assertTrue(raw.contains("Contract amount: 100000 VND"));
+        byte[] changed = raw.replace("Contract amount: 100000 VND", "Contract amount: 900000 VND")
+                .getBytes(StandardCharsets.ISO_8859_1);
+        try (var document = Loader.loadPDF(changed)) {
+            assertTrue(new org.apache.pdfbox.text.PDFTextStripper().getText(document)
+                    .contains("Contract amount: 900000 VND"));
+        }
+        var report = service.verifyDocument(changed, originalHash,
+                List.of(signed.record()), UUID.randomUUID());
+        assertFalse(report.verified());
+        assertFalse(report.storedHashMatches());
+        assertFalse(report.signatures().getFirst().valid());
+        assertTrue(report.message().contains("PDF differs from the stored document hash"));
+        var replacedHashReport = service.verifyDocument(changed, hash(changed),
+                List.of(signed.record()), UUID.randomUUID());
+        assertFalse(replacedHashReport.verified());
+        assertFalse(replacedHashReport.signatures().getFirst().valid());
+    }
+
+    @Test
     void verifiesOtherSignerUsingRegisteredPublicKey() throws Exception {
         var signed = sign(blankPdf());
         var report = service.verifyDocument(signed.pdf(), hash(signed.pdf()),
