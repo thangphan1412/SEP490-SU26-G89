@@ -3,6 +3,9 @@ import "../../assets/styles/css/projectStyles/ProjectComponents.css";
 
 function StatusBadge({ status }) {
   const normalizedStatus = String(status || "Unknown").trim().toLowerCase().replaceAll("_", " ");
+  const displayStatus = normalizedStatus.replace(/(^|\s)\S/g, function (letter) {
+    return letter.toUpperCase();
+  });
   const classByStatus = {
     active: "project-management-status-badge--active",
     approved: "project-management-status-badge--active",
@@ -18,6 +21,7 @@ function StatusBadge({ status }) {
     cancelled: "project-management-status-badge--danger",
     canceled: "project-management-status-badge--danger",
     overdue: "project-management-status-badge--danger",
+    "over due": "project-management-status-badge--danger",
   };
 
   return (
@@ -26,7 +30,7 @@ function StatusBadge({ status }) {
       as="span"
       className={`project-management-status-badge ${classByStatus[normalizedStatus] || "project-management-status-badge--draft"}`}
     >
-      {status || "Unknown"}
+      {displayStatus}
     </Badge>
   );
 }
