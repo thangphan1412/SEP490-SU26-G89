@@ -14,19 +14,19 @@ import lombok.Setter;
 @NoArgsConstructor
 public class UserProfileRequestDTO {
 
-    @NotBlank(message = "Họ không được để trống")
-    @Pattern(regexp = "^[a-zA-ZÀ-ỹ\\s]+$", message = "Họ chỉ được chứa chữ cái")
+    @NotBlank(message = "First name is required.")
+    @Pattern(regexp = "^[a-zA-ZÀ-ỹ\\s]+$", message = "First name must contain letters only.")
     private String firstName;
 
-    @NotBlank(message = "Tên không được để trống")
-    @Pattern(regexp = "^[a-zA-ZÀ-ỹ\\s]+$", message = "Tên chỉ được chứa chữ cái")
+    @NotBlank(message = "Last name is required.")
+    @Pattern(regexp = "^[a-zA-ZÀ-ỹ\\s]+$", message = "Last name must contain letters only.")
     private String lastName;
 
-    @NotBlank(message = "Email không được để trống")
-    @Email(message = "Email không đúng định dạng")
+    @NotBlank(message = "Email is required.")
+    @Email(message = "Enter a valid email address.")
     private String email;
 
-    @NotBlank(message = "Số điện thoại không được để trống")
-    @Pattern(regexp = "^(0[35789])[0-9]{8}$", message = "Số điện thoại không hợp lệ (Phải là 10 số và thuộc đầu số VN)")
+    @NotBlank(message = "Phone number is required.")
+    @Pattern(regexp = "^(0[35789])[0-9]{8}$", message = "Phone number must contain 10 digits and start with a valid Vietnamese mobile prefix.")
     private String numberPhone;
 }

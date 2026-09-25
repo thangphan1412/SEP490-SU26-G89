@@ -37,7 +37,7 @@ function UpdateProfile({ initialProfile, onSaveProfile, onCancel }) {
     useEffect(() => {
         const role = localStorage.getItem("role");
         if (role !== 'Accountant') {
-            alert("Access Denied: Chỉ Accountant mới được phép sửa hồ sơ công ty.");
+            alert("Access denied: Only Accountants can edit the company profile.");
             navigate("/company-profile/view");
         }
     }, []);
@@ -91,12 +91,12 @@ function UpdateProfile({ initialProfile, onSaveProfile, onCancel }) {
 
             onSaveProfile?.(profile);
 
-            alert("Cập nhật hồ sơ công ty thành công!");
+            alert("Company profile updated successfully.");
             navigate("/company-profile/view");
 
         } catch (error) {
             console.error("Lỗi cập nhật:", error);
-            alert("Có lỗi xảy ra, vui lòng thử lại!");
+            alert("An error occurred. Please try again.");
         } finally {
             setIsSubmitting(false);
         }

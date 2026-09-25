@@ -93,7 +93,7 @@ public class AuthenticateController {
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
         } catch (org.springframework.security.core.AuthenticationException e) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new BaseResponse<>(
-                    HttpStatus.UNAUTHORIZED.value(), "Email hoặc mật khẩu không chính xác.", null));
+                    HttpStatus.UNAUTHORIZED.value(), "Incorrect email or password.", null));
         } catch (Exception e) {
             throw new RuntimeException(e);
         }

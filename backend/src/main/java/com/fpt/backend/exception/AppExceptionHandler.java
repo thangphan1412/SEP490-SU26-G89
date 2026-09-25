@@ -49,7 +49,7 @@ public class AppExceptionHandler {
 
         BaseResponse<Map<String, String>> response = new BaseResponse<>(
                 org.springframework.http.HttpStatus.BAD_REQUEST.value(),
-                "Dữ liệu đầu vào không hợp lệ",
+                "Invalid input. Please check the fields and try again.",
                 errors
         );
 
@@ -61,7 +61,7 @@ public class AppExceptionHandler {
     public ResponseEntity<BaseResponse<String>> handleIllegalArgumentException(IllegalArgumentException ex) {
         BaseResponse<String> response = new BaseResponse<>(
                 org.springframework.http.HttpStatus.BAD_REQUEST.value(),
-                "Dữ liệu Enum không hợp lệ: " + ex.getMessage(),
+                "Invalid value: " + ex.getMessage(),
                 null
         );
         return ResponseEntity.status(org.springframework.http.HttpStatus.BAD_REQUEST).body(response);
@@ -72,7 +72,7 @@ public class AppExceptionHandler {
     public ResponseEntity<BaseResponse<String>> handleHttpMessageNotReadable(org.springframework.http.converter.HttpMessageNotReadableException ex) {
         BaseResponse<String> response = new BaseResponse<>(
                 org.springframework.http.HttpStatus.BAD_REQUEST.value(),
-                "Dữ liệu gửi lên không đúng định dạng (Ví dụ: Sai kiểu Enum, sai kiểu ngày tháng...)",
+                "Invalid request format. Please check the values and date formats.",
                 null
         );
         return ResponseEntity.status(org.springframework.http.HttpStatus.BAD_REQUEST).body(response);
@@ -88,7 +88,7 @@ public class AppExceptionHandler {
 
         // Nếu lỗi là do Spring Security ném ra (Sai email hoặc mật khẩu)
         if (errorMessage != null && errorMessage.contains("Bad credentials")) {
-            errorMessage = "Email hoặc mật khẩu không chính xác!";
+            errorMessage = "Incorrect email or password.";
         }
 
         // Đóng gói lại thành chuẩn BaseResponse

@@ -118,7 +118,7 @@ function ViewProject() {
 
                 // Hiển thị thông báo riêng khi backend từ chối quyền truy cập.
                 if (apiError.response?.status === 403) {
-                    setError(getProjectErrorMessage(apiError, "Bạn không được quyền xem project này!"));
+                    setError(getProjectErrorMessage(apiError, "You do not have permission to view this project."));
                 } else {
                     setError("Unable to load this project. Please try again later.");
                 }

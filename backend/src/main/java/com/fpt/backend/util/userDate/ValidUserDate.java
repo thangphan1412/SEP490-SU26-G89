@@ -9,7 +9,7 @@ import java.lang.annotation.*;
 @Target(ElementType.FIELD)
 @Retention(RetentionPolicy.RUNTIME)
 public @interface ValidUserDate {
-    String message() default "Ngày phải hợp lệ và theo định dạng dd/MM/yyyy";
+    String message() default "Enter a valid date in dd/MM/yyyy format.";
     Class<?>[] groups() default {};
     Class<? extends Payload>[] payload() default {};
 }

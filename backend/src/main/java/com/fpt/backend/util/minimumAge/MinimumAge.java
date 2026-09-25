@@ -17,7 +17,7 @@ public @interface MinimumAge {
 
     int value() default 18;
 
-    String message() default "Người dùng phải từ đủ {value} tuổi trở lên";
+    String message() default "Users must be at least {value} years old.";
 
     Class<?>[] groups() default {};
 

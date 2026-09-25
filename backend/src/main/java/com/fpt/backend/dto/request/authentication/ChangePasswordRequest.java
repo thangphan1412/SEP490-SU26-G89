@@ -13,9 +13,9 @@ import lombok.Setter;
 @NoArgsConstructor
 public class ChangePasswordRequest {
     private String oldPassword;
-    @Size(min = 9, message = "Mật khẩu phải có ít nhất 9 ký tự")
+    @Size(min = 9, message = "Password must contain at least 9 characters.")
     @Pattern(regexp = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&]).+$",
-            message = "Mật khẩu phải chứa ít nhất 1 chữ hoa, 1 chữ thường, 1 số và 1 ký tự đặc biệt")
+            message = "Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character.")
     private String newPassword;
     private String newPasswordConfirm;
 }

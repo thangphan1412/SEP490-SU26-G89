@@ -31,7 +31,7 @@ function LoginForm() {
 
             const response = await authenService.login({ email: email.trim(), password });
             const { token, role, fullName, departmentName , hasSignatureKey} = response.data.data;
-            if (!token) throw new Error("Đăng nhập không thành công. Vui lòng thử lại.");
+            if (!token) throw new Error("Sign-in failed. Please try again.");
             localStorage.setItem("token", token);
             localStorage.setItem("role", role ?? "");
             localStorage.setItem("fullName", fullName ?? "");
@@ -47,12 +47,12 @@ function LoginForm() {
         } catch (error) {
             const status = error.response?.status;
             setErrorMessage(status === 401
-                ? "Email hoặc mật khẩu không chính xác. Vui lòng thử lại."
+                ? "Incorrect email or password. Please try again."
                 : typeof error.response?.data?.message === "string"
                   ? error.response.data.message
                   : !error.response
-                    ? "Không thể đăng nhập. Vui lòng kiểm tra kết nối và thử lại."
-                    : "Đăng nhập không thành công. Vui lòng thử lại.");
+                    ? "Unable to sign in. Please check your connection and try again."
+                    : "Sign-in failed. Please try again.");
         } finally {
             setSubmitting(false);
         }

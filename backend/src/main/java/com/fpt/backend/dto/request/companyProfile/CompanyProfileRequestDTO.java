@@ -13,13 +13,13 @@ import lombok.Setter;
 @NoArgsConstructor
 public class CompanyProfileRequestDTO {
 
-    @NotBlank(message = "Tên công ty không được để trống")
+    @NotBlank(message = "Company name is required.")
     private String companyName;
 
-    @NotBlank(message = "Email công ty không được để trống")
-    @Email(message = "Email không đúng định dạng")
+    @NotBlank(message = "Company email is required.")
+    @Email(message = "Enter a valid email address.")
     private String email;
 
-    @NotBlank(message = "Địa chỉ không được để trống")
+    @NotBlank(message = "Address is required.")
     private String registeredAddress;
 }

@@ -140,7 +140,7 @@ public class UserServiceImpl implements IUserService {
             String myDept = loggedInUser.getDepartment() != null ? loggedInUser.getDepartment().getDepartmentName() : "";
             String targetDept = user.getDepartment() != null ? user.getDepartment().getDepartmentName() : "";
             if (!myDept.equals(targetDept) || !"Employee".equalsIgnoreCase(targetRole)) {
-                throw new RuntimeException("Access Denied: Bạn chỉ được phép xem thông tin nhân viên cùng phòng ban!");
+                throw new RuntimeException("Access denied: You can only view employees in your department.");
             }
         }
         return UserResponseDTO.fromEntity(user);
@@ -151,7 +151,7 @@ public class UserServiceImpl implements IUserService {
     @Transactional
     public UserResponseDTO createUser(UserCreateRequestDTO request) {
         if (request.getPassword() == null || request.getPassword().isEmpty()) {
-            throw new RuntimeException("Lỗi: Mật khẩu không được để trống!");
+            throw new RuntimeException("Password is required.");
         }
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new RuntimeException("Email is already in use!");
@@ -163,18 +163,18 @@ public class UserServiceImpl implements IUserService {
 
         // 1. Phân quyền CREATE
         if ("CEO".equalsIgnoreCase(currentRole) || "Administrator".equalsIgnoreCase(currentRole)) {
-            throw new RuntimeException("Access Denied: Chức vụ của bạn chỉ có quyền xem, không có quyền tạo tài khoản!");
+            throw new RuntimeException("Access denied: Your role allows viewing accounts but not creating them.");
         } else if ("Accountant".equalsIgnoreCase(currentRole)) {
             if (!List.of("HeadOfDepartment", "Employee", "External Parners").contains(request.getRole())) {
-                throw new RuntimeException("Access Denied: Bạn chỉ được tạo tài khoản HeadOfDepartment, Employee, External Parners!");
+                throw new RuntimeException("Access denied: You can only create Head of Department, Employee, and External Partner accounts.");
             }
         } else if ("HeadOfDepartment".equalsIgnoreCase(currentRole)) {
             if (!"Employee".equalsIgnoreCase(request.getRole())) {
-                throw new RuntimeException("Access Denied: Bạn chỉ được tạo tài khoản Employee!");
+                throw new RuntimeException("Access denied: You can only create Employee accounts.");
             }
             String myDept = loggedInUser.getDepartment() != null ? loggedInUser.getDepartment().getDepartmentName() : "";
             if (!myDept.equals(request.getDepartmentName())) {
-                throw new RuntimeException("Access Denied: Bạn chỉ được phép tạo nhân viên trong phòng " + myDept);
+                throw new RuntimeException("Access denied: You can only create employees in department " + myDept);
             }
         } else {
             throw new RuntimeException("Access Denied!");
@@ -185,11 +185,11 @@ public class UserServiceImpl implements IUserService {
             String roleToCheck = request.getRole();
             if (List.of("CEO", "Administrator", "Accountant").contains(roleToCheck)) {
                 boolean isExist = userRepository.findByUserRoles_Role_RoleName(roleToCheck).stream().anyMatch(u -> UserStatus.ACTIVE.equals(u.getStatus()));
-                if (isExist) throw new RuntimeException("Lỗi: Hệ thống chỉ cho phép có 1 tài khoản " + roleToCheck + " đang hoạt động!");
+                if (isExist) throw new RuntimeException("Only one active account is allowed for role " + roleToCheck + ".");
             } else if ("HeadOfDepartment".equalsIgnoreCase(roleToCheck)) {
-                Departments dept = departmentRepository.findByDepartmentName(request.getDepartmentName()).orElseThrow(() -> new RuntimeException("Phòng ban không tồn tại"));
+                Departments dept = departmentRepository.findByDepartmentName(request.getDepartmentName()).orElseThrow(() -> new RuntimeException("Department not found."));
                 boolean isExist = userRepository.findByUserRoles_Role_RoleNameAndDepartment(roleToCheck, dept).stream().anyMatch(u -> UserStatus.ACTIVE.equals(u.getStatus()));
-                if (isExist) throw new RuntimeException("Lỗi: Phòng ban " + request.getDepartmentName() + " đã có Trưởng phòng đang hoạt động!");
+                if (isExist) throw new RuntimeException("Department " + request.getDepartmentName() + " already has an active Head of Department.");
             }
         }
 
@@ -245,7 +245,7 @@ public class UserServiceImpl implements IUserService {
         Users savedUser = userRepository.save(newUser);
 //        userKeyService.generateUserKey(savedUser);
         if (request.getRole() != null && !request.getRole().isEmpty()) {
-            Role roleEntity = roleRepository.findByRoleName(request.getRole()).orElseThrow(() -> new RuntimeException("Role không tồn tại"));
+            Role roleEntity = roleRepository.findByRoleName(request.getRole()).orElseThrow(() -> new RuntimeException("Role not found."));
             UserRole userRole = UserRole.builder().user(savedUser).role(roleEntity).build();
             userRoleRepository.save(userRole);
 
@@ -286,25 +286,25 @@ public class UserServiceImpl implements IUserService {
 
         // 1. Phân quyền UPDATE
         if ("CEO".equalsIgnoreCase(currentRole)) {
-            throw new RuntimeException("Access Denied: Bạn không có quyền chỉnh sửa tài khoản!");
+            throw new RuntimeException("Access denied: You do not have permission to edit accounts.");
         } else if ("Administrator".equalsIgnoreCase(currentRole)) {
             if (!List.of("Accountant", "HeadOfDepartment", "Employee", "External Parners").contains(targetCurrentRole) ||
                     !List.of("Accountant", "HeadOfDepartment", "Employee", "External Parners").contains(request.getRole())) {
-                throw new RuntimeException("Access Denied: Admin chỉ được chỉnh sửa Accountant, HeadOfDepartment, Employee, External Parners!");
+                throw new RuntimeException("Access denied: Administrators can only edit Accountant, Head of Department, Employee, and External Partner accounts.");
             }
         } else if ("Accountant".equalsIgnoreCase(currentRole)) {
             if (!List.of("HeadOfDepartment", "Employee", "External Parners").contains(targetCurrentRole) ||
                     !List.of("HeadOfDepartment", "Employee", "External Parners").contains(request.getRole())) {
-                throw new RuntimeException("Access Denied: Bạn chỉ được chỉnh sửa quyền của HeadOfDepartment, Employee, External Parners!");
+                throw new RuntimeException("Access denied: You can only change the roles of Head of Department, Employee, and External Partner accounts.");
             }
         } else if ("HeadOfDepartment".equalsIgnoreCase(currentRole)) {
             String myDept = loggedInUser.getDepartment() != null ? loggedInUser.getDepartment().getDepartmentName() : "";
             String targetDept = existingUser.getDepartment() != null ? existingUser.getDepartment().getDepartmentName() : "";
             if (!myDept.equals(targetDept) || !"Employee".equalsIgnoreCase(targetCurrentRole)) {
-                throw new RuntimeException("Access Denied: Bạn chỉ có quyền sửa nhân viên cùng phòng ban!");
+                throw new RuntimeException("Access denied: You can only edit employees in your department.");
             }
             if (!"Employee".equalsIgnoreCase(request.getRole()) || !myDept.equals(request.getDepartmentName())) {
-                throw new RuntimeException("Access Denied: Lỗi vượt quyền hoặc chuyển phòng ban trái phép!");
+                throw new RuntimeException("Access denied: You cannot assign this role or transfer this employee to another department.");
             }
         }
 
@@ -314,12 +314,12 @@ public class UserServiceImpl implements IUserService {
             if (List.of("CEO", "Administrator", "Accountant").contains(roleToCheck)) {
                 boolean isExist = userRepository.findByUserRoles_Role_RoleName(roleToCheck).stream()
                         .anyMatch(u -> UserStatus.ACTIVE.equals(u.getStatus()) && !u.getId().equals(existingUser.getId()));
-                if (isExist) throw new RuntimeException("Lỗi: Hệ thống chỉ cho phép có 1 tài khoản " + roleToCheck + " đang hoạt động!");
+                if (isExist) throw new RuntimeException("Only one active account is allowed for role " + roleToCheck + ".");
             } else if ("HeadOfDepartment".equalsIgnoreCase(roleToCheck)) {
-                Departments dept = departmentRepository.findByDepartmentName(request.getDepartmentName()).orElseThrow(() -> new RuntimeException("Phòng ban không tồn tại"));
+                Departments dept = departmentRepository.findByDepartmentName(request.getDepartmentName()).orElseThrow(() -> new RuntimeException("Department not found."));
                 boolean isExist = userRepository.findByUserRoles_Role_RoleNameAndDepartment(roleToCheck, dept).stream()
                         .anyMatch(u -> UserStatus.ACTIVE.equals(u.getStatus()) && !u.getId().equals(existingUser.getId()));
-                if (isExist) throw new RuntimeException("Lỗi: Phòng ban " + request.getDepartmentName() + " đã có Trưởng phòng đang hoạt động!");
+                if (isExist) throw new RuntimeException("Department " + request.getDepartmentName() + " already has an active Head of Department.");
             }
         }
 
@@ -329,7 +329,7 @@ public class UserServiceImpl implements IUserService {
 
         // Update Role
         if (request.getRole() != null && !request.getRole().equals(targetCurrentRole)) {
-            Role newRoleEntity = roleRepository.findByRoleName(request.getRole()).orElseThrow(() -> new RuntimeException("Role không tồn tại"));
+            Role newRoleEntity = roleRepository.findByRoleName(request.getRole()).orElseThrow(() -> new RuntimeException("Role not found."));
             if (existingUser.getUserRoles() != null && !existingUser.getUserRoles().isEmpty()) {
                 UserRole ur = existingUser.getUserRoles().get(0);
                 ur.setRole(newRoleEntity);
