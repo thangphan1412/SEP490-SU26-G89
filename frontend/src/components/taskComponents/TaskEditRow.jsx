@@ -4,6 +4,7 @@ import { IconCalendar, IconCheck, IconDeviceFloppy, IconEye } from "@tabler/icon
 
 function TaskEditRow({
   task,
+  sequence,
   memberOptions,
   statusOptions,
   phaseStartDate,
@@ -21,6 +22,9 @@ function TaskEditRow({
   const [error, setError] = useState("");
   const contracts = Array.isArray(task.contracts) ? task.contracts : [];
   const taskIsDone = form.status === "DONE";
+  const statusClassName = String(form.status || "TODO")
+    .toLowerCase()
+    .replaceAll("_", "-");
 
   function handleChange(event) {
     const fieldName = event.target.name;
@@ -88,8 +92,52 @@ function TaskEditRow({
   }
 
   return (
-    <tr className="task-edit-row">
-      <td>
+    <article className={`task-card task-card--${statusClassName}`}>
+      <header className="task-card-header">
+        <div className="task-card-identity">
+          <span className="task-card-number">
+            {String(sequence).padStart(2, "0")}
+          </span>
+          <div>
+            <span>Task</span>
+            <strong>{form.title || "Untitled task"}</strong>
+          </div>
+        </div>
+        <div className="task-card-meta">
+          <span className={`task-status-pill task-status-pill--${statusClassName}`}>
+            {formatStatus(form.status)}
+          </span>
+          <div className="task-card-contracts">
+            {contracts.length === 0 ? (
+              <span className="task-contract-empty">No contract</span>
+            ) : contracts.map(function (contract, index) {
+              const contractLabel = contract.contractNumber
+                || contract.contractTitle
+                || `Contract ${index + 1}`;
+
+              return (
+                <Button
+                  key={contract.id}
+                  type="button"
+                  size="sm"
+                  variant="outline-primary"
+                  className="task-contract-view-button"
+                  title={`View ${contractLabel}`}
+                  onClick={function () {
+                    onViewContract(contract.id);
+                  }}
+                >
+                  <IconEye size={16} /> {contractLabel}
+                </Button>
+              );
+            })}
+          </div>
+        </div>
+      </header>
+
+      <div className="task-card-form-grid">
+        <Form.Group className="task-field task-field--title">
+          <Form.Label>Task name</Form.Label>
         <Form.Control
           name="title"
           value={form.title}
@@ -99,8 +147,9 @@ function TaskEditRow({
           aria-label="Task title"
           required
         />
-      </td>
-      <td>
+        </Form.Group>
+        <Form.Group className="task-field task-field--assignee">
+          <Form.Label>Assignee</Form.Label>
         <Form.Select
           name="assignedToId"
           value={form.assignedToId}
@@ -111,8 +160,9 @@ function TaskEditRow({
           <option value="">Unassigned</option>
           {memberOptions.map(renderMemberOption)}
         </Form.Select>
-      </td>
-      <td>
+        </Form.Group>
+        <Form.Group className="task-field task-field--date">
+          <Form.Label>Start date</Form.Label>
         <TaskDateInput
           name="startDate"
           value={form.startDate}
@@ -123,8 +173,9 @@ function TaskEditRow({
           aria-label="Task start date"
           required
         />
-      </td>
-      <td>
+        </Form.Group>
+        <Form.Group className="task-field task-field--date">
+          <Form.Label>End date</Form.Label>
         <TaskDateInput
           name="endDate"
           value={form.endDate}
@@ -135,8 +186,9 @@ function TaskEditRow({
           aria-label="Task end date"
           required
         />
-      </td>
-      <td>
+        </Form.Group>
+        <Form.Group className="task-field task-field--status">
+          <Form.Label>Status</Form.Label>
         {taskIsDone || !canChangeTaskStatus ? (
           <Form.Control value={form.status} disabled aria-label="Task status" />
         ) : (
@@ -150,62 +202,38 @@ function TaskEditRow({
             {statusOptions.map(renderStatusOption)}
           </Form.Select>
         )}
-      </td>
-      <td className="task-contract-cell">
-        {contracts.length === 0 ? (
-          <span>-</span>
-        ) : (
-          <div className="task-contract-buttons">
-            {contracts.map(function (contract) {
-              const contractLabel = contract.contractNumber
-                || contract.contractTitle
-                || "contract";
+        </Form.Group>
+      </div>
 
-              return (
-                <Button
-                  key={contract.id}
-                  type="button"
-                  size="sm"
-                  variant="outline-primary"
-                  className="task-contract-view-button"
-                  title={`View ${contractLabel}`}
-                  aria-label={`View ${contractLabel}`}
-                  onClick={function () {
-                    onViewContract(contract.id);
-                  }}
-                >
-                  <IconEye size={17} />
-                </Button>
-              );
-            })}
-          </div>
-        )}
-      </td>
-      <td className="task-row-actions">
-        <Button
-          type="button"
-          size="sm"
-          variant="primary"
-          disabled={saving || taskIsDone}
-          onClick={handleSave}
-        >
-          <IconDeviceFloppy size={16} /> Save
-        </Button>
-        {canApproveTasks && canChangeTaskStatus && !taskIsDone && (
+      <footer className="task-card-footer">
+        <div className="task-row-feedback" aria-live="polite">
+          {message && <span className="task-row-success">{message}</span>}
+          {error && <span className="task-row-error">{error}</span>}
+        </div>
+        <div className="task-row-actions">
           <Button
             type="button"
             size="sm"
-            variant="success"
-            disabled={saving}
-            onClick={handleMarkDone}
+            variant="primary"
+            disabled={saving || taskIsDone}
+            onClick={handleSave}
           >
-            <IconCheck size={16} /> Mark As Done
+            <IconDeviceFloppy size={16} /> Save changes
           </Button>
-        )}
-        {message && <span className="task-row-success">{message}</span>}
-        {error && <span className="task-row-error">{error}</span>}
-      </td>
-    </tr>
+          {canApproveTasks && canChangeTaskStatus && !taskIsDone && (
+            <Button
+              type="button"
+              size="sm"
+              variant="success"
+              disabled={saving}
+              onClick={handleMarkDone}
+            >
+              <IconCheck size={16} /> Mark as done
+            </Button>
+          )}
+        </div>
+      </footer>
+    </article>
   );
 }
 
@@ -259,6 +287,15 @@ function renderStatusOption(status) {
       {String(status).replaceAll("_", " ")}
     </option>
   );
+}
+
+function formatStatus(status) {
+  return String(status || "TODO")
+    .replaceAll("_", " ")
+    .toLowerCase()
+    .replace(/(^|\s)\S/g, function (letter) {
+      return letter.toUpperCase();
+    });
 }
 
 function getErrorMessage(error) {

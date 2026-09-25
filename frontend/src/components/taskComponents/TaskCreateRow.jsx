@@ -60,8 +60,23 @@ function TaskCreateRow({
   }
 
   return (
-    <tr className="task-create-row">
-      <td>
+    <article className="task-card task-card--create">
+      <header className="task-card-header">
+        <div className="task-card-identity">
+          <span className="task-card-number task-card-number--new">
+            <IconPlus size={18} />
+          </span>
+          <div>
+            <span>New task</span>
+            <strong>Plan a new phase task</strong>
+          </div>
+        </div>
+        <span className="task-status-pill task-status-pill--todo">To do</span>
+      </header>
+
+      <div className="task-card-form-grid">
+        <Form.Group className="task-field task-field--title">
+          <Form.Label>Task name</Form.Label>
         <Form.Control
           name="title"
           value={form.title}
@@ -71,8 +86,9 @@ function TaskCreateRow({
           aria-label="New task title"
           required
         />
-      </td>
-      <td>
+        </Form.Group>
+        <Form.Group className="task-field task-field--assignee">
+          <Form.Label>Assignee</Form.Label>
         <Form.Select
           name="assignedToId"
           value={form.assignedToId}
@@ -83,8 +99,9 @@ function TaskCreateRow({
           <option value="">Unassigned</option>
           {memberOptions.map(renderMemberOption)}
         </Form.Select>
-      </td>
-      <td>
+        </Form.Group>
+        <Form.Group className="task-field task-field--date">
+          <Form.Label>Start date</Form.Label>
         <TaskDateInput
           name="startDate"
           value={form.startDate}
@@ -94,8 +111,9 @@ function TaskCreateRow({
           aria-label="New task start date"
           required
         />
-      </td>
-      <td>
+        </Form.Group>
+        <Form.Group className="task-field task-field--date">
+          <Form.Label>End date</Form.Label>
         <TaskDateInput
           name="endDate"
           value={form.endDate}
@@ -105,34 +123,40 @@ function TaskCreateRow({
           aria-label="New task end date"
           required
         />
-      </td>
-      <td>
-        <Form.Control value="TODO" disabled aria-label="New task status" />
-      </td>
-      <td className="task-contract-cell">-</td>
-      <td className="task-row-actions">
-        <Button
-          type="button"
-          size="sm"
-          variant="primary"
-          disabled={creating}
-          onClick={handleCreate}
-        >
-          <IconPlus size={16} />
-          {creating ? "Creating..." : "Create"}
-        </Button>
-        <Button
-          type="button"
-          size="sm"
-          variant="outline-secondary"
-          disabled={creating}
-          onClick={onCancel}
-        >
-          <IconX size={16} /> Cancel
-        </Button>
-        {error && <span className="task-row-error">{error}</span>}
-      </td>
-    </tr>
+        </Form.Group>
+        <Form.Group className="task-field task-field--status">
+          <Form.Label>Status</Form.Label>
+          <Form.Control value="TODO" disabled aria-label="New task status" />
+        </Form.Group>
+      </div>
+
+      <footer className="task-card-footer">
+        <div className="task-row-feedback" aria-live="polite">
+          {error && <span className="task-row-error">{error}</span>}
+        </div>
+        <div className="task-row-actions">
+          <Button
+            type="button"
+            size="sm"
+            variant="outline-secondary"
+            disabled={creating}
+            onClick={onCancel}
+          >
+            <IconX size={16} /> Cancel
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="primary"
+            disabled={creating}
+            onClick={handleCreate}
+          >
+            <IconPlus size={16} />
+            {creating ? "Creating..." : "Create task"}
+          </Button>
+        </div>
+      </footer>
+    </article>
   );
 }
 

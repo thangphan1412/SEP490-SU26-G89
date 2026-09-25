@@ -1,6 +1,13 @@
 import { useEffect, useState } from "react";
-import { Alert, Button, Card, Container, Spinner, Table } from "react-bootstrap";
-import { IconArrowLeft, IconChecklist, IconPlus } from "@tabler/icons-react";
+import { Alert, Button, Card, Container, Spinner } from "react-bootstrap";
+import {
+  IconArrowLeft,
+  IconBriefcase,
+  IconCalendarEvent,
+  IconChecklist,
+  IconLayoutKanban,
+  IconPlus,
+} from "@tabler/icons-react";
 import { useNavigate, useParams } from "react-router-dom";
 import TaskCreateRow from "../../components/taskComponents/TaskCreateRow.jsx";
 import TaskEditRow from "../../components/taskComponents/TaskEditRow.jsx";
@@ -127,11 +134,12 @@ function EditTask() {
   }
 
   // Hiển thị một hàng chỉnh sửa cho task được truyền vào.
-  function renderTask(task) {
+  function renderTask(task, index) {
     return (
       <TaskEditRow
         key={task.id}
         task={task}
+        sequence={index + 1}
         memberOptions={taskData.memberOptions}
         statusOptions={taskData.statusOptions}
         phaseStartDate={taskData.phaseStartDate}
@@ -153,6 +161,10 @@ function EditTask() {
     );
   }
 
+  const completedTaskCount = tasks.filter(function (task) {
+    return task.status === "DONE";
+  }).length;
+
   return (
     <Container fluid as="main" className="task-page">
       <Card className="task-panel">
@@ -162,13 +174,14 @@ function EditTask() {
               <IconChecklist size={28} />
             </span>
             <div>
-              <h1>Edit Tasks</h1>
-              <p>Create and edit tasks assigned to this phase.</p>
+              <span className="task-page-eyebrow">Task workspace</span>
+              <h1>Manage phase tasks</h1>
+              <p>Plan assignments, timelines and delivery status in one focused workspace.</p>
             </div>
           </div>
           <Button
             type="button"
-            variant="light"
+            variant="outline-light"
             className="task-back-button"
             onClick={goBackToPhase}
           >
@@ -187,20 +200,26 @@ function EditTask() {
         ) : (
           <Card.Body className="task-page-body">
             <div className="task-phase-summary">
-              <div>
-                <span>Project</span>
-                <strong>{taskData.projectName || "Unnamed project"}</strong>
-              </div>
-              <div>
-                <span>Phase</span>
-                <strong>{taskData.phaseTitle || "Unnamed phase"}</strong>
-              </div>
-              <div>
-                <span>Phase timeline</span>
-                <strong>
-                  {formatDate(taskData.phaseStartDate)} - {formatDate(taskData.phaseEndDate)}
-                </strong>
-              </div>
+              <TaskSummaryItem
+                icon={<IconBriefcase size={20} />}
+                label="Project"
+                value={taskData.projectName || "Unnamed project"}
+              />
+              <TaskSummaryItem
+                icon={<IconLayoutKanban size={20} />}
+                label="Phase"
+                value={taskData.phaseTitle || "Unnamed phase"}
+              />
+              <TaskSummaryItem
+                icon={<IconCalendarEvent size={20} />}
+                label="Phase timeline"
+                value={`${formatDate(taskData.phaseStartDate)} — ${formatDate(taskData.phaseEndDate)}`}
+              />
+              <TaskSummaryItem
+                icon={<IconChecklist size={20} />}
+                label="Progress"
+                value={`${completedTaskCount} of ${tasks.length} completed`}
+              />
             </div>
 
             {!taskData.fullWorkScope && (
@@ -217,8 +236,9 @@ function EditTask() {
 
             <div className="task-list-toolbar">
               <div>
+                <span className="task-section-kicker">Phase delivery</span>
                 <h2>Tasks</h2>
-                <span>{tasks.length} tasks</span>
+                <p>{tasks.length} tasks · {completedTaskCount} completed</p>
               </div>
               {taskData.canCreateTasks && (
                 <Button
@@ -236,46 +256,43 @@ function EditTask() {
               )}
             </div>
 
-            <div className="task-table-wrap">
-              <Table responsive hover className="task-edit-table mb-0">
-                <thead>
-                  <tr>
-                    <th>Task</th>
-                    <th>Assignee</th>
-                    <th>Start date</th>
-                    <th>End date</th>
-                    <th>Status</th>
-                    <th>Contract</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {taskData.canCreateTasks && showCreateRow && (
-                    <TaskCreateRow
-                      memberOptions={taskData.memberOptions}
-                      phaseStartDate={taskData.phaseStartDate}
-                      phaseEndDate={taskData.phaseEndDate}
-                      allowReassignment={taskData.fullWorkScope}
-                      onCreate={handleCreate}
-                      onCancel={function () {
-                        setShowCreateRow(false);
-                      }}
-                    />
-                  )}
-                  {tasks.length === 0 && !showCreateRow ? (
-                    <tr>
-                      <td colSpan={7} className="task-empty-row">
-                        No editable tasks were found in this phase.
-                      </td>
-                    </tr>
-                  ) : tasks.map(renderTask)}
-                </tbody>
-              </Table>
+            <div className="task-card-list">
+              {taskData.canCreateTasks && showCreateRow && (
+                <TaskCreateRow
+                  memberOptions={taskData.memberOptions}
+                  phaseStartDate={taskData.phaseStartDate}
+                  phaseEndDate={taskData.phaseEndDate}
+                  allowReassignment={taskData.fullWorkScope}
+                  onCreate={handleCreate}
+                  onCancel={function () {
+                    setShowCreateRow(false);
+                  }}
+                />
+              )}
+              {tasks.length === 0 && !showCreateRow ? (
+                <div className="task-empty-state">
+                  <span><IconChecklist size={28} /></span>
+                  <strong>No tasks in this phase yet</strong>
+                  <p>Create the first task to start planning the phase delivery.</p>
+                </div>
+              ) : tasks.map(renderTask)}
             </div>
           </Card.Body>
         )}
       </Card>
     </Container>
+  );
+}
+
+function TaskSummaryItem({ icon, label, value }) {
+  return (
+    <div className="task-summary-item">
+      <span className="task-summary-icon">{icon}</span>
+      <div>
+        <span>{label}</span>
+        <strong>{value}</strong>
+      </div>
+    </div>
   );
 }
 
