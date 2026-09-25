@@ -1752,8 +1752,64 @@
   font-family: "Times New Roman", serif;
   font-size: 13px;
   line-height: 1.7;
-  white-space: pre-wrap;
   overflow-wrap: anywhere;
+}
+
+.template-preview-line {
+  min-height: 1.7em;
+  text-align: left;
+  white-space: pre-wrap;
+}
+
+.template-preview-line.national-header,
+.template-preview-line.national-motto,
+.template-preview-line.document-title,
+.template-preview-line.document-reference {
+  text-align: center;
+}
+
+.template-preview-line.national-header {
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.template-preview-line.national-motto {
+  font-weight: 700;
+}
+
+.template-preview-line.national-motto::after {
+  display: block;
+  width: 110px;
+  margin: 2px auto 8px;
+  border-bottom: 1px solid currentColor;
+  content: "";
+}
+
+.template-preview-line.document-title {
+  margin-top: 4px;
+  font-size: 1.22em;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.template-preview-line.document-heading {
+  margin-top: 4px;
+  font-weight: 700;
+}
+
+.template-two-column-line {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  column-gap: clamp(48px, 12%, 96px);
+  margin-top: 16px;
+  padding: 0 8px;
+  font-weight: 700;
+  text-align: left;
+  text-transform: uppercase;
+}
+
+.template-two-column-line span:last-child {
+  text-align: right;
 }
 
 .contract-document-pages {
