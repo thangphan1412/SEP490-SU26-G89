@@ -8,6 +8,7 @@ import com.fpt.backend.util.BaseResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -21,6 +22,7 @@ public class DepartmentController {
     private IDepartmentService departmentService;
 
     @GetMapping
+    @PreAuthorize("hasAnyAuthority('CEO', 'Administrator')")
     public ResponseEntity<BaseResponse<List<DepartmentResponseDTO>>> getAllDepartments() {
         List<DepartmentResponseDTO> departments = departmentService.getAllDepartments();
 
@@ -33,7 +35,22 @@ public class DepartmentController {
                         .build());
     }
 
+    @GetMapping(ApiConstant.Department.OPTIONS)
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<BaseResponse<List<DepartmentResponseDTO>>> getDepartmentOptions() {
+        List<DepartmentResponseDTO> departments = departmentService.getAllDepartments();
+
+        return ResponseEntity
+                .status(HttpStatus.OK)
+                .body(BaseResponse.<List<DepartmentResponseDTO>>builder()
+                        .status(HttpStatus.OK.value())
+                        .message("Successfully fetched department options")
+                        .data(departments)
+                        .build());
+    }
+
     @GetMapping(ApiConstant.Department.LIST)
+    @PreAuthorize("hasAnyAuthority('CEO', 'Administrator')")
     public ResponseEntity<BaseResponse<List<DepartmentResponseDTO>>> searchDepartments(
             @RequestParam(defaultValue = "") String search,
             @RequestParam(defaultValue = "") String status
@@ -50,6 +67,7 @@ public class DepartmentController {
     }
 
     @GetMapping(ApiConstant.Department.BY_ID)
+    @PreAuthorize("hasAnyAuthority('CEO', 'Administrator')")
     public ResponseEntity<BaseResponse<DepartmentResponseDTO>> getDepartmentById(
             @PathVariable UUID id
     ) {
@@ -74,6 +92,7 @@ public class DepartmentController {
     }
 
     @PostMapping
+    @PreAuthorize("hasAnyAuthority('CEO', 'Administrator')")
     public ResponseEntity<BaseResponse<DepartmentResponseDTO>> createDepartment(
             @RequestBody DepartmentRequestDTO request
     ) {
@@ -98,6 +117,7 @@ public class DepartmentController {
     }
 
     @PutMapping(ApiConstant.Department.BY_ID)
+    @PreAuthorize("hasAnyAuthority('CEO', 'Administrator')")
     public ResponseEntity<BaseResponse<DepartmentResponseDTO>> updateDepartment(
             @PathVariable UUID id,
             @RequestBody DepartmentRequestDTO request

@@ -4,7 +4,7 @@ const DEPARTMENT_ENDPOINT = "/departments";
 
 const departmentApi = {
     getAllDepartments() {
-        return axiosClient.get(DEPARTMENT_ENDPOINT);
+        return axiosClient.get(DEPARTMENT_ENDPOINT + "/options");
     },
 
     searchDepartments(params = {}) {

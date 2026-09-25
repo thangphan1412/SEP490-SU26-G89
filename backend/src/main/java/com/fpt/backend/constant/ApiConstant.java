@@ -18,6 +18,7 @@
         public static class Department {
             public static final String DEPARTMENTS = API + "/departments";
             public static final String LIST = "/list";
+            public static final String OPTIONS = "/options";
             public static final String BY_ID = "/{id}";
         }
         public static class Role {
