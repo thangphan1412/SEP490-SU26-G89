@@ -121,6 +121,21 @@ public interface ContractRepository extends JpaRepository<Contracts, UUID> {
             @Param("today") LocalDate today
     );
 
+    @Query("""
+            SELECT contract
+            FROM Contracts contract
+            WHERE UPPER(COALESCE(contract.contractStatus, '')) IN :statuses
+                AND contract.expirationDate IS NOT NULL
+                AND contract.expirationDate >= :fromDate
+                AND contract.expirationDate <= :toDate
+            ORDER BY contract.expirationDate ASC
+            """)
+    List<Contracts> findContractsExpiringBetween(
+            @Param("statuses") List<String> statuses,
+            @Param("fromDate") LocalDate fromDate,
+            @Param("toDate") LocalDate toDate
+    );
+
     @Modifying(flushAutomatically = true)
     @Query("""
             UPDATE Contracts contract

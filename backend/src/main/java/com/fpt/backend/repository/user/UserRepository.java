@@ -3,6 +3,7 @@ package com.fpt.backend.repository.user;
 import com.fpt.backend.dto.request.user.UserFilterRequestDTO;
 import com.fpt.backend.entity.Departments;
 import com.fpt.backend.entity.Users;
+import com.fpt.backend.enums.UserStatus;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -34,6 +35,22 @@ public interface UserRepository extends JpaRepository<Users, UUID> {
     List<Users> findByUserRoles_Role_RoleName(String roleName);
 
     List<Users> findByUserRoles_Role_RoleNameIn(List<String> roleNames);
+
+    @Query("""
+            SELECT DISTINCT account
+            FROM Users account
+            JOIN account.userRoles userRole
+            JOIN userRole.role role
+            WHERE (
+                UPPER(TRIM(COALESCE(role.roleCode, ''))) = UPPER(:role)
+                OR UPPER(TRIM(COALESCE(role.roleName, ''))) = UPPER(:role)
+            )
+            AND (account.status IS NULL OR account.status <> :excludedStatus)
+            """)
+    List<Users> findUsersByRoleExcludingStatus(
+            @Param("role") String role,
+            @Param("excludedStatus") UserStatus excludedStatus
+    );
 
     List<Users> findByUserRoles_Role_RoleNameAndDepartment(
             String roleName,
