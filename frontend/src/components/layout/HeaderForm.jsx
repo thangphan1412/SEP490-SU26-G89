@@ -17,6 +17,8 @@ import {    IconContract,
 function HeaderForm(){
     const fullName = localStorage.getItem("fullName") || "Guest";
     const role = localStorage.getItem("role") || "";
+    // Kiểm tra xem user có phải là External Partner không
+    const isExternalParner = role === 'External Parners';
 
     return(
 
@@ -41,11 +43,21 @@ function HeaderForm(){
                             className="nav-item"
 
                         ><IconContract stroke={2}/>Contract Management</Nav.Link>
+
+                        {/* --- CHỈ HIỂN THỊ KHI KHÔNG PHẢI EXTERNAL PARTNER --- */}
+                        {!isExternalParner && (
+                            <>
                         <Nav.Link as={NavLink} to="/project-management/list" className="nav-item"><IconCreditCard stroke={2} />Project Management</Nav.Link>
                         <Nav.Link as={NavLink} to="/permission/list" className="nav-item"><IconShieldCheck stroke={2} />Permission Management</Nav.Link>
-                        <Nav.Link as={NavLink} to="/department-management/list" className="nav-item"><IconBuildingSkyscraper stroke={2} />Department Management</Nav.Link>
 
-                        {['CEO', 'Admin'].includes(role) && (
+                        {['CEO', 'Administrator'].includes(role) && (
+                            <Nav.Link as={NavLink} to="/department-management/list" className="nav-item"><IconBuildingSkyscraper stroke={2} />Department Management</Nav.Link>
+                        )}
+
+                            </>
+                        )}
+
+                        {['CEO', 'Administrator'].includes(role) && (
                             <Nav.Link as={NavLink} to="/role-management/list" className="nav-item">
                                 <IconUserShield stroke={2} />Role Management
                             </Nav.Link>
