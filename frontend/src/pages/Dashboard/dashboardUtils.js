@@ -8,7 +8,10 @@ export const DEFAULT_CONTRACT_STATUSES = Object.freeze([
     "PENDING_EFFECTIVE",
     "SIGNED",
     "ACTIVE",
+    "OVERDUE",
+    "SETTLED",
     "ENDED",
+    "SIGNING_EXPIRED",
     "CANCELLED",
 ]);
 
@@ -46,7 +49,14 @@ const STATUS_DETAILS = Object.freeze({
     },
     SIGNED: { label: "Signed", color: "#0369a1", background: "#e8f7ff" },
     ACTIVE: { label: "Active", color: "#087f4a", background: "#e9f8ef" },
+    OVERDUE: { label: "Over Due", color: "#dc2626", background: "#fef2f2" },
+    SETTLED: { label: "Settled", color: "#0f766e", background: "#e6fffa" },
     ENDED: { label: "Ended", color: "#d92d3d", background: "#ffedef" },
+    SIGNING_EXPIRED: {
+        label: "Signing Expired",
+        color: "#a16207",
+        background: "#fefce8",
+    },
     CANCELLED: {
         label: "Cancelled",
         color: "#64748b",
@@ -62,6 +72,7 @@ const LEGACY_STATUS_MAP = Object.freeze({
     CANCELED: "CANCELLED",
     COMPLETED: "ENDED",
     EXPIRED: "ENDED",
+    OVER_DUE: "OVERDUE",
 });
 
 export function normalizeDashboardStatus(status) {

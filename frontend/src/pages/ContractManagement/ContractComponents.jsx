@@ -233,8 +233,12 @@ export function InfoAlert({ children }) {
 export function ContractStatusBadge({ status }) {
     const styleByStatus = {
         Active: styles.activeBadge,
+        Settled: styles.activeBadge,
         Pending: styles.pendingBadge,
+        "Pending Effective": styles.pendingBadge,
         Expired: styles.expiredBadge,
+        "Over Due": styles.expiredBadge,
+        "Signing Expired": styles.expiredBadge,
         Draft: styles.draftBadge,
     };
 

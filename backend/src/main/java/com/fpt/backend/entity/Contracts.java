@@ -42,6 +42,23 @@ public class Contracts extends BaseEntity {
     private LocalDateTime contractEndedAt;
     @Column(name = "contract_cancellation_reason", columnDefinition = "nvarchar(1000)")
     private String contractCancellationReason;
+    // Hạn chót để tất cả các bên hoàn tất chữ ký (set khi hợp đồng vào PENDING_SIGNATURE)
+    @Column(name = "contract_signing_deadline")
+    private LocalDate signingDeadline;
+    // Thời điểm hợp đồng bị chuyển sang OVERDUE (quá expiration date mà chưa thanh lý)
+    @Column(name = "contract_overdue_at")
+    private LocalDateTime overdueAt;
+    // Thông tin thanh lý hợp đồng
+    @Column(name = "contract_settled_at")
+    private LocalDateTime settledAt;
+    @Column(name = "contract_settlement_note", columnDefinition = "nvarchar(2000)")
+    private String settlementNote;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(
+            name = "contract_settled_by_user_id",
+            foreignKey = @ForeignKey(name = "FK_contracts_settled_by_user")
+    )
+    private Users settledByUser;
     @Column(name = "contract_content", columnDefinition = "nvarchar(max)")
     private String contractContent;
     @Column(name = "contract_layout_json", columnDefinition = "nvarchar(max)")

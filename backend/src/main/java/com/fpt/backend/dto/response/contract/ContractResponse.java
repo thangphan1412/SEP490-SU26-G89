@@ -45,6 +45,11 @@ public record ContractResponse(
         String previousContractNumber,
         List<ContractStatusHistoryResponse> statusHistory,
         ContractWorkflowRuntimeResponse workflowRuntime,
-        ContractAccessResponse currentUserAccess
+        ContractAccessResponse currentUserAccess,
+        LocalDate signingDeadline,
+        LocalDateTime overdueAt,
+        LocalDateTime settledAt,
+        String settledByName,
+        String settlementNote
 ) {
 }

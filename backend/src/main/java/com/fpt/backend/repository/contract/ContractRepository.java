@@ -121,6 +121,65 @@ public interface ContractRepository extends JpaRepository<Contracts, UUID> {
             @Param("today") LocalDate today
     );
 
+    // Đã ký đủ, tới ngày hiệu lực và chưa quá hạn -> ACTIVE
+    @Query("""
+            SELECT contract.id
+            FROM Contracts contract
+            WHERE UPPER(COALESCE(contract.contractStatus, '')) IN :statuses
+                AND (contract.effectiveDate IS NULL OR contract.effectiveDate <= :today)
+                AND (contract.expirationDate IS NULL OR contract.expirationDate >= :today)
+            """)
+    List<UUID> findContractIdsToActivate(
+            @Param("statuses") List<String> statuses,
+            @Param("today") LocalDate today
+    );
+
+    // Quá expiration date (ngày cuối còn hiệu lực) mà chưa thanh lý -> OVERDUE
+    @Query("""
+            SELECT contract.id
+            FROM Contracts contract
+            WHERE UPPER(COALESCE(contract.contractStatus, '')) IN :statuses
+                AND contract.expirationDate IS NOT NULL
+                AND contract.expirationDate < :today
+            """)
+    List<UUID> findContractIdsPastExpiration(
+            @Param("statuses") List<String> statuses,
+            @Param("today") LocalDate today
+    );
+
+    // Chưa đủ chữ ký mà đã quá hạn ký (hợp đồng cũ chưa có hạn ký thì dùng expiration date)
+    @Query("""
+            SELECT contract.id
+            FROM Contracts contract
+            WHERE UPPER(COALESCE(contract.contractStatus, '')) IN :statuses
+                AND (
+                    (contract.signingDeadline IS NOT NULL AND contract.signingDeadline < :today)
+                    OR (
+                        contract.signingDeadline IS NULL
+                        AND contract.expirationDate IS NOT NULL
+                        AND contract.expirationDate < :today
+                    )
+                )
+            """)
+    List<UUID> findContractIdsPastSigningDeadline(
+            @Param("statuses") List<String> statuses,
+            @Param("today") LocalDate today
+    );
+
+    @Query("""
+            SELECT contract
+            FROM Contracts contract
+            WHERE UPPER(COALESCE(contract.contractStatus, '')) IN :statuses
+                AND contract.signingDeadline IS NOT NULL
+                AND contract.signingDeadline >= :fromDate
+                AND contract.signingDeadline <= :toDate
+            """)
+    List<Contracts> findContractsWithSigningDeadlineBetween(
+            @Param("statuses") List<String> statuses,
+            @Param("fromDate") LocalDate fromDate,
+            @Param("toDate") LocalDate toDate
+    );
+
     @Query("""
             SELECT contract
             FROM Contracts contract

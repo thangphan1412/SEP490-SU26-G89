@@ -13,6 +13,7 @@ public final class ContractProjectActions {
     public static final String SIGN = "SIGN_CONTRACTS";
     public static final String CANCEL = "CANCEL_CONTRACTS";
     public static final String EXPORT = "EXPORT_CONTRACTS";
+    public static final String SETTLE = "SETTLE_CONTRACTS";
 
     private ContractProjectActions() {
     }

@@ -44,7 +44,10 @@ public class DashboardServiceImpl implements IDashboardService {
             ContractStatus.PENDING_EFFECTIVE.name(),
             ContractStatus.SIGNED.name(),
             ContractStatus.ACTIVE.name(),
+            ContractStatus.OVERDUE.name(),
+            ContractStatus.SETTLED.name(),
             ContractStatus.ENDED.name(),
+            ContractStatus.SIGNING_EXPIRED.name(),
             ContractStatus.CANCELLED.name()
     );
 
@@ -64,7 +67,10 @@ public class DashboardServiceImpl implements IDashboardService {
             Map.entry(ContractStatus.PENDING_EFFECTIVE.name(), "#7c68bf"),
             Map.entry(ContractStatus.SIGNED.name(), "#0ea5e9"),
             Map.entry(ContractStatus.ACTIVE.name(), "#2ab784"),
+            Map.entry(ContractStatus.OVERDUE.name(), "#dc2626"),
+            Map.entry(ContractStatus.SETTLED.name(), "#0f766e"),
             Map.entry(ContractStatus.ENDED.name(), "#fa4455"),
+            Map.entry(ContractStatus.SIGNING_EXPIRED.name(), "#a16207"),
             Map.entry(ContractStatus.CANCELLED.name(), "#64748b"),
             Map.entry(UNKNOWN_STATUS, "#4d5c74")
     );
@@ -88,7 +94,11 @@ public class DashboardServiceImpl implements IDashboardService {
                 .pendingSignatures(countForStatuses(
                         statusCounts, PENDING_SIGNATURE_STATUSES
                 ))
-                .expiredAgreements(countForStatus(statusCounts, ContractStatus.ENDED.name()))
+                // Hết hạn = quá hạn chưa thanh lý + đã kết thúc theo cơ chế cũ
+                .expiredAgreements(countForStatuses(statusCounts, Set.of(
+                        ContractStatus.OVERDUE.name(),
+                        ContractStatus.ENDED.name()
+                )))
                 .statusDistribution(buildStatusDistribution(statusCounts, total))
                 .upcomingExpirations(buildUpcomingExpirations(today))
                 .recentActivities(List.of())

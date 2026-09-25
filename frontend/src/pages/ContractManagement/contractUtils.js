@@ -8,10 +8,22 @@ export const CONTRACT_STATUS = Object.freeze({
     PENDING_DIRECTOR_SIGNATURE: "PENDING_DIRECTOR_SIGNATURE",
     PENDING_PARTNER_SIGNATURE: "PENDING_PARTNER_SIGNATURE",
     SIGNED: "SIGNED",
+    PENDING_EFFECTIVE: "PENDING_EFFECTIVE",
     ACTIVE: "ACTIVE",
+    OVERDUE: "OVERDUE",
+    SETTLED: "SETTLED",
     ENDED: "ENDED",
+    SIGNING_EXPIRED: "SIGNING_EXPIRED",
     CANCELLED: "CANCELLED",
 });
+
+// Đã đủ chữ ký các bên: chỉ còn thao tác thanh lý
+export const FULLY_SIGNED_STATUSES = Object.freeze([
+    CONTRACT_STATUS.SIGNED,
+    CONTRACT_STATUS.PENDING_EFFECTIVE,
+    CONTRACT_STATUS.ACTIVE,
+    CONTRACT_STATUS.OVERDUE,
+]);
 
 export const defaultContractStatuses = Object.values(CONTRACT_STATUS);
 
@@ -19,6 +31,8 @@ export const CONTRACT_ACTION = Object.freeze({
     COMPLETE_STEP: "COMPLETE_STEP",
     CANCEL: "CANCEL",
     REJECT: "REJECT",
+    SETTLE: "SETTLE",
+    EXTEND_SIGNING_DEADLINE: "EXTEND_SIGNING_DEADLINE",
 });
 
 export const CONTRACT_PROJECT_ACTION = Object.freeze({
@@ -31,6 +45,7 @@ export const CONTRACT_PROJECT_ACTION = Object.freeze({
     SIGN: "SIGN_CONTRACTS",
     CANCEL: "CANCEL_CONTRACTS",
     EXPORT: "EXPORT_CONTRACTS",
+    SETTLE: "SETTLE_CONTRACTS",
 });
 
 const ACTION_DETAILS = Object.freeze({
@@ -50,6 +65,23 @@ const ACTION_DETAILS = Object.freeze({
         description: "Reject this contract. Corrections must be made in a new contract.",
         tone: "danger",
         requiresComment: true,
+    },
+    [CONTRACT_ACTION.SETTLE]: {
+        label: "Settle contract",
+        description: "Record the settlement (liquidation) of this contract. The contract will become SETTLED and can no longer be changed.",
+        tone: "success",
+        requiresComment: true,
+        commentLabel: "Settlement note",
+        commentPlaceholder: "Settlement minutes number, settled amount, remaining obligations...",
+    },
+    [CONTRACT_ACTION.EXTEND_SIGNING_DEADLINE]: {
+        label: "Extend signing deadline",
+        description: "Give the remaining signers more time. The new deadline cannot be after the contract expiration date.",
+        tone: "warning",
+        requiresComment: true,
+        requiresSigningDeadline: true,
+        commentLabel: "Reason for extension",
+        commentPlaceholder: "Why do the remaining parties need more time?",
     },
 });
 
@@ -340,6 +372,7 @@ export function normalizeContractStatus(status) {
         REJECTED: CONTRACT_STATUS.CANCELLED,
         COMPLETED: CONTRACT_STATUS.ENDED,
         EXPIRED: CONTRACT_STATUS.ENDED,
+        OVER_DUE: CONTRACT_STATUS.OVERDUE,
     };
 
     return legacyStatusMap[normalized] || normalized;
@@ -349,7 +382,11 @@ export function canExportContractPdf(contract) {
     const status = normalizeContractStatus(contract?.contractStatus);
 
     const completed = Boolean(contract?.pdfAvailable)
-        || [CONTRACT_STATUS.SIGNED, CONTRACT_STATUS.ACTIVE, CONTRACT_STATUS.ENDED].includes(status);
+        || [
+            ...FULLY_SIGNED_STATUSES,
+            CONTRACT_STATUS.SETTLED,
+            CONTRACT_STATUS.ENDED,
+        ].includes(status);
 
     return completed && canUseContractProjectAction(
         contract,
@@ -358,6 +395,9 @@ export function canExportContractPdf(contract) {
 }
 
 export function formatContractStatus(status) {
+    if (normalizeContractStatus(status) === CONTRACT_STATUS.OVERDUE) {
+        return "Over Due";
+    }
     const normalizedStatus = normalizeContractStatus(status)
         .toLowerCase()
         .replaceAll("_", " ");
@@ -427,8 +467,9 @@ export function canUseContractProjectAction(contract, actionCode) {
 }
 
 export function canCreateReplacementContract(contract) {
-    return normalizeContractStatus(contract?.contractStatus)
-        === CONTRACT_STATUS.CANCELLED
+    return [CONTRACT_STATUS.CANCELLED, CONTRACT_STATUS.SIGNING_EXPIRED].includes(
+        normalizeContractStatus(contract?.contractStatus)
+    )
         && hasContractProjectAction(
             contract,
             CONTRACT_PROJECT_ACTION.CREATE
@@ -493,6 +534,24 @@ export function getRoleContractTask(contract) {
         return { label: "Contract completed", status: "COMPLETED" };
     }
 
+    if (status === CONTRACT_STATUS.SETTLED) {
+        return { label: "Contract settled", status: "COMPLETED" };
+    }
+
+    if (status === CONTRACT_STATUS.SIGNING_EXPIRED) {
+        return { label: "Signing deadline passed", status: "CANCELLED" };
+    }
+
+    if (status === CONTRACT_STATUS.OVERDUE) {
+        return actions.includes(CONTRACT_ACTION.SETTLE)
+            ? { label: "Expired - settle this contract", status: "ACTION_REQUIRED" }
+            : { label: "Expired - waiting for settlement", status: "WAITING" };
+    }
+
+    if (status === CONTRACT_STATUS.PENDING_EFFECTIVE) {
+        return { label: "Signed - waiting for effective date", status: "WAITING" };
+    }
+
     if (status === CONTRACT_STATUS.SIGNED) {
         return { label: "Contract signed", status: "COMPLETED" };
     }
@@ -533,7 +592,33 @@ export function toTransitionRequest(action, form) {
         actorName: actor.actorName,
         actorRole: actor.actorRole,
         comment: form.comment.trim() || null,
+        signingDeadline: action === CONTRACT_ACTION.EXTEND_SIGNING_DEADLINE
+            ? form.signingDeadline || null
+            : null,
     };
+}
+
+// Hạn ký còn <= 3 ngày hoặc đã qua (dùng để hiển thị cảnh báo)
+export function getSigningDeadlineWarning(contract) {
+    const status = normalizeContractStatus(contract?.contractStatus);
+    if (!contract?.signingDeadline
+        || ![
+            CONTRACT_STATUS.PENDING_SIGNATURE,
+            CONTRACT_STATUS.PENDING_DIRECTOR_SIGNATURE,
+            CONTRACT_STATUS.PENDING_PARTNER_SIGNATURE,
+        ].includes(status)) {
+        return "";
+    }
+    const deadline = new Date(`${contract.signingDeadline}T23:59:59`);
+    const daysLeft = Math.ceil((deadline.getTime() - Date.now()) / 86400000) - 1;
+    if (daysLeft < 0) {
+        return "The signing deadline has passed. This contract will become Signing Expired.";
+    }
+    if (daysLeft <= 3) {
+        return `Signing deadline in ${daysLeft === 0 ? "less than a day" : `${daysLeft} day(s)`}: `
+            + "if the remaining parties do not sign, the contract will become Signing Expired.";
+    }
+    return "";
 }
 
 export function formatContractDate(value) {

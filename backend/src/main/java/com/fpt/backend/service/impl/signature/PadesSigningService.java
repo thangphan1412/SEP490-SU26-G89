@@ -330,7 +330,7 @@ public class PadesSigningService {
         var updated = contractService.transitionContract(contract.getId(),
                 new com.fpt.backend.dto.request.contract.ContractTransitionRequest(
                         "COMPLETE_STEP", null, null, null, signatureValue,
-                        session.getElectronicSignatureId(), session.getKeyCode()));
+                        session.getElectronicSignatureId(), session.getKeyCode(), null));
         if ("CANCELLED".equals(updated.contractStatus())) {
             throw new IllegalArgumentException("Signing requirements were not met; the signature was not saved");
         }

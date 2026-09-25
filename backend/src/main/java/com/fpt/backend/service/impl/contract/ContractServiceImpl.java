@@ -55,6 +55,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.transaction.annotation.Transactional;
@@ -114,6 +115,9 @@ public class ContractServiceImpl implements ContractService {
     private final CurrentUser currentUser;
     private final ApplicationEventPublisher eventPublisher;
     private final PadesVerificationService padesVerificationService;
+
+    @Value("${contract.signing.deadline-days:" + ContractLifecycleRules.DEFAULT_SIGNING_DEADLINE_DAYS + "}")
+    private int signingDeadlineDays = ContractLifecycleRules.DEFAULT_SIGNING_DEADLINE_DAYS;
 
     @Override
     @Transactional(readOnly = true)
@@ -396,6 +400,13 @@ public class ContractServiceImpl implements ContractService {
             throw new BadHttpException(
                     "A terminal contract cannot transition from " + currentStatus.name()
             );
+        }
+
+        if (action == ContractAction.SETTLE) {
+            return settleContract(contract, currentStatus, request, actor);
+        }
+        if (action == ContractAction.EXTEND_SIGNING_DEADLINE) {
+            return extendSigningDeadline(contract, currentStatus, request, actor);
         }
 
         if (contract.getWorkflowVersion() == null
@@ -691,7 +702,8 @@ public class ContractServiceImpl implements ContractService {
                      ContractProjectActions.EXPORT -> owner || participant;
                 case ContractProjectActions.EDIT,
                      ContractProjectActions.DELETE,
-                     ContractProjectActions.CANCEL -> owner;
+                     ContractProjectActions.CANCEL,
+                     ContractProjectActions.SETTLE -> owner;
                 default -> false;
             };
             if (allowed) {
@@ -946,6 +958,11 @@ public class ContractServiceImpl implements ContractService {
             Users actor
     ) {
         if (action == ContractAction.CANCEL) {
+            if (currentStatus.isFullySigned()) {
+                throw new BadHttpException(
+                        "A contract signed by all parties cannot be cancelled. Settle the contract instead"
+                );
+            }
             requireText(request.comment(), "A cancellation reason is required");
             requireContractAction(
                     contract,
@@ -1008,6 +1025,16 @@ public class ContractServiceImpl implements ContractService {
 
         Boolean signerAgeVerified = null;
         Signature completedSignature = null;
+        if (currentStep.getActionType().requiresSignature()
+                && ContractLifecycleRules.isSigningDeadlinePassed(
+                        contract.getSigningDeadline(),
+                        ContractLifecycleRules.today()
+                )) {
+            throw new BadHttpException(
+                    "The signing deadline (" + contract.getSigningDeadline()
+                            + ") has passed. Ask the contract owner to extend it"
+            );
+        }
         if (currentStep.getActionType().requiresSignature()) {
             signerAgeVerified = validateSignerAge(actor.getDob());
             if (!signerAgeVerified) {
@@ -1045,7 +1072,12 @@ public class ContractServiceImpl implements ContractService {
                         == ContractWorkflowStepState.WAITING)
                 .findFirst()
                 .orElse(null);
-        ContractStatus targetStatus = ContractStatus.SIGNED;
+        LocalDate today = ContractLifecycleRules.today();
+        ContractStatus targetStatus = ContractLifecycleRules.statusAfterFullySigned(
+                contract.getEffectiveDate(),
+                contract.getExpirationDate(),
+                today
+        );
         if (nextStep != null) {
             nextStep.setStatus(ContractWorkflowStepState.PENDING);
             nextStep.setActivatedAt(now);
@@ -1053,6 +1085,16 @@ public class ContractServiceImpl implements ContractService {
             targetStatus = ContractWorkflowRules.pendingStatus(
                     nextStep.getActionType()
             );
+            // Hạn ký bắt đầu tính từ lúc hợp đồng vào giai đoạn ký
+            if (targetStatus.isPendingSignature() && contract.getSigningDeadline() == null) {
+                contract.setSigningDeadline(ContractLifecycleRules.defaultSigningDeadline(
+                        today,
+                        contract.getExpirationDate(),
+                        signingDeadlineDays
+                ));
+            }
+        } else if (targetStatus == ContractStatus.OVERDUE) {
+            contract.setOverdueAt(now);
         }
 
         applyStatus(
@@ -1069,6 +1111,97 @@ public class ContractServiceImpl implements ContractService {
         );
         publishSigningEmailEvent(
                 contract, currentStep, nextStep, actor, completedSignature, now
+        );
+        return toResponse(contract);
+    }
+
+    private ContractResponse settleContract(
+            Contracts contract,
+            ContractStatus currentStatus,
+            ContractTransitionRequest request,
+            Users actor
+    ) {
+        if (!currentStatus.canSettle()) {
+            throw new BadHttpException(
+                    "Only a contract signed by all parties can be settled. Current status: "
+                            + currentStatus.name()
+            );
+        }
+        requireText(request.comment(), "A settlement note is required");
+        if (!userHasRole(actor, "CEO")) {
+            requireContractAction(contract, ContractProjectActions.SETTLE, actor);
+        }
+
+        LocalDateTime now = LocalDateTime.now(ContractLifecycleRules.CONTRACT_TIME_ZONE);
+        contract.setSettledAt(now);
+        contract.setSettledByUser(actor);
+        contract.setSettlementNote(normalizeToNull(request.comment()));
+        applyStatus(
+                contract,
+                currentStatus,
+                ContractStatus.SETTLED,
+                ContractAction.SETTLE.name(),
+                getUserDisplayName(actor),
+                primaryRoleCode(actor),
+                normalizeToNull(request.comment()),
+                null
+        );
+        return toResponse(contract);
+    }
+
+    private ContractResponse extendSigningDeadline(
+            Contracts contract,
+            ContractStatus currentStatus,
+            ContractTransitionRequest request,
+            Users actor
+    ) {
+        if (!currentStatus.isPendingSignature()) {
+            throw new BadHttpException(
+                    "The signing deadline can only be extended while the contract is waiting for signatures"
+            );
+        }
+        requireText(request.comment(), "A reason for the extension is required");
+        if (!userHasRole(actor, "CEO")) {
+            requireContractAction(contract, ContractProjectActions.CANCEL, actor);
+        }
+
+        LocalDate today = ContractLifecycleRules.today();
+        LocalDate newDeadline = request.signingDeadline();
+        if (newDeadline == null || !newDeadline.isAfter(today)) {
+            throw new BadHttpException("The new signing deadline must be after today");
+        }
+        if (contract.getSigningDeadline() != null
+                && !newDeadline.isAfter(contract.getSigningDeadline())) {
+            throw new BadHttpException(
+                    "The new signing deadline must be after the current deadline "
+                            + contract.getSigningDeadline()
+            );
+        }
+        if (contract.getExpirationDate() != null
+                && newDeadline.isAfter(contract.getExpirationDate())) {
+            throw new BadHttpException(
+                    "The signing deadline cannot be after the contract expiration date "
+                            + contract.getExpirationDate()
+            );
+        }
+
+        LocalDate previousDeadline = contract.getSigningDeadline();
+        contract.setSigningDeadline(newDeadline);
+        contractRepository.save(contract);
+        // Trạng thái giữ nguyên, chỉ ghi lịch sử
+        recordHistory(
+                contract,
+                currentStatus,
+                currentStatus,
+                ContractAction.EXTEND_SIGNING_DEADLINE.name(),
+                getUserDisplayName(actor),
+                primaryRoleCode(actor),
+                combineComments(
+                        "Signing deadline: " + (previousDeadline == null ? "-" : previousDeadline)
+                                + " -> " + newDeadline,
+                        request.comment()
+                ),
+                null
         );
         return toResponse(contract);
     }
@@ -1991,7 +2124,14 @@ public class ContractServiceImpl implements ContractService {
                 previousContract != null ? previousContract.getContractNumber() : null,
                 history,
                 workflowRuntime,
-                contractAccess
+                contractAccess,
+                contract.getSigningDeadline(),
+                contract.getOverdueAt(),
+                contract.getSettledAt(),
+                contract.getSettledByUser() == null
+                        ? null
+                        : getUserDisplayName(contract.getSettledByUser()),
+                contract.getSettlementNote()
         );
     }
 
@@ -2048,8 +2188,25 @@ public class ContractServiceImpl implements ContractService {
                         projectAccess,
                         ContractProjectActions.CANCEL
                 ) || isContractOwner(contract, currentUser));
-        if (!readStatus(contract).isTerminal() && canCancel) {
+        ContractStatus runtimeStatus = readStatus(contract);
+        if (!runtimeStatus.isTerminal() && !runtimeStatus.isFullySigned() && canCancel) {
             allowedActions.add(ContractAction.CANCEL.name());
+        }
+        boolean ceo = userHasRole(currentUser, "CEO");
+        if (runtimeStatus.isPendingSignature() && (ceo || canCancel)) {
+            allowedActions.add(ContractAction.EXTEND_SIGNING_DEADLINE.name());
+        }
+        boolean canSettle = ceo || (standalone
+                ? isContractOwner(contract, currentUser)
+                : permissionAccessService.hasAction(
+                        projectAccess,
+                        ContractProjectActions.SETTLE
+                ) && (permissionAccessService.hasFullWorkScope(
+                        projectAccess,
+                        ContractProjectActions.SETTLE
+                ) || isContractOwner(contract, currentUser)));
+        if (runtimeStatus.canSettle() && canSettle) {
+            allowedActions.add(ContractAction.SETTLE.name());
         }
 
         List<ContractWorkflowStepRuntimeResponse> steps = instances.stream()
@@ -2181,6 +2338,7 @@ public class ContractServiceImpl implements ContractService {
             allowedActions.add(ContractProjectActions.EDIT);
             allowedActions.add(ContractProjectActions.DELETE);
             allowedActions.add(ContractProjectActions.CANCEL);
+            allowedActions.add(ContractProjectActions.SETTLE);
         }
         return new ContractAccessResponse(
                 null,

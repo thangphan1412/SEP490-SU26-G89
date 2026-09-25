@@ -169,6 +169,7 @@
 
 .contract-status-badge.status-active,
 .contract-status-badge.status-ended,
+.contract-status-badge.status-settled,
 .contract-status-badge.status-completed {
   border-color: #b9e7c8;
   color: #11823c;
@@ -176,6 +177,8 @@
 }
 
 .contract-status-badge.status-pending,
+.contract-status-badge.status-pending-effective,
+.contract-status-badge.status-pending-signature,
 .contract-status-badge.status-pending-internal-approval,
 .contract-status-badge.status-pending-director-signature,
 .contract-status-badge.status-pending-partner-signature {
@@ -185,6 +188,8 @@
 }
 
 .contract-status-badge.status-rejected,
+.contract-status-badge.status-over-due,
+.contract-status-badge.status-signing-expired,
 .contract-status-badge.status-cancelled,
 .contract-status-badge.status-expired,
 .contract-status-badge.status-inactive {
@@ -2173,4 +2178,24 @@
   .template-content-preview {
     min-height: 300px;
   }
+}
+
+.contract-lifecycle-alert {
+  margin: 12px 0;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.contract-lifecycle-alert.danger {
+  border: 1px solid #fecaca;
+  color: #b42318;
+  background: #fff1f2;
+}
+
+.contract-lifecycle-alert.warning {
+  border: 1px solid #fed7aa;
+  color: #b45309;
+  background: #fff7ed;
 }

@@ -18,6 +18,7 @@ import ContractForm from "./ContractForm.jsx";
 import SignatureVerificationPanel from "./SignatureVerificationPanel.jsx";
 import { splitContractPages } from "./contractPageUtils.js";
 import {
+    CONTRACT_ACTION,
     CONTRACT_STATUS,
     CONTRACT_PROJECT_ACTION,
     canCreateReplacementContract,
@@ -34,6 +35,7 @@ import {
     getContractActionDetails,
     getCurrentContractActor,
     getRoleContractTask,
+    getSigningDeadlineWarning,
     isFullDocumentTemplateVersion,
     loadProjectOptions,
     mapContractToForm,
@@ -92,6 +94,7 @@ function ListContract() {
     const [transitionContract, setTransitionContract] = useState(null);
     const [transitionForm, setTransitionForm] = useState({
         comment: "",
+        signingDeadline: "",
     });
     const [transitionError, setTransitionError] = useState("");
     const [transitioning, setTransitioning] = useState(false);
@@ -395,7 +398,7 @@ function ListContract() {
         }
         setTransitionContract(currentContract);
         setTransitionAction(action);
-        setTransitionForm({ comment: "" });
+        setTransitionForm({ comment: "", signingDeadline: "" });
         setTransitionError("");
         setSelectedContract(null);
         setModalMode(null);
@@ -644,6 +647,11 @@ function ListContract() {
 
         if (actionDetails.requiresComment && !transitionForm.comment.trim()) {
             setTransitionError("A reason is required for this action.");
+            return;
+        }
+
+        if (actionDetails.requiresSigningDeadline && !transitionForm.signingDeadline) {
+            setTransitionError("Please choose the new signing deadline.");
             return;
         }
 
@@ -1193,6 +1201,9 @@ function ContractDetails({
     }
 
     const currentTask = getRoleContractTask(contract);
+    const signingDeadlineWarning = getSigningDeadlineWarning(contract);
+    const overdue = normalizeContractStatus(contract.contractStatus)
+        === CONTRACT_STATUS.OVERDUE;
     const completedPages = splitContractPages(
         contract.renderedContractContent || contract.contractContent
     );
@@ -1211,6 +1222,19 @@ function ContractDetails({
                 </div>
                 <TaskBadge task={currentTask} />
             </div>
+
+            {overdue && (
+                <div className="contract-lifecycle-alert danger" role="alert">
+                    This contract expired on {formatContractDate(contract.expirationDate)}
+                    {" "}but has not been settled. Use “Settle contract” to close it.
+                </div>
+            )}
+
+            {signingDeadlineWarning && (
+                <div className="contract-lifecycle-alert warning" role="alert">
+                    {signingDeadlineWarning}
+                </div>
+            )}
 
             {availableActions.length > 0 && (
                 <section className="contract-workflow-actions">
@@ -1294,6 +1318,34 @@ function ContractDetails({
                     label="Expiration Date"
                     value={formatContractDate(contract.expirationDate)}
                 />
+                {contract.signingDeadline && (
+                    <DetailItem
+                        label="Signing Deadline"
+                        value={formatContractDate(contract.signingDeadline)}
+                    />
+                )}
+                {contract.overdueAt && (
+                    <DetailItem
+                        label="Over Due Since"
+                        value={formatContractDateTime(contract.overdueAt)}
+                    />
+                )}
+                {contract.settledAt && (
+                    <>
+                        <DetailItem
+                            label="Settled At"
+                            value={formatContractDateTime(contract.settledAt)}
+                        />
+                        <DetailItem
+                            label="Settled By"
+                            value={contract.settledByName || "-"}
+                        />
+                        <DetailItem
+                            label="Settlement Note"
+                            value={contract.settlementNote || "-"}
+                        />
+                    </>
+                )}
                 <DetailItem
                     label="Created By"
                     value={contract.contractCreatedBy}
@@ -1389,10 +1441,17 @@ const CONTRACT_WORKFLOW_STEPS = [
     CONTRACT_STATUS.PENDING_INTERNAL_APPROVAL,
     CONTRACT_STATUS.PENDING_DIRECTOR_SIGNATURE,
     CONTRACT_STATUS.PENDING_PARTNER_SIGNATURE,
-    CONTRACT_STATUS.SIGNED,
+    CONTRACT_STATUS.PENDING_EFFECTIVE,
     CONTRACT_STATUS.ACTIVE,
-    CONTRACT_STATUS.ENDED,
+    CONTRACT_STATUS.SETTLED,
 ];
+
+// Trạng thái hiển thị chung một bước trên thanh tiến trình
+const WORKFLOW_STEP_ALIASES = Object.freeze({
+    [CONTRACT_STATUS.SIGNED]: CONTRACT_STATUS.PENDING_EFFECTIVE,
+    [CONTRACT_STATUS.OVERDUE]: CONTRACT_STATUS.ACTIVE,
+    [CONTRACT_STATUS.ENDED]: CONTRACT_STATUS.SETTLED,
+});
 
 function ContractWorkflow({ status, history = [], workflowRuntime = null }) {
     const normalizedStatus = normalizeContractStatus(status);
@@ -1443,7 +1502,9 @@ function ContractWorkflow({ status, history = [], workflowRuntime = null }) {
         ? normalizeContractStatus(history?.[0]?.fromStatus)
         : null;
     const progressStatus = cancelledFromStatus || normalizedStatus;
-    const currentIndex = CONTRACT_WORKFLOW_STEPS.indexOf(progressStatus);
+    const currentIndex = CONTRACT_WORKFLOW_STEPS.indexOf(
+        WORKFLOW_STEP_ALIASES[progressStatus] || progressStatus
+    );
 
     return (
         <section className="contract-workflow-progress">
@@ -1459,7 +1520,8 @@ function ContractWorkflow({ status, history = [], workflowRuntime = null }) {
             <div className="contract-workflow-steps">
                 {CONTRACT_WORKFLOW_STEPS.map((step, index) => {
                     const isCompleted = currentIndex > index
-                        || normalizedStatus === CONTRACT_STATUS.ENDED;
+                        || [CONTRACT_STATUS.ENDED, CONTRACT_STATUS.SETTLED]
+                            .includes(normalizedStatus);
                     const isCurrent = normalizedStatus !== CONTRACT_STATUS.CANCELLED
                         && currentIndex === index;
 
@@ -1609,13 +1671,49 @@ function ContractTransitionModal({
                         </Alert>
                     )}
 
+                    {action === CONTRACT_ACTION.SETTLE
+                        && normalizeContractStatus(contract.contractStatus)
+                            === CONTRACT_STATUS.OVERDUE && (
+                        <Alert variant="danger">
+                            This contract expired on {formatContractDate(contract.expirationDate)}
+                            {" "}and has not been settled yet.
+                        </Alert>
+                    )}
+
+                    {details.requiresSigningDeadline && (
+                        <>
+                            <label
+                                htmlFor="transitionSigningDeadline"
+                                className="contract-form-label mt-3"
+                            >
+                                New signing deadline
+                            </label>
+                            <input
+                                id="transitionSigningDeadline"
+                                name="signingDeadline"
+                                type="date"
+                                className="form-control"
+                                value={form.signingDeadline || ""}
+                                min={contract.signingDeadline || undefined}
+                                max={contract.expirationDate || undefined}
+                                onChange={onChange}
+                                required
+                            />
+                            <small className="text-muted">
+                                Current deadline: {formatContractDate(contract.signingDeadline)}
+                                {" "}· Expiration date: {formatContractDate(contract.expirationDate)}
+                            </small>
+                        </>
+                    )}
+
                     <label
                         htmlFor="transitionComment"
                         className="contract-form-label mt-3"
                     >
-                        {details.requiresComment
-                            ? "Reason / Required corrections"
-                            : "Workflow note (optional)"}
+                        {details.commentLabel
+                            || (details.requiresComment
+                                ? "Reason / Required corrections"
+                                : "Workflow note (optional)")}
                     </label>
                     <textarea
                         id="transitionComment"
@@ -1624,9 +1722,10 @@ function ContractTransitionModal({
                         value={form.comment}
                         onChange={onChange}
                         placeholder={
-                            details.requiresComment
+                            details.commentPlaceholder
+                            || (details.requiresComment
                                 ? "Explain the reason and clauses that must be corrected..."
-                                : "Add a note to the status history..."
+                                : "Add a note to the status history...")
                         }
                         required={Boolean(details.requiresComment)}
                     />

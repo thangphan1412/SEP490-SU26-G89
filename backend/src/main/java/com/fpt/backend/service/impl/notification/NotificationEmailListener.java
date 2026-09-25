@@ -17,29 +17,28 @@ import java.time.ZoneId;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class ContractExpirationEmailListener {
+public class NotificationEmailListener {
     private static final ZoneId NOTIFICATION_TIME_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
 
     private final EmailService emailService;
     private final NotificationRepository notificationRepository;
 
-    // Chỉ gửi mail sau khi thông báo đã commit vào DB
+    // Chỉ gửi mail sau khi thông báo + đổi trạng thái hợp đồng đã commit
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void handle(ContractExpirationEmailEvent event) {
+    public void handle(NotificationEmailEvent event) {
         if (event.recipientEmail() == null || event.recipientEmail().isBlank()) {
-            log.warn("Contract expiration email skipped because the CEO email is empty");
+            log.warn("Notification email skipped because the recipient email is empty");
             return;
         }
         try {
             emailService.sendEmail(new MessageInfor(
                     event.recipientEmail(),
-                    "Contract expiring soon - " + event.contractNumber(),
-                    buildBody(event)
+                    event.subject(),
+                    event.body()
             ));
         } catch (RuntimeException exception) {
-            // emailSent vẫn false -> lần chạy scheduler sau sẽ gửi lại
-            log.error("Unable to send contract expiration email to {}", event.recipientEmail(), exception);
+            log.error("Unable to send notification email to {}", event.recipientEmail(), exception);
             return;
         }
         if (event.notificationId() != null) {
@@ -48,17 +47,5 @@ public class ContractExpirationEmailListener {
                     LocalDateTime.now(NOTIFICATION_TIME_ZONE)
             );
         }
-    }
-
-    static String buildBody(ContractExpirationEmailEvent event) {
-        return "Dear " + event.recipientName() + ",\n\n"
-                + "The following contract is about to expire ("
-                + ContractExpirationReminderService.daysRemainingText(event.daysRemaining()) + ").\n\n"
-                + "Contract number: " + event.contractNumber() + "\n"
-                + "Contract title: " + event.contractTitle() + "\n"
-                + "Effective date: " + (event.effectiveDate() == null ? "-" : event.effectiveDate()) + "\n"
-                + "Expiration date: " + event.expirationDate() + "\n\n"
-                + "Please settle the contract (Settle contract) or prepare a renewal. "
-                + "If it is not settled after the expiration date, its status will change to OVER DUE.";
     }
 }
