@@ -93,18 +93,6 @@ public class PadesVerificationService {
                         contents.length
         );
 
-        /*
-         * PDFBox getContents() đã trả về phần /Contents
-         * của PDF.
-         *
-         * Với PDF hiện tại, CMS nằm ở đầu Contents,
-         * phần còn lại là padding do signature placeholder.
-         *
-         * Không tự đọc ASN.1 length nữa.
-         *
-         * Thay vào đó dùng ASN.1InputStream của Bouncy Castle
-         * để đọc chính xác object ASN.1 đầu tiên.
-         */
 
         try (
                 org.bouncycastle.asn1.ASN1InputStream asn1InputStream =

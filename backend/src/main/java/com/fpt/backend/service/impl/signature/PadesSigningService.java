@@ -680,60 +680,21 @@ public class PadesSigningService {
         // 5. FRONTEND PAGE SIZE
         // ==========================================
 
-        // React PDF:
-        //
-        // <Page width={750} />
-        //
         float renderedPageWidth = 750f;
 
-        /*
-         * PDFBox uses points.
-         *
-         * Frontend uses CSS pixels.
-         *
-         * Scale based on WIDTH.
-         */
 
-        float scale =
-                pdfPageWidth / renderedPageWidth;
+        float scale = pdfPageWidth / renderedPageWidth;
 
         // ==========================================
         // 6. CONVERT POSITION
         // ==========================================
 
-        float pdfX =
-                positionX * scale;
+        float pdfX = positionX * scale;
+        float pdfWidth = signatureWidth * scale;
+        float pdfHeight = signatureHeight * scale;
 
-        float pdfWidth =
-                signatureWidth * scale;
 
-        float pdfHeight =
-                signatureHeight * scale;
-
-        /*
-         * Browser:
-         *
-         * (0,0)
-         *  ───────────────→ X
-         *  │
-         *  │
-         *  ↓
-         *  Y
-         *
-         * PDF:
-         *
-         *  ↑ Y
-         *  │
-         *  │
-         * (0,0) ─────────→ X
-         *
-         * Therefore Y must be inverted.
-         */
-
-        float pdfY =
-                pdfPageHeight
-                        - (positionY * scale)
-                        - pdfHeight;
+        float pdfY = pdfPageHeight - (positionY * scale) - pdfHeight;
 
         // ==========================================
         // 7. KEEP INSIDE PAGE
