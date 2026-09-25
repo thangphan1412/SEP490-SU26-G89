@@ -6,10 +6,14 @@ export const navConfig = [
         headerLabel: "Signature Management",
         matchPaths: ["/signature-management"],
         children: [
-            { label: "Signature List", path: "/signature-management/list" },
-            { label: "Create Signature", path: "/signature-management/create-signature" },
-            { label: "View Signature", path: "/signature-management/detail/:id" },
-            { label: "Update Signature", path: "/signature-management/:id/edit" },
+            {
+                label: "Signature List",
+                path: "/signature-management/list"
+            },
+            {
+                label: "Create Signature",
+                path: "/signature-management/create-signature"
+            },
         ],
     },
 

@@ -17,13 +17,13 @@ import java.util.List;
 @Table(name = "Company")
 public class Company extends BaseEntity {
 
-    @Column(name = "company_name")
+    @Column(name = "company_name", columnDefinition = "nvarchar(max)")
     private String companyName;
 
-    @Column(name = "email")
+    @Column(name = "email", columnDefinition = "nvarchar(max)")
     private String email;
 
-    @Column(name = "registered_address")
+    @Column(name = "registered_address", columnDefinition = "nvarchar(max)")
     private String registeredAddress;
 
     // Phân biệt công ty của mình (true) và công ty đối tác (false)

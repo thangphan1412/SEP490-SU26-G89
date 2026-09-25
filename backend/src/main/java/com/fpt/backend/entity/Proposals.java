@@ -13,17 +13,17 @@ import java.util.List;
 @Builder
 @Table(name = "proposals")
 public class Proposals extends BaseEntity {
-    @Column(name = "proposal_code")
+    @Column(name = "proposal_code", columnDefinition = "nvarchar(max)")
     private String proposalCode;
-    @Column(name = "proposal_title")
+    @Column(name = "proposal_title", columnDefinition = "nvarchar(max)")
     private String title;
-    @Column(name = "proposal_description")
+    @Column(name = "proposal_description", columnDefinition = "nvarchar(max)")
     private String description;
-    @Column(name = "proposal_status")
+    @Column(name = "proposal_status", columnDefinition = "nvarchar(max)")
     private String status;
-    @Column(name = "proposal_create_at")
+    @Column(name = "proposal_create_at", columnDefinition = "nvarchar(max)")
     private String createAt;
-    @Column(name = "proposal_update_at")
+    @Column(name = "proposal_update_at", columnDefinition = "nvarchar(max)")
     private String updateAt;
 
     /// Relation

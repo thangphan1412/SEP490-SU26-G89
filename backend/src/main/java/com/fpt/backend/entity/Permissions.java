@@ -19,14 +19,15 @@ import java.util.Set;
 @Table(name = "permissions")
 public class Permissions extends BaseEntity {
     @Nationalized
-    @Column(name = "permission_name", length = 50)
+    @Column(name = "permission_name", length = 50, columnDefinition = "nvarchar(50)")
     private String permissionName;
 
     @Nationalized
     @Column(
             name = "permission_code",
             length = 50,
-            unique = true
+            unique = true,
+            columnDefinition = "nvarchar(50)"
     )
     private String permissionCode;
     @Enumerated(EnumType.STRING)

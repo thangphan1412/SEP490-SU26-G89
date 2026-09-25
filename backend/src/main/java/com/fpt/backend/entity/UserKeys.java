@@ -32,7 +32,7 @@ public class UserKeys extends BaseEntity{
     @Column(name = "key_status")
     @Enumerated(EnumType.STRING)
     private KeyStatus keyStatus;
-    @Column(name = "certificate", columnDefinition = "TEXT")
+    @Column(name = "certificate", columnDefinition = "nvarchar(max)")
     private String certificate;
     /// relation
     //User

@@ -14,22 +14,22 @@ import java.util.List;
 @Builder
 @Table(name = "file_storage")
 public class FileStorage extends BaseEntity{
-    @Column(name = "original_name", nullable = false)
+    @Column(name = "original_name", nullable = false, columnDefinition = "nvarchar(max)")
     private String originalName;
 
-    @Column(name = "file_name", nullable = false, unique = true)
+    @Column(name = "file_name", nullable = false, unique = true, columnDefinition = "nvarchar(255)")
     private String fileName;
 
-    @Column(name = "file_path", nullable = false)
+    @Column(name = "file_path", nullable = false, columnDefinition = "nvarchar(max)")
     private String filePath;
 
-    @Column(name = "storage_provider")
+    @Column(name = "storage_provider", columnDefinition = "nvarchar(max)")
     private String storageProvider;
 
-    @Column(name = "storage_key")
+    @Column(name = "storage_key", columnDefinition = "nvarchar(max)")
     private String storageKey;
 
-    @Column(name = "mime_type", nullable = false)
+    @Column(name = "mime_type", nullable = false, columnDefinition = "nvarchar(max)")
     private String mimeType;
 
     @Column(name = "file_size")

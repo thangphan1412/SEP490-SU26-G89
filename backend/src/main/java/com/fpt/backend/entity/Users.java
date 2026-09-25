@@ -17,25 +17,25 @@ import java.util.List;
 @Table(name = "users")
 public class Users extends BaseEntity {
 
-    @Column(name = "user_email")
+    @Column(name = "user_email", columnDefinition = "nvarchar(max)")
     private String email;
-    @Column(name = "user_password")
+    @Column(name = "user_password", columnDefinition = "nvarchar(max)")
     private String password;
-    @Column(name = "user_firstName")
+    @Column(name = "user_firstName", columnDefinition = "nvarchar(max)")
     private String firstName;
-    @Column(name = "user_lastName")
+    @Column(name = "user_lastName", columnDefinition = "nvarchar(max)")
     private String lastName;
-    @Column(name = "user_number_phone")
+    @Column(name = "user_number_phone", columnDefinition = "nvarchar(max)")
     private String numberPhone;
     @Enumerated(EnumType.STRING)
     @Column(name = "user_status")
     private UserStatus status;
-    @Column(name = "date_of_birth")
+    @Column(name = "date_of_birth", columnDefinition = "nvarchar(max)")
     private String dob;
     // THÊM TRƯỜNG NÀY ĐỂ LƯU THỜI GIAN HOẠT ĐỘNG CUỐI
     @Column(name = "last_active")
     private LocalDateTime lastActive;
-    @Column(name = "start_date")
+    @Column(name = "start_date", columnDefinition = "nvarchar(max)")
     private String startDate;
 
     @Column(name = "created_at", updatable = false)

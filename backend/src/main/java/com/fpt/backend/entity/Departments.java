@@ -14,15 +14,15 @@ import java.util.List;
 @Entity
 @Table(name = "departments")
 public class Departments extends BaseEntity{
-    @Column(name = "department_name")
+    @Column(name = "department_name", columnDefinition = "nvarchar(max)")
     private String departmentName;
-    @Column(name = "department_code")
+    @Column(name = "department_code", columnDefinition = "nvarchar(max)")
     private String departmentCode;
     @Column(name = "department_create_at", nullable = false)
     private LocalDateTime departmentCreatedAt;
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
-    @Column(name = "department_status")
+    @Column(name = "department_status", columnDefinition = "nvarchar(max)")
     private String departmentStatus;
 
     /// Relation

@@ -1,6 +1,7 @@
 import SignatureRow from "./SignatureRow"
 
 function SignatureTable({ electronicSignatures = [] }) {
+
     return (
         <table className="signature-table">
             <thead>

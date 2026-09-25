@@ -202,7 +202,6 @@ public class UserKeyServiceImpl implements IUserKeyService {
     ) {
 
         try {
-
             org.bouncycastle.asn1.pkcs.RSAPublicKey rsaPublicKey =
                     new org.bouncycastle.asn1.pkcs.RSAPublicKey(
                             modulus,

@@ -15,9 +15,9 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "contract_positions")
 public class ContractPositions extends BaseEntity{
-    @Column(name = "attribute_key")
+    @Column(name = "attribute_key", columnDefinition = "nvarchar(max)")
     private String attributeKey;
-    @Column(name = "field_label")
+    @Column(name = "field_label", columnDefinition = "nvarchar(max)")
     private String fieldLabel;
     @Column(name = "page_number")
     private Integer pageNumber;
@@ -29,11 +29,11 @@ public class ContractPositions extends BaseEntity{
     private Double width;
     @Column(name = "height")
     private Double height;
-    @Column(name = "field_type")
+    @Column(name = "field_type", columnDefinition = "nvarchar(max)")
     private String fieldType;
-    @Column(name = "value_source")
+    @Column(name = "value_source", columnDefinition = "nvarchar(max)")
     private String valueSource;
-    @Column(name = "signer_role")
+    @Column(name = "signer_role", columnDefinition = "nvarchar(max)")
     private String signerRole;
     @Column(name = "is_system_field")
     private Boolean isSystemField;

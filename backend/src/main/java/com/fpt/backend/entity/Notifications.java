@@ -13,11 +13,11 @@ import java.time.LocalDateTime;
 @Builder
 @Table(name = "notifications")
 public class Notifications extends BaseEntity{
-    @Column(name = "notifications_title")
+    @Column(name = "notifications_title", columnDefinition = "nvarchar(max)")
     private String title;
-    @Column(name = "notifications_content")
+    @Column(name = "notifications_content", columnDefinition = "nvarchar(max)")
     private String content;
-    @Column(name = "notifications_type")
+    @Column(name = "notifications_type", columnDefinition = "nvarchar(max)")
     private String type;
     @Column(name = "notifications_is_read")
     private Boolean isRead;

@@ -19,7 +19,7 @@ public class ContractTypes extends BaseEntity {
     @Column(name = "contract_type_name", columnDefinition = "nvarchar(150)")
     private String contractTypeName;
 
-    @Column(name = "contract_type_code", length = 50)
+    @Column(name = "contract_type_code", length = 50, columnDefinition = "nvarchar(50)")
     private String contractTypeCode;
 
     @Column(name = "description", columnDefinition = "nvarchar(1000)")

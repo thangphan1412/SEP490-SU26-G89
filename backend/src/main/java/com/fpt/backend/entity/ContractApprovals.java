@@ -15,13 +15,13 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "contract_approvals")
 public class ContractApprovals extends BaseEntity{
-    @Column(name = "approval_level")
+    @Column(name = "approval_level", columnDefinition = "nvarchar(max)")
     private String approvalLevel;
 
     //enum
-    @Column(name = "approval_status")
+    @Column(name = "approval_status", columnDefinition = "nvarchar(max)")
     private String approvalStatus;
-    @Column(name = "approval_comment")
+    @Column(name = "approval_comment", columnDefinition = "nvarchar(max)")
     private String approvalComment;
     @Column(name = "requested_at")
     private LocalDateTime requestedAt;

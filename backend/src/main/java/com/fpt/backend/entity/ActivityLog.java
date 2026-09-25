@@ -13,13 +13,13 @@ import java.time.LocalDateTime;
 @Builder
 @Table(name = "activity_logs")
 public class ActivityLog extends BaseEntity{
-    @Column(name = "entity_type")
+    @Column(name = "entity_type", columnDefinition = "nvarchar(max)")
     private String entityType;
-    @Column(name = "entity_id")
+    @Column(name = "entity_id", columnDefinition = "nvarchar(max)")
     private String entityId;
-    @Column(name = "action")
+    @Column(name = "action", columnDefinition = "nvarchar(max)")
     private String action;
-    @Column(name = "description")
+    @Column(name = "description", columnDefinition = "nvarchar(max)")
     private String description;
     @Column(name = "created_at")
     private LocalDateTime createdAt;

@@ -16,8 +16,9 @@ import java.util.Date;
 public class TimelineTask extends BaseEntity {
 
     @Nationalized
-    @Column(name = "title", length = 255)
+    @Column(name = "title", length = 255, columnDefinition = "nvarchar(255)")
     private String title;
+    @Column(columnDefinition = "nvarchar(max)")
     private String status;
     private Date startDate;
     private Date endDate;

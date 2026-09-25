@@ -42,8 +42,6 @@ import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject;
 @Service
 @RequiredArgsConstructor
 public class PadesSigningService {
-
-
     private final UserKeysRepository userKeysRepository;
     private final CloudinaryService cloudinaryService;
     private final ContractRepository contractRepository;
@@ -51,7 +49,6 @@ public class PadesSigningService {
     private final PadesVerificationService padesVerificationService;
     private final ElectronicSignatureRepository electronicSignatureRepository;
     private final com.fpt.backend.service.interfaces.contract.ContractService contractService;
-
     private final Map<UUID, PadesSigningSession> sessions = new ConcurrentHashMap<>();
 
     public PadesPrepareResponse prepare(
@@ -494,8 +491,6 @@ public class PadesSigningService {
             float positionY,
             float signatureWidth,
             float signatureHeight,
-
-
             byte[] pdfBytes
     ) {
 

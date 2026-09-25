@@ -15,17 +15,17 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "external_access")
 public class ExternalAccess extends BaseEntity{
-    @Column(name = " external_email")
+    @Column(name = " external_email", columnDefinition = "nvarchar(max)")
     private String externalEmail;
-    @Column(name = "external_name")
+    @Column(name = "external_name", columnDefinition = "nvarchar(max)")
     private String externalName;
-    @Column(name = "token_hash")
+    @Column(name = "token_hash", columnDefinition = "nvarchar(max)")
     private String tokenHash;
     @Column(name = "expired_at")
     private LocalDateTime expiredAt;
     @Column(name = "used_at")
     private LocalDateTime usedAt;
-    @Column(name = "access_status")
+    @Column(name = "access_status", columnDefinition = "nvarchar(max)")
     private String accessStatus;
     @Column(name = "created_at")
     private LocalDateTime createdAt;

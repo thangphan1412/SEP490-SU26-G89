@@ -15,11 +15,11 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "contract_attribute_values")
 public class ContractAttributeValues extends BaseEntity{
-    @Column(name = "attribute_key")
+    @Column(name = "attribute_key", columnDefinition = "nvarchar(max)")
     private String attributeKey;
-    @Column(name = "attribute_value")
+    @Column(name = "attribute_value", columnDefinition = "nvarchar(max)")
     private String attributeValue;
-    @Column(name = "value_source")
+    @Column(name = "value_source", columnDefinition = "nvarchar(max)")
     private String valueSource;
     @Column(name = "created_at")
     private LocalDateTime createdAt;

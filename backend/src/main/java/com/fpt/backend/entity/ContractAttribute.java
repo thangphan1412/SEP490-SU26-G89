@@ -15,16 +15,16 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "contract_attribute")
 public class ContractAttribute extends BaseEntity {
-    @Column(name = "attribute_key")
+    @Column(name = "attribute_key", columnDefinition = "nvarchar(max)")
     private String attributeKey;
-    @Column(name = "attribute_label")
+    @Column(name = "attribute_label", columnDefinition = "nvarchar(max)")
     private String attributeLabel;
     //enum
-    @Column(name = "input_type")
+    @Column(name = "input_type", columnDefinition = "nvarchar(max)")
     private String inputType;
-    @Column(name = "default_value")
+    @Column(name = "default_value", columnDefinition = "nvarchar(max)")
     private String defaultValue;
-    @Column(name = "options_json")
+    @Column(name = "options_json", columnDefinition = "nvarchar(max)")
     private String optionsJson;
     @Column(name = "is_required")
     private Boolean isRequired;
@@ -34,7 +34,7 @@ public class ContractAttribute extends BaseEntity {
     private Boolean isSystemField;
     @Column(name = "display_order")
     private Integer displayOrder;
-    @Column(name = "validation_regex")
+    @Column(name = "validation_regex", columnDefinition = "nvarchar(max)")
     private String validationRegex;
     @Column(name = "created_at")
     private LocalDateTime createdAt;

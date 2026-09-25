@@ -14,7 +14,7 @@ import java.util.List;
 @Builder
 @Table(name = "projects")
 public class Projects extends BaseEntity {
-    @Column(name = "project_code", unique = true)
+    @Column(name = "project_code", unique = true, columnDefinition = "nvarchar(255)")
     private String projectCode;
     @Column(name = "project_name", columnDefinition = "nvarchar(50)")
     private String projectName;

@@ -16,17 +16,17 @@ import java.util.List;
 @SuppressWarnings("JpaDataSourceORMInspection")
 @Table(name = "contracts")
 public class Contracts extends BaseEntity {
-    @Column(name = "contract_number")
+    @Column(name = "contract_number", columnDefinition = "nvarchar(max)")
     private String contractNumber;
     @Column(name = "contract_title", columnDefinition = "nvarchar(255)")
     private String contractTitle;
-    @Column(name = "contract_status")
+    @Column(name = "contract_status", columnDefinition = "nvarchar(max)")
     private String contractStatus;
     @Column(name = "contract_effective_date")
     private LocalDate effectiveDate;
     @Column(name = "contract_expiration_date")
     private LocalDate expirationDate;
-    @Column(name = "contract_created_by")
+    @Column(name = "contract_created_by", columnDefinition = "nvarchar(max)")
     private String contractCreateBy;
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(
@@ -47,7 +47,7 @@ public class Contracts extends BaseEntity {
     @Column(name = "contract_layout_json", columnDefinition = "nvarchar(max)")
     private String contractLayoutJson;
 
-    @Column(name = "document_hash", length = 64)
+    @Column(name = "document_hash", length = 64, columnDefinition = "nvarchar(64)")
     private String documentHash;
 
     @ManyToOne(fetch = FetchType.LAZY)

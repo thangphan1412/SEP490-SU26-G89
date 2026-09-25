@@ -16,7 +16,7 @@ import java.util.List;
 @Builder
 @Table(name = "electronic_signature")
 public class ElectronicSignatures extends BaseEntity {
-   @Column(name = "electronic_signature_name")
+   @Column(name = "electronic_signature_name", columnDefinition = "nvarchar(max)")
    private String electronicSignatureName;
     @Column(name = "electronic_signature_type")
     @Enumerated(EnumType.STRING)

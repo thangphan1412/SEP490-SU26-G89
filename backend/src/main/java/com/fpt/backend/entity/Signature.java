@@ -18,12 +18,12 @@ import java.time.LocalDateTime;
 @Builder
 @Table(name = "signatures")
 public class Signature extends BaseEntity{
-    @Column(name = "signature_name")
+    @Column(name = "signature_name", columnDefinition = "nvarchar(max)")
     private String signatureName;
     @Column(name = "signature_type")
     @Enumerated(EnumType.STRING)
     private SignatureType signatureType;
-    @Column(name = "document_hash")
+    @Column(name = "document_hash", columnDefinition = "nvarchar(max)")
     private String documentHash;
     @Lob
     @Column(name = "signature_value", columnDefinition = "nvarchar(max)")
@@ -34,7 +34,7 @@ public class Signature extends BaseEntity{
     @Column(name = "signature_hash")
     @Enumerated(EnumType.STRING)
     private SignatureHash signatureHash;
-    @Column(name = "certificate_serial")
+    @Column(name = "certificate_serial", columnDefinition = "nvarchar(max)")
     private String certificateSerial;
     @Column(name = "status")
     @Enumerated(EnumType.STRING)

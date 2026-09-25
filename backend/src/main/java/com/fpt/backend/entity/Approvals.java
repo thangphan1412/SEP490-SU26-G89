@@ -19,9 +19,9 @@ import java.time.LocalDate;
         )
 )
 public class Approvals extends BaseEntity {
-    @Column(name = "approval_level")
+    @Column(name = "approval_level", columnDefinition = "nvarchar(255)")
     private String approvalLevel;
-    @Column(name = "approval_status")
+    @Column(name = "approval_status", columnDefinition = "nvarchar(max)")
     private String approvalStatus;
     @Column(name = "approval_at")
     private LocalDate approvalAt;

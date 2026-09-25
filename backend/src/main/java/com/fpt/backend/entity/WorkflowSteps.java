@@ -21,9 +21,9 @@ import java.util.List;
 public class WorkflowSteps extends BaseEntity{
     @Column(name = "step_order")
     private Integer stepOrder;
-    @Column(name = "step_name")
+    @Column(name = "step_name", columnDefinition = "nvarchar(max)")
     private String stepName;
-    @Column(name = "step_type")
+    @Column(name = "step_type", columnDefinition = "nvarchar(max)")
     private String stepType;
     @Column(name = "is_required")
     private Boolean isRequired;

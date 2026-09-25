@@ -16,13 +16,13 @@ import java.util.List;
 @Entity
 @Table(name = "role")
 public class Role extends BaseEntity{
-    @Column(name = "role_code",nullable = false,unique = true)
+    @Column(name = "role_code",nullable = false,unique = true, columnDefinition = "nvarchar(255)")
     private String roleCode;
 
-    @Column(name = "role_name",nullable = false)
+    @Column(name = "role_name",nullable = false, columnDefinition = "nvarchar(max)")
     private String roleName;
 
-    @Column(name = "role_description")
+    @Column(name = "role_description", columnDefinition = "nvarchar(max)")
     private String roleDescription;
 
     @Column(name = "created_at", nullable = false)

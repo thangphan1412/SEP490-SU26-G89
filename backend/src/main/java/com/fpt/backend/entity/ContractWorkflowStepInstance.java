@@ -68,7 +68,7 @@ public class ContractWorkflowStepInstance extends BaseEntity {
     @Column(name = "action_type", nullable = false, length = 30)
     private ContractWorkflowActionType actionType;
 
-    @Column(name = "required_role_code", nullable = false, length = 60)
+    @Column(name = "required_role_code", nullable = false, length = 60, columnDefinition = "nvarchar(60)")
     private String requiredRoleCode;
 
     @Column(name = "is_required", nullable = false)
