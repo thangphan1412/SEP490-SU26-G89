@@ -24,7 +24,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class ContractSigningService {
 
-    private final DigitalSignatureService digitalSignatureService;
+
 
     private final DigitalSignatureVerificationService verificationService;
 
