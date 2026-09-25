@@ -1215,7 +1215,7 @@ public class ContractServiceImpl implements ContractService {
             ContractRequest request,
             boolean creating
     ) {
-        validateRequest(request);
+        validateRequest(request, contract.getId());
 
         Projects project = resolveProject(request.projectId());
         Timeline phase = resolvePhase(request.phaseId(), project);
@@ -1793,7 +1793,7 @@ public class ContractServiceImpl implements ContractService {
         return key == null ? "" : key.trim().toLowerCase(Locale.ROOT);
     }
 
-    private void validateRequest(ContractRequest request) {
+    private void validateRequest(ContractRequest request, UUID contractId) {
         if (request == null) {
             throw new BadHttpException("Contract information is required");
         }
@@ -1804,6 +1804,24 @@ public class ContractServiceImpl implements ContractService {
 
         if (isBlank(request.contractTitle())) {
             throw new BadHttpException("Contract title is required");
+        }
+
+        String contractNumber = request.contractNumber().trim();
+        String contractTitle = request.contractTitle().trim();
+        if (contractNumber.equalsIgnoreCase(contractTitle)) {
+            throw new BadHttpException(
+                    "Contract number must be different from contract title"
+            );
+        }
+
+        boolean duplicateContractNumber = contractId == null
+                ? contractRepository.existsByContractNumberIgnoreCase(contractNumber)
+                : contractRepository.existsByContractNumberIgnoreCaseAndIdNot(
+                        contractNumber,
+                        contractId
+                );
+        if (duplicateContractNumber) {
+            throw new BadHttpException("Contract number already exists");
         }
 
         if (request.effectiveDate() == null) {

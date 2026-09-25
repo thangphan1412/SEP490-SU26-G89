@@ -20,6 +20,13 @@ public interface ContractRepository extends JpaRepository<Contracts, UUID> {
     @Query("select contract from Contracts contract where contract.id = :id")
     java.util.Optional<Contracts> findForSigningById(@Param("id") UUID id);
 
+    boolean existsByContractNumberIgnoreCase(String contractNumber);
+
+    boolean existsByContractNumberIgnoreCaseAndIdNot(
+            String contractNumber,
+            UUID id
+    );
+
     long countByContractTypeId(UUID contractTypeId);
 
     long countByContractTemplateId(UUID contractTemplateId);

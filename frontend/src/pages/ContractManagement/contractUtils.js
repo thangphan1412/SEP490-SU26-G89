@@ -278,6 +278,13 @@ export function validateContract(contract, isCreating = true) {
         return "Contract number and title are required.";
     }
 
+    if (
+        contract.contractNumber.trim().toLowerCase()
+        === contract.contractTitle.trim().toLowerCase()
+    ) {
+        return "Contract number must be different from contract title.";
+    }
+
     if (!contract.contractCreatedBy.trim()) {
         return "Contract creator is required.";
     }
