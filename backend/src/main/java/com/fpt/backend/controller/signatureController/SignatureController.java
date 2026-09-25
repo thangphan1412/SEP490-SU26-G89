@@ -42,9 +42,13 @@ public class SignatureController {
     private final ContractRepository contractRepository;
     private final ContractVerificationService contractVerificationService;
 
-    @GetMapping("/{contractId}/verify-stored-signatures")
-    public ResponseEntity<?> verifyStoredSignatures(@PathVariable UUID contractId) throws Exception {
-        return ResponseEntity.ok(new BaseResponse<>(contractVerificationService.verify(contractId)));
+    public record VerifyStoredSignaturesRequest(String publicKeyCode) {}
+
+    @PostMapping("/{contractId}/verify-stored-signatures")
+    public ResponseEntity<?> verifyStoredSignatures(@PathVariable UUID contractId,
+            @RequestBody VerifyStoredSignaturesRequest request) throws Exception {
+        return ResponseEntity.ok(new BaseResponse<>(
+                contractVerificationService.verify(contractId, request.publicKeyCode())));
     }
 
 

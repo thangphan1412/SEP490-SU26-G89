@@ -118,7 +118,7 @@ class ContractVerificationServiceTest {
     void checksContractViewPermissionBeforeReadingPdfOrKeys() {
         UUID id = UUID.randomUUID();
         when(contracts.getContractById(id)).thenThrow(new SecurityException("Forbidden"));
-        assertThrows(SecurityException.class, () -> service.verify(id));
+        assertThrows(SecurityException.class, () -> service.verify(id, "123456"));
         verifyNoInteractions(repository, signatures, files, currentUser);
     }
 

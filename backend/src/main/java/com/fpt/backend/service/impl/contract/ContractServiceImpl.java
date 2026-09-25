@@ -1098,7 +1098,7 @@ public class ContractServiceImpl implements ContractService {
                     signer.getEmail(),
                     getUserDisplayName(nextStep.getAssignedUser()),
                     nextStep.getAssignedUser().getEmail(),
-                    signature.getUserKey().getPublicKey(),
+                    signature.getUserKey().getKeyCode(),
                     signedAt
             ));
             return;
@@ -1125,7 +1125,7 @@ public class ContractServiceImpl implements ContractService {
                 signer.getEmail(),
                 getUserDisplayName(ceo),
                 ceo.getEmail(),
-                signature.getUserKey().getPublicKey(),
+                signature.getUserKey().getKeyCode(),
                 signedAt
         ));
     }

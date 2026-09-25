@@ -35,17 +35,35 @@ public class ContractVerificationService {
     private final CurrentUser currentUser;
 
     @Transactional(readOnly = true)
-    public VerificationReport verify(UUID contractId) throws Exception {
+    public VerificationReport verify(UUID contractId, String publicKeyCode) throws Exception {
         // Reuse the same VIEW authorization as Contract Details before reading files or keys.
         contractService.getContractById(contractId);
+        if (publicKeyCode == null || !publicKeyCode.trim().matches("[0-9]{6}")) {
+            throw new IllegalArgumentException("Enter the other signer's 6-digit public key code.");
+        }
         var contract = contractRepository.findById(contractId).orElseThrow();
         if (contract.getDocumentFile() == null) {
             throw new IllegalArgumentException("The contract does not have a stored PDF");
         }
-        byte[] pdf = cloudinaryService.download(contract.getDocumentFile());
         var signatures = signatureRepository.findByContractIdOrderBySignatureCreateAtAsc(contractId);
+        UUID viewerId = currentUser.getCurrentUser().getId();
+        // Resolve only keys linked to actual signatures on this authorized contract.
+        var matchingKeys = signatures.stream().map(Signature::getUserKey)
+                .filter(key -> key != null && key.getUser() != null
+                        && !viewerId.equals(key.getUser().getId())
+                        && publicKeyCode.trim().equals(key.getKeyCode()))
+                .map(UserKeys::getId).distinct().toList();
+        if (matchingKeys.isEmpty()) {
+            throw new IllegalArgumentException(
+                    "This public key code does not match another signer on this contract.");
+        }
+        if (matchingKeys.size() != 1) {
+            throw new IllegalArgumentException(
+                    "This public key code matches multiple signing keys. The signer cannot be identified uniquely.");
+        }
+        byte[] pdf = cloudinaryService.download(contract.getDocumentFile());
         return verifyDocument(pdf, contract.getDocumentHash(), signatures,
-                currentUser.getCurrentUser().getId());
+                viewerId);
     }
 
     VerificationReport verifyDocument(byte[] pdf, String expectedHash,

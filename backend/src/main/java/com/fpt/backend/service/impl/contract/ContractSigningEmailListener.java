@@ -47,9 +47,9 @@ public class ContractSigningEmailListener {
                         + "Please review the contract information and complete your signature.\n\n"
                         + contractInformation(event)
                         + "CEO signer: " + event.signerName() + " (" + event.signerEmail() + ")\n"
-                        + "CEO public key:\n" + event.publicKey() + "\n\n"
-                        + "Keep this public key with the contract information so the CEO's "
-                        + "digital signature can be verified."
+                        + "CEO public key code: " + event.publicKeyCode() + "\n\n"
+                        + "Open Contract Detail, enter this code in Other signer's public key code, "
+                        + "and click Verify signatures to verify the CEO's digital signature and the PDF's integrity."
         );
     }
 
@@ -61,8 +61,11 @@ public class ContractSigningEmailListener {
                         + event.signerName() + " has completed the partner signature.\n\n"
                         + contractInformation(event)
                         + "Partner email: " + event.signerEmail() + "\n"
+                        + "Partner public key code: " + event.publicKeyCode() + "\n"
                         + "Signed at: " + event.signedAt() + "\n\n"
-                        + "The contract signing workflow is complete."
+                        + "The contract signing workflow is complete.\n\n"
+                        + "Open Contract Detail, enter this code in Other signer's public key code, "
+                        + "and click Verify signatures to verify the partner's digital signature and the PDF's integrity."
         );
     }
 

@@ -10,7 +10,7 @@ public record ContractSigningEmailEvent(
         String signerEmail,
         String recipientName,
         String recipientEmail,
-        String publicKey,
+        String publicKeyCode,
         LocalDateTime signedAt
 ) {
     public enum Type {

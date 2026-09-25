@@ -93,8 +93,8 @@ const completePadesSigning = async (
 };
 
 const contractApi = {
-    verifyStoredSignatures(id) {
-        return axiosClient.get(`/signature/${id}/verify-stored-signatures`, noCacheConfig);
+    verifyStoredSignatures(id, publicKeyCode) {
+        return axiosClient.post(`/signature/${id}/verify-stored-signatures`, { publicKeyCode });
     },
     getAllContracts(params) {
         return axiosClient.get(CONTRACT_ENDPOINT + "/list", {
