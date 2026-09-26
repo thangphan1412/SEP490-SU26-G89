@@ -36,7 +36,7 @@ public class ProjectPhaseService {
     private final PhaseContractRepository phaseContractRepository;
     private final PhaseStatusService phaseStatusService;
 
-    // Đồng bộ các phase có khoảng thời gian độc lập trong timeline dự án.
+    // Đồng bộ các phase theo thứ tự ngày trong timeline dự án.
     public void syncPhases(
             Projects project,
             List<ProjectPhaseRequest> phaseRequests) {
@@ -113,7 +113,7 @@ public class ProjectPhaseService {
         phaseRepository.deleteByProjectId(projectId);
     }
 
-    // Kiểm tra từng phase nằm trong timeline dự án và không bị đảo ngày.
+    // Kiểm tra timeline dự án và bảo đảm các phase không chồng lấn ngày.
     private void validatePhaseSchedule(
             Projects project,
             List<ProjectPhaseRequest> requests) {
@@ -146,6 +146,15 @@ public class ProjectPhaseService {
                         "Phase " + phaseNumber
                                 + " start date must not be before the "
                                 + "project start date"
+                );
+            }
+
+            // Phase sau phải bắt đầu sau ngày kết thúc của phase trước.
+            if (index > 0 && !startDate.isAfter(requests.get(index - 1).endDate())) {
+                throw new BadHttpException(
+                        "Phase " + phaseNumber
+                                + " start date must be after phase " + index
+                                + " end date"
                 );
             }
 

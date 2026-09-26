@@ -1,10 +1,18 @@
 package com.fpt.backend.service.impl.project;
 
+import com.fpt.backend.dto.request.project.ProjectCreateRequest;
+import com.fpt.backend.dto.request.project.ProjectPhaseRequest;
 import com.fpt.backend.dto.request.project.ProjectUpdateRequest;
 import com.fpt.backend.dto.response.project.ProjectAccessResponse;
 import com.fpt.backend.dto.response.project.ProjectDetailResponse;
 import com.fpt.backend.entity.Projects;
 import com.fpt.backend.entity.Users;
+import com.fpt.backend.exception.BadHttpException;
+import com.fpt.backend.repository.phase.PhaseContractRepository;
+import com.fpt.backend.repository.phase.PhaseDeliverableRepository;
+import com.fpt.backend.repository.phase.PhaseRepository;
+import com.fpt.backend.repository.phase.PhaseTaskRepository;
+import com.fpt.backend.service.impl.phase.PhaseStatusService;
 import com.fpt.backend.repository.project.ProjectCleanupRepository;
 import com.fpt.backend.repository.project.ProjectContractRepository;
 import com.fpt.backend.repository.project.ProjectMemberRepository;
@@ -25,6 +33,11 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -61,15 +74,19 @@ class ProjectServiceImplTest {
 
     @BeforeEach
     void setUp() {
+        projectService = createService(projectPhaseService);
+    }
+
+    private ProjectServiceImpl createService(ProjectPhaseService phaseService) {
         ProjectStatusService projectStatusService =
                 new ProjectStatusService(projectRepository);
-        projectService = new ProjectServiceImpl(
+        return new ProjectServiceImpl(
                 projectRepository,
                 projectContractRepository,
                 projectMemberRepository,
                 userRepository,
                 projectCleanupRepository,
-                projectPhaseService,
+                phaseService,
                 projectMemberService,
                 projectPermissionService,
                 projectApprovalService,
@@ -144,5 +161,78 @@ class ProjectServiceImplTest {
         verify(projectRepository).save(project);
         verify(projectPhaseService).syncPhases(project, List.of());
         verify(projectRepository).flush();
+    }
+
+    @Test
+    void createProject_rejectsOverlappingPhasesThroughTheRealPhaseValidator() {
+        projectService = createService(realPhaseService());
+        Projects schedule = scheduleProject();
+        Users creator = new Users();
+        creator.setId(UUID.randomUUID());
+        when(currentUserUtil.getCurrentUser()).thenReturn(creator);
+        when(projectRepository.save(any(Projects.class))).thenAnswer(invocation -> {
+            Projects saved = invocation.getArgument(0);
+            saved.setId(schedule.getId());
+            return saved;
+        });
+        ProjectCreateRequest request = new ProjectCreateRequest(
+                "Phase validation", "PRJ-2099-Phase Validation",
+                schedule.getProjectStartDate(), schedule.getProjectEndDate(),
+                "", overlappingPhases(false), List.of()
+        );
+
+        assertThatThrownBy(() -> projectService.createProject(request))
+                .isInstanceOf(BadHttpException.class)
+                .hasMessage("Phase 2 start date must be after phase 1 end date");
+
+        verify(projectRepository, never()).flush();
+        verifyNoInteractions(projectMemberService);
+    }
+
+    @Test
+    void updateProject_rejectsOverlappingPhasesThroughTheRealPhaseValidator() {
+        projectService = createService(realPhaseService());
+        Projects project = scheduleProject();
+        when(projectRepository.findById(project.getId())).thenReturn(Optional.of(project));
+        ProjectUpdateRequest request = new ProjectUpdateRequest(
+                null, null, null, null, null, overlappingPhases(true), null
+        );
+
+        assertThatThrownBy(() -> projectService.updateProject(project.getId(), request))
+                .isInstanceOf(BadHttpException.class)
+                .hasMessage("Phase 2 start date must be after phase 1 end date");
+
+        verify(permissionAccessService).requireAction(project.getId(), "EDIT_PROJECT");
+        verify(projectRepository, never()).flush();
+    }
+
+    private ProjectPhaseService realPhaseService() {
+        return new ProjectPhaseService(
+                mock(PhaseRepository.class), mock(PhaseTaskRepository.class),
+                mock(PhaseDeliverableRepository.class), mock(PhaseContractRepository.class),
+                mock(PhaseStatusService.class)
+        );
+    }
+
+    private Projects scheduleProject() {
+        Projects project = new Projects();
+        project.setId(UUID.randomUUID());
+        project.setProjectStatus("Planning");
+        project.setProjectStartDate(LocalDate.of(2099, 10, 1));
+        project.setProjectEndDate(LocalDate.of(2099, 10, 31));
+        return project;
+    }
+
+    private List<ProjectPhaseRequest> overlappingPhases(boolean existing) {
+        return List.of(
+                new ProjectPhaseRequest(
+                        existing ? UUID.randomUUID() : null, "Phase 1", "",
+                        LocalDate.of(2099, 10, 1), LocalDate.of(2099, 10, 10)
+                ),
+                new ProjectPhaseRequest(
+                        existing ? UUID.randomUUID() : null, "Phase 2", "",
+                        LocalDate.of(2099, 10, 5), LocalDate.of(2099, 10, 20)
+                )
+        );
     }
 }

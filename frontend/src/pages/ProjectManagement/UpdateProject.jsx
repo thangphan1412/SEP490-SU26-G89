@@ -23,6 +23,7 @@ import {
     getEmployeeSearchText,
     getFilterOptions,
     getPhaseDateError,
+    getPhaseStartMinDate,
     getProjectErrorMessage,
     isCompletedProjectStatus,
 } from "../../components/projectComponents/projectFormUtils.js";
@@ -184,7 +185,7 @@ function UpdateProject() {
         setProject(nextProject);
     }
 
-    // Thêm phase mới với khoảng ngày mặc định nằm trong timeline dự án.
+    // Thêm phase mới bắt đầu sau ngày kết thúc của phase trước.
     function addPhase() {
         // Yêu cầu đầy đủ ngày bắt đầu và kết thúc dự án.
         if (!project.projectStartDate || !project.projectEndDate) {
@@ -198,6 +199,28 @@ function UpdateProject() {
             return;
         }
 
+        const phaseDateError = getPhaseDateError(
+            project.phases,
+            project.projectStartDate,
+            project.projectEndDate
+        );
+
+        if (phaseDateError) {
+            setSubmitError(phaseDateError);
+            return;
+        }
+
+        const nextStartDate = getPhaseStartMinDate(
+            project.phases,
+            project.phases.length,
+            project.projectStartDate
+        );
+
+        if (nextStartDate > project.projectEndDate) {
+            setSubmitError("Shorten the current final phase before adding another phase.");
+            return;
+        }
+
         setSubmitError("");
         setProject((currentProject) => ({
             ...currentProject,
@@ -208,14 +231,14 @@ function UpdateProject() {
                     clientId: createClientId(),
                     title: "",
                     description: "",
-                    startDate: currentProject.projectStartDate,
+                    startDate: nextStartDate,
                     endDate: currentProject.projectEndDate,
                 },
             ],
         }));
     }
 
-    // Cập nhật độc lập thông tin hoặc khoảng ngày của một phase.
+    // Cập nhật phase và kiểm tra thứ tự ngày giữa các phase.
     function updatePhase(clientId, event) {
         const { name, value } = event.target;
         const phases = project.phases.map((phase) =>
@@ -556,7 +579,7 @@ function UpdateProject() {
                                 <span className="project-detail-section-icon"><Icon name="chart" size={21} color="#3659d9" /></span>
                                 <div>
                                     <Card.Title as="h2" className="project-management-card-title">Project Phases</Card.Title>
-                                    <p className="project-detail-section-note">Optional milestones. Keep phase dates within the project schedule.</p>
+                                    <p className="project-detail-section-note">Phases are optional. Each phase must start after the previous phase ends.</p>
                                 </div>
                             </div>
                             <Button type="button" variant="light" className="update-project-add-button" onClick={addPhase}>
@@ -588,7 +611,7 @@ function UpdateProject() {
                                                     type="date"
                                                     required
                                                     name="startDate"
-                                                    min={project.projectStartDate}
+                                                    min={getPhaseStartMinDate(project.phases, index, project.projectStartDate)}
                                                     max={phase.endDate || project.projectEndDate}
                                                     value={phase.startDate}
                                                     onChange={(event) => updatePhase(phase.clientId, event)}
