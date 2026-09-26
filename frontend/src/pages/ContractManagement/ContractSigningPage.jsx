@@ -1,4 +1,6 @@
 import { useEffect, useRef, useMemo, useState } from "react";
+import { unlockBackup } from "../../utils/privateKeyBackup.js";
+import digitalSignatureService from "../../services/signatureService/digitalSignatureService.js";
 
 import { Alert, Button, Form, Spinner } from "react-bootstrap";
 
@@ -519,10 +521,42 @@ export default function ContractSigningPage() {
     // PUBLIC KEY CODE INPUT
     // =========================================================
 
+    const backupRequest = useRef(0);
+    useEffect(() => () => { backupRequest.current += 1; }, []);
+
+    async function handleImportBackup(event) {
+        const file = event.target.files?.[0];
+        event.target.value = "";
+        if (!file) return;
+        const request = ++backupRequest.current;
+        setPrivateKey("");
+        setShowPrivateKey(false);
+        setError("");
+        setSuccess("");
+        setUnlockingKey(true);
+        try {
+            const response = await digitalSignatureService.getMyPublicKey();
+            const result = await unlockBackup(file, pin, publicKeyCode, unwrapApiResponse(response));
+            if (request !== backupRequest.current) return;
+            // Keep only the encrypted backup in persistent storage.
+            localStorage.setItem(`encryptedPrivateKey_${publicKeyCode}`, JSON.stringify(result.backup));
+            setPrivateKey(result.privateKeyText);
+            setSuccess("Private key backup imported and unlocked successfully.");
+        } catch (error) {
+            if (request === backupRequest.current) {
+                setError(error.message || "Unable to import the private key backup.");
+            }
+        } finally {
+            if (request === backupRequest.current) setUnlockingKey(false);
+        }
+    }
+
     function handlePublicKeyCodeChange(
         event
     ) {
 
+        backupRequest.current += 1;
+        setUnlockingKey(false);
         const value =
             event.target.value
                 .replace(/\D/g, "");
@@ -555,6 +589,8 @@ export default function ContractSigningPage() {
         event
     ) {
 
+        backupRequest.current += 1;
+        setUnlockingKey(false);
         const value =
             event.target.value
                 .replace(/\D/g, "");
@@ -1843,6 +1879,17 @@ export default function ContractSigningPage() {
                             PRIVATE KEY STATUS
                         ====================================== */}
 
+                        <Form.Group controlId="private-key-backup" className="mb-3">
+                            <Form.Label>Import private key backup (.enc)</Form.Label>
+                            <Form.Control type="file" accept=".enc"
+                                onChange={handleImportBackup}
+                                disabled={unlockingKey || signing || !/^\d{6}$/.test(publicKeyCode) || !/^\d{6}$/.test(pin)} />
+                            <Form.Text>
+                                Enter your public key code and PIN, then select your backup.
+                                The file is checked locally and is never uploaded.
+                                A valid backup replaces the saved key for this code on this browser.
+                            </Form.Text>
+                        </Form.Group>
                         <div className="contract-signing-private-key">
 
                             <Form.Label>
