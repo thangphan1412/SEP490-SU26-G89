@@ -1,0 +1,19 @@
+{
+  "name": "sep490-report53-system-tests",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "playwright test",
+    "test:report53": "playwright test --grep @report53",
+    "test:smoke": "playwright test tests/report53.ui.spec.js --grep @smoke",
+    "test:headed": "playwright test --headed",
+    "test:ui": "playwright test --ui",
+    "report": "playwright show-report"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.55.1",
+    "dotenv": "^17.2.2"
+  }
+}
+

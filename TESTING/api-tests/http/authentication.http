@@ -1,0 +1,24 @@
+@baseUrl = http://localhost:8080
+@email = replace-with-test-account@example.com
+@password = replace-with-test-password
+
+### AUTH-01: Login and obtain a JWT
+POST {{baseUrl}}/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{email}}",
+  "password": "{{password}}"
+}
+
+# Expected: HTTP 201 and a JWT at data.token.
+# Copy data.token into the @token variable in the other .http files.
+
+### AUTH-02: Invalid password - expected 401
+POST {{baseUrl}}/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{email}}",
+  "password": "definitely-wrong-password"
+}
