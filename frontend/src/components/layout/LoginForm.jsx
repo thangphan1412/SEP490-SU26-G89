@@ -15,7 +15,14 @@ function LoginForm() {
   const navigate = useNavigate();
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
-    const [errorMessage, setErrorMessage] = useState("");
+    const [errorMessage, setErrorMessage] = useState(() => {
+        const reason = new URLSearchParams(window.location.search).get("session");
+        return reason === "expired"
+            ? "Your session has expired. Please sign in again."
+            : reason === "invalid"
+              ? "Your session is invalid. Please sign in again."
+              : "";
+    });
     const [submitting, setSubmitting] = useState(false);
 
     const handelLogin = async(event)=> {

@@ -197,17 +197,17 @@ function CreateSignaturePage() {
 
         const privateKeyBytes =
             encoder.encode(privateKey);
-
+        // Kết hợp với PIN để tạo khóa AES; cùng PIN nhưng salt khác sẽ tạo khóa khác
         const salt =
             crypto.getRandomValues(
                 new Uint8Array(16)
             );
-
+        // Dùng cho lần mã hóa AES-GCM; cần tránh lặp lại IV với cùng khóa
         const iv =
             crypto.getRandomValues(
                 new Uint8Array(12)
             );
-
+        // Tạo khóa AES từ PIN
         const keyMaterial =
             await crypto.subtle.importKey(
                 "raw",
@@ -233,7 +233,7 @@ function CreateSignaturePage() {
                 false,
                 ["encrypt"]
             );
-
+        // PBKDF2
         const encrypted =
             await crypto.subtle.encrypt(
                 {

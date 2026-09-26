@@ -35,7 +35,7 @@ public class ContractVerificationService {
     private final CurrentUser currentUser;
 
     @Transactional(readOnly = true)
-    public VerificationReport verify(UUID contractId, String publicKeyCode) throws Exception {
+    public SelectedVerificationReport verify(UUID contractId, String publicKeyCode) throws Exception {
         // Reuse the same VIEW authorization as Contract Details before reading files or keys.
         contractService.getContractById(contractId);
         if (publicKeyCode == null || !publicKeyCode.trim().matches("[0-9]{6}")) {
@@ -47,6 +47,13 @@ public class ContractVerificationService {
         }
         var signatures = signatureRepository.findByContractIdOrderBySignatureCreateAtAsc(contractId);
         UUID viewerId = currentUser.getCurrentUser().getId();
+        if (signatures.isEmpty() || signatures.getFirst().getUserKey() == null
+                || signatures.getFirst().getUserKey().getUser() == null
+                || !isCeo(signatures.getFirst().getUserKey().getUser())) {
+            throw new IllegalArgumentException("The first signature must belong to the issuing CEO before verification.");
+        }
+        UUID ceoId = signatures.getFirst().getUserKey().getUser().getId();
+        boolean viewerIsIssuingCeo = viewerId.equals(ceoId);
         // Resolve only keys linked to actual signatures on this authorized contract.
         var matchingKeys = signatures.stream().map(Signature::getUserKey)
                 .filter(key -> key != null && key.getUser() != null
@@ -61,10 +68,33 @@ public class ContractVerificationService {
             throw new IllegalArgumentException(
                     "This public key code matches multiple signing keys. The signer cannot be identified uniquely.");
         }
+        var selected = signatures.stream()
+                .filter(record -> record.getUserKey() != null
+                        && matchingKeys.getFirst().equals(record.getUserKey().getId()))
+                .findFirst().orElseThrow();
+        UUID selectedSignerId = selected.getUserKey().getUser().getId();
+        if (!viewerIsIssuingCeo && !ceoId.equals(selectedSignerId)) {
+            throw new IllegalArgumentException("Partners must enter the issuing CEO's public key code, not another partner's code.");
+        }
         byte[] pdf = cloudinaryService.download(contract.getDocumentFile());
-        return verifyDocument(pdf, contract.getDocumentHash(), signatures,
+        var report = verifyDocument(pdf, contract.getDocumentHash(), signatures,
                 viewerId);
+        var selectedResult = report.signatures().stream()
+                .filter(result -> selected.getId().equals(result.signatureId())).findFirst().orElse(null);
+        return new SelectedVerificationReport(report.verified(), report.storedHashMatches(),
+                report.currentRevisionSigned(), report.pdfSignatureCount(), report.signatures(),
+                report.message(), selectedResult, report.pdfSignatureCount() > 1);
     }
+
+    private boolean isCeo(com.fpt.backend.entity.Users user) {
+        return user.getUserRoles() != null && user.getUserRoles().stream()
+                .anyMatch(link -> link.getRole() != null && link.getRole().getRoleCode() != null
+                        && "CEO".equalsIgnoreCase(link.getRole().getRoleCode().trim().replaceFirst("(?i)^ROLE_", "")));
+    }
+
+    public record SelectedVerificationReport(boolean verified, boolean storedHashMatches,
+            boolean currentRevisionSigned, int pdfSignatureCount, List<SignerResult> signatures,
+            String message, SignerResult selectedSignature, boolean revisionContentReviewRequired) {}
 
     VerificationReport verifyDocument(byte[] pdf, String expectedHash,
                                       List<Signature> records, UUID viewerId) throws Exception {

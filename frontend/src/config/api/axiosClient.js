@@ -42,10 +42,18 @@ axiosClient.interceptors.response.use(
     (response) => response,
     (error) => {
         if (error.response?.status === 401 && !error.config?.url?.startsWith("/auth/login")) {
-            localStorage.removeItem("token");
+            const sentAuthorization = error.config?.headers?.Authorization;
+            const currentToken = localStorage.getItem("token");
+            // A late response from an old session must not clear a newer login.
+            if (currentToken && sentAuthorization !== `Bearer ${currentToken}`) {
+                return Promise.reject(error);
+            }
+            ["token", "role", "fullName", "departmentName", "hasSignatureKey", "email"]
+                .forEach((key) => localStorage.removeItem(key));
 
             if (window.location.pathname !== "/login") {
-                window.location.href = "/login";
+                const reason = error.response?.data?.code === "TOKEN_EXPIRED" ? "expired" : "invalid";
+                window.location.replace(`/login?session=${reason}`);
             }
         }
         return Promise.reject(error);

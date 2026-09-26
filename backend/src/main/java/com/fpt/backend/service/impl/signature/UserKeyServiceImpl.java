@@ -47,14 +47,14 @@ public class UserKeyServiceImpl implements IUserKeyService {
                 changToPingPrivateKey(
                         keyPair.modulus().toString(16)
                 );
-
+// báe 64
         String publicKey = encodePublicKey(
                 keyPair.modulus(),
                 keyPair.publicExponent()
         );
 
         String privateKey;
-
+      //PKCS#8
         try {
             privateKey = RSAKeyConverter.encodePKCS8(
                     keyPair.modulus(),
@@ -81,8 +81,7 @@ public class UserKeyServiceImpl implements IUserKeyService {
 
         try {
 
-            KeyFactory keyFactory =
-                    KeyFactory.getInstance("RSA");
+            KeyFactory keyFactory = KeyFactory.getInstance("RSA");
 
 
             RSAPublicKeySpec publicKeySpec =
@@ -148,19 +147,16 @@ public class UserKeyServiceImpl implements IUserKeyService {
 
         try {
 
-            byte[] digest =
-                    MessageDigest.getInstance("SHA-256")
+            byte[] digest = MessageDigest.getInstance("SHA-256")
                             .digest(
                                     key.getBytes(
                                             StandardCharsets.UTF_8
                                     )
                             );
 
-            BigInteger number =
-                    new BigInteger(1, digest);
+            BigInteger number = new BigInteger(1, digest);
 
-            int code =
-                    number
+            int code = number
                             .mod(BigInteger.valueOf(1_000_000))
                             .intValue();
 
