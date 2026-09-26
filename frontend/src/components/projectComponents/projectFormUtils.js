@@ -133,6 +133,13 @@ export function getPhaseDateError(
         + " start date must not be before the project start date.";
     }
 
+    const previousPhase = phases[index - 1];
+
+    if (previousPhase && phase.startDate <= previousPhase.endDate) {
+      return "Phase " + phaseNumber
+        + " start date must be after phase " + index + " end date.";
+    }
+
     if (projectEndDate && phase.endDate > projectEndDate) {
       return "Phase " + phaseNumber
         + " end date must not be after the project end date.";
@@ -140,6 +147,24 @@ export function getPhaseDateError(
   }
 
   return "";
+}
+
+export function getPhaseStartMinDate(phases, index, projectStartDate) {
+  const previousEndDate = phases[index - 1]?.endDate;
+
+  if (!previousEndDate) {
+    return projectStartDate;
+  }
+
+  const nextDate = new Date(previousEndDate + "T00:00:00Z");
+
+  if (Number.isNaN(nextDate.getTime())) {
+    return projectStartDate;
+  }
+
+  nextDate.setUTCDate(nextDate.getUTCDate() + 1);
+  const nextStartDate = nextDate.toISOString().slice(0, 10);
+  return nextStartDate > projectStartDate ? nextStartDate : projectStartDate;
 }
 
 export function isCompletedProjectStatus(status) {
